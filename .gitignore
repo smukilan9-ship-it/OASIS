@@ -1,0 +1,47 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+.venv/
+venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# IDE and OS files
+.idea/
+.vscode/
+.DS_Store
+
+# Local machine configs
+config.yaml
+*.local.yaml
+
+# Generated QuPath and analysis outputs
+generated_pipeline.groovy
+*_detections.csv
+*_detections.geojson
+*_summary.json
+*_overlay.png
+ihc_results_*.xlsx
+ihc_dashboard_*.html
+coloc_results.json
+*_coloc.json
+logs/
+metadata/
+output_results/
+ihc_results/
+ihc_coloc_results/
+
+# Large microscopy datasets should stay outside Git
+*.svs
+*.ndpi
+*.tif
+*.tiff

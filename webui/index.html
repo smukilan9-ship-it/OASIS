@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IHC Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+/* ── Variables ─────────────────────────────────────────── */
+:root {
+  /* Backgrounds — each step clearly lighter than the previous */
+  --bg:      #090c16;   /* Page — deep navy, not pure black */
+  --bg2:     #0d1120;   /* Sidebar */
+  --bg3:     #1a1e30;   /* Inputs, sliders, disabled surfaces */
+  --card:    #111526;   /* Cards — visibly lighter than --bg */
+
+  /* Borders — 10%+ opacity so they're actually visible */
+  --border:  rgba(255,255,255,0.10);
+  --border2: rgba(255,255,255,0.18);
+
+  /* Text */
+  --text:    #e0e4f6;
+  --text2:   #6c7096;
+  --text3:   #3c4062;
+
+  /* Accents */
+  --cyan:       #22d3ee;
+  --cyan-dim:   rgba(34,211,238,0.14);
+  --cyan-glow:  rgba(34,211,238,0.30);
+
+  --amber:      #f59e0b;
+  --amber-dim:  rgba(245,158,11,0.14);
+  --amber-glow: rgba(245,158,11,0.30);
+
+  --green:      #10b981;
+  --green-dim:  rgba(16,185,129,0.14);
+  --red:        #f87171;
+  --red-dim:    rgba(248,113,113,0.14);
+  --purple:     #a78bfa;
+
+  --sidebar-w: 64px;
+  --font:  'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Helvetica Neue', sans-serif;
+  --mono:  'SF Mono', 'JetBrains Mono', 'Fira Code', 'Menlo', monospace;
+  --r:     10px;
+  --r-sm:  7px;
+  --r-lg:  14px;
+}
+
+/* ── Base ──────────────────────────────────────────────── */
+html, body {
+  height: 100%;
+  font-family: var(--font); font-size: 13px; color: var(--text);
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  /* Subtle radial gradients give depth to the background */
+  background:
+    radial-gradient(ellipse 70% 50% at 5% 0%,   rgba(34,211,238,.06) 0%, transparent 55%),
+    radial-gradient(ellipse 50% 40% at 95% 100%, rgba(99,102,241,.05) 0%, transparent 50%),
+    #090c16;
+}
+
+.app { display: flex; height: 100vh; }
+
+/* ── Sidebar ───────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  box-shadow: 2px 0 20px rgba(0,0,0,.35);
+  display: flex; flex-direction: column;
+  align-items: center; padding: 14px 0 16px;
+  flex-shrink: 0; gap: 2px;
+}
+.logo {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, #22d3ee 0%, #6366f1 100%);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(34,211,238,.35);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 20px; flex-shrink: 0;
+}
+.logo svg { color: #fff; }
+.nav-btn {
+  width: 46px; height: 46px; border: none;
+  border-radius: var(--r-sm); background: transparent;
+  color: var(--text3); cursor: pointer;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 4px;
+  position: relative; outline: none;
+  font-size: 9px; font-weight: 500;
+  letter-spacing: .03em; font-family: var(--font);
+  transition: color .14s, background .14s;
+}
+.nav-btn:hover { background: rgba(255,255,255,.05); color: var(--text2); }
+.nav-btn.active { color: var(--cyan); background: rgba(34,211,238,.12); }
+.nav-btn.active::before {
+  content: ''; position: absolute; left: -1px; top: 50%;
+  transform: translateY(-50%);
+  width: 3px; height: 22px;
+  background: var(--cyan); border-radius: 0 3px 3px 0;
+}
+.nav-btn.coloc-active { color: var(--amber); background: rgba(245,158,11,.12); }
+.nav-btn.coloc-active::before { background: var(--amber); }
+.nav-btn.bottom { margin-top: auto; }
+
+/* ── Pages & Views ─────────────────────────────────────── */
+.pages { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+.page  { display: none; flex-direction: column; height: 100%; overflow: hidden; }
+.page.active { display: flex; }
+.view { display: none; flex-direction: column; flex: 1; overflow: hidden; min-height: 0; }
+.view.active { display: flex; }
+
+/* ── Page header ───────────────────────────────────────── */
+.page-header {
+  height: 52px; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center;
+  padding: 0 22px; gap: 12px; flex-shrink: 0;
+  background: rgba(9,12,22,.85);
+}
+.page-header h1 { font-size: 15px; font-weight: 600; letter-spacing: -.02em; }
+.page-header .sub { font-size: 11px; color: var(--text3); }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+/* ── Scroll ────────────────────────────────────────────── */
+.scroll { flex: 1; overflow-y: auto; padding: 18px 22px; }
+.scroll::-webkit-scrollbar { width: 4px; }
+.scroll::-webkit-scrollbar-thumb { background: var(--bg3); border-radius: 2px; }
+
+/* ── Cards ─────────────────────────────────────────────── */
+.card {
+  background: var(--card);       /* Solid — clearly distinct from --bg */
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 18px; margin-bottom: 14px;
+  /* No backdrop-filter: near-opaque cards can't blur what's behind them */
+}
+.card-title {
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px;
+}
+
+/* ── Form elements ─────────────────────────────────────── */
+.field { margin-bottom: 12px; }
+.field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+input[type="text"], input[type="number"], input[type="password"], select, textarea {
+  width: 100%; height: 34px;
+  background: var(--bg3);           /* Solid dark — actually visible */
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm); padding: 0 11px;
+  font-family: var(--font); font-size: 12px; color: var(--text);
+  outline: none; appearance: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:focus, select:focus {
+  border-color: var(--cyan);
+  box-shadow: 0 0 0 3px rgba(34,211,238,.18);
+}
+input:disabled, select:disabled { opacity: .45; cursor: not-allowed; }
+select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%236c7096'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 11px center;
+  padding-right: 28px; cursor: pointer;
+}
+select option { background: #1a1e30; color: var(--text); }
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+.input-with-btn { display: flex; gap: 8px; }
+.input-with-btn input { flex: 1; }
+
+/* ── Buttons ───────────────────────────────────────────── */
+.btn {
+  height: 32px; padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: rgba(255,255,255,.06);
+  color: var(--text);
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  cursor: pointer; outline: none;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all .12s; white-space: nowrap;
+}
+.btn:hover { background: rgba(255,255,255,.10); border-color: var(--border2); }
+.btn:active { background: rgba(255,255,255,.14); }
+.btn:disabled { opacity: .4; cursor: default; }
+.btn.primary {
+  background: var(--cyan); border-color: var(--cyan);
+  color: #04090e; font-weight: 600;
+}
+.btn.primary:hover { background: #34d8f0; }
+.btn.primary:disabled { background: var(--bg3); color: var(--text3); border-color: var(--border); opacity: 1; }
+.btn.danger { color: var(--red); border-color: rgba(248,113,113,.25); background: transparent; }
+.btn.danger:hover { background: var(--red-dim); border-color: rgba(248,113,113,.4); }
+.btn.sm { height: 26px; padding: 0 10px; font-size: 11px; }
+
+/* Segmented tab control — replaces old mode-toggle */
+.seg-tabs {
+  display: flex;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 9px; padding: 3px; gap: 3px;
+  margin-bottom: 8px;
+}
+.seg-tab {
+  flex: 1; height: 30px; border: none; border-radius: 7px;
+  background: transparent; color: var(--text3);
+  font-family: var(--font); font-size: 12px; font-weight: 500;
+  cursor: pointer; outline: none; transition: all .15s;
+}
+.seg-tab:hover { color: var(--text2); background: rgba(255,255,255,.05); }
+.seg-tab.active {
+  background: var(--card); color: var(--text);
+  box-shadow: 0 1px 5px rgba(0,0,0,.4), 0 0 0 1px rgba(255,255,255,.08);
+}
+
+/* Run button */
+.run-btn {
+  width: 100%; height: 46px; border: none; border-radius: var(--r);
+  font-family: var(--font); font-size: 13px; font-weight: 600;
+  cursor: pointer; outline: none;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .15s; letter-spacing: -.01em;
+}
+.run-btn.cyan {
+  background: linear-gradient(135deg, #22d3ee 0%, #38bdf8 100%);
+  color: #04090e;
+  box-shadow: 0 4px 24px rgba(34,211,238,.35), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.run-btn.cyan:hover  { box-shadow: 0 6px 32px rgba(34,211,238,.50); transform: translateY(-1px); }
+.run-btn.amber {
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  color: #04090e;
+  box-shadow: 0 4px 24px rgba(245,158,11,.35), inset 0 1px 0 rgba(255,255,255,.25);
+}
+.run-btn.amber:hover { box-shadow: 0 6px 32px rgba(245,158,11,.50); transform: translateY(-1px); }
+.run-btn:disabled { background: var(--bg3); color: var(--text3); cursor: default; box-shadow: none; transform: none; }
+.run-area { padding: 0 22px 22px; flex-shrink: 0; }
+
+/* ── Toggle switch ─────────────────────────────────────── */
+.toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
+.toggle-row span { font-size: 12px; color: var(--text); }
+.toggle {
+  width: 38px; height: 22px; background: var(--bg3);
+  border: 1px solid var(--border); border-radius: 11px;
+  position: relative; cursor: pointer;
+  transition: background .2s, border-color .2s; flex-shrink: 0;
+}
+.toggle.on { background: var(--cyan); border-color: var(--cyan); }
+.toggle::after {
+  content: ''; position: absolute; width: 16px; height: 16px;
+  background: #fff; border-radius: 50%; top: 2px; left: 2px;
+  transition: transform .2s; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+}
+.toggle.on::after { transform: translateX(16px); }
+
+/* ── Slider ────────────────────────────────────────────── */
+input[type="range"] {
+  height: 4px; width: 100%; background: var(--bg3);
+  border-radius: 2px; outline: none; border: none; appearance: none;
+  margin-top: 8px; cursor: pointer;
+}
+input[type="range"]::-webkit-slider-thumb {
+  appearance: none; width: 18px; height: 18px;
+  background: #fff; border: 3px solid var(--cyan);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(34,211,238,.4); cursor: pointer;
+}
+
+/* ── Metric cards ──────────────────────────────────────── */
+.metrics-row { display: grid; gap: 12px; margin-bottom: 16px; }
+.metrics-row.c2 { grid-template-columns: 1fr 1fr; }
+.metrics-row.c3 { grid-template-columns: 1fr 1fr 1fr; }
+.metrics-row.c4 { grid-template-columns: repeat(4,1fr); }
+.metric {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); padding: 18px 16px;
+  position: relative; overflow: hidden;
+}
+/* Per-color tinted border + gradient overlay + bottom accent line */
+.metric.cyan   { border-color: rgba(34,211,238,.25); }
+.metric.amber  { border-color: rgba(245,158,11,.25); }
+.metric.green  { border-color: rgba(16,185,129,.25); }
+.metric.purple { border-color: rgba(167,139,250,.25); }
+.metric::before {  /* Gradient tint overlay */
+  content: ''; position: absolute; inset: 0;
+  border-radius: var(--r); pointer-events: none;
+}
+.metric.cyan::before   { background: linear-gradient(135deg, rgba(34,211,238,.10) 0%, transparent 55%); }
+.metric.amber::before  { background: linear-gradient(135deg, rgba(245,158,11,.10) 0%, transparent 55%); }
+.metric.green::before  { background: linear-gradient(135deg, rgba(16,185,129,.10) 0%, transparent 55%); }
+.metric.purple::before { background: linear-gradient(135deg, rgba(167,139,250,.10) 0%, transparent 55%); }
+.metric::after {  /* Bottom accent line */
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 2px; border-radius: 0 0 var(--r) var(--r);
+}
+.metric.cyan::after   { background: linear-gradient(90deg, var(--cyan),  transparent); }
+.metric.amber::after  { background: linear-gradient(90deg, var(--amber), transparent); }
+.metric.green::after  { background: linear-gradient(90deg, var(--green), transparent); }
+.metric.purple::after { background: linear-gradient(90deg, var(--purple),transparent); }
+.metric-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; position: relative; }
+.metric-value { font-size: 30px; font-weight: 600; line-height: 1; letter-spacing: -.03em; position: relative; }
+.metric-value.cyan   { color: var(--cyan);   }
+.metric-value.amber  { color: var(--amber);  }
+.metric-value.green  { color: var(--green);  }
+.metric-value.purple { color: var(--purple); }
+.metric-sub { font-size: 11px; color: var(--text3); margin-top: 6px; position: relative; }
+
+/* ── Table ─────────────────────────────────────────────── */
+.table-card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: var(--r); overflow: hidden; margin-bottom: 14px;
+}
+.table-header-row {
+  display: flex; align-items: center; padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.025);
+}
+.table-header-row h3 { font-size: 12px; font-weight: 600; color: var(--text2); }
+table { width: 100%; border-collapse: collapse; font-size: 12px; }
+th {
+  padding: 9px 16px; text-align: left;
+  font-size: 10px; font-weight: 600; color: var(--text3);
+  text-transform: uppercase; letter-spacing: .06em;
+  border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.025);
+}
+td { padding: 11px 16px; border-bottom: 1px solid rgba(255,255,255,.05); color: var(--text); }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: rgba(255,255,255,.03); }
+td.cyan  { color: var(--cyan);  font-weight: 500; }
+td.amber { color: var(--amber); font-weight: 500; }
+td.green { color: var(--green); font-weight: 500; }
+td.muted { color: var(--text3); font-size: 11px; }
+
+/* ── Badges ────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 3px;
+  padding: 3px 8px; border-radius: 5px;
+  font-size: 10px; font-weight: 600; letter-spacing: .04em;
+}
+.badge.cyan   { background: rgba(34,211,238,.14);  color: var(--cyan);  border: 1px solid rgba(34,211,238,.25); }
+.badge.amber  { background: rgba(245,158,11,.14);  color: var(--amber); border: 1px solid rgba(245,158,11,.25); }
+.badge.green  { background: rgba(16,185,129,.14);  color: var(--green); border: 1px solid rgba(16,185,129,.25); }
+.badge.red    { background: rgba(248,113,113,.14); color: var(--red);   border: 1px solid rgba(248,113,113,.25); }
+.badge.gray   { background: rgba(255,255,255,.07); color: var(--text2); border: 1px solid var(--border); }
+
+/* ── Info box ──────────────────────────────────────────── */
+.info-box {
+  background: rgba(34,211,238,.07);
+  border: 1px solid rgba(34,211,238,.20);
+  border-radius: var(--r-sm); padding: 10px 12px;
+  font-size: 11px; color: rgba(34,211,238,.85); line-height: 1.65;
+}
+.info-box.amber { background: rgba(245,158,11,.07); border-color: rgba(245,158,11,.20); color: rgba(245,158,11,.9); }
+.info-box.warn  { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: var(--amber); margin-top: 10px; }
+
+/* ── Section label & divider ───────────────────────────── */
+.section-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; }
+.divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+/* ── Override rows ─────────────────────────────────────── */
+.override-item { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+.override-item:last-child { border-bottom: none; }
+.override-name { flex: 1; color: var(--text2); }
+
+/* ── Terminal ──────────────────────────────────────────── */
+.terminal-wrap {
+  flex: 1; background: #03050b;
+  border: 1px solid var(--border); border-radius: var(--r);
+  overflow: hidden; display: flex; flex-direction: column;
+  margin: 0 22px 22px; min-height: 0;
+}
+.terminal-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  background: rgba(255,255,255,.025); flex-shrink: 0;
+}
+.terminal-dots { display: flex; gap: 6px; }
+.terminal-dots span { width: 11px; height: 11px; border-radius: 50%; }
+.dot-r { background: #ff5f57; } .dot-y { background: #ffbd2e; } .dot-g { background: #28ca42; }
+.terminal-title { font-size: 10px; font-weight: 600; color: var(--text3); letter-spacing: .07em; }
+.terminal-body { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: var(--mono); font-size: 11px; line-height: 1.9; }
+.terminal-body::-webkit-scrollbar { width: 4px; }
+.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.10); border-radius: 2px; }
+.log-line { display: flex; gap: 12px; }
+.log-time   { color: #282c46; flex-shrink: 0; }
+.log-ok     { color: #10b981; }
+.log-info   { color: #22d3ee; }
+.log-warn   { color: #f59e0b; }
+.log-error  { color: #f87171; }
+.log-normal { color: #606890; }
+
+/* ── Progress ──────────────────────────────────────────── */
+.progress-area { padding: 16px 22px 14px; flex-shrink: 0; }
+.progress-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.progress-label .plabel { font-size: 12px; color: var(--text2); }
+.progress-label .ppct   { font-size: 12px; font-weight: 600; color: var(--cyan); }
+.progress-label .ppct.amber { color: var(--amber); }
+.progress-track { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; border-radius: 3px; width: 0%; transition: width .35s ease; background: linear-gradient(90deg, #22d3ee, #38bdf8); }
+.progress-fill.amber { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+
+/* ── Action row ────────────────────────────────────────── */
+.action-row { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 20px; }
+
+/* ── Spinner ───────────────────────────────────────────── */
+@keyframes spin { to { transform: rotate(360deg); } }
+.spinner { width: 13px; height: 13px; border: 2px solid var(--bg3); border-top-color: var(--cyan); border-radius: 50%; animation: spin .7s linear infinite; display: inline-block; flex-shrink: 0; }
+.spinner.amber { border-top-color: var(--amber); }
+
+/* ── Status dot ────────────────────────────────────────── */
+@keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.3; } }
+.sdot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.sdot.g { background: var(--green); }
+.sdot.b { background: var(--cyan); animation: pulse 1.4s infinite; }
+.sdot.r { background: var(--red); }
+
+/* ── Toast ─────────────────────────────────────────────── */
+.toast {
+  position: fixed; bottom: 22px; left: 50%;
+  transform: translateX(-50%) translateY(12px);
+  background: #1c2038; border: 1px solid var(--border2);
+  backdrop-filter: blur(16px);
+  color: var(--text); font-size: 12px; font-weight: 500;
+  padding: 10px 20px; border-radius: 22px;
+  pointer-events: none; opacity: 0; transition: all .2s; z-index: 999;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- ── Sidebar ──────────────────────────────────────────── -->
+<nav class="sidebar">
+  <div class="logo">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+    </svg>
+  </div>
+  <button class="nav-btn active" id="nav-quant" onclick="showPage('quant')">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="13" width="4" height="8"/><rect x="9" y="9" width="4" height="12"/><rect x="15" y="5" width="4" height="16"/>
+    </svg>
+    Quant
+  </button>
+  <button class="nav-btn" id="nav-coloc" onclick="showPage('coloc')">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>
+    </svg>
+    Coloc
+  </button>
+  <button class="nav-btn bottom" id="nav-settings" onclick="showPage('settings')">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </svg>
+    Settings
+  </button>
+</nav>
+
+<div class="pages">
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: QUANTIFICATION
+═══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-quant">
+  <div class="page-header">
+    <h1>Quantification</h1>
+    <span class="sub">Single-marker DAB batch analysis</span>
+    <div class="header-right">
+      <span id="quant-status" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
+        <span class="sdot b" id="quant-sdot"></span>
+        <span id="quant-status-txt">Running</span>
+      </span>
+      <button class="btn danger" id="quant-stop-btn" style="display:none" onclick="stopPipeline()">Stop</button>
+      <button class="btn" id="quant-new-btn" style="display:none" onclick="showView('quant','config')">← New analysis</button>
+    </div>
+  </div>
+
+  <!-- CONFIG VIEW -->
+  <div class="view active" id="quant-config">
+    <div class="scroll">
+      <div class="card">
+        <div class="card-title">Folders</div>
+        <div class="row2">
+          <div class="field"><label>Image folder</label>
+            <div class="input-with-btn">
+              <input type="text" id="q-input" placeholder="/path/to/images">
+              <button class="btn sm" onclick="pickInto('q-input', onQuantFolderPicked)">Browse</button>
+            </div>
+          </div>
+          <div class="field"><label>Output folder</label>
+            <div class="input-with-btn">
+              <input type="text" id="q-output" placeholder="~/Desktop/ihc_results">
+              <button class="btn sm" onclick="pickInto('q-output', null)">Browse</button>
+            </div>
+          </div>
+        </div>
+        <div id="q-image-count" style="font-size:11px;color:var(--text3);margin-top:2px"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Analysis parameters</div>
+        <div class="field">
+          <label>DAB threshold (optical density) — <b id="q-thresh-display">0.20</b> OD</label>
+          <input type="range" id="q-thresh" min="5" max="50" value="20"
+            oninput="document.getElementById('q-thresh-display').textContent=(this.value/100).toFixed(2)">
+        </div>
+        <div class="divider"></div>
+        <div class="section-label">Pixel size source</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="global" checked onchange="onQuantPxChange()">
+            Use global default (from Settings)
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="manual" onchange="onQuantPxChange()">
+            Manual entry for this run
+          </label>
+        </div>
+        <div id="q-px-manual" style="display:none">
+          <div class="row3">
+            <div class="field"><label>Pixel size X (µm/px)</label>
+              <input type="number" id="q-px-x" value="0.5" step="0.01" min="0.01">
+            </div>
+            <div class="field"><label>Pixel size Y (µm/px)</label>
+              <input type="number" id="q-px-y" value="0.5" step="0.01" min="0.01">
+            </div>
+            <div class="field"><label>Objective</label>
+              <select id="q-obj" onchange="onQuantObjChange()">
+                <option>4x</option><option selected>10x</option><option>20x</option>
+                <option>40x</option><option>60x</option><option>100x</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Per-image pixel size overrides <span style="font-weight:400;font-size:11px;text-transform:none;color:var(--text3)">(optional)</span></div>
+        <div id="q-overrides-list" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px">
+          <select id="q-ov-file" style="flex:1"><option value="">— select image —</option></select>
+          <input type="number" id="q-ov-px" placeholder="µm/px" style="width:80px" step="0.01">
+          <button class="btn sm" onclick="addQuantOverride()">Add</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Output options</div>
+        <div class="toggle-row">
+          <span>Generate cell boundary overlays</span>
+          <div class="toggle on" id="q-overlay-toggle" onclick="toggleEl('q-overlay-toggle')"></div>
+        </div>
+        <div class="toggle-row">
+          <span>Delete intermediate files after run</span>
+          <div class="toggle" id="q-cleanup-toggle" onclick="toggleEl('q-cleanup-toggle')"></div>
+        </div>
+      </div>
+    </div>
+    <div class="run-area">
+      <button class="run-btn cyan" id="quant-run-btn" onclick="runQuantAnalysis()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run Analysis
+      </button>
+    </div>
+  </div>
+
+  <!-- RUNNING VIEW -->
+  <div class="view" id="quant-running">
+    <div class="progress-area">
+      <div class="progress-label">
+        <span class="plabel" id="quant-progress-label">Initializing...</span>
+        <span class="ppct" id="quant-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill" id="quant-progress-fill"></div></div>
+    </div>
+    <div class="terminal-wrap">
+      <div class="terminal-header">
+        <div class="terminal-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
+        <span class="terminal-title">SYSTEM LOG</span>
+        <button class="btn sm" style="margin-left:auto" onclick="copyLog('quant-log')">Copy</button>
+      </div>
+      <div class="terminal-body" id="quant-log"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS VIEW -->
+  <div class="view" id="quant-results">
+    <div class="scroll">
+      <div class="metrics-row c2" id="quant-metrics"></div>
+      <div class="table-card">
+        <div class="table-header-row">
+          <h3>Per-image results</h3>
+          <div style="margin-left:auto">
+            <button class="btn sm" onclick="exportQuantCSV()">Export CSV</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Image</th><th>Total cells</th><th>Positive</th>
+            <th>Positivity %</th><th>Pixel size</th><th>Status</th>
+          </tr></thead>
+          <tbody id="quant-tbody">
+            <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No results yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="action-row" id="quant-actions"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: CO-LOCALIZATION
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-coloc">
+  <div class="page-header">
+    <h1>Co-localization</h1>
+    <span class="sub">Cross-section marker co-expression analysis</span>
+    <div class="header-right">
+      <span id="coloc-status" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
+        <span class="sdot b" id="coloc-sdot"></span>
+        <span id="coloc-status-txt">Running</span>
+      </span>
+      <button class="btn danger" id="coloc-stop-btn" style="display:none" onclick="stopPipeline()">Stop</button>
+      <button class="btn" id="coloc-new-btn" style="display:none" onclick="showView('coloc','config')">← New analysis</button>
+    </div>
+  </div>
+
+  <!-- CONFIG VIEW -->
+  <div class="view active" id="coloc-config">
+    <div class="scroll">
+
+      <div class="card">
+        <div class="card-title">Input mode</div>
+        <div class="seg-tabs">
+          <button class="seg-tab active" id="mode-two-btn" onclick="setColocMode('two_folder')">Two Folders</button>
+          <button class="seg-tab" id="mode-single-btn" onclick="setColocMode('single_folder')">Single Folder (auto-detect)</button>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:8px" id="coloc-mode-hint">
+          Provide separate CD8 and TIM3 folders. Files are matched by normalized filename — the stain token is stripped and samples paired by the remaining name.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Folders</div>
+
+        <div id="coloc-two-inputs">
+          <div class="row2">
+            <div class="field"><label>Marker A folder (e.g. CD8)</label>
+              <div class="input-with-btn">
+                <input type="text" id="c-folder-a" placeholder="/path/to/cd8_images">
+                <button class="btn sm" onclick="pickInto('c-folder-a', null)">Browse</button>
+              </div>
+            </div>
+            <div class="field"><label>Marker B folder (e.g. TIM3)</label>
+              <div class="input-with-btn">
+                <input type="text" id="c-folder-b" placeholder="/path/to/tim3_images">
+                <button class="btn sm" onclick="pickInto('c-folder-b', null)">Browse</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="coloc-single-input" style="display:none">
+          <div class="field"><label>Images folder (contains both stains)</label>
+            <div class="input-with-btn">
+              <input type="text" id="c-folder-single" placeholder="/path/to/all_stains">
+              <button class="btn sm" onclick="pickInto('c-folder-single', null)">Browse</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="field"><label>Output folder</label>
+          <div class="input-with-btn">
+            <input type="text" id="c-output" placeholder="~/Desktop/ihc_coloc_results">
+            <button class="btn sm" onclick="pickInto('c-output', null)">Browse</button>
+          </div>
+        </div>
+
+        <button class="btn amber" style="margin-top:8px;width:100%" onclick="detectPairs()" id="detect-pairs-btn">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          Detect Pairs
+        </button>
+      </div>
+
+      <!-- Pair preview (hidden until detected) -->
+      <div id="coloc-pairs-card" style="display:none">
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            Detected pairs
+            <span id="coloc-pairs-badge" class="badge amber"></span>
+          </div>
+          <div class="table-card" style="margin-bottom:0;border-radius:var(--radius-sm)">
+            <table>
+              <thead><tr>
+                <th>Sample ID</th><th>Marker A</th><th>Marker B</th><th>Status</th>
+              </tr></thead>
+              <tbody id="coloc-pairs-tbody"></tbody>
+            </table>
+          </div>
+          <div id="coloc-unmatched-warn" class="info-box warn" style="display:none;margin-top:10px"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Matching parameters</div>
+        <div class="row2">
+          <div class="field"><label>Max cell match distance (µm)</label>
+            <input type="number" id="c-max-dist" value="10.0" step="0.5" min="1" max="200">
+          </div>
+          <div class="field"><label>DAB threshold (OD)</label>
+            <input type="number" id="c-thresh" value="0.20" step="0.01" min="0.01" max="1.0">
+          </div>
+        </div>
+        <div class="field"><label>Pixel size (µm/px)</label>
+          <input type="number" id="c-px" value="0.5" step="0.01" min="0.01">
+        </div>
+        <div class="toggle-row" style="margin-top:6px">
+          <span>Enable image registration (recommended for serial sections)</span>
+          <div class="toggle on" id="c-reg-toggle" onclick="toggleEl('c-reg-toggle')"></div>
+        </div>
+        <div class="info-box" style="margin-top:10px">
+          Registration aligns both images using ORB feature matching + RANSAC before cell matching.
+          Accounts for scan-to-scan rotation and translation differences between serial sections.
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Output options</div>
+        <div class="toggle-row">
+          <span>Delete intermediate files after run</span>
+          <div class="toggle" id="c-cleanup-toggle" onclick="toggleEl('c-cleanup-toggle')"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="run-area">
+      <button class="run-btn amber" id="coloc-run-btn" onclick="runColocAnalysis()" disabled>
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        Run Co-localization
+      </button>
+    </div>
+  </div>
+
+  <!-- RUNNING VIEW -->
+  <div class="view" id="coloc-running">
+    <div class="progress-area">
+      <div class="progress-label">
+        <span class="plabel" id="coloc-progress-label">Initializing...</span>
+        <span class="ppct amber" id="coloc-pct">0%</span>
+      </div>
+      <div class="progress-track"><div class="progress-fill amber" id="coloc-progress-fill"></div></div>
+    </div>
+    <div class="terminal-wrap">
+      <div class="terminal-header">
+        <div class="terminal-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
+        <span class="terminal-title">CO-LOCALIZATION LOG</span>
+        <button class="btn sm" style="margin-left:auto" onclick="copyLog('coloc-log')">Copy</button>
+      </div>
+      <div class="terminal-body" id="coloc-log"></div>
+    </div>
+  </div>
+
+  <!-- RESULTS VIEW -->
+  <div class="view" id="coloc-results">
+    <div class="scroll">
+      <div class="metrics-row c4" id="coloc-metrics"></div>
+      <div class="table-card">
+        <div class="table-header-row">
+          <h3>Per-pair co-expression results</h3>
+          <div style="margin-left:auto">
+            <button class="btn sm" onclick="exportColocCSV()">Export CSV</button>
+          </div>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Sample</th>
+            <th>Marker A</th><th>A positive</th>
+            <th>Marker B</th><th>B positive</th>
+            <th>Co-expressing</th><th>Co-expr %</th>
+            <th>Registration</th>
+          </tr></thead>
+          <tbody id="coloc-tbody">
+            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No results yet</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="action-row" id="coloc-actions"></div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: SETTINGS
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-settings">
+  <div class="page-header">
+    <h1>Settings</h1>
+    <span class="sub">Saved to ~/.ihc_analyzer/setup.yaml</span>
+    <div class="header-right">
+      <button class="btn primary" onclick="saveSetup()">Save settings</button>
+    </div>
+  </div>
+  <div class="scroll">
+
+    <div class="card">
+      <div class="card-title">Microscope &amp; scanner</div>
+      <div class="row2">
+        <div class="field"><label>Microscope model</label>
+          <input type="text" id="s-microscope" placeholder="e.g. Leica DMi8, Olympus BX53">
+        </div>
+        <div class="field"><label>Camera model</label>
+          <input type="text" id="s-camera" placeholder="e.g. DFC7000, DP74">
+        </div>
+      </div>
+      <div class="field"><label>Scanner (optional)</label>
+        <input type="text" id="s-scanner" placeholder="e.g. Aperio GT 450 — leave blank if none">
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Default pixel calibration</div>
+      <div class="row3">
+        <div class="field"><label>Pixel size X (µm/px)</label>
+          <input type="number" id="s-px-x" value="0.50" step="0.01" min="0.01">
+        </div>
+        <div class="field"><label>Pixel size Y (µm/px)</label>
+          <input type="number" id="s-px-y" value="0.50" step="0.01" min="0.01">
+        </div>
+        <div class="field"><label>Default objective</label>
+          <select id="s-objective">
+            <option>4x</option><option selected>10x</option>
+            <option>20x</option><option>40x</option><option>60x</option><option>100x</option>
+          </select>
+        </div>
+      </div>
+      <div class="info-box">
+        Enter the calibrated pixel size from your microscope or scanner software.
+        Used as the default for all analyses unless overridden per-image or per-run.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Analysis engine</div>
+      <div class="field"><label>QuPath binary path</label>
+        <div class="input-with-btn">
+          <input type="text" id="s-qupath" placeholder="/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64">
+          <button class="btn sm" onclick="pickInto('s-qupath', null)">Browse</button>
+        </div>
+      </div>
+      <div class="field"><label>InstanSeg model path</label>
+        <div class="input-with-btn">
+          <input type="text" id="s-model" placeholder="~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1">
+          <button class="btn sm" onclick="pickInto('s-model', null)">Browse</button>
+        </div>
+      </div>
+      <div class="row2">
+        <div class="field"><label>Compute device</label>
+          <select id="s-device">
+            <option value="mps">Apple Silicon (MPS)</option>
+            <option value="cpu">CPU</option>
+            <option value="cuda">NVIDIA GPU (CUDA)</option>
+          </select>
+        </div>
+        <div class="field"><label>InstanSeg threads</label>
+          <input type="number" id="s-threads" value="4" min="1" max="16">
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div><!-- /pages -->
+</div><!-- /app -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── State ────────────────────────────────────────────────
+let quantOverrides = {};
+let colocPairs     = [];
+let colocMode      = 'two_folder';
+let activeMode     = 'quant';
+let resultsData    = { quant: null, coloc: null };
+
+// ── Navigation ────────────────────────────────────────────
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active','coloc-active'));
+  document.getElementById('page-' + id).classList.add('active');
+  const btn = document.getElementById('nav-' + id);
+  if (id === 'coloc') btn.classList.add('coloc-active');
+  else btn.classList.add('active');
+}
+
+function showView(page, view) {
+  const pg = document.getElementById('page-' + page);
+  pg.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById(page + '-' + view)?.classList.add('active');
+  const stopBtn = document.getElementById(page + '-stop-btn');
+  const newBtn  = document.getElementById(page + '-new-btn');
+  const status  = document.getElementById(page + '-status');
+  if (stopBtn) stopBtn.style.display = view === 'running' ? '' : 'none';
+  if (newBtn)  newBtn.style.display  = view === 'results' ? '' : 'none';
+  if (status)  status.style.display  = view === 'running' ? 'flex' : 'none';
+}
+
+// ── Toggle ────────────────────────────────────────────────
+function toggleEl(id) { document.getElementById(id).classList.toggle('on'); }
+function isOn(id)     { return document.getElementById(id).classList.contains('on'); }
+function setToggle(id, on) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  if (on) el.classList.add('on'); else el.classList.remove('on');
+}
+
+// ── Utilities ─────────────────────────────────────────────
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 2300);
+}
+
+function nowStr() {
+  return new Date().toLocaleTimeString('en-US',{hour12:false,hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function appendLog(id, msg, level = 'normal') {
+  const box = document.getElementById(id);
+  if (!box) return;
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="log-time">${nowStr()}</span><span class="log-${level}">${esc(msg)}</span>`;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+function setProgress(page, pct, label) {
+  const fill  = document.getElementById(page + '-progress-fill');
+  const pctEl = document.getElementById(page + '-pct');
+  const lbEl  = document.getElementById(page + '-progress-label');
+  if (fill)  fill.style.width   = pct + '%';
+  if (pctEl) pctEl.textContent  = pct + '%';
+  if (lbEl && label) lbEl.textContent = label;
+}
+
+function copyLog(id) {
+  const box = document.getElementById(id);
+  const txt = Array.from(box.querySelectorAll('.log-line'))
+    .map(l => l.querySelector('.log-time').textContent + '  ' + l.querySelector('span:last-child').textContent)
+    .join('\n');
+  navigator.clipboard.writeText(txt).then(() => showToast('Log copied ✓'));
+}
+
+async function pickInto(inputId, callback) {
+  const folder = await window.pywebview.api.pick_folder();
+  if (folder) {
+    document.getElementById(inputId).value = folder;
+    if (callback) await callback(folder);
+  }
+}
+
+function downloadCSV(rows, filename) {
+  const csv  = rows.map(r => r.map(v => `"${String(v ?? '').replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csv], {type:'text/csv'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+}
+
+function stopPipeline() {
+  window.pywebview.api.stop_pipeline?.();
+  appendLog(activeMode + '-log', 'Stop requested...', 'warn');
+}
+
+// ── Settings ──────────────────────────────────────────────
+async function loadSetup() {
+  const s = await window.pywebview.api.get_setup();
+  document.getElementById('s-microscope').value = s.microscope     || '';
+  document.getElementById('s-camera').value     = s.camera         || '';
+  document.getElementById('s-scanner').value    = s.scanner        || '';
+  document.getElementById('s-px-x').value       = s.pixel_size_x   || 0.5;
+  document.getElementById('s-px-y').value       = s.pixel_size_y   || 0.5;
+  document.getElementById('s-qupath').value     = s.qupath_binary  || '';
+  document.getElementById('s-model').value      = s.instanseg_model|| '';
+  document.getElementById('s-threads').value    = s.instanseg_threads || 4;
+
+  const objSel = document.getElementById('s-objective');
+  const devSel = document.getElementById('s-device');
+  for (let i = 0; i < objSel.options.length; i++)
+    if (objSel.options[i].text === s.default_objective) { objSel.selectedIndex = i; break; }
+  for (let i = 0; i < devSel.options.length; i++)
+    if (devSel.options[i].value === s.device) { devSel.selectedIndex = i; break; }
+
+  // Pre-fill run defaults from setup
+  document.getElementById('q-px-x').value = s.pixel_size_x || 0.5;
+  document.getElementById('q-px-y').value = s.pixel_size_y || 0.5;
+  document.getElementById('c-px').value   = s.pixel_size_x || 0.5;
+
+  const home = s._home || '~';
+  if (!document.getElementById('q-output').value)
+    document.getElementById('q-output').value = home + '/Desktop/ihc_results';
+  if (!document.getElementById('c-output').value)
+    document.getElementById('c-output').value = home + '/Desktop/ihc_coloc_results';
+}
+
+async function saveSetup() {
+  const data = {
+    microscope:        document.getElementById('s-microscope').value,
+    camera:            document.getElementById('s-camera').value,
+    scanner:           document.getElementById('s-scanner').value,
+    pixel_size_x:      parseFloat(document.getElementById('s-px-x').value) || 0.5,
+    pixel_size_y:      parseFloat(document.getElementById('s-px-y').value) || 0.5,
+    default_objective: document.getElementById('s-objective').value,
+    device:            document.getElementById('s-device').value,
+    instanseg_threads: parseInt(document.getElementById('s-threads').value) || 4,
+    qupath_binary:     document.getElementById('s-qupath').value,
+    instanseg_model:   document.getElementById('s-model').value,
+  };
+  await window.pywebview.api.save_setup(data);
+  showToast('Settings saved ✓');
+}
+
+// ── QUANTIFICATION ────────────────────────────────────────
+
+function onQuantPxChange() {
+  const v = document.querySelector('input[name="q-px"]:checked')?.value || 'global';
+  document.getElementById('q-px-manual').style.display = v === 'manual' ? 'block' : 'none';
+}
+
+async function onQuantObjChange() {
+  const obj = document.getElementById('q-obj')?.value;
+  if (!obj) return;
+  const px = await window.pywebview.api.get_standard_pixel_size(obj);
+  document.getElementById('q-px-x').value = px;
+  document.getElementById('q-px-y').value = px;
+}
+
+async function onQuantFolderPicked(folder) {
+  const files = await window.pywebview.api.list_images(folder);
+  const sel = document.getElementById('q-ov-file');
+  sel.innerHTML = '<option value="">— select image —</option>';
+  files.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f; opt.textContent = f;
+    sel.appendChild(opt);
+  });
+  const el = document.getElementById('q-image-count');
+  el.textContent = files.length > 0
+    ? `${files.length} image(s) found in folder`
+    : 'No images found in this folder';
+}
+
+function renderQuantOverrides() {
+  const el = document.getElementById('q-overrides-list');
+  const entries = Object.entries(quantOverrides);
+  if (entries.length === 0) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:2px 0">No overrides set</div>';
+    return;
+  }
+  el.innerHTML = entries.map(([f,px]) => `
+    <div class="override-item">
+      <span class="override-name">${esc(f)}</span>
+      <span class="badge amber">${px} µm/px</span>
+      <button class="btn sm" onclick="removeQuantOverride('${esc(f)}')">Remove</button>
+    </div>
+  `).join('');
+}
+
+function addQuantOverride() {
+  const f  = document.getElementById('q-ov-file').value;
+  const px = parseFloat(document.getElementById('q-ov-px').value);
+  if (!f || isNaN(px)) return;
+  quantOverrides[f] = px;
+  document.getElementById('q-ov-file').value = '';
+  document.getElementById('q-ov-px').value   = '';
+  renderQuantOverrides();
+}
+
+function removeQuantOverride(fname) {
+  delete quantOverrides[fname];
+  renderQuantOverrides();
+}
+
+async function runQuantAnalysis() {
+  const input = document.getElementById('q-input').value.trim();
+  if (!input) { showToast('Please select an input folder first'); return; }
+
+  const pxMode = document.querySelector('input[name="q-px"]:checked')?.value || 'global';
+  const setup  = await window.pywebview.api.get_setup();
+  const px_x = pxMode === 'manual'
+    ? (parseFloat(document.getElementById('q-px-x').value) || 0.5)
+    : (setup.pixel_size_x || 0.5);
+
+  const settings = {
+    input_dir:             input,
+    output_dir:            document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results',
+    dashboard_dir:         (document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results') + '/output_results',
+    default_pixel_size:    px_x,
+    pixel_size_mode:       pxMode,
+    dab_threshold:         document.getElementById('q-thresh').value / 100,
+    generate_overlays:     isOn('q-overlay-toggle'),
+    cleanup_intermediates: isOn('q-cleanup-toggle'),
+    pixel_overrides:       quantOverrides,
+    objective:             document.getElementById('q-obj')?.value || '10x',
+    _pixel_size_from_ui:   true,
+  };
+
+  activeMode = 'quant';
+  showView('quant', 'running');
+  document.getElementById('quant-log').innerHTML = '';
+  setProgress('quant', 0, 'Starting pipeline...');
+  appendLog('quant-log', `Analysis started · ${input}`, 'info');
+  appendLog('quant-log', `Threshold: ${settings.dab_threshold.toFixed(2)} OD · Pixel size: ${px_x} µm/px`, 'normal');
+
+  await window.pywebview.api.run_pipeline(settings);
+}
+
+// ── CO-LOCALIZATION ───────────────────────────────────────
+
+function setColocMode(mode) {
+  colocMode = mode;
+  document.getElementById('coloc-two-inputs').style.display   = mode === 'two_folder' ? 'block' : 'none';
+  document.getElementById('coloc-single-input').style.display = mode === 'single_folder' ? 'block' : 'none';
+
+  const hintEl = document.getElementById('coloc-mode-hint');
+  hintEl.textContent = mode === 'two_folder'
+    ? 'Provide separate folders for each stain. Files are matched by normalized filename — stain token stripped, samples paired by remaining name.'
+    : 'Provide one folder containing both stains. Files are auto-grouped by the stain token found in each filename (e.g. "cd8", "tim3").';
+
+  document.getElementById('mode-two-btn').classList.toggle('active', mode === 'two_folder');
+  document.getElementById('mode-single-btn').classList.toggle('active', mode === 'single_folder');
+
+  // Reset pairs when mode changes
+  colocPairs = [];
+  document.getElementById('coloc-pairs-card').style.display = 'none';
+  document.getElementById('coloc-run-btn').disabled = true;
+}
+
+async function detectPairs() {
+  const btn = document.getElementById('detect-pairs-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner amber"></span> Detecting...';
+
+  let folder_a = '', folder_b = null;
+  if (colocMode === 'two_folder') {
+    folder_a = document.getElementById('c-folder-a').value.trim();
+    folder_b = document.getElementById('c-folder-b').value.trim();
+    if (!folder_a || !folder_b) {
+      showToast('Please select both folders');
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Detect Pairs`;
+      return;
+    }
+  } else {
+    folder_a = document.getElementById('c-folder-single').value.trim();
+    if (!folder_a) {
+      showToast('Please select a folder');
+      btn.disabled = false;
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Detect Pairs`;
+      return;
+    }
+  }
+
+  const result = await window.pywebview.api.preview_pairs(colocMode, folder_a, folder_b || null);
+
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Detect Pairs`;
+
+  if (!result.ok) { showToast('Error: ' + result.error); return; }
+
+  colocPairs = result.pairs || [];
+  renderPairPreview(result);
+  document.getElementById('coloc-pairs-card').style.display = 'block';
+  document.getElementById('coloc-run-btn').disabled = colocPairs.length === 0;
+
+  showToast(colocPairs.length > 0 ? `${colocPairs.length} pair(s) ready` : 'No pairs found');
+}
+
+function renderPairPreview(result) {
+  const pairs  = result.pairs      || [];
+  const unmA   = result.unmatched_a || [];
+  const unmB   = result.unmatched_b || [];
+
+  document.getElementById('coloc-pairs-badge').textContent = `${pairs.length} pairs`;
+
+  const tbody = document.getElementById('coloc-pairs-tbody');
+  tbody.innerHTML =
+    pairs.map(p => `
+      <tr>
+        <td class="amber">${esc(p.sample_id)}</td>
+        <td>
+          <div style="font-size:11px;color:var(--text2)">${esc(p.filename_a)}</div>
+          <span class="badge cyan" style="margin-top:3px">${esc(p.stain_a)}</span>
+        </td>
+        <td>
+          <div style="font-size:11px;color:var(--text2)">${esc(p.filename_b)}</div>
+          <span class="badge amber" style="margin-top:3px">${esc(p.stain_b)}</span>
+        </td>
+        <td><span class="badge green">✓ Ready</span></td>
+      </tr>
+    `).join('')
+    + unmA.map(f => `
+      <tr>
+        <td class="muted">${esc(f)}</td>
+        <td class="muted">${esc(f)}</td>
+        <td class="muted">—</td>
+        <td><span class="badge red">⚠ No pair</span></td>
+      </tr>
+    `).join('');
+
+  if (tbody.innerHTML === '') {
+    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">No images found</td></tr>';
+  }
+
+  const warn = document.getElementById('coloc-unmatched-warn');
+  const total_unm = unmA.length + unmB.length;
+  if (total_unm > 0) {
+    warn.style.display = 'block';
+    const show = [...unmA, ...unmB].slice(0, 4).join(', ');
+    warn.textContent = `${total_unm} file(s) could not be paired: ${show}${total_unm > 4 ? '...' : ''}`;
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+async function runColocAnalysis() {
+  if (colocPairs.length === 0) { showToast('No pairs detected — run Detect Pairs first'); return; }
+
+  const settings = {
+    pairs:                colocPairs,
+    output_dir:           document.getElementById('c-output').value.trim() || '~/Desktop/ihc_coloc_results',
+    dab_threshold:        parseFloat(document.getElementById('c-thresh').value)   || 0.2,
+    pixel_size:           parseFloat(document.getElementById('c-px').value)       || 0.5,
+    max_distance_um:      parseFloat(document.getElementById('c-max-dist').value) || 10.0,
+    enable_registration:  isOn('c-reg-toggle'),
+    cleanup_intermediates: isOn('c-cleanup-toggle'),
+  };
+
+  activeMode = 'coloc';
+  showView('coloc', 'running');
+  document.getElementById('coloc-log').innerHTML = '';
+  setProgress('coloc', 0, 'Starting co-localization...');
+  appendLog('coloc-log', `Co-localization started · ${colocPairs.length} pair(s)`, 'info');
+  appendLog('coloc-log', `Max distance: ${settings.max_distance_um} µm · Threshold: ${settings.dab_threshold.toFixed(2)} OD`, 'normal');
+  appendLog('coloc-log', `Registration: ${settings.enable_registration ? 'enabled (ORB + RANSAC)' : 'disabled'}`, 'normal');
+
+  await window.pywebview.api.run_coloc_pipeline(settings);
+}
+
+// ── Pipeline event handler ────────────────────────────────
+window.onPipelineEvent = function(event) {
+  const { type, data } = event;
+  const m = activeMode;   // 'quant' or 'coloc'
+  const logId = m + '-log';
+
+  if (type === 'log') {
+    appendLog(logId, data.msg, data.level || 'normal');
+    // Rough progress inference from log messages
+    if (/PROCESSING|PAIR \d/i.test(data.msg)) {
+      const current = parseFloat(document.getElementById(m + '-progress-fill').style.width) || 0;
+      setProgress(m, Math.min(current + 12, 88));
+    }
+  } else if (type === 'progress') {
+    setProgress(m, data.pct || 0);
+  } else if (type === 'done') {
+    setProgress(m, 100, 'Complete');
+    if (data.ok) {
+      appendLog(logId, 'Pipeline finished successfully ✓', 'ok');
+      if (m === 'quant') showQuantResults(data.results);
+      else               showColocResults(data.results);
+    } else {
+      appendLog(logId, 'Pipeline failed: ' + (data.msg || 'unknown error'), 'error');
+      showToast('Pipeline failed');
+    }
+  }
+};
+
+// ── Quant results ─────────────────────────────────────────
+function showQuantResults(r) {
+  if (!r) { showView('quant','results'); return; }
+  resultsData.quant = r;
+  const metrics = r.metrics || [];
+  const total = metrics.reduce((a,m) => a + m.total_cells, 0);
+  const pos   = metrics.reduce((a,m) => a + m.positive,    0);
+  const avg   = total > 0 ? pos / total * 100 : 0;
+
+  document.getElementById('quant-metrics').innerHTML = `
+    <div class="metric cyan">
+      <div class="metric-label">Total cells</div>
+      <div class="metric-value cyan">${total.toLocaleString()}</div>
+      <div class="metric-sub">${metrics.length} image(s)</div>
+    </div>
+    <div class="metric green">
+      <div class="metric-label">DAB positive</div>
+      <div class="metric-value green">${avg.toFixed(1)}%</div>
+      <div class="metric-sub">${pos.toLocaleString()} cells</div>
+    </div>
+  `;
+
+  document.getElementById('quant-tbody').innerHTML = metrics.length === 0
+    ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No results</td></tr>'
+    : metrics.map(m => `
+      <tr>
+        <td class="cyan">${esc(m.name)}</td>
+        <td>${(m.total_cells||0).toLocaleString()}</td>
+        <td>${(m.positive||0).toLocaleString()}</td>
+        <td class="green"><b>${(m.positivity||0).toFixed(2)}%</b></td>
+        <td class="muted">${m.pixel_size} µm/px</td>
+        <td><span class="badge green">Complete</span></td>
+      </tr>
+    `).join('');
+
+  document.getElementById('quant-actions').innerHTML = [
+    r.dashboard_path ? `<button class="btn primary" onclick="window.pywebview.api.open_file('${esc(r.dashboard_path)}')">Open Dashboard</button>` : '',
+    r.excel_path     ? `<button class="btn" onclick="window.pywebview.api.open_file('${esc(r.excel_path)}')">Open Excel</button>` : '',
+    r.overlays_dir   ? `<button class="btn" onclick="window.pywebview.api.open_folder('${esc(r.overlays_dir)}')">View Overlays</button>` : '',
+    `<button class="btn" onclick="showView('quant','config')">New Analysis</button>`,
+  ].join('');
+
+  showView('quant', 'results');
+}
+
+function exportQuantCSV() {
+  const r = resultsData.quant;
+  if (!r?.metrics) return;
+  const headers = ['Image','Total Cells','Positive','Positivity %','Pixel Size µm/px'];
+  const rows = r.metrics.map(m => [m.name, m.total_cells, m.positive, m.positivity?.toFixed(2), m.pixel_size]);
+  downloadCSV([headers, ...rows], 'ihc_quantification.csv');
+}
+
+// ── Coloc results ─────────────────────────────────────────
+function showColocResults(pairs) {
+  resultsData.coloc = pairs;
+  if (!Array.isArray(pairs) || pairs.length === 0) {
+    showView('coloc', 'results'); return;
+  }
+
+  let totalA = 0, totalB = 0, totalCoexpr = 0;
+  pairs.forEach(p => {
+    const pm    = p.coloc?.per_marker || {};
+    const marks = Object.keys(pm);
+    if (marks[0]) totalA += pm[marks[0]].positive || 0;
+    if (marks[1]) totalB += pm[marks[1]].positive || 0;
+    Object.values(p.coloc?.coexpression || {}).forEach(v => totalCoexpr += v.count || 0);
+  });
+
+  const stainA     = pairs[0]?.stain_a || 'Marker A';
+  const stainB     = pairs[0]?.stain_b || 'Marker B';
+  const coexprPct  = totalA > 0 ? (totalCoexpr / totalA * 100).toFixed(1) : '—';
+
+  document.getElementById('coloc-metrics').innerHTML = `
+    <div class="metric cyan">
+      <div class="metric-label">Pairs analyzed</div>
+      <div class="metric-value cyan">${pairs.length}</div>
+      <div class="metric-sub">sample pairs</div>
+    </div>
+    <div class="metric cyan">
+      <div class="metric-label">${esc(stainA)} positive</div>
+      <div class="metric-value cyan">${totalA.toLocaleString()}</div>
+      <div class="metric-sub">total cells</div>
+    </div>
+    <div class="metric amber">
+      <div class="metric-label">${esc(stainB)} positive</div>
+      <div class="metric-value amber">${totalB.toLocaleString()}</div>
+      <div class="metric-sub">total cells</div>
+    </div>
+    <div class="metric green">
+      <div class="metric-label">Co-expressing</div>
+      <div class="metric-value green">${coexprPct}%</div>
+      <div class="metric-sub">${totalCoexpr.toLocaleString()} cells</div>
+    </div>
+  `;
+
+  document.getElementById('coloc-tbody').innerHTML = pairs.map(p => {
+    const pm     = p.coloc?.per_marker || {};
+    const marks  = Object.keys(pm);
+    const cntA   = marks[0] ? (pm[marks[0]].positive ?? '—') : '—';
+    const cntB   = marks[1] ? (pm[marks[1]].positive ?? '—') : '—';
+    const coexp  = Object.values(p.coloc?.coexpression || {})[0];
+    const coCnt  = coexp?.count ?? '—';
+    const coPct  = (typeof cntA === 'number' && typeof coCnt === 'number' && cntA > 0)
+      ? (coCnt / cntA * 100).toFixed(1) + '%' : '—';
+    return `
+      <tr>
+        <td class="amber">${esc(p.sample_id)}</td>
+        <td><span class="badge cyan">${esc(p.stain_a)}</span></td>
+        <td>${typeof cntA === 'number' ? cntA.toLocaleString() : cntA}</td>
+        <td><span class="badge amber">${esc(p.stain_b)}</span></td>
+        <td>${typeof cntB === 'number' ? cntB.toLocaleString() : cntB}</td>
+        <td class="green"><b>${typeof coCnt === 'number' ? coCnt.toLocaleString() : coCnt}</b></td>
+        <td class="green">${coPct}</td>
+        <td><span class="badge gray">${esc(p.registration_method || '—')}</span></td>
+      </tr>
+    `;
+  }).join('');
+
+  const outDir = pairs[0]?.output_dir || '';
+  document.getElementById('coloc-actions').innerHTML = [
+    outDir ? `<button class="btn amber" onclick="window.pywebview.api.open_folder('${esc(outDir)}')">Open Output Folder</button>` : '',
+    `<button class="btn" onclick="exportColocCSV()">Export CSV</button>`,
+    `<button class="btn" onclick="showView('coloc','config')">New Analysis</button>`,
+  ].join('');
+
+  showView('coloc', 'results');
+}
+
+function exportColocCSV() {
+  const pairs = resultsData.coloc;
+  if (!pairs) return;
+  const headers = ['Sample','Stain A','A Positive','Stain B','B Positive','Co-expressing','Co-expression %','Registration'];
+  const rows = pairs.map(p => {
+    const pm    = p.coloc?.per_marker || {};
+    const marks = Object.keys(pm);
+    const cntA  = marks[0] ? (pm[marks[0]].positive ?? '') : '';
+    const cntB  = marks[1] ? (pm[marks[1]].positive ?? '') : '';
+    const coexp = Object.values(p.coloc?.coexpression || {})[0];
+    const coCnt = coexp?.count ?? '';
+    const coPct = (cntA > 0 && typeof coCnt === 'number') ? (coCnt / cntA * 100).toFixed(2) : '';
+    return [p.sample_id, p.stain_a, cntA, p.stain_b, cntB, coCnt, coPct, p.registration_method || ''];
+  });
+  downloadCSV([headers, ...rows], 'ihc_colocalization.csv');
+}
+
+// ── Init ──────────────────────────────────────────────────
+window.addEventListener('pywebviewready', async () => {
+  await loadSetup();
+  renderQuantOverrides();
+  setColocMode('two_folder');
+});
+</script>
+</body>
+</html>
