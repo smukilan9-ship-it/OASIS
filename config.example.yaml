@@ -1,0 +1,27 @@
+cleanup_intermediates: false
+dab_threshold: 0.2
+dashboard_dir: ./output_results
+default_pixel_size: 0.5
+device: mps
+export_geojson: true
+generate_overlays: true
+image_extensions:
+  - '*.tif'
+  - '*.tiff'
+  - '*.svs'
+  - '*.ndpi'
+  - '*.png'
+  - '*.jpg'
+  - '*.jpeg'
+input_dir: ./sample_images
+instanseg_model: ~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1
+instanseg_threads: 4
+magnification: auto
+mode: automated
+output_dir: ./ihc_results
+overlay_downsample: 1.0
+overlay_show_negative: true
+qupath_binary: /Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64
+stain_type: hdab
+tile_dims: 512
+timeout_seconds: 1800
