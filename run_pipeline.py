@@ -937,6 +937,7 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
     """Assemble the provenance block stamped into every spatial result JSON."""
     import datetime as _dt
     n_perm = kde_bw = dclf_rmin = dclf_rmax = primary_null = None
+    arch_scale = None
     if assoc_result:
         for v in (assoc_result.get("association") or {}).values():
             n_perm       = v.get("n_perm", n_perm)
@@ -946,6 +947,7 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
             dclf_rmax = g.get("dclf_rmax_um", dclf_rmax)
             inh = (v.get("nulls") or {}).get("inhomogeneous") or {}
             kde_bw = inh.get("bandwidth_um", kde_bw)
+            arch_scale = v.get("architecture_scale", arch_scale)
             break
     reweight_bw = None
     try:  # fall back to library defaults when no association was produced
@@ -993,11 +995,15 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
             "max_radius_um":   cfg.get("max_radius_um", 100.0),
             "radius_step_um":  cfg.get("radius_step_um", 2.0),
             # A6: the reweighted-primary test ASSUMES tissue architecture is coarser
-            # than this bandwidth (ihc.md §15.5). The architecture scale is NOT
-            # measured by the pipeline, so a "robust" verdict is only valid when the
-            # true architecture scale exceeds ~reweight_bandwidth_um.
+            # than this bandwidth (ihc.md §15.5). The architecture scale is now MEASURED
+            # per pair (spatial_stats.estimate_architecture_scale) and gated: a "robust"
+            # verdict is only trustworthy when the measured scale clears the calibrated
+            # validity threshold (validate_architecture_scale.py).
             "architecture_scale_assumption_um": reweight_bw,
-            "architecture_scale_measured": False,
+            "architecture_scale_measured": bool(arch_scale and arch_scale.get("scale_um") is not None),
+            "architecture_scale_um": (arch_scale or {}).get("scale_um"),
+            "architecture_scale_status": (arch_scale or {}).get("status"),
+            "architecture_scale_ok": (arch_scale or {}).get("ok"),
         },
         "registration_method": reg_method,
         "pixel_size_ref_um":   ref_px,

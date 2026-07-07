@@ -634,6 +634,36 @@ def run_spatial_association(
             res["tissue_mask_method"] = mask_method
             res["intersection_overlap_iou"] = overlap_iou
             res["intersection_overlap_frac_a"] = overlap_frac_a
+
+            # Architecture-scale guard (audit A6 / ihc.md §15.5): the reweighted
+            # primary is size-controlled only when tissue architecture is coarser than
+            # the bandwidth. Measure ℓ̂ per marker (worst case) and flag any 'robust'
+            # verdict whose architecture scale is too fine to trust — turning the
+            # disclosed assumption into a measured guard. Calibrated by
+            # validation/validate_architecture_scale.py.
+            try:
+                from spatial_stats import (estimate_architecture_scale,
+                                            architecture_scale_verdict)
+                ell_a = estimate_architecture_scale(p_a, pixel_size_um, tissue_polygon=window)
+                ell_b = estimate_architecture_scale(p_b, pixel_size_um, tissue_polygon=window)
+                ells = [e for e in (ell_a, ell_b) if e is not None]
+                arch = architecture_scale_verdict(min(ells) if ells else None)
+                arch["scale_per_marker_um"] = {
+                    m_a: (round(ell_a, 1) if ell_a is not None else None),
+                    m_b: (round(ell_b, 1) if ell_b is not None else None)}
+                res["architecture_scale"] = arch
+                rob = res.get("robustness") or {}
+                if rob.get("verdict") == "robust" and arch.get("ok") is False:
+                    rob["architecture_caution"] = True
+                    rob["architecture_note"] = (
+                        f"Architecture scale ℓ̂≈{arch['scale_um']}µm is below the "
+                        f"{arch['min_ok_scale_um']:.0f}µm needed for a size-controlled "
+                        f"reweighted test (status={arch['status']}); this 'robust' "
+                        f"verdict may be anti-conservative — treat with caution.")
+                    res["robustness"] = rob
+            except Exception as _arch_e:
+                res["architecture_scale"] = {"status": "error", "error": str(_arch_e)}
+
             association[key] = res
 
             g = res.get("global", {})
