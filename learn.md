@@ -1,4 +1,4 @@
-# Learn: IHC Analyzer explained in plain English
+# Learn: OASIS explained in plain English
 
 This document is a companion to the presentation
 `outputs/ihc_analysis_47page_cleaned_canva_safe.pptx`, using `ihc.md` as the

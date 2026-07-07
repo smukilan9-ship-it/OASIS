@@ -1,4 +1,4 @@
-# IHC Analyzer
+# OASIS
 
 Desktop and command-line tooling for automated immunohistochemistry (IHC)
 analysis of H-DAB/DAB-stained tissue images. The pipeline uses QuPath with

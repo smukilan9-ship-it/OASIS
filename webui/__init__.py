@@ -1,1 +1,1 @@
-"""Web UI package for IHC Analyzer."""
+"""Web UI package for OASIS."""

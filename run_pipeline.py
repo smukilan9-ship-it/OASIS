@@ -1,5 +1,5 @@
 """
-IHC Analyzer — Main Pipeline v5
+OASIS — Main Pipeline v5
 Full automated flow with overlay generation and dashboard.
 Usage: python run_pipeline.py [--config path/to/config.yaml]
 """
@@ -1548,7 +1548,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
 # ==========================================================
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="IHC Analyzer Pipeline")
+    parser = argparse.ArgumentParser(description="OASIS Pipeline")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--mode", default="quant",
                         help="quant = single-stain batch | "

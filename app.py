@@ -1,5 +1,5 @@
 """
-app.py — IHC Analyzer Desktop App
+app.py — OASIS Desktop App
 pywebview + HTML/CSS/JS frontend
 """
 import sys
@@ -24,7 +24,7 @@ def _check_dependencies():
     if missing:
         venv_py = Path(__file__).parent / ".venv" / "bin" / "python"
         sys.stderr.write(
-            "\nIHC Analyzer cannot start — missing dependencies: "
+            "\nOASIS cannot start — missing dependencies: "
             + ", ".join(missing) + "\n"
             f"You are running: {sys.executable}\n"
             + (f"Use the project venv instead:\n    {venv_py} app.py\n"
@@ -42,7 +42,7 @@ def main():
     api = API()
     html_path = str(Path(__file__).parent / "webui" / "index.html")
     window = webview.create_window(
-        title="IHC Analyzer",
+        title="OASIS",
         url=f"file://{html_path}",
         js_api=api,
         width=1280,
