@@ -1,6 +1,5 @@
 /* Isolated UI for same-section restained co-expression. */
 (function () {
-  const settingsButton = document.getElementById('nav-settings');
   const navButton = document.createElement('button');
   navButton.className = 'nav-btn';
   navButton.id = 'nav-restained';
@@ -10,7 +9,12 @@
       <circle cx="8" cy="8" r="3"/><circle cx="16" cy="16" r="3"/><path d="M10.5 10.5l3 3M16 5v4M14 7h4M5 16h4M7 14v4"/>
     </svg>
     Restained`;
-  settingsButton.parentNode.insertBefore(navButton, settingsButton);
+  // Place Restained directly below Spatial (a top-group tab, not pinned to the
+  // bottom). Fall back to before Settings if Spatial isn't present.
+  const spatialButton = document.getElementById('nav-spatial');
+  const settingsButton = document.getElementById('nav-settings');
+  if (spatialButton) spatialButton.insertAdjacentElement('afterend', navButton);
+  else settingsButton.parentNode.insertBefore(navButton, settingsButton);
 
   const page = document.createElement('div');
   page.className = 'page';
