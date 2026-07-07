@@ -33,7 +33,20 @@ def test_provenance():
     check("reweight_bandwidth_um stamped (75.0)", ap.get("reweight_bandwidth_um") == 75.0)
     check("null_seed stamped (0)", ap.get("null_seed") == 0)
     check("architecture_scale_assumption_um stamped", ap.get("architecture_scale_assumption_um") == 75.0)
-    check("architecture_scale_measured False", ap.get("architecture_scale_measured") is False)
+    check("architecture_scale_measured False when no association", ap.get("architecture_scale_measured") is False)
+
+    # A6 (now enforced): with an association carrying a measured architecture scale,
+    # provenance flips to measured=True and records the value/status/ok gate.
+    assoc = {"association": {"CD8__TIM3": {
+        "n_perm": 999, "primary_null": "reweighted",
+        "global": {"dclf_rmin_um": 10.0, "dclf_rmax_um": 50.0},
+        "architecture_scale": {"scale_um": 42.0, "status": "unreliable", "ok": False},
+    }}}
+    prov2 = run_pipeline.build_provenance({}, assoc, "landmark", 0.5, "scale")
+    ap2 = prov2["analysis_params"]
+    check("architecture_scale_measured True when measured", ap2.get("architecture_scale_measured") is True)
+    check("architecture_scale_um recorded", ap2.get("architecture_scale_um") == 42.0)
+    check("architecture_scale_ok gate present", ap2.get("architecture_scale_ok") is False)
 
 
 def test_cohort_fdr():

@@ -137,6 +137,30 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "architecture_scale",
+        "title": "Architecture-scale operating characteristics & gate",
+        "category": "statistical",
+        "claim": "The reweighted null is size-controlled only when tissue architecture is "
+                 "coarser than the bandwidth; the runtime gate enforces this.",
+        "purpose": "Monte-Carlo size/power of the reweighted test vs the measured "
+                   "architecture scale ℓ̂, and validation of the ℓ̂ estimator + the "
+                   "≥2×bandwidth validity gate.",
+        "why": "Directly answers the top statistical reviewer objection (audit A6): the "
+               "75 µm bandwidth assumption was disclosed but unmeasured — this turns it "
+               "into a measured, calibrated guard against false 'robust' verdicts.",
+        "datasets": [],
+        "assumptions": "Log-Gaussian architecture; engagement planted in the 10–50 µm band; "
+                       "anti-conservativeness depends on intensity contrast.",
+        "limitations": "Derived threshold is contrast-dependent; gate (2×bandwidth) is a "
+                       "deliberately conservative default, re-derive at paper-grade sims.",
+        "interpretation": "type-I should fall below α as ℓ̂ grows; the gate flags fields "
+                          "whose ℓ̂ is too small to trust a 'robust' call.",
+        "expected": "Anti-conservative below bandwidth; size-controlled + powered above the "
+                    "derived threshold (~2×bandwidth); estimator monotonic.",
+        "runner": {"kind": "script", "script": "validate_architecture_scale.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "internal_controls",
         "title": "Internal negative/positive controls",
         "category": "statistical",

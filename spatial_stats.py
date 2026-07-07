@@ -1420,3 +1420,123 @@ def cohort_multiple_comparison_correction(per_pair_pvalues, method: str = "bh",
     base["n_significant_adjusted"] = int(np.sum(adj <= alpha))
     base["min_adjusted_p"]         = round(float(adj.min()), 6)
     return base
+
+
+# ── Architecture-scale estimator + validity gate (audit A6 / ihc.md §15.5) ──────
+# The reweighted primary null (bandwidth _REWEIGHT_BANDWIDTH_UM) ASSUMES the tissue
+# architecture varies on a scale COARSER than the reweighting bandwidth, so the
+# intensity reweighting removes shared compartment preference without absorbing the
+# 10–50 µm cell-scale interaction. When the real architecture scale is inside the
+# interaction band, that separation fails and the test becomes anti-conservative.
+# This estimator MEASURES the architecture scale per pattern so the assumption can be
+# checked at runtime instead of merely disclosed. Its operating characteristics are
+# calibrated by validation/validate_architecture_scale.py.
+
+_ARCH_PILOT_BANDWIDTH_UM = 15.0   # small pilot kernel: NOT circular with the 75 µm bw
+# Minimum architecture scale for a size-controlled reweighted test. Calibrated by
+# validation/validate_architecture_scale.py, which shows the test stays
+# anti-conservative until ℓ̂ is comfortably ABOVE the bandwidth (size control only
+# once ℓ̂ ≳ 2× bandwidth); deliberately conservative. Re-derive at paper-grade sims.
+_ARCH_MIN_SCALE_FACTOR = 2.0
+
+
+def estimate_architecture_scale(points, pixel_size_um, tissue_polygon=None,
+                                pilot_bandwidth_um=_ARCH_PILOT_BANDWIDTH_UM,
+                                bbox=None):
+    """
+    Characteristic architecture length ℓ̂ (µm) of a point pattern: the e-folding range
+    (autocorrelation = 1/e) of the pattern's intensity field, estimated at a small
+    PILOT bandwidth well below the reweighting bandwidth so the estimate is not
+    circular with the 75 µm reweight kernel.
+
+    Method: bin points to a grid (cell ≈ pilot/2), Gaussian-smooth at pilot_bandwidth,
+    FFT autocorrelation, radially average, return the lag where the normalized
+    autocorrelation first falls to 1/e. Cannot resolve architecture finer than the
+    pilot; saturates at ~field/3 for architecture coarser than the window. Returns
+    None if there are too few points to estimate.
+    """
+    from scipy.ndimage import gaussian_filter
+    pts = np.asarray(points, dtype=np.float64).reshape(-1, 2)
+    if len(pts) < 30:
+        return None
+    s = float(pixel_size_um)
+    if bbox is None:
+        if tissue_polygon is not None:
+            bbox = tissue_polygon.bounds
+        else:
+            mn, mx = pts.min(axis=0), pts.max(axis=0)
+            bbox = (mn[0], mn[1], mx[0], mx[1])
+    x0, y0, x1, y1 = bbox
+    W = max(x1 - x0, 1.0); H = max(y1 - y0, 1.0)
+    pilot_px = max(pilot_bandwidth_um / s, 1.0)
+    cell = max(pilot_px / 2.0, 1.0)
+    nx = int(min(max(round(W / cell), 8), 1024))
+    ny = int(min(max(round(H / cell), 8), 1024))
+    ix = np.clip(((pts[:, 0] - x0) / W * nx).astype(int), 0, nx - 1)
+    iy = np.clip(((pts[:, 1] - y0) / H * ny).astype(int), 0, ny - 1)
+    grid = np.zeros((ny, nx), dtype=np.float64)
+    np.add.at(grid, (iy, ix), 1.0)
+    bx_um = (W / nx) * s; by_um = (H / ny) * s      # bin size in µm per axis
+    f = gaussian_filter(grid, sigma=(pilot_bandwidth_um / by_um,
+                                     pilot_bandwidth_um / bx_um), mode="nearest")
+    f = f - f.mean()
+    if not np.any(f):
+        return None
+    F = np.fft.rfft2(f)
+    ac = np.fft.irfft2(np.abs(F) ** 2, s=f.shape)
+    ac = np.fft.fftshift(ac)
+    peak = ac.max()
+    if peak <= 0:
+        return None
+    ac = ac / peak
+    cy, cx = ny // 2, nx // 2
+    yy, xx = np.indices(ac.shape)
+    r_um = np.sqrt(((xx - cx) * bx_um) ** 2 + ((yy - cy) * by_um) ** 2)
+    rmax = min(W * s, H * s) / 3.0                  # don't trust beyond a third of field
+    nb = 40
+    edges = np.linspace(0.0, rmax, nb + 1)
+    centers = 0.5 * (edges[:-1] + edges[1:])
+    prof = np.full(nb, np.nan)
+    for i in range(nb):
+        m = (r_um >= edges[i]) & (r_um < edges[i + 1])
+        if m.any():
+            prof[i] = ac[m].mean()
+    thr = 1.0 / np.e
+    below = np.where(prof <= thr)[0]
+    if len(below) == 0:
+        return float(rmax)                           # coarser than resolvable → large
+    i = int(below[0])
+    if i == 0:
+        return float(centers[0])
+    p0, p1 = prof[i - 1], prof[i]
+    c0, c1 = centers[i - 1], centers[i]
+    if not np.isfinite(p0) or p0 == p1:
+        return float(c1)
+    return float(max(c0 + (thr - p0) * (c1 - c0) / (p1 - p0), 0.0))
+
+
+def architecture_scale_verdict(scale_um, bandwidth_um=_REWEIGHT_BANDWIDTH_UM):
+    """
+    Classify whether the reweighted null's coarse-architecture assumption holds, using
+    the empirically calibrated envelope from validate_architecture_scale.py (size
+    control only once ℓ̂ ≳ _ARCH_MIN_SCALE_FACTOR × bandwidth):
+      ok         ℓ̂ ≥ 2·bandwidth     — size-controlled regime; 'robust' is trustworthy
+      caution    bandwidth ≤ ℓ̂ < 2·bandwidth — boundary; treat 'robust' with care
+      unreliable ℓ̂ < bandwidth       — architecture near/inside the interaction band;
+                                        test anti-conservative, do NOT report 'robust'
+    Returns {"scale_um", "status", "ok", "bandwidth_um", "min_ok_scale_um"};
+    status="unknown" if scale_um is None (too few cells to estimate).
+    """
+    min_ok = _ARCH_MIN_SCALE_FACTOR * bandwidth_um
+    if scale_um is None:
+        return {"scale_um": None, "status": "unknown", "ok": None,
+                "bandwidth_um": bandwidth_um, "min_ok_scale_um": min_ok}
+    if scale_um >= min_ok:
+        status = "ok"
+    elif scale_um >= bandwidth_um:
+        status = "caution"
+    else:
+        status = "unreliable"
+    return {"scale_um": round(float(scale_um), 1), "status": status,
+            "ok": status == "ok", "bandwidth_um": bandwidth_um,
+            "min_ok_scale_um": min_ok}
