@@ -1,4 +1,4 @@
-# IHC Analyzer — Technical Reference
+# OASIS — Technical Reference
 
 Deterministic pipeline for **cross-type spatial association** on serial-section
 single-plex H-DAB IHC (e.g. CD8 vs TIM-3), as a low-cost alternative to multiplex
@@ -169,10 +169,23 @@ n=8 provisional, single-annotator.
 
 ## 7. Validation
 
-Research scripts in `validation/validate_*.py`; a `pytest` suite in `tests/` (31 tests:
-unit / keystone / integration-skip-if-missing / golden). `pytest` (fast) or `pytest -m
-slow` (Monte-Carlo rate calibration). Dataset guide `validation/datasets/README.md` +
-`paths.yaml`; missing data auto-skips naming the exact folder to supply.
+**Research-grade validation framework** — every scientific claim is a registered,
+reproducible validation runnable from the desktop **Validation** tab or the CLI (same
+runner, same reports):
+- `validation/registry.py` — one documented record per validation (claim / purpose / why /
+  assumptions / limitations / interpretation / datasets / expected / tier / external deps),
+  grouped by pipeline stage (statistical → registration → segmentation → quantification →
+  spatial association → end-to-end).
+- `validation/runner.py` + `validation/run.py` — `python -m validation.run <id|all|--list>`;
+  each run writes `validation_reports/<id>/<ts>/report.json` (metrics, status, expected,
+  software + git SHA + lib versions, dataset checksums, timing) + `run.log` + plots. Missing
+  datasets/tools yield **SKIP-with-reason**, never a false FAIL.
+- `validation/datasets/` — `datasets.yaml` registry (source, license, citation, sha256,
+  redistributable), `resolve.py` (path resolution via `validation_data_dir`: env →
+  `~/.ihc_analyzer/setup.yaml` → default `~/oasis_validation_datasets`), `verify.py`
+  (presence + checksum), `acquire.py` (consolidate raw **inputs** apart from generated
+  outputs). Datasets are never committed; restricted sets (HNSCC/TCIA) are documented only.
+- `pytest` suite in `tests/` (unit / keystone / integration-skip-if-missing / golden).
 
 - **Statistical correctness** — K on known clustered/CSR patterns; DCLF ~5 % false-positive
   + power; cross-validated vs R **spatstat**.
@@ -185,11 +198,13 @@ slow` (Monte-Carlo rate calibration). Dataset guide `validation/datasets/README.
 - **Detection/membrane** — DeepLIIF IF truth (class F1 ≈ 0.81); membranous CD8 on HNSCC
   mIF (held-out F1 ≈ 0.76, AUC 0.89). IF **proxies** — no same-section DAB+IF truth
   possible (DAB unstrippable).
-- **Keystone — degradation** (`tests/test_degradation.py`): CODEX same-section truth
-  (CD8 vs PD-1) → split to pseudo-serial + inject registration error → verdict must not
-  flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and independent regimes
-  preserved. The **only** place true cross-marker association ground truth exists (CODEX
-  ships as coordinates, not registrable images).
+- **Keystone — degradation** (`tests/test_degradation.py`, the End-to-End validation): CODEX
+  same-section truth (CD8 vs PD-1) → split to pseudo-serial + inject registration error →
+  verdict must not flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and
+  independent regimes preserved. The **only** place true cross-marker association ground
+  truth exists (CODEX ships as coordinates, not registrable images). The earlier
+  **image-based** degradation experiment was removed (tissue-scale data, not cell-scale;
+  §10) — to be redesigned on an appropriate dataset.
 
 ---
 
