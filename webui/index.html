@@ -27,7 +27,7 @@
   --text2:   #71717a;
   --text3:   #a1a1aa;
 
-  /* Accents — all monochrome; legacy names kept for compatibility */
+  /* Accents */
   --cyan:       #18181b;
   --cyan-dim:   #f4f4f5;
   --cyan-glow:  rgba(0,0,0,0.10);
@@ -36,10 +36,10 @@
   --amber-dim:  #f4f4f5;
   --amber-glow: rgba(0,0,0,0.10);
 
-  --green:      #18181b;
-  --green-dim:  #f4f4f5;
-  --red:        #18181b;
-  --red-dim:    #f4f4f5;
+  --green:      #00c853;
+  --green-dim:  #eafff2;
+  --red:        #ff1744;
+  --red-dim:    #fff0f3;
   --purple:     #18181b;
 
   --sidebar-w: 68px;
@@ -91,9 +91,9 @@ html, body {
 }
 .nav-btn:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.85); }
 .nav-btn.active,
-.nav-btn.coloc-active { color: #ffffff; background: rgba(255,255,255,.12); }
+.nav-btn.spatial-active { color: #ffffff; background: rgba(255,255,255,.12); }
 .nav-btn.active::before,
-.nav-btn.coloc-active::before {
+.nav-btn.spatial-active::before {
   content: ''; position: absolute; left: 0; top: 50%;
   transform: translateY(-50%);
   width: 3px; height: 22px;
@@ -271,7 +271,8 @@ input[type="range"]::-webkit-slider-thumb {
 .metric::before, .metric::after { content: none; }
 .metric-label { font-size: 10px; font-weight: 600; color: var(--text3); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 10px; position: relative; }
 .metric-value { font-size: 30px; font-weight: 600; line-height: 1; letter-spacing: -.03em; position: relative; color: var(--text); }
-.metric-value.cyan, .metric-value.amber, .metric-value.green, .metric-value.purple { color: var(--text); }
+.metric-value.cyan, .metric-value.amber, .metric-value.purple { color: var(--text); }
+.metric-value.green { color: var(--green); }
 .metric-sub { font-size: 11px; color: var(--text3); margin-top: 6px; position: relative; }
 
 /* ── Table ─────────────────────────────────────────────── */
@@ -298,7 +299,7 @@ tr:last-child td { border-bottom: none; }
 tr:hover td { background: #fafafa; }
 td.cyan  { color: var(--text); font-weight: 600; }
 td.amber { color: var(--text); font-weight: 600; }
-td.green { color: var(--text); font-weight: 600; }
+td.green { color: var(--green); font-weight: 700; }
 td.muted { color: var(--text3); font-size: 11px; }
 
 /* ── Badges ────────────────────────────────────────────── */
@@ -311,8 +312,8 @@ td.muted { color: var(--text3); font-size: 11px; }
 .badge.cyan, .badge.amber, .badge.gray {
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
-.badge.green  { background: #18181b; color: #ffffff;   border: 1px solid #18181b; }
-.badge.red    { background: #ffffff; color: var(--text); border: 1px solid #18181b; }
+.badge.green  { background: var(--green-dim); color: #007a33; border: 1px solid var(--green); }
+.badge.red    { background: var(--red-dim); color: #c4002f; border: 1px solid var(--red); }
 
 /* ── Info box ──────────────────────────────────────────── */
 .info-box {
@@ -333,32 +334,52 @@ td.muted { color: var(--text3); font-size: 11px; }
 .override-item:last-child { border-bottom: none; }
 .override-name { flex: 1; color: var(--text2); }
 
-/* ── Terminal ──────────────────────────────────────────── */
+/* ── Activity Log ───────────────────────────────────────── */
 .terminal-wrap {
-  flex: 1; background: #0d0d0d;
+  flex: 0 0 auto; background: #ffffff;
   border: 1px solid var(--border); border-radius: var(--r);
   overflow: hidden; display: flex; flex-direction: column;
-  margin: 0 24px 22px; min-height: 0;
+  margin: 0 24px 22px; min-height: 180px; max-height: min(46vh, 430px);
+  box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
 .terminal-header {
   display: flex; align-items: center; gap: 8px;
-  padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.08);
-  background: rgba(255,255,255,.03); flex-shrink: 0;
+  padding: 10px 14px; border-bottom: 1px solid var(--border);
+  background: #fafafa; flex-shrink: 0;
 }
-.terminal-dots { display: flex; gap: 6px; }
-.terminal-dots span { width: 11px; height: 11px; border-radius: 50%; background: rgba(255,255,255,.18); }
-.dot-r, .dot-y, .dot-g { background: rgba(255,255,255,.18); }
-.terminal-title { font-size: 10px; font-weight: 600; color: rgba(255,255,255,.45); letter-spacing: .07em; }
-.terminal-body { flex: 1; overflow-y: auto; padding: 12px 16px; font-family: var(--mono); font-size: 11px; line-height: 1.9; }
+.terminal-dots { display: none; }
+.terminal-title { font-size: 11px; font-weight: 600; color: var(--text2); letter-spacing: .04em; text-transform: uppercase; }
+.terminal-body {
+  flex: 1; overflow-y: auto; padding: 8px 12px;
+  font-family: var(--font); font-size: 12px; line-height: 1.45;
+  background: #ffffff;
+}
 .terminal-body::-webkit-scrollbar { width: 6px; }
-.terminal-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,.14); border-radius: 3px; }
-.log-line { display: flex; gap: 12px; }
-.log-time   { color: #52525b; flex-shrink: 0; }
-.log-ok     { color: #fafafa; }
-.log-info   { color: #a1a1aa; }
-.log-warn   { color: #e4e4e7; font-weight: 600; }
-.log-error  { color: #ffffff; font-weight: 600; }
-.log-normal { color: #8a8a93; }
+.terminal-body::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 3px; }
+.terminal-body::-webkit-scrollbar-track { background: transparent; }
+.log-line {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 7px 4px; border-bottom: 1px solid var(--border);
+}
+/* Validation tab */
+.btn.ghost { background: transparent; border-color: var(--border); color: var(--text2); }
+.btn.ghost:hover { background: var(--bg2); }
+.vchip { display:inline-block; padding:1px 7px; border:1px solid var(--border2);
+  border-radius: 999px; font-size:10px; color: var(--text2); background: var(--bg2); }
+.vtier { font-size:10px; color: var(--text3); text-transform:uppercase; letter-spacing:.04em;
+  border:1px solid var(--border); border-radius: var(--r-sm); padding:0 6px; }
+.vlog { margin-top:10px; max-height:240px; overflow:auto; background: var(--bg2);
+  border:1px solid var(--border); border-radius: var(--r-sm); padding:4px 8px;
+  font-family: var(--mono); font-size:11px; }
+.vcard summary::-webkit-details-marker { display:none; }
+.log-line:last-child { border-bottom: none; }
+.log-line span:last-child { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.log-time   { color: var(--text3); flex-shrink: 0; font-size: 11px; font-variant-numeric: tabular-nums; }
+.log-ok     { color: #008f3a; font-weight: 700; }
+.log-info   { color: var(--text2); }
+.log-warn   { color: #b45309; font-weight: 700; }
+.log-error  { color: #d00032; font-weight: 700; }
+.log-normal { color: var(--text); }
 
 /* ── Progress ──────────────────────────────────────────── */
 .progress-area { padding: 16px 24px 14px; flex-shrink: 0; }
@@ -396,6 +417,28 @@ td.muted { color: var(--text3); font-size: 11px; }
   box-shadow: 0 8px 24px rgba(0,0,0,.18);
 }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── Landmark zoom stages ─────────────────────────────────── */
+.lm-stage { position: relative; overflow: hidden; height: 320px; border: 1px solid var(--border);
+  border-radius: var(--r-sm); background: #0d0d0f; cursor: grab; touch-action: none; }
+.lm-stage:active { cursor: grabbing; }
+.lm-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; line-height: 0; }
+.lm-world img { display: block; cursor: crosshair; }
+.lm-world svg { position: absolute; top: 0; left: 0; pointer-events: none; }
+#spatial-cert-work.lm-fullscreen { position: fixed; inset: 0; z-index: 2000; margin: 0;
+  padding: 14px 18px; background: var(--bg); overflow: auto; }
+#spatial-cert-work.lm-fullscreen .lm-stage { height: calc(100vh - 210px); }
+
+/* ── Image lightbox (results overlays) ────────────────────── */
+.lightbox { position: fixed; inset: 0; z-index: 3000; background: rgba(8,8,10,.92);
+  display: none; flex-direction: column; }
+.lightbox.show { display: flex; }
+.lightbox-bar { height: 46px; display: flex; align-items: center; gap: 12px; padding: 0 16px;
+  color: #eee; font-size: 12px; flex-shrink: 0; border-bottom: 1px solid #2a2a2e; }
+.lightbox-stage { flex: 1; overflow: hidden; position: relative; cursor: grab; }
+.lightbox-stage:active { cursor: grabbing; }
+.lightbox-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.lightbox-world img { display: block; }
 </style>
 </head>
 <body>
@@ -404,8 +447,14 @@ td.muted { color: var(--text3); font-size: 11px; }
 <!-- ── Sidebar ──────────────────────────────────────────── -->
 <nav class="sidebar">
   <div class="logo">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M10 3h4v5h-4z"/>
+      <path d="M12 8v4"/>
+      <path d="M9 12h6"/>
+      <path d="M15 12a5 5 0 0 1-5 5H7"/>
+      <path d="M8 17l-2 4"/>
+      <path d="M16 17l2 4"/>
+      <path d="M5 21h14"/>
     </svg>
   </div>
   <button class="nav-btn active" id="nav-quant" onclick="showPage('quant')">
@@ -414,11 +463,23 @@ td.muted { color: var(--text3); font-size: 11px; }
     </svg>
     Quant
   </button>
-  <button class="nav-btn" id="nav-coloc" onclick="showPage('coloc')">
+  <button class="nav-btn" id="nav-spatial" onclick="showPage('spatial')">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>
+      <circle cx="6" cy="6" r="2"/><circle cx="18" cy="9" r="2"/><circle cx="9" cy="17" r="2"/><path d="M8 7l8 1.6M8.6 15l8-4.6"/>
     </svg>
-    Coloc
+    Spatial
+  </button>
+  <button class="nav-btn" id="nav-calibrate" onclick="showPage('calibrate')">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5"/>
+    </svg>
+    Calibrate
+  </button>
+  <button class="nav-btn" id="nav-validation" onclick="showPage('validation'); loadValidations()">
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 2l7 3v6c0 4.5-3 8.5-7 10-4-1.5-7-5.5-7-10V5z"/><path d="M9 12l2 2 4-4"/>
+    </svg>
+    Validate
   </button>
   <button class="nav-btn bottom" id="nav-settings" onclick="showPage('settings')">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -436,7 +497,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 <div class="page active" id="page-quant">
   <div class="page-header">
     <h1>Quantification</h1>
-    <span class="sub">Single-marker DAB batch analysis</span>
+    <span class="sub">DAB marker analysis — single image or batch</span>
     <div class="header-right">
       <span id="quant-status" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
         <span class="sdot b" id="quant-sdot"></span>
@@ -450,31 +511,83 @@ td.muted { color: var(--text3); font-size: 11px; }
   <!-- CONFIG VIEW -->
   <div class="view active" id="quant-config">
     <div class="scroll">
+      <div class="card" style="padding:12px">
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11px">
+          <span class="badge cyan">1 INPUTS</span><span>→</span><span class="badge amber">2 CALIBRATION</span><span>→</span><span class="badge amber">3 SEGMENTATION</span><span>→</span><span class="badge amber">4 CLASSIFICATION</span><span>→</span><span class="badge gray">5 RESULTS</span>
+        </div>
+      </div>
       <div class="card">
-        <div class="card-title">Folders</div>
-        <div class="row2">
+        <div class="card-title">Analysis mode</div>
+        <div class="seg-tabs">
+          <button class="seg-tab active" id="q-mode-single-btn" onclick="quantSetMode('single')">Single image</button>
+          <button class="seg-tab" id="q-mode-batch-btn" onclick="quantSetMode('batch')">Batch (folder of images)</button>
+        </div>
+
+        <div id="q-single-config" style="margin-top:12px">
+          <div class="field"><label>Image file</label>
+            <div class="input-with-btn">
+              <input type="text" id="q-single-image" placeholder="select an image…" readonly>
+              <button class="btn sm" onclick="quantPickSingleImage()">Browse</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="q-batch-config" style="margin-top:12px;display:none">
           <div class="field"><label>Image folder</label>
             <div class="input-with-btn">
               <input type="text" id="q-input" placeholder="/path/to/images">
               <button class="btn sm" onclick="pickInto('q-input', onQuantFolderPicked)">Browse</button>
             </div>
           </div>
-          <div class="field"><label>Output folder</label>
-            <div class="input-with-btn">
-              <input type="text" id="q-output" placeholder="~/Desktop/ihc_results">
-              <button class="btn sm" onclick="pickInto('q-output', null)">Browse</button>
-            </div>
+          <div id="q-image-count" style="font-size:11px;color:var(--text3);margin-top:2px"></div>
+          <div class="toggle-row" style="margin-top:10px">
+            <span>Match scale images in this folder</span>
+            <div class="toggle" id="q-scale-match-toggle" onclick="toggleQuantScaleMatching()"></div>
+          </div>
+          <div id="q-scale-match-tools" style="display:none;margin-top:10px">
+            <button class="btn sm" onclick="previewQuantScaleMatches()">Preview matched pairs</button>
+            <div id="q-scale-match-preview" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
           </div>
         </div>
-        <div id="q-image-count" style="font-size:11px;color:var(--text3);margin-top:2px"></div>
+
+        <div class="field" style="margin-top:12px"><label>Output folder</label>
+          <div class="input-with-btn">
+            <input type="text" id="q-output" placeholder="~/Desktop/ihc_results">
+            <button class="btn sm" onclick="pickInto('q-output', null)">Browse</button>
+          </div>
+        </div>
       </div>
 
       <div class="card">
         <div class="card-title">Analysis parameters</div>
+        <div class="field"><label>Stain / biomarker <b>(required)</b></label>
+            <select id="q-stain" onchange="quantStainChanged()">
+              <option value="">— Select stain —</option>
+              <option value="CD8">CD8</option><option value="TIM-3">TIM-3</option>
+              <option value="FOXP3">FOXP3</option><option value="Other">Other…</option>
+            </select>
+            <input id="q-stain-other" style="display:none;margin-top:7px" placeholder="Enter stain name">
+        </div>
         <div class="field">
           <label>DAB threshold (optical density) — <b id="q-thresh-display">0.20</b> OD</label>
           <input type="range" id="q-thresh" min="5" max="50" value="20"
             oninput="document.getElementById('q-thresh-display').textContent=(this.value/100).toFixed(2)">
+          <div class="toggle-row" style="margin-top:10px">
+            <span>Adaptive threshold <span style="color:var(--text3);font-size:11px">— per-image Otsu (ignores the slider)</span></span>
+            <div class="toggle" id="q-adaptive-toggle" onclick="toggleQuantAdaptive()"></div>
+          </div>
+        </div>
+        <div class="toggle-row">
+          <span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— recommended for faint / variable stains</span></span>
+          <div class="toggle" id="q-normalize-toggle" onclick="toggleEl('q-normalize-toggle')"></div>
+        </div>
+        <div class="toggle-row">
+          <span>Membranous marker <span style="color:var(--text3);font-size:11px">— measure DAB in the cytoplasmic ring (CD8 / TIM-3); uses calibrated completeness cutoffs (Calibrate tab)</span></span>
+          <div class="toggle" id="q-membrane-toggle" onclick="toggleQuantMembrane()"></div>
+        </div>
+        <div class="field" id="q-calib-profile-row" style="display:none;margin-top:8px">
+          <label>Cutoff profile</label>
+          <select id="q-calib-profile"><option value="">Auto (match marker)</option></select>
         </div>
         <div class="divider"></div>
         <div class="section-label">Pixel size source</div>
@@ -486,6 +599,10 @@ td.muted { color: var(--text3); font-size: 11px; }
           <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
             <input type="radio" name="q-px" value="manual" onchange="onQuantPxChange()">
             Manual entry for this run
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="scale" onchange="onQuantPxChange()">
+            Detect from a 100 µm scale-bar image
           </label>
         </div>
         <div id="q-px-manual" style="display:none">
@@ -504,15 +621,39 @@ td.muted { color: var(--text3); font-size: 11px; }
             </div>
           </div>
         </div>
+        <div id="q-px-scale" style="display:none">
+          <button class="btn" onclick="quantPickScaleImage()">Select scale image…</button>
+          <div id="q-px-scale-result" style="font-size:11px;color:var(--text2);margin-top:7px"></div>
+        </div>
       </div>
 
-      <div class="card">
+      <div class="card" id="q-overrides-card">
         <div class="card-title">Per-image pixel size overrides <span style="font-weight:400;font-size:11px;text-transform:none;color:var(--text3)">(optional)</span></div>
         <div id="q-overrides-list" style="margin-bottom:10px"></div>
         <div style="display:flex;gap:8px">
           <select id="q-ov-file" style="flex:1"><option value="">— select image —</option></select>
           <input type="number" id="q-ov-px" placeholder="µm/px" style="width:80px" step="0.01">
           <button class="btn sm" onclick="addQuantOverride()">Add</button>
+        </div>
+      </div>
+
+      <div class="card" id="q-biomarkers-card">
+        <div class="card-title">Advanced mixed-stain batch rules <span style="font-weight:400;font-size:11px;text-transform:none;color:var(--text3)">(optional)</span></div>
+        <div class="info-box amber" style="margin-bottom:12px">
+          Define biomarkers (e.g. CD8, TIM-3). Each image is matched to a biomarker by a token in its filename and uses that marker's DAB threshold. Images matching no biomarker fall back to the global DAB threshold above. All visible workflows preserve the original QuPath measurement and classification.
+          <div style="margin-top:8px">
+            <b>Starting defaults:</b> CD8 — <b>0.20</b> OD; TIM-3 — <b>0.10</b> OD.
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn sm" onclick="addQuantBiomarkerPreset('CD8')">+ CD8 (0.20)</button>
+          <button class="btn sm" onclick="addQuantBiomarkerPreset('TIM-3')">+ TIM-3 (0.10)</button>
+        </div>
+        <div id="q-biomarkers-list" style="margin-bottom:10px"></div>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="q-bm-name" placeholder="marker / filename token (e.g. CD8)" style="flex:1;min-width:140px">
+          <input type="number" id="q-bm-thr" placeholder="DAB OD" style="width:80px" step="0.01" min="0.01">
+          <button class="btn sm" onclick="addQuantBiomarker()">Add</button>
         </div>
       </div>
 
@@ -545,7 +686,8 @@ td.muted { color: var(--text3); font-size: 11px; }
       </div>
       <div class="progress-track"><div class="progress-fill" id="quant-progress-fill"></div></div>
     </div>
-    <div class="terminal-wrap">
+    <button class="btn sm" style="margin:0 22px 10px" onclick="toggleTechnicalLog('quant-tech-log',this)">Show activity log</button>
+    <div class="terminal-wrap" id="quant-tech-log" style="display:none">
       <div class="terminal-header">
         <div class="terminal-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
         <span class="terminal-title">SYSTEM LOG</span>
@@ -559,6 +701,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   <div class="view" id="quant-results">
     <div class="scroll">
       <div class="metrics-row c2" id="quant-metrics"></div>
+      <div id="quant-warning"></div>
       <div class="table-card">
         <div class="table-header-row">
           <h3>Per-image results</h3>
@@ -572,7 +715,7 @@ td.muted { color: var(--text3); font-size: 11px; }
             <th>Positivity %</th><th>Pixel size</th><th>Status</th>
           </tr></thead>
           <tbody id="quant-tbody">
-            <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No results yet</td></tr>
+            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No results yet</td></tr>
           </tbody>
         </table>
       </div>
@@ -583,182 +726,304 @@ td.muted { color: var(--text3); font-size: 11px; }
 
 
 <!-- ═══════════════════════════════════════════════════════
-     PAGE: CO-LOCALIZATION
+     PAGE: SPATIAL ASSOCIATION
 ═══════════════════════════════════════════════════════════ -->
-<div class="page" id="page-coloc">
+<div class="page" id="page-spatial">
   <div class="page-header">
-    <h1>Co-localization</h1>
-    <span class="sub">Cross-section marker co-expression analysis</span>
+    <h1>Spatial Association</h1>
+    <span class="sub">CD8 / TIM-3 spatial association across serial sections</span>
     <div class="header-right">
-      <span id="coloc-status" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
-        <span class="sdot b" id="coloc-sdot"></span>
-        <span id="coloc-status-txt">Running</span>
+      <span id="spatial-status" style="display:none;align-items:center;gap:6px;font-size:11px;color:var(--text3)">
+        <span class="sdot b" id="spatial-sdot"></span>
+        <span id="spatial-status-txt">Running</span>
       </span>
-      <button class="btn danger" id="coloc-stop-btn" style="display:none" onclick="stopPipeline()">Stop</button>
-      <button class="btn" id="coloc-new-btn" style="display:none" onclick="showView('coloc','config')">← New analysis</button>
+      <button class="btn danger" id="spatial-stop-btn" style="display:none" onclick="stopPipeline()">Stop</button>
+      <button class="btn" id="spatial-new-btn" style="display:none" onclick="showView('spatial','config')">← New analysis</button>
     </div>
   </div>
 
   <!-- CONFIG VIEW -->
-  <div class="view active" id="coloc-config">
+  <div class="view active" id="spatial-config">
     <div class="scroll">
+      <div class="card" style="padding:12px">
+        <div style="display:flex;gap:7px;align-items:center;flex-wrap:wrap;font-size:11px">
+          <span class="badge cyan">1 INPUTS</span><span>→</span><span class="badge amber">2 CERTIFICATION</span><span>→</span><span class="badge amber">3 SEGMENTATION</span><span>→</span><span class="badge amber">4 CLASSIFICATION</span><span>→</span><span class="badge amber">5 STATISTICS</span><span>→</span><span class="badge gray">6 RESULTS</span>
+        </div>
+      </div>
 
+      <!-- Mode selector -->
       <div class="card">
-        <div class="card-title">Input mode</div>
+        <div class="card-title">Mode</div>
         <div class="seg-tabs">
-          <button class="seg-tab active" id="mode-two-btn" onclick="setColocMode('two_folder')">Two Folders</button>
-          <button class="seg-tab" id="mode-single-btn" onclick="setColocMode('single_folder')">Single Folder (auto-detect)</button>
-        </div>
-        <div style="font-size:11px;color:var(--text3);margin-top:8px" id="coloc-mode-hint">
-          Provide separate CD8 and TIM3 folders. Files are matched by normalized filename — the stain token is stripped and samples paired by the remaining name.
+          <button class="seg-tab active" id="spatial-mode-single-btn" onclick="spatialAssocSetMode('single')">Single Pair</button>
+          <button class="seg-tab" id="spatial-mode-batch-btn" onclick="spatialAssocSetMode('batch')">Batch</button>
         </div>
       </div>
 
+      <!-- Session pixel size calibration -->
       <div class="card">
-        <div class="card-title">Folders</div>
-
-        <div id="coloc-two-inputs">
-          <div class="row2">
-            <div class="field"><label>Marker A folder (e.g. CD8)</label>
-              <div class="input-with-btn">
-                <input type="text" id="c-folder-a" placeholder="/path/to/cd8_images">
-                <button class="btn sm" onclick="pickInto('c-folder-a', null)">Browse</button>
-              </div>
-            </div>
-            <div class="field"><label>Marker B folder (e.g. TIM3)</label>
-              <div class="input-with-btn">
-                <input type="text" id="c-folder-b" placeholder="/path/to/tim3_images">
-                <button class="btn sm" onclick="pickInto('c-folder-b', null)">Browse</button>
-              </div>
-            </div>
+        <div class="card-title">Pixel Size Calibration</div>
+        <div class="info-box amber" style="margin-bottom:12px">Set once for the entire run. Can be overridden per image.</div>
+        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="spatial-session-px" value="manual" checked onchange="spatialAssocSetSessionPxMode('manual')"> Enter manually
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="spatial-session-px" value="scale" onchange="spatialAssocSetSessionPxMode('scale')"> Use scale image
+          </label>
+        </div>
+        <div id="spatial-session-manual">
+          <div class="field"><label>Pixel size (µm/px)</label>
+            <input type="number" id="spatial-session-px-val" value="0.5" step="0.01" min="0.01" onchange="spatialCertInvalidate()">
           </div>
         </div>
-
-        <div id="coloc-single-input" style="display:none">
-          <div class="field"><label>Images folder (contains both stains)</label>
-            <div class="input-with-btn">
-              <input type="text" id="c-folder-single" placeholder="/path/to/all_stains">
-              <button class="btn sm" onclick="pickInto('c-folder-single', null)">Browse</button>
-            </div>
-          </div>
-        </div>
-
-        <div class="field"><label>Output folder</label>
-          <div class="input-with-btn">
-            <input type="text" id="c-output" placeholder="~/Desktop/ihc_coloc_results">
-            <button class="btn sm" onclick="pickInto('c-output', null)">Browse</button>
-          </div>
-        </div>
-
-        <button class="btn amber" style="margin-top:8px;width:100%" onclick="detectPairs()" id="detect-pairs-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
-          Detect Pairs
-        </button>
-      </div>
-
-      <!-- Pair preview (hidden until detected) -->
-      <div id="coloc-pairs-card" style="display:none">
-        <div class="card">
-          <div class="card-title" style="display:flex;align-items:center;gap:8px">
-            Detected pairs
-            <span id="coloc-pairs-badge" class="badge amber"></span>
-          </div>
-          <div class="table-card" style="margin-bottom:0;border-radius:var(--radius-sm)">
-            <table>
-              <thead><tr>
-                <th>Sample ID</th><th>Marker A</th><th>Marker B</th><th>Status</th>
-              </tr></thead>
-              <tbody id="coloc-pairs-tbody"></tbody>
-            </table>
-          </div>
-          <div id="coloc-unmatched-warn" class="info-box warn" style="display:none;margin-top:10px"></div>
+        <div id="spatial-session-scale" style="display:none">
+          <button class="btn" id="spatial-session-scale-btn" onclick="spatialAssocPickSessionScale()">Select scale image…</button>
+          <div id="spatial-session-scale-result" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
         </div>
       </div>
 
-      <div class="card">
-        <div class="card-title">Matching parameters</div>
+      <!-- SINGLE PAIR config -->
+      <div id="spatial-single-config">
         <div class="row2">
-          <div class="field"><label>Max cell match distance (µm)</label>
-            <input type="number" id="c-max-dist" value="10.0" step="0.5" min="1" max="200">
+          <!-- Image A -->
+          <div class="card">
+            <div class="card-title">Image A</div>
+            <div class="field"><label>Stain name</label>
+              <input type="text" id="spatial-label-a" placeholder="e.g. CD8" value="CD8">
+            </div>
+            <div class="field"><label>Analysis image</label>
+              <div class="input-with-btn">
+                <input type="text" id="spatial-image-a" placeholder="select image…" readonly>
+                <button class="btn sm" onclick="spatialAssocPickImage('a')">Browse</button>
+              </div>
+              <div id="spatial-image-err-a" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
+            </div>
+            <button class="btn sm" style="width:100%" id="spatial-ov-toggle-a" onclick="spatialAssocToggleOverride('a')">⌄ Override pixel size for this image</button>
+            <div id="spatial-ov-a" style="display:none;margin-top:10px">
+              <div id="spatial-ov-default-a" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="manual" checked onchange="spatialAssocSetOverrideMode('a','manual')"> Enter manually</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="scale" onchange="spatialAssocSetOverrideMode('a','scale')"> Use scale image</label>
+              </div>
+              <div id="spatial-ov-manual-a"><input type="number" id="spatial-ov-px-a" placeholder="µm/px" step="0.01" min="0.01" onchange="spatialCertInvalidate()"></div>
+              <div id="spatial-ov-scale-a" style="display:none">
+                <button class="btn sm" onclick="spatialAssocPickOverrideScale('a')">Select scale image…</button>
+                <div id="spatial-ov-scale-result-a" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
+              </div>
+              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('a')">× Clear override</button>
+            </div>
           </div>
-          <div class="field"><label>DAB threshold (OD)</label>
-            <input type="number" id="c-thresh" value="0.20" step="0.01" min="0.01" max="1.0">
+          <!-- Image B -->
+          <div class="card">
+            <div class="card-title">Image B</div>
+            <div class="field"><label>Stain name</label>
+              <input type="text" id="spatial-label-b" placeholder="e.g. TIM-3" value="TIM-3">
+            </div>
+            <div class="field"><label>Analysis image</label>
+              <div class="input-with-btn">
+                <input type="text" id="spatial-image-b" placeholder="select image…" readonly>
+                <button class="btn sm" onclick="spatialAssocPickImage('b')">Browse</button>
+              </div>
+              <div id="spatial-image-err-b" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
+            </div>
+            <button class="btn sm" style="width:100%" id="spatial-ov-toggle-b" onclick="spatialAssocToggleOverride('b')">⌄ Override pixel size for this image</button>
+            <div id="spatial-ov-b" style="display:none;margin-top:10px">
+              <div id="spatial-ov-default-b" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="manual" checked onchange="spatialAssocSetOverrideMode('b','manual')"> Enter manually</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="scale" onchange="spatialAssocSetOverrideMode('b','scale')"> Use scale image</label>
+              </div>
+              <div id="spatial-ov-manual-b"><input type="number" id="spatial-ov-px-b" placeholder="µm/px" step="0.01" min="0.01" onchange="spatialCertInvalidate()"></div>
+              <div id="spatial-ov-scale-b" style="display:none">
+                <button class="btn sm" onclick="spatialAssocPickOverrideScale('b')">Select scale image…</button>
+                <div id="spatial-ov-scale-result-b" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
+              </div>
+              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('b')">× Clear override</button>
+            </div>
           </div>
         </div>
-        <div class="field"><label>Pixel size (µm/px)</label>
-          <input type="number" id="c-px" value="0.5" step="0.01" min="0.01">
+      </div>
+
+      <!-- BATCH config -->
+      <div id="spatial-batch-config" style="display:none">
+        <div class="card">
+          <div class="card-title">Input mode</div>
+          <div class="seg-tabs">
+            <button class="seg-tab active" id="spatial-fmode-two-btn" onclick="spatialAssocSetFolderMode('two_folder')">Two Folders</button>
+            <button class="seg-tab" id="spatial-fmode-single-btn" onclick="spatialAssocSetFolderMode('single_folder')">Single Folder (auto-detect)</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-title">Folders</div>
+          <div id="spatial-two-inputs">
+            <div class="row2">
+              <div class="field"><label>Marker A folder (e.g. CD8)</label>
+                <div class="input-with-btn"><input type="text" id="spatial-folder-a" placeholder="/path/to/cd8_images"><button class="btn sm" onclick="pickInto('spatial-folder-a', null)">Browse</button></div>
+              </div>
+              <div class="field"><label>Marker B folder (e.g. TIM3)</label>
+                <div class="input-with-btn"><input type="text" id="spatial-folder-b" placeholder="/path/to/tim3_images"><button class="btn sm" onclick="pickInto('spatial-folder-b', null)">Browse</button></div>
+              </div>
+            </div>
+          </div>
+          <div id="spatial-single-input" style="display:none">
+            <div class="field"><label>Images folder (contains both stains)</label>
+              <div class="input-with-btn"><input type="text" id="spatial-folder-single" placeholder="/path/to/all_stains"><button class="btn sm" onclick="pickInto('spatial-folder-single', null)">Browse</button></div>
+            </div>
+          </div>
+          <button class="btn amber" style="width:100%;margin-top:8px" id="spatial-preview-btn" onclick="spatialAssocPreview()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            Preview Matches
+          </button>
+        </div>
+        <div id="spatial-preview-card" style="display:none">
+          <div class="card">
+            <div class="card-title" style="display:flex;align-items:center;gap:8px">Matched pairs <span id="spatial-preview-badge" class="badge amber"></span></div>
+            <div class="table-card" style="margin-bottom:0;border-radius:var(--radius-sm)">
+              <table>
+                <thead><tr><th>Filename A</th><th>Filename B</th><th>Pixel size source</th></tr></thead>
+                <tbody id="spatial-preview-tbody"></tbody>
+              </table>
+            </div>
+            <div id="spatial-preview-warn" class="info-box warn" style="display:none;margin-top:10px"></div>
+            <div id="spatial-preview-scaled" style="display:none;font-size:11px;color:var(--text3);margin-top:8px"></div>
+            <div id="spatial-preview-summary" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Mandatory landmark certification -->
+      <div class="card" id="spatial-cert-card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>2 · Landmark certification</span>
+          <span class="badge gray" id="spatial-cert-badge">NOT STARTED</span>
+        </div>
+        <div class="info-box amber" style="margin-bottom:12px">
+          Required before segmentation. Place matching anatomical landmarks on vessels, lumen centres, bifurcations, or sharp tissue boundaries—never individual nuclei. Blind grayscale is the default to reduce stain-colour bias; colour may be enabled for inspection. Six points is the minimum; 12 well-spread points is preferred.
+        </div>
+        <div id="spatial-cert-pair-row" class="field" style="display:none">
+          <label>Pair to certify</label><select id="spatial-cert-pair" onchange="spatialCertSelectPair()"></select>
+        </div>
+        <button class="btn amber" id="spatial-cert-load" onclick="spatialCertLoad()">Load images for landmarking</button>
+        <button class="btn" id="spatial-cert-colour" onclick="spatialCertToggleColour()">Show colour</button>
+        <button class="btn" id="spatial-cert-import" onclick="spatialCertImport()" title="Certify using bundled expert landmarks (CIMA/ANHIR validation cohorts only)">Import expert landmarks</button>
+        <div id="spatial-cert-work" style="display:none;margin-top:12px">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
+            <button class="btn sm" id="spatial-cert-fs-btn" onclick="spatialCertToggleFullscreen()">⛶ Fullscreen</button>
+            <button class="btn sm" onclick="spatialCertZoomFit()">Reset zoom</button>
+            <span style="font-size:11px;color:var(--text3)">wheel = zoom · drag = pan · click reference then moving to place a matching pair</span>
+          </div>
+          <div class="row2">
+            <div><div class="section-label">Reference — click first</div>
+              <div class="lm-stage" id="lm-stage-ref"><div class="lm-world" id="lm-world-ref"><img id="spatial-cert-ref"><svg id="spatial-cert-ref-ov"></svg></div></div></div>
+            <div><div class="section-label">Moving — matching point</div>
+              <div class="lm-stage" id="lm-stage-mov"><div class="lm-world" id="lm-world-mov"><img id="spatial-cert-mov"><svg id="spatial-cert-mov-ov"></svg></div></div></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+            <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
+            <button class="btn sm" id="spatial-cert-propose" onclick="spatialCertPropose()" title="Auto-detect matching lumen/structural landmarks for you to verify — machine proposes, you confirm before certifying">Auto-propose landmarks</button>
+            <button class="btn sm" onclick="spatialCertUndo()">Undo</button>
+            <button class="btn sm" onclick="spatialCertClear()">Clear</button>
+            <button class="btn amber" onclick="spatialCertRun()">Fit transform & certify</button>
+          </div>
+          <div id="spatial-cert-propose-note" style="font-size:11px;color:var(--text3);margin-top:6px">Proposed points are a starting draft — drag-verify each pair against the images and delete any that don't correspond before certifying.</div>
+          <div id="spatial-cert-result" style="font-size:12px;line-height:1.55;margin-top:10px"></div>
+        </div>
+      </div>
+
+      <!-- Matching parameters -->
+      <div class="card">
+        <div class="card-title">Analysis parameters</div>
+        <div class="field"><label>Proximity highlight distance (µm)</label>
+          <input type="number" id="spatial-max-dist" value="10.0" step="0.5" min="1" max="200">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Cells within this distance of an opposite-type cell are outlined in the cell map (illustrative only — the statistic is the Ripley's K curve, not a cell count).</div>
+        </div>
+        <div class="row2">
+          <div class="field"><label>DAB threshold — Image A (OD)</label>
+            <input type="number" id="spatial-thresh-a" value="0.20" step="0.01" min="0.01" max="1.0">
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.20 for CD8</div>
+          </div>
+          <div class="field"><label>DAB threshold — Image B (OD)</label>
+            <input type="number" id="spatial-thresh-b" value="0.10" step="0.01" min="0.01" max="1.0">
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.10 for TIM-3</div>
+          </div>
         </div>
         <div class="toggle-row" style="margin-top:6px">
           <span>Enable image registration (recommended for serial sections)</span>
-          <div class="toggle on" id="c-reg-toggle" onclick="toggleEl('c-reg-toggle')"></div>
+          <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div>
         </div>
-        <div class="info-box" style="margin-top:10px">
-          Registration aligns both images using ORB feature matching + RANSAC before cell matching.
-          Accounts for scan-to-scan rotation and translation differences between serial sections.
+        <div class="toggle-row" style="margin-top:6px">
+          <span>Membranous quantification (cytoplasmic-ring, for CD8 / TIM-3)</span>
+          <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div>
+        </div>
+        <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
+          <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the cytoplasmic ring using each marker's <b>calibrated completeness cutoffs</b> (Calibrate tab) instead of nuclear DAB — the correct compartment for membranous markers. Needs a calibration per marker; without one it falls back to the weaker ring-mean rule.</div>
+          <div class="row2">
+            <div class="field"><label>Image A cutoff profile</label>
+              <select id="spatial-calib-a"><option value="">Auto (match marker)</option></select>
+              <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image A</span>
+                <div class="toggle on" id="spatial-cyto-a-toggle" onclick="toggleEl('spatial-cyto-a-toggle')"></div></div>
+            </div>
+            <div class="field"><label>Image B cutoff profile</label>
+              <select id="spatial-calib-b"><option value="">Auto (match marker)</option></select>
+              <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image B</span>
+                <div class="toggle on" id="spatial-cyto-b-toggle" onclick="toggleEl('spatial-cyto-b-toggle')"></div></div>
+            </div>
+          </div>
+        </div>
+        <div class="info-box amber" style="margin-top:10px">
+          Cross-type analysis measures whether CD8+ and TIM-3+ cell populations are spatially associated across registered serial sections, using the calibrated intensity-reweighted inhomogeneous cross-K — which tests for association BEYOND a shared tissue preference (both cell types favouring the same architecture), the failure mode of a naive model (see ihc.md §15). This is a population-level statistic and does not imply single-cell co-expression, which requires multiplex imaging on the same section.
         </div>
       </div>
 
+      <!-- Output options -->
       <div class="card">
         <div class="card-title">Output options</div>
+        <div class="field"><label>Output folder</label>
+          <div class="input-with-btn"><input type="text" id="spatial-output" placeholder="~/Desktop/ihc_spatial_results"><button class="btn sm" onclick="pickInto('spatial-output', null)">Browse</button></div>
+        </div>
         <div class="toggle-row">
           <span>Delete intermediate files after run</span>
-          <div class="toggle" id="c-cleanup-toggle" onclick="toggleEl('c-cleanup-toggle')"></div>
+          <div class="toggle" id="spatial-cleanup-toggle" onclick="toggleEl('spatial-cleanup-toggle')"></div>
         </div>
       </div>
 
     </div>
     <div class="run-area">
-      <button class="run-btn amber" id="coloc-run-btn" onclick="runColocAnalysis()" disabled>
+      <button class="run-btn amber" id="spatial-run-btn" onclick="spatialAssocRun()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Run Co-localization
+        Run Certified Spatial Analysis
       </button>
     </div>
   </div>
 
   <!-- RUNNING VIEW -->
-  <div class="view" id="coloc-running">
+  <div class="view" id="spatial-running">
     <div class="progress-area">
       <div class="progress-label">
-        <span class="plabel" id="coloc-progress-label">Initializing...</span>
-        <span class="ppct amber" id="coloc-pct">0%</span>
+        <span class="plabel" id="spatial-progress-label">Initializing...</span>
+        <span class="ppct amber" id="spatial-pct">0%</span>
       </div>
-      <div class="progress-track"><div class="progress-fill amber" id="coloc-progress-fill"></div></div>
+      <div class="progress-track"><div class="progress-fill amber" id="spatial-progress-fill"></div></div>
     </div>
-    <div class="terminal-wrap">
+    <button class="btn sm" style="margin:0 22px 10px" onclick="toggleTechnicalLog('spatial-tech-log',this)">Show activity log</button>
+    <div class="terminal-wrap" id="spatial-tech-log" style="display:none">
       <div class="terminal-header">
         <div class="terminal-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
-        <span class="terminal-title">CO-LOCALIZATION LOG</span>
-        <button class="btn sm" style="margin-left:auto" onclick="copyLog('coloc-log')">Copy</button>
+        <span class="terminal-title">SPATIAL ASSOCIATION LOG</span>
+        <button class="btn sm" style="margin-left:auto" onclick="copyLog('spatial-log')">Copy</button>
       </div>
-      <div class="terminal-body" id="coloc-log"></div>
+      <div class="terminal-body" id="spatial-log"></div>
     </div>
   </div>
 
   <!-- RESULTS VIEW -->
-  <div class="view" id="coloc-results">
+  <div class="view" id="spatial-results">
     <div class="scroll">
-      <div class="metrics-row c4" id="coloc-metrics"></div>
-      <div class="table-card">
-        <div class="table-header-row">
-          <h3>Per-pair co-expression results</h3>
-          <div style="margin-left:auto">
-            <button class="btn sm" onclick="exportColocCSV()">Export CSV</button>
-          </div>
-        </div>
-        <table>
-          <thead><tr>
-            <th>Sample</th>
-            <th>Marker A</th><th>A positive</th>
-            <th>Marker B</th><th>B positive</th>
-            <th>Co-expressing</th><th>Co-expr %</th>
-            <th>Registration</th>
-          </tr></thead>
-          <tbody id="coloc-tbody">
-            <tr><td colspan="8" style="text-align:center;color:var(--text3);padding:20px">No results yet</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <div class="action-row" id="coloc-actions"></div>
+      <div class="metrics-row c4" id="spatial-summary"></div>
+      <div id="spatial-cohort-note"></div>
+      <div id="spatial-results-cards"></div>
+      <div class="action-row" id="spatial-actions"></div>
     </div>
   </div>
 </div>
@@ -845,26 +1110,141 @@ td.muted { color: var(--text3); font-size: 11px; }
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: CALIBRATE
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-calibrate" style="position:relative">
+  <div class="page-header"><h1>Calibrate cutoffs</h1></div>
+
+  <div id="calib-config" class="scroll">
+    <div class="card">
+      <div class="card-title">Fit membrane cutoffs to your own slides</div>
+      <div class="info-box amber" style="margin-bottom:14px">
+        DAB staining isn't quantitative — "how much brown = positive" differs by antibody, protocol and scanner, so cutoffs from another dataset won't transfer. Segment <b>your</b> stained slides, click positive and negative cells, and fit the cutoffs for this marker. Do this <b>once per staining protocol</b>, then switch between saved calibrations in Quant.
+        <div style="margin-top:8px">Add <b>one or more</b> representative slides — pooling several fields captures the staining variability a single image misses, and the callability score is reported as an honest <b>leave-one-cell-out</b> estimate.</div>
+        <div style="margin-top:8px">While labeling you can toggle three views: <b>Normalized</b> (recommended — green/blue cast removed, judge cell morphology), <b>DAB signal</b> (only the brown marker on white — use it to <b>confirm</b> a cell is really positive), and <b>Original</b>. Label from Normalized; use DAB signal as the tiebreaker for faint cells.</div>
+      </div>
+      <div class="field"><label>Marker name <b>(required)</b></label>
+        <input id="calib-marker" placeholder="e.g. TIM-3"></div>
+      <div class="field"><label>Default pixel size (µm/px)</label>
+        <input type="number" id="calib-px" value="0.5" step="0.01" min="0.01">
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Applied to images you add below; edit per-image if a slide was scanned at a different magnification.</div></div>
+      <div class="field"><label>Stained images <b>(required)</b></label>
+        <div id="calib-image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+        <button class="btn sm" onclick="calibAddImage()">+ Add image</button></div>
+      <button class="run-btn cyan" id="calib-seg-btn" onclick="calibSegment()">Segment &amp; label →</button>
+    </div>
+  </div>
+
+  <div id="calib-label" style="display:none;position:absolute;inset:56px 0 0 0">
+    <div id="calib-bar" style="position:absolute;top:0;left:0;right:0;height:46px;background:#1b1b1f;border-bottom:1px solid #333;display:flex;align-items:center;gap:12px;padding:0 14px;z-index:5;font-size:12px">
+      <span id="calib-imgnav" style="display:flex;align-items:center;gap:6px"></span>
+      <b id="calib-name" style="color:#fff;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <span>Positive <b style="color:#ff5a5a" id="calib-np">0</b></span>
+      <span>Negative <b style="color:#4aa3ff" id="calib-nn">0</b></span>
+      <span id="calib-pooled" style="color:#888"></span>
+      <button class="btn sm" onclick="calibZoom(1.25)">+</button>
+      <button class="btn sm" onclick="calibZoom(0.8)">−</button>
+      <button class="btn sm" id="calib-viewbtn" onclick="calibCycleView()">View: Normalized</button>
+      <button class="btn sm" onclick="calibFit()">Fit cutoffs →</button>
+      <button class="btn sm" onclick="calibBack()">Cancel</button>
+      <span style="margin-left:auto;color:#888">Left-click = <span style="color:#ff5a5a">positive</span> · Right-click = <span style="color:#4aa3ff">negative</span> · wheel = zoom · drag = pan · aim for ~50 of each</span>
+    </div>
+    <div id="calib-stage" style="position:absolute;top:46px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;background:#111">
+      <div id="calib-world" style="position:absolute;transform-origin:0 0"><img id="calib-im" style="display:block;position:absolute;top:0;left:0"><svg id="calib-ov" style="position:absolute;top:0;left:0"></svg></div>
+    </div>
+  </div>
+
+  <div id="calib-results" style="display:none" class="scroll">
+    <div class="card">
+      <div class="card-title">Fitted cutoffs</div>
+      <div id="calib-metrics" class="metrics-row c2"></div>
+      <div id="calib-perimage" style="font-size:12px;color:var(--text2);margin:10px 0"></div>
+      <div id="calib-verdict" style="margin:12px 0"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn primary" id="calib-save-btn" onclick="calibSave()">Save for this marker</button>
+        <button class="btn" onclick="calibRelabel()">← Re-label</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════
+     PAGE: VALIDATION
+═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-validation">
+  <div class="page-header">
+    <div>
+      <h1>Validation</h1>
+      <div class="sub">Reproduce every scientific claim — each validation ties to a real pipeline stage.</div>
+    </div>
+    <div style="margin-left:auto;display:flex;gap:8px">
+      <button class="btn sm" onclick="loadValidations()">↻ Refresh</button>
+    </div>
+  </div>
+
+  <div style="padding:0 20px 20px;max-width:980px">
+    <!-- Datasets panel -->
+    <div class="card" style="margin-bottom:16px">
+      <div class="card-title">Datasets</div>
+      <div style="font-size:12px;color:var(--text2);margin:6px 0 4px">
+        Consolidated under <code id="val-datadir">…</code>
+        <button class="btn sm" style="margin-left:8px" onclick="changeValidationDataDir()">Change…</button>
+        <span style="color:var(--text3)">Raw inputs are kept separate from generated outputs; each has a README, license &amp; checksum.</span>
+      </div>
+      <div id="validation-datasets" style="display:flex;flex-direction:column;gap:6px;margin-top:10px"></div>
+    </div>
+
+    <!-- Category sections filled by JS -->
+    <div id="validation-cats"></div>
+  </div>
+</div>
+
 </div><!-- /pages -->
 </div><!-- /app -->
 
 <div class="toast" id="toast"></div>
 
+<!-- Zoomable image lightbox (results overlays / density / plots) -->
+<div class="lightbox" id="lightbox">
+  <div class="lightbox-bar">
+    <span id="lightbox-caption" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+    <span style="color:#9ca3af">wheel = zoom · drag = pan</span>
+    <button class="btn sm" onclick="lightboxFit()">Reset</button>
+    <button class="btn sm" onclick="closeLightbox()">✕ Close</button>
+  </div>
+  <div class="lightbox-stage" id="lightbox-stage">
+    <div class="lightbox-world" id="lightbox-world"><img id="lightbox-img"></div>
+  </div>
+</div>
+
 <script>
 // ── State ────────────────────────────────────────────────
 let quantOverrides = {};
-let colocPairs     = [];
-let colocMode      = 'two_folder';
+let quantScaleImage = { path: '', px: null };
+let quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
 let activeMode     = 'quant';
-let resultsData    = { quant: null, coloc: null };
+let resultsData    = { quant: null, spatial: null };
+
+// ── Spatial Association state ──────────────────────────────
+let spatialMode          = 'single';        // 'single' | 'batch'
+let spatialFolderMode    = 'two_folder';    // 'two_folder' | 'single_folder'
+let spatialSessionPxMode = 'manual';        // 'manual' | 'scale'
+let spatialSessionScale  = { path: '', px: null };
+let spatialImage         = { a: '', b: '' };
+let spatialOverride      = { a: null, b: null };  // {mode, px?, scalePath?, scalePx?}
+let spatialPairs         = [];
+let spatialCertifications = {};
+let spatialCertWork = { pair: null, ref: null, mov: null, refPoints: [], movPoints: [], pending: null };
+let spatialCertColour = false;
 
 // ── Navigation ────────────────────────────────────────────
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active','coloc-active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active','spatial-active'));
   document.getElementById('page-' + id).classList.add('active');
   const btn = document.getElementById('nav-' + id);
-  if (id === 'coloc') btn.classList.add('coloc-active');
+  if (id === 'spatial') btn.classList.add('spatial-active');
   else btn.classList.add('active');
 }
 
@@ -883,10 +1263,69 @@ function showView(page, view) {
 // ── Toggle ────────────────────────────────────────────────
 function toggleEl(id) { document.getElementById(id).classList.toggle('on'); }
 function isOn(id)     { return document.getElementById(id).classList.contains('on'); }
+function toggleQuantAdaptive() {
+  // Adaptive (Otsu) is a NUCLEAR-marker tool; it collapses on membranous markers.
+  // Block it while membrane mode is on.
+  if (isOn('q-membrane-toggle')) { showToast('Adaptive is disabled in membrane mode'); return; }
+  toggleEl('q-adaptive-toggle');
+  const on = isOn('q-adaptive-toggle');
+  const sl = document.getElementById('q-thresh');
+  sl.disabled = on; sl.style.opacity = on ? 0.4 : 1;
+  document.getElementById('q-thresh-display').style.opacity = on ? 0.4 : 1;
+}
+function toggleQuantMembrane() {
+  toggleEl('q-membrane-toggle');
+  const on = isOn('q-membrane-toggle');
+  const at = document.getElementById('q-adaptive-toggle');
+  // Membrane mode uses completeness cutoffs, not a nuclear Otsu threshold —
+  // force adaptive off and grey it out so the two can't fight.
+  if (on && at.classList.contains('on')) {
+    at.classList.remove('on');
+    const sl = document.getElementById('q-thresh'); sl.disabled = false; sl.style.opacity = 1;
+    document.getElementById('q-thresh-display').style.opacity = 1;
+  }
+  at.style.opacity = on ? 0.4 : 1; at.style.pointerEvents = on ? 'none' : 'auto';
+  document.getElementById('q-calib-profile-row').style.display = on ? 'block' : 'none';
+  if (on) loadCalibProfiles();
+}
+async function loadCalibProfiles() {
+  try {
+    const r = await window.pywebview.api.list_calibrations();
+    const sel = document.getElementById('q-calib-profile');
+    const cur = sel.value;
+    const opts = ['<option value="">Auto (match marker)</option>'];
+    (r.builtin || []).forEach(c => opts.push(`<option value="${esc(c.name)}">${esc(c.name)} · preset</option>`));
+    (r.saved || []).forEach(c => opts.push(`<option value="${esc(c.name)}">${esc(c.name)} · ${esc(c.marker)} (AUC ${(c.auc||0).toFixed(2)})</option>`));
+    sel.innerHTML = opts.join('');
+    sel.value = cur;
+  } catch(e){}
+}
+async function loadCalibIntoSelect(selId) {
+  try {
+    const r = await window.pywebview.api.list_calibrations();
+    const sel = document.getElementById(selId); if (!sel) return;
+    const cur = sel.value;
+    const opts = ['<option value="">Auto (match marker)</option>'];
+    (r.builtin || []).forEach(c => opts.push(`<option value="${esc(c.name)}">${esc(c.name)} · preset</option>`));
+    (r.saved || []).forEach(c => opts.push(`<option value="${esc(c.name)}">${esc(c.name)} · ${esc(c.marker)} (AUC ${(c.auc||0).toFixed(2)})</option>`));
+    sel.innerHTML = opts.join(''); sel.value = cur;
+  } catch(e){}
+}
+function spatialToggleMembrane() {
+  toggleEl('spatial-membrane-toggle');
+  const on = isOn('spatial-membrane-toggle');
+  document.getElementById('spatial-membrane-opts').style.display = on ? 'block' : 'none';
+  if (on) { loadCalibIntoSelect('spatial-calib-a'); loadCalibIntoSelect('spatial-calib-b'); }
+}
 function setToggle(id, on) {
   const el = document.getElementById(id);
   if (!el) return;
   if (on) el.classList.add('on'); else el.classList.remove('on');
+}
+function toggleTechnicalLog(id, btn) {
+  const el = document.getElementById(id), open = el.style.display === 'none';
+  el.style.display = open ? 'flex' : 'none';
+  btn.textContent = open ? 'Hide activity log' : 'Show activity log';
 }
 
 // ── Utilities ─────────────────────────────────────────────
@@ -923,6 +1362,157 @@ function setProgress(page, pct, label) {
   if (pctEl) pctEl.textContent  = pct + '%';
   if (lbEl && label) lbEl.textContent = label;
 }
+
+// ── Validation tab ────────────────────────────────────────
+let validationRunning = null;
+
+async function loadValidations() {
+  try {
+    const dd = await window.pywebview.api.get_validation_data_dir();
+    document.getElementById('val-datadir').textContent = dd.path || '(unset)';
+    const ds = await window.pywebview.api.get_dataset_status();
+    renderValidationDatasets(ds.datasets || []);
+    const lv = await window.pywebview.api.list_validations();
+    renderValidationCats(lv.categories || []);
+  } catch (e) { showToast('Validation load failed: ' + e); }
+}
+
+function renderValidationDatasets(datasets) {
+  const box = document.getElementById('validation-datasets');
+  if (!datasets.length) { box.innerHTML = '<div style="color:var(--text3)">No datasets registered.</div>'; return; }
+  box.innerHTML = datasets.map(d => {
+    const ok = d.available;
+    const dot = ok ? 'var(--green)' : 'var(--amber)';
+    const state = ok ? (d.state === 'ok' ? 'installed ✓ (checksum ok)' : 'installed') : 'missing';
+    const redist = d.redistributable ? '' : ' · restricted';
+    const action = ok ? '' :
+      `<button class="btn sm" style="margin-left:auto" onclick="showDatasetHelp('${d.name}')">Download…</button>`;
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">
+      <span style="width:8px;height:8px;border-radius:50%;background:${dot};flex:none"></span>
+      <b>${esc(d.title)}</b>
+      <span style="color:var(--text3)">${state}${redist} · ${esc(d.size_hint||'')}</span>
+      ${action}</div>`;
+  }).join('');
+}
+
+async function showDatasetHelp(name) {
+  const i = await window.pywebview.api.dataset_download_info(name);
+  const msg = `${i.title}\n\nSource: ${i.source_url}\nLicense: ${i.license}\n` +
+    `${i.redistributable ? '' : 'RESTRICTED — obtain via the source (login may be required).\n'}` +
+    `\nPlace the dataset under:\n${i.place_under}\n\nThen click Refresh.`;
+  alert(msg);
+}
+
+function renderValidationCats(cats) {
+  const wrap = document.getElementById('validation-cats');
+  wrap.innerHTML = cats.map(c => `
+    <div style="margin:22px 0 8px;font-size:13px;font-weight:600;letter-spacing:-.01em">${esc(c.title)}</div>
+    ${c.validations.map(validationCard).join('')}
+  `).join('');
+}
+
+function statusBadge(v) {
+  const last = v.last;
+  if (!last) return `<span style="color:var(--text3);font-size:11px">not run</span>`;
+  const col = last.status === 'PASS' ? 'var(--green)' :
+              last.status === 'FAIL' ? 'var(--red)' :
+              last.status === 'SKIP' ? 'var(--amber)' : 'var(--text3)';
+  return `<span style="color:${col};font-weight:600;font-size:11px">${last.status}</span>` +
+         `<span style="color:var(--text3);font-size:10px;margin-left:6px">${last.timestamp_utc||''}</span>`;
+}
+
+function validationCard(v) {
+  const pf = v.preflight || {};
+  const blocked = !pf.ok;
+  const dsChips = (v.datasets||[]).length
+    ? (v.datasets.map(d => `<span class="vchip">${esc(d)}</span>`).join(''))
+    : `<span style="color:var(--text3)">No image dataset required — purely statistical.</span>`;
+  const deps = (v.external_deps||[]).length
+    ? `<span style="color:var(--text3);font-size:11px">needs: ${v.external_deps.join(', ')}</span>` : '';
+  const metrics = (v.last && v.last.metrics && Object.keys(v.last.metrics).length)
+    ? `<div style="font-size:11px;color:var(--text2);margin-top:4px">last metrics: ${esc(JSON.stringify(v.last.metrics))}</div>` : '';
+  const runBtn = blocked
+    ? `<button class="btn sm" onclick="runValidation('${v.id}', true)" title="${esc(pf.reason||'')}">Run anyway</button>`
+    : `<button class="btn sm" onclick="runValidation('${v.id}')">Run validation</button>`;
+  const preflightNote = blocked
+    ? `<div style="font-size:11px;color:var(--amber);margin-top:6px">⚠ ${esc(pf.reason||'preflight not satisfied')}</div>` : '';
+  return `<div class="card vcard" id="vcard-${v.id}" style="margin-bottom:10px">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="card-title" style="margin:0">${esc(v.title)}</div>
+      <span class="vtier">${v.runtime_tier}</span>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:10px" id="vstat-${v.id}">${statusBadge(v)}</div>
+    </div>
+    <div style="font-size:12px;color:var(--text);margin-top:6px"><b>Claim.</b> ${esc(v.claim)}</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:4px"><b>Purpose.</b> ${esc(v.purpose)}</div>
+    <div style="font-size:12px;color:var(--text2);margin-top:4px"><b>Why it matters.</b> ${esc(v.why)}</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+      <b style="color:var(--text3)">Datasets:</b> ${dsChips} ${deps}</div>
+    <details style="margin-top:6px"><summary style="font-size:11px;color:var(--text3);cursor:pointer">assumptions · limitations · how to read</summary>
+      <div style="font-size:11px;color:var(--text2);margin-top:6px;line-height:1.5">
+        <div><b>Assumptions.</b> ${esc(v.assumptions)}</div>
+        <div><b>Limitations.</b> ${esc(v.limitations)}</div>
+        <div><b>Interpretation.</b> ${esc(v.interpretation)}</div>
+      </div></details>
+    <div style="font-size:11px;color:var(--text2);margin-top:8px"><b style="color:var(--text3)">Expected:</b> ${esc(v.expected)}</div>
+    ${metrics}${preflightNote}
+    <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
+      ${runBtn}
+      <button class="btn sm ghost" onclick="toggleVLog('${v.id}')">Log</button>
+      <button class="btn sm ghost" onclick="openValidationReport('${v.id}')">Open report</button>
+    </div>
+    <div class="vlog" id="vlog-${v.id}" style="display:none"></div>
+  </div>`;
+}
+
+function toggleVLog(id) {
+  const box = document.getElementById('vlog-' + id);
+  box.style.display = box.style.display === 'none' ? 'block' : 'none';
+}
+
+async function runValidation(id, force=false) {
+  if (validationRunning) { showToast('A validation is already running'); return; }
+  validationRunning = id;
+  const box = document.getElementById('vlog-' + id);
+  box.innerHTML = ''; box.style.display = 'block';
+  document.getElementById('vstat-' + id).innerHTML =
+    `<span style="color:var(--cyan);font-size:11px">running…</span>`;
+  appendLog('vlog-' + id, 'Starting ' + id + '…', 'info');
+  await window.pywebview.api.run_validation(id, force);
+}
+
+async function openValidationReport(id) {
+  const r = await window.pywebview.api.get_validation_report(id);
+  if (r.ok && r.dir) await window.pywebview.api.open_folder(r.dir);
+  else showToast('No report yet — run the validation first');
+}
+
+async function changeValidationDataDir() {
+  const folder = await window.pywebview.api.pick_folder();
+  if (!folder) return;
+  await window.pywebview.api.set_validation_data_dir(folder);
+  showToast('Dataset root updated ✓');
+  loadValidations();
+}
+
+window.onValidationEvent = function(event) {
+  const { type, data } = event;
+  if (!data || !data.id) return;
+  if (type === 'log') {
+    appendLog('vlog-' + data.id, data.msg, data.level || 'normal');
+  } else if (type === 'done') {
+    validationRunning = null;
+    const rep = data.report || {};
+    const col = rep.status === 'PASS' ? 'var(--green)' :
+                rep.status === 'FAIL' ? 'var(--red)' :
+                rep.status === 'SKIP' ? 'var(--amber)' : 'var(--red)';
+    document.getElementById('vstat-' + data.id).innerHTML =
+      `<span style="color:${col};font-weight:600;font-size:11px">${rep.status||'ERROR'}</span>` +
+      (rep.duration_s ? `<span style="color:var(--text3);font-size:10px;margin-left:6px">${rep.duration_s}s</span>` : '');
+    if (rep.error) appendLog('vlog-' + data.id, 'ERROR: ' + rep.error, 'error');
+    if (rep.reason) appendLog('vlog-' + data.id, rep.reason, 'warn');
+    appendLog('vlog-' + data.id, 'Finished: ' + (rep.status||'ERROR'), rep.status === 'PASS' ? 'ok' : 'warn');
+  }
+};
 
 function copyLog(id) {
   const box = document.getElementById(id);
@@ -977,13 +1567,14 @@ async function loadSetup() {
   // Pre-fill run defaults from setup
   document.getElementById('q-px-x').value = s.pixel_size_x || 0.5;
   document.getElementById('q-px-y').value = s.pixel_size_y || 0.5;
-  document.getElementById('c-px').value   = s.pixel_size_x || 0.5;
+  const spx = document.getElementById('spatial-session-px-val');
+  if (spx) spx.value = s.pixel_size_x || 0.5;
 
   const home = s._home || '~';
   if (!document.getElementById('q-output').value)
     document.getElementById('q-output').value = home + '/Desktop/ihc_results';
-  if (!document.getElementById('c-output').value)
-    document.getElementById('c-output').value = home + '/Desktop/ihc_coloc_results';
+  const sOut = document.getElementById('spatial-output');
+  if (sOut && !sOut.value) sOut.value = home + '/Desktop/ihc_spatial_results';
 }
 
 async function saveSetup() {
@@ -1003,11 +1594,210 @@ async function saveSetup() {
   showToast('Settings saved ✓');
 }
 
+// ── CALIBRATE (native cutoff fitting) ─────────────────────
+let calib = { marker:'', images:[], cur:0,
+              data:null, state:[], views:[], view:1, sc:1, tx:0, ty:0, polys:{}, fit:null };
+
+function calibDefaultPx(){ return parseFloat(document.getElementById('calib-px').value) || 0.5; }
+
+async function calibAddImage() {
+  const f = await window.pywebview.api.pick_file();
+  if (!f) return;
+  if (calib.images.some(im => im.path === f)) { showToast('That image is already added'); return; }
+  calib.images.push({ path:f, px:calibDefaultPx(), data:null, state:[] });
+  calibRenderImageList();
+}
+function calibRemoveImage(i){ calib.images.splice(i,1); calibRenderImageList(); }
+function calibRenderImageList() {
+  const box = document.getElementById('calib-image-list');
+  if (!calib.images.length) {
+    box.innerHTML = '<div style="font-size:12px;color:var(--text3)">No images yet — add at least one representative stained slide.</div>';
+    return;
+  }
+  box.innerHTML = calib.images.map((im,i)=>`
+    <div style="display:flex;gap:8px;align-items:center">
+      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(im.path)}">${esc(im.path.split('/').pop())}${im.data?' ✓':''}</span>
+      <label style="font-size:11px;color:var(--text3)">µm/px</label>
+      <input type="number" value="${im.px}" step="0.01" min="0.01" style="width:78px"
+             onchange="calib.images[${i}].px=parseFloat(this.value)||calib.images[${i}].px">
+      <button class="btn sm" onclick="calibRemoveImage(${i})">Remove</button>
+    </div>`).join('');
+}
+
+function calibShow(which) {
+  document.getElementById('calib-config').style.display  = which==='config'  ? 'block':'none';
+  document.getElementById('calib-label').style.display   = which==='label'   ? 'block':'none';
+  document.getElementById('calib-results').style.display = which==='results' ? 'block':'none';
+}
+async function calibSegment() {
+  const marker = document.getElementById('calib-marker').value.trim();
+  if (!marker) { showToast('Enter the marker name'); return; }
+  if (!calib.images.length) { showToast('Add at least one stained image'); return; }
+  calib.marker = marker;
+  const btn = document.getElementById('calib-seg-btn');
+  btn.disabled = true;
+  for (let i=0;i<calib.images.length;i++) {
+    const im = calib.images[i];
+    if (im.data) continue;                                  // already segmented
+    btn.textContent = `Segmenting ${i+1}/${calib.images.length}… (InstanSeg, ~1 min each)`;
+    const r = await window.pywebview.api.calibration_prepare(im.path, im.px);
+    if (!r || !r.ok) {
+      btn.disabled=false; btn.textContent='Segment & label →';
+      showToast(`Segmentation failed on ${im.path.split('/').pop()}: ${(r&&r.msg)||''}`); return;
+    }
+    im.data = r; im.state = new Array(r.cells.length).fill(0);
+  }
+  btn.disabled=false; btn.textContent='Segment & label →';
+  calib.cur = 0;
+  calibShow('label');            // make the stage visible FIRST so it has a size
+  requestAnimationFrame(() => calibBuild());
+}
+function calibBuild() {
+  const image = calib.images[calib.cur];
+  calib.data = image.data; calib.state = image.state;      // current image is live
+  const d = calib.data, ov = document.getElementById('calib-ov'), im = document.getElementById('calib-im');
+  im.width = d.w; im.height = d.h;
+  ov.setAttribute('width', d.w); ov.setAttribute('height', d.h); ov.setAttribute('viewBox','0 0 '+d.w+' '+d.h);
+  const frag = document.createDocumentFragment(); calib.polys = {};
+  d.cells.forEach(c => {
+    const p = document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    p.setAttribute('points', c.points.map(pt=>pt[0]+','+pt[1]).join(' '));
+    const s = calib.state[c.i]||0;
+    p.setAttribute('stroke', s===1?'#ff3b3b':s===2?'#2f8dff':'#888');
+    p.setAttribute('stroke-opacity', s?'1':'.35'); p.setAttribute('stroke-width', s?'2':'1');
+    p.setAttribute('fill', s===1?'rgba(255,60,60,.28)':s===2?'rgba(50,140,255,.25)':'transparent');
+    p.setAttribute('vector-effect','non-scaling-stroke'); p.style.cursor='pointer';
+    p.addEventListener('click', e=>{e.preventDefault(); calibSet(c.i,1);});
+    p.addEventListener('contextmenu', e=>{e.preventDefault(); calibSet(c.i,2);});
+    frag.appendChild(p); calib.polys[c.i]=p;
+  });
+  ov.innerHTML=''; ov.appendChild(frag);
+  calibRenderImgNav(); calibUpdateCounts();
+  calib.views = Object.keys(d.views); calib.view = 1; calibSetView();
+  calibFitView();
+}
+function calibRenderImgNav() {
+  const nav = document.getElementById('calib-imgnav');
+  nav.innerHTML = calib.images.length <= 1 ? '' :
+    `<button class="btn sm" onclick="calibGoImage(${calib.cur-1})" ${calib.cur===0?'disabled':''}>◀</button>`
+    + `<span style="color:#fff">Image ${calib.cur+1}/${calib.images.length}</span>`
+    + `<button class="btn sm" onclick="calibGoImage(${calib.cur+1})" ${calib.cur===calib.images.length-1?'disabled':''}>▶</button>`;
+  document.getElementById('calib-name').textContent =
+    calib.marker + ' — ' + calib.images[calib.cur].path.split('/').pop();
+}
+function calibGoImage(i){ if(i<0||i>=calib.images.length)return; calib.cur=i; calibBuild(); }
+function calibSetView(){ const v=calib.views[calib.view];
+  document.getElementById('calib-im').src = calib.data.views[v];
+  document.getElementById('calib-viewbtn').textContent = 'View: '+v; }
+function calibCycleView(){ calib.view=(calib.view+1)%calib.views.length; calibSetView(); }
+function calibCounts(){ let cp=0,cn=0,tp=0,tn=0;
+  calib.images.forEach((im,k)=>{ (im.state||[]).forEach(x=>{
+    if(x===1){tp++; if(k===calib.cur)cp++;} else if(x===2){tn++; if(k===calib.cur)cn++;} }); });
+  return {cp,cn,tp,tn}; }
+function calibUpdateCounts(){ const c=calibCounts();
+  document.getElementById('calib-np').textContent=c.cp;
+  document.getElementById('calib-nn').textContent=c.cn;
+  document.getElementById('calib-pooled').textContent =
+    calib.images.length>1 ? `· pooled ${c.tp}+ / ${c.tn}−` : ''; }
+function calibSet(i,v){ calib.state[i] = (calib.state[i]===v)?0:v; const p=calib.polys[i];
+  const s=calib.state[i];
+  p.setAttribute('stroke', s===1?'#ff3b3b':s===2?'#2f8dff':'#888');
+  p.setAttribute('stroke-opacity', s?'1':'.35'); p.setAttribute('stroke-width', s?'2':'1');
+  p.setAttribute('fill', s===1?'rgba(255,60,60,.28)':s===2?'rgba(50,140,255,.25)':'transparent');
+  calibUpdateCounts(); }
+function calibApply(){ const w=document.getElementById('calib-world');
+  w.style.transform='translate('+calib.tx+'px,'+calib.ty+'px) scale('+calib.sc+')'; }
+function calibFitView(){ const st=document.getElementById('calib-stage'); const r=st.getBoundingClientRect();
+  if (!r.width || !r.height) { setTimeout(calibFitView, 60); return; }   // stage not laid out yet
+  calib.sc=Math.min(r.width/calib.data.w, r.height/calib.data.h)*0.97;
+  calib.tx=(r.width-calib.data.w*calib.sc)/2; calib.ty=(r.height-calib.data.h*calib.sc)/2; calibApply(); }
+function calibClampF(f){ const M=10,m=0.02; if(calib.sc*f>M) return M/calib.sc; if(calib.sc*f<m) return m/calib.sc; return f; }
+function calibZoom(f){ f=calibClampF(f); const st=document.getElementById('calib-stage'); const r=st.getBoundingClientRect();
+  const cx=r.width/2,cy=r.height/2; calib.tx=cx-(cx-calib.tx)*f; calib.ty=cy-(cy-calib.ty)*f; calib.sc*=f; calibApply(); }
+(function(){ const s=document.getElementById('calib-stage'); if(!s) return; let drag=false,px,py,moved=0;
+  s.addEventListener('wheel',e=>{e.preventDefault(); let f=calibClampF(e.deltaY<0?1.12:0.89);
+    const r=s.getBoundingClientRect(); const mx=e.clientX-r.left,my=e.clientY-r.top;
+    calib.tx=mx-(mx-calib.tx)*f; calib.ty=my-(my-calib.ty)*f; calib.sc*=f; calibApply();},{passive:false});
+  s.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;});
+  s.addEventListener('pointermove',e=>{if(!drag)return; const dx=e.clientX-px,dy=e.clientY-py; moved+=Math.abs(dx)+Math.abs(dy);
+    calib.tx+=dx;calib.ty+=dy;px=e.clientX;py=e.clientY;calibApply();});
+  addEventListener('pointerup',()=>{drag=false;});
+  document.getElementById('calib-ov').addEventListener('click',e=>{if(moved>4)e.stopImmediatePropagation();},true);
+})();
+async function calibFit() {
+  const items = []; let tp=0, tn=0;
+  calib.images.forEach(im => {
+    if (!im.data) return;
+    const pos=[], neg=[];
+    im.state.forEach((s,i)=>{ if(s===1)pos.push(i); else if(s===2)neg.push(i); });
+    tp+=pos.length; tn+=neg.length;
+    items.push({ image_path:im.path, geojson_path:im.data.geojson,
+                 pixel_size:im.px, pos_idx:pos, neg_idx:neg });
+  });
+  if (tp<8 || tn<8) { showToast(`Need ~8+ of each pooled across images (have ${tp} pos / ${tn} neg)`); return; }
+  showToast('Fitting cutoffs…');
+  const r = await window.pywebview.api.calibration_fit_multi(items);
+  if (!r || !r.ok) { showToast('Fit failed: ' + (r&&r.msg||'')); return; }
+  calib.fit = r;
+  const held  = r.loo_auc != null;                          // held-out numbers available?
+  const auc   = held ? r.loo_auc : r.auc;
+  const f1    = held ? r.loo_f1  : r.f1;
+  document.getElementById('calib-metrics').innerHTML = `
+    <div class="metric cyan"><div class="metric-label">${held?'Held-out separability (leave-one-cell-out AUC)':'Separability (AUC · in-sample)'}</div>
+      <div class="metric-value cyan">${auc.toFixed(2)}</div>
+      <div class="metric-sub">${held?'LOO ':''}F1 ${f1.toFixed(2)} · ${r.n_pos}+/${r.n_neg}− · ${r.n_images} image${r.n_images===1?'':'s'}</div></div>
+    <div class="metric green"><div class="metric-label">Fitted cutoffs</div>
+      <div class="metric-value green" style="font-size:20px">${r.membrane_pix_thr.toFixed(3)} / ${r.membrane_frac_min.toFixed(2)}</div>
+      <div class="metric-sub">pixel thr / min ring fraction${held?` · in-sample AUC ${r.auc.toFixed(2)}`:''}</div></div>`;
+  document.getElementById('calib-perimage').innerHTML = (r.per_image||[])
+    .map(p=>`${esc(p.image)}: <b style="color:#ff5a5a">${p.n_pos}+</b> / <b style="color:#4aa3ff">${p.n_neg}−</b>`).join(' &nbsp;·&nbsp; ');
+  const q = held ? 'held-out ' : '';
+  document.getElementById('calib-verdict').innerHTML = r.callable
+    ? `<div class="info-box" style="border-color:#2e7d32">✓ This marker is callable (${q}AUC ${auc.toFixed(2)}). Save the cutoffs and Quant will use them for <b>${esc(calib.marker)}</b> in membrane mode.</div>`
+    : `<div class="info-box amber">⚠ Low ${q}separability (AUC ${auc.toFixed(2)}) — positives and negatives don't separate on unseen cells. The staining may be too faint to call, or the labels need review. Saving is allowed but treat results as unverified.</div>`;
+  calibShow('results');
+}
+async function calibSave() {
+  if (!calib.fit) return;
+  const name = prompt('Name this calibration (so you can switch between them in Quant):',
+                      `${calib.marker} — ${new Date().toLocaleDateString()}`);
+  if (!name) return;
+  const btn=document.getElementById('calib-save-btn'); btn.disabled=true;
+  const r = await window.pywebview.api.save_calibration(name, calib.marker, calib.fit);
+  btn.disabled=false;
+  if (r && r.ok) { showToast(`Saved "${name}" ✓ — pick it under Cutoff profile in Quant`); calibShow('config'); }
+  else showToast('Save failed');
+}
+function calibRelabel(){ calibShow('label'); requestAnimationFrame(()=>calibBuild()); }
+function calibBack(){ calibShow('config'); calibRenderImageList(); }
+calibRenderImageList();   // initial empty-state render
+
 // ── QUANTIFICATION ────────────────────────────────────────
 
 function onQuantPxChange() {
   const v = document.querySelector('input[name="q-px"]:checked')?.value || 'global';
   document.getElementById('q-px-manual').style.display = v === 'manual' ? 'block' : 'none';
+  document.getElementById('q-px-scale').style.display = v === 'scale' ? 'block' : 'none';
+}
+
+function quantStainChanged() {
+  const stain = document.getElementById('q-stain').value;
+  document.getElementById('q-stain-other').style.display = stain === 'Other' ? 'block' : 'none';
+  if (stain === 'CD8') document.getElementById('q-thresh').value = 20;
+  if (stain === 'TIM-3') document.getElementById('q-thresh').value = 10;
+  document.getElementById('q-thresh-display').textContent = (document.getElementById('q-thresh').value/100).toFixed(2);
+}
+
+async function quantPickScaleImage() {
+  const p = await window.pywebview.api.pick_file();
+  if (!p) return;
+  quantScaleImage.path = p;
+  const r = await window.pywebview.api.extract_pixel_size(p);
+  const el = document.getElementById('q-px-scale-result');
+  if (r.status === 'ok') {
+    quantScaleImage.px = r.pixel_size;
+    el.textContent = `Detected ${r.pixel_size} µm/px from ${r.bar_length_px}px scale bar`;
+  } else { quantScaleImage.px = null; el.textContent = 'Scale bar not detected'; }
 }
 
 async function onQuantObjChange() {
@@ -1020,17 +1810,133 @@ async function onQuantObjChange() {
 
 async function onQuantFolderPicked(folder) {
   const files = await window.pywebview.api.list_images(folder);
-  const sel = document.getElementById('q-ov-file');
-  sel.innerHTML = '<option value="">— select image —</option>';
-  files.forEach(f => {
-    const opt = document.createElement('option');
-    opt.value = f; opt.textContent = f;
-    sel.appendChild(opt);
-  });
+  setQuantOverrideOptions(files);
   const el = document.getElementById('q-image-count');
   el.textContent = files.length > 0
     ? `${files.length} image(s) found in folder`
     : 'No images found in this folder';
+  quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
+  renderQuantScaleMatches();
+  if (isQuantScaleMatchingOn()) await previewQuantScaleMatches();
+}
+
+function setQuantOverrideOptions(files) {
+  const sel = document.getElementById('q-ov-file');
+  sel.innerHTML = '<option value="">— select image —</option>';
+  (files || []).forEach(f => {
+    const name = typeof f === 'string' ? f : f.filename;
+    if (!name) return;
+    const opt = document.createElement('option');
+    opt.value = name; opt.textContent = name;
+    sel.appendChild(opt);
+  });
+}
+
+function isQuantScaleMatchingOn() {
+  const el = document.getElementById('q-scale-match-toggle');
+  return !!el && el.classList.contains('on');
+}
+
+async function toggleQuantScaleMatching() {
+  toggleEl('q-scale-match-toggle');
+  const on = isQuantScaleMatchingOn();
+  document.getElementById('q-scale-match-tools').style.display = on ? 'block' : 'none';
+  if (!on) {
+    quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
+    renderQuantScaleMatches();
+    const folder = document.getElementById('q-input').value.trim();
+    if (folder) await onQuantFolderPicked(folder);
+    return;
+  }
+  const folder = document.getElementById('q-input').value.trim();
+  if (folder) await previewQuantScaleMatches();
+  else renderQuantScaleMatches();
+}
+
+function quantScaleFallbackItems() {
+  const unmatched = (quantScaleMatches.unmatched_images || []).map(x => ({
+    filename: x.filename, reason: 'no scale image matched'
+  }));
+  const unreadable = (quantScaleMatches.pairs || [])
+    .filter(p => !p.pixel_size)
+    .map(p => ({ filename: p.filename, reason: p.error || 'scale bar not detected' }));
+  return unmatched.concat(unreadable);
+}
+
+function renderQuantScaleMatches() {
+  const el = document.getElementById('q-scale-match-preview');
+  if (!el) return;
+  if (!isQuantScaleMatchingOn()) { el.innerHTML = ''; return; }
+  if (!quantScaleMatches.folder) {
+    el.innerHTML = '<div style="color:var(--text3)">Preview the folder to check scale-image matches before running.</div>';
+    return;
+  }
+
+  const pairs = quantScaleMatches.pairs || [];
+  const fallback = quantScaleFallbackItems();
+  const pairRows = pairs.length ? pairs.map(p => `
+    <tr>
+      <td>${esc(p.filename)}</td>
+      <td>${esc(p.scale_filename || '—')}</td>
+      <td class="${p.pixel_size ? 'green' : 'amber'}">${p.pixel_size ? `${p.pixel_size} µm/px` : esc(p.error || 'not readable')}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="3" class="muted">No scale-image pairs found</td></tr>';
+  const fallbackRows = fallback.length ? fallback.map((item, i) => {
+    const manual = quantOverrides[item.filename];
+    const status = manual ? `Manual override: ${manual} µm/px` : 'Global pixel size';
+    return `
+      <tr>
+        <td>${esc(item.filename)}</td>
+        <td class="muted">${esc(item.reason)}</td>
+        <td>
+          <input type="number" id="q-scale-manual-${i}" placeholder="µm/px" step="0.01" min="0.01" style="width:78px">
+          <button class="btn sm" onclick="quantApplyScaleManual(${i})">Manual</button>
+          <button class="btn sm" onclick="quantUseGlobalForScale(${i})">Use global</button>
+          <span class="muted" style="margin-left:6px">${esc(status)}</span>
+        </td>
+      </tr>
+    `;
+  }).join('') : '<tr><td colspan="3" class="muted">All analysis images have matched scale values.</td></tr>';
+  const unmatchedScales = quantScaleMatches.unmatched_scale_images || [];
+  el.innerHTML = `
+    <div class="info-box" style="margin-bottom:8px">
+      ${pairs.length} matched scale pair(s), ${fallback.length} image(s) using fallback, ${unmatchedScales.length} unused scale image(s).
+    </div>
+    <table><thead><tr><th>Analysis image</th><th>Scale image</th><th>Pixel size</th></tr></thead><tbody>${pairRows}</tbody></table>
+    <div class="section-label" style="margin-top:12px">Fallbacks</div>
+    <table><thead><tr><th>Analysis image</th><th>Reason</th><th>Action</th></tr></thead><tbody>${fallbackRows}</tbody></table>
+  `;
+}
+
+async function previewQuantScaleMatches() {
+  const folder = document.getElementById('q-input').value.trim();
+  if (!folder) { showToast('Select an input folder first'); return false; }
+  const res = await window.pywebview.api.preview_quant_scale_matches(folder);
+  if (res.status !== 'ok') {
+    showToast('Scale match preview failed: ' + (res.error || 'unknown error'));
+    return false;
+  }
+  quantScaleMatches = res;
+  setQuantOverrideOptions((res.analysis_images || []).map(x => x.filename));
+  renderQuantScaleMatches();
+  return true;
+}
+
+function quantApplyScaleManual(i) {
+  const item = quantScaleFallbackItems()[i];
+  const px = parseFloat(document.getElementById(`q-scale-manual-${i}`)?.value);
+  if (!item || !(px > 0)) { showToast('Enter a valid pixel size'); return; }
+  quantOverrides[item.filename] = px;
+  renderQuantOverrides();
+  renderQuantScaleMatches();
+}
+
+function quantUseGlobalForScale(i) {
+  const item = quantScaleFallbackItems()[i];
+  if (!item) return;
+  delete quantOverrides[item.filename];
+  renderQuantOverrides();
+  renderQuantScaleMatches();
 }
 
 function renderQuantOverrides() {
@@ -1064,176 +1970,155 @@ function removeQuantOverride(fname) {
   renderQuantOverrides();
 }
 
+let quantBiomarkers = [];   // [{name, threshold}]
+
+function renderQuantBiomarkers() {
+  const el = document.getElementById('q-biomarkers-list');
+  if (quantBiomarkers.length === 0) {
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:2px 0">No biomarkers defined — all images use the global DAB threshold (nuclear)</div>';
+  } else {
+    el.innerHTML = quantBiomarkers.map((b,i) => `
+      <div class="override-item">
+        <span class="override-name">${esc(b.name)}</span>
+        <span class="badge amber">${b.threshold} OD</span>
+        <button class="btn sm" onclick="removeQuantBiomarker(${i})">Remove</button>
+      </div>
+    `).join('');
+  }
+}
+
+function addQuantBiomarker() {
+  const name = document.getElementById('q-bm-name').value.trim();
+  const thr  = parseFloat(document.getElementById('q-bm-thr').value);
+  if (!name || isNaN(thr)) { showToast('Enter a biomarker name and DAB threshold'); return; }
+  quantBiomarkers.push({ name, threshold: thr });
+  document.getElementById('q-bm-name').value = '';
+  document.getElementById('q-bm-thr').value  = '';
+  renderQuantBiomarkers();
+}
+
+function removeQuantBiomarker(i) {
+  quantBiomarkers.splice(i, 1);
+  renderQuantBiomarkers();
+}
+
+function addQuantBiomarkerPreset(which) {
+  if (which === 'CD8')  quantBiomarkers.push({ name: 'CD8',   threshold: 0.20 });
+  else                  quantBiomarkers.push({ name: 'TIM-3', threshold: 0.10 });
+  renderQuantBiomarkers();
+}
+
+let quantMode = 'single';
+function quantSetMode(m) {
+  quantMode = m;
+  document.getElementById('q-single-config').style.display = m === 'single' ? 'block' : 'none';
+  document.getElementById('q-batch-config').style.display  = m === 'batch'  ? 'block' : 'none';
+  document.getElementById('q-overrides-card').style.display = m === 'batch' ? 'block' : 'none';
+  document.getElementById('q-biomarkers-card').style.display = m === 'batch' ? 'block' : 'none';
+  document.getElementById('q-mode-single-btn').classList.toggle('active', m === 'single');
+  document.getElementById('q-mode-batch-btn').classList.toggle('active', m === 'batch');
+}
+async function quantPickSingleImage() {
+  const f = await window.pywebview.api.pick_file();
+  if (f) document.getElementById('q-single-image').value = f;
+}
+
 async function runQuantAnalysis() {
-  const input = document.getElementById('q-input').value.trim();
-  if (!input) { showToast('Please select an input folder first'); return; }
+  let input, image_whitelist = null;
+  if (quantMode === 'single') {
+    const f = document.getElementById('q-single-image').value.trim();
+    if (!f) { showToast('Please select an image file first'); return; }
+    const parts = f.split('/');
+    image_whitelist = [parts.pop()];
+    input = parts.join('/');
+  } else {
+    input = document.getElementById('q-input').value.trim();
+    if (!input) { showToast('Please select an input folder first'); return; }
+  }
+
+  let matchedScaleOverrides = {};
+  if (quantMode === 'batch' && isQuantScaleMatchingOn()) {
+    if (quantScaleMatches.folder !== input) {
+      const ok = await previewQuantScaleMatches();
+      if (!ok) return;
+    }
+    image_whitelist = (quantScaleMatches.analysis_images || []).map(x => x.filename).filter(Boolean);
+    if (image_whitelist.length === 0) {
+      showToast('No analysis images found after excluding scale images');
+      return;
+    }
+    (quantScaleMatches.pairs || []).forEach(p => {
+      if (p.filename && p.pixel_size) matchedScaleOverrides[p.filename] = p.pixel_size;
+    });
+  }
 
   const pxMode = document.querySelector('input[name="q-px"]:checked')?.value || 'global';
+  const stainChoice = document.getElementById('q-stain').value;
+  const stainName = stainChoice === 'Other'
+    ? document.getElementById('q-stain-other').value.trim() : stainChoice;
+  if (!stainName) { showToast('Select or enter the stain type'); return; }
+  if (pxMode === 'scale' && !quantScaleImage.px) { showToast('Select a readable scale-bar image'); return; }
   const setup  = await window.pywebview.api.get_setup();
-  const px_x = pxMode === 'manual'
+  const px_x = pxMode === 'scale' ? quantScaleImage.px : pxMode === 'manual'
     ? (parseFloat(document.getElementById('q-px-x').value) || 0.5)
     : (setup.pixel_size_x || 0.5);
 
   const settings = {
+    analysis_mode:         quantMode,
     input_dir:             input,
     output_dir:            document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results',
     dashboard_dir:         (document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results') + '/output_results',
     default_pixel_size:    px_x,
     pixel_size_mode:       pxMode,
     dab_threshold:         document.getElementById('q-thresh').value / 100,
+    adaptive_threshold:    isOn('q-adaptive-toggle'),
+    preprocess_normalize:  isOn('q-normalize-toggle'),
     generate_overlays:     isOn('q-overlay-toggle'),
     cleanup_intermediates: isOn('q-cleanup-toggle'),
-    pixel_overrides:       quantOverrides,
+    pixel_overrides:       quantMode === 'batch' ? { ...matchedScaleOverrides, ...quantOverrides } : {},
     objective:             document.getElementById('q-obj')?.value || '10x',
     _pixel_size_from_ui:   true,
+    stain_name:            stainName,
+    scale_image:           pxMode === 'scale' ? quantScaleImage.path : null,
+    // Membranous markers: measure DAB in the Voronoi-clipped cytoplasmic ring.
+    // The backend resolves completeness cutoffs from the chosen calibration profile
+    // (or the newest one matching the marker; CRC-ICM TIM-3 is preloaded).
+    use_cytoplasm_measurement: isOn('q-membrane-toggle'),
+    calibration_name:          isOn('q-membrane-toggle') ? (document.getElementById('q-calib-profile')?.value || '') : '',
   };
+
+  // Biomarkers supply per-stain DAB thresholds matched by filename token.
+  if (quantBiomarkers.length) {
+    settings.stain_thresholds      = Object.fromEntries(quantBiomarkers.map(b => [b.name, b.threshold]));
+  }
+  if (image_whitelist) settings.image_whitelist = image_whitelist;
+
+  const preflight = await window.pywebview.api.preflight_check('quant');
+  if (!preflight.ok) {
+    const failed = preflight.checks.filter(x => !x.ok).map(x => x.name).join(', ');
+    showToast('Preflight failed: ' + failed + '. Check Settings.'); return;
+  }
 
   activeMode = 'quant';
   showView('quant', 'running');
   document.getElementById('quant-log').innerHTML = '';
   setProgress('quant', 0, 'Starting pipeline...');
   appendLog('quant-log', `Analysis started · ${input}`, 'info');
-  appendLog('quant-log', `Threshold: ${settings.dab_threshold.toFixed(2)} OD · Pixel size: ${px_x} µm/px`, 'normal');
+  const thrTxt = settings.adaptive_threshold ? 'adaptive (per-image Otsu)' : `${settings.dab_threshold.toFixed(2)} OD`;
+  appendLog('quant-log', `Threshold: ${thrTxt} · Pixel size: ${px_x} µm/px${settings.preprocess_normalize ? ' · stain-normalized' : ''}${settings.use_cytoplasm_measurement ? ' · membrane ring' : ''}`, 'normal');
 
-  await window.pywebview.api.run_pipeline(settings);
-}
-
-// ── CO-LOCALIZATION ───────────────────────────────────────
-
-function setColocMode(mode) {
-  colocMode = mode;
-  document.getElementById('coloc-two-inputs').style.display   = mode === 'two_folder' ? 'block' : 'none';
-  document.getElementById('coloc-single-input').style.display = mode === 'single_folder' ? 'block' : 'none';
-
-  const hintEl = document.getElementById('coloc-mode-hint');
-  hintEl.textContent = mode === 'two_folder'
-    ? 'Provide separate folders for each stain. Files are matched by normalized filename — stain token stripped, samples paired by remaining name.'
-    : 'Provide one folder containing both stains. Files are auto-grouped by the stain token found in each filename (e.g. "cd8", "tim3").';
-
-  document.getElementById('mode-two-btn').classList.toggle('active', mode === 'two_folder');
-  document.getElementById('mode-single-btn').classList.toggle('active', mode === 'single_folder');
-
-  // Reset pairs when mode changes
-  colocPairs = [];
-  document.getElementById('coloc-pairs-card').style.display = 'none';
-  document.getElementById('coloc-run-btn').disabled = true;
-}
-
-async function detectPairs() {
-  const btn = document.getElementById('detect-pairs-btn');
-  btn.disabled = true;
-  btn.innerHTML = '<span class="spinner amber"></span> Detecting...';
-
-  let folder_a = '', folder_b = null;
-  if (colocMode === 'two_folder') {
-    folder_a = document.getElementById('c-folder-a').value.trim();
-    folder_b = document.getElementById('c-folder-b').value.trim();
-    if (!folder_a || !folder_b) {
-      showToast('Please select both folders');
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Detect Pairs`;
-      return;
-    }
-  } else {
-    folder_a = document.getElementById('c-folder-single').value.trim();
-    if (!folder_a) {
-      showToast('Please select a folder');
-      btn.disabled = false;
-      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Detect Pairs`;
-      return;
-    }
+  const started = await window.pywebview.api.run_pipeline(settings);
+  if (started && started.ok === false) {
+    appendLog('quant-log', 'Pipeline failed: ' + (started.msg || 'could not start'), 'error');
+    showToast('Pipeline failed');
+    showView('quant', 'config');
   }
-
-  const result = await window.pywebview.api.preview_pairs(colocMode, folder_a, folder_b || null);
-
-  btn.disabled = false;
-  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Detect Pairs`;
-
-  if (!result.ok) { showToast('Error: ' + result.error); return; }
-
-  colocPairs = result.pairs || [];
-  renderPairPreview(result);
-  document.getElementById('coloc-pairs-card').style.display = 'block';
-  document.getElementById('coloc-run-btn').disabled = colocPairs.length === 0;
-
-  showToast(colocPairs.length > 0 ? `${colocPairs.length} pair(s) ready` : 'No pairs found');
-}
-
-function renderPairPreview(result) {
-  const pairs  = result.pairs      || [];
-  const unmA   = result.unmatched_a || [];
-  const unmB   = result.unmatched_b || [];
-
-  document.getElementById('coloc-pairs-badge').textContent = `${pairs.length} pairs`;
-
-  const tbody = document.getElementById('coloc-pairs-tbody');
-  tbody.innerHTML =
-    pairs.map(p => `
-      <tr>
-        <td class="amber">${esc(p.sample_id)}</td>
-        <td>
-          <div style="font-size:11px;color:var(--text2)">${esc(p.filename_a)}</div>
-          <span class="badge cyan" style="margin-top:3px">${esc(p.stain_a)}</span>
-        </td>
-        <td>
-          <div style="font-size:11px;color:var(--text2)">${esc(p.filename_b)}</div>
-          <span class="badge amber" style="margin-top:3px">${esc(p.stain_b)}</span>
-        </td>
-        <td><span class="badge green">✓ Ready</span></td>
-      </tr>
-    `).join('')
-    + unmA.map(f => `
-      <tr>
-        <td class="muted">${esc(f)}</td>
-        <td class="muted">${esc(f)}</td>
-        <td class="muted">—</td>
-        <td><span class="badge red">⚠ No pair</span></td>
-      </tr>
-    `).join('');
-
-  if (tbody.innerHTML === '') {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:16px">No images found</td></tr>';
-  }
-
-  const warn = document.getElementById('coloc-unmatched-warn');
-  const total_unm = unmA.length + unmB.length;
-  if (total_unm > 0) {
-    warn.style.display = 'block';
-    const show = [...unmA, ...unmB].slice(0, 4).join(', ');
-    warn.textContent = `${total_unm} file(s) could not be paired: ${show}${total_unm > 4 ? '...' : ''}`;
-  } else {
-    warn.style.display = 'none';
-  }
-}
-
-async function runColocAnalysis() {
-  if (colocPairs.length === 0) { showToast('No pairs detected — run Detect Pairs first'); return; }
-
-  const settings = {
-    pairs:                colocPairs,
-    output_dir:           document.getElementById('c-output').value.trim() || '~/Desktop/ihc_coloc_results',
-    dab_threshold:        parseFloat(document.getElementById('c-thresh').value)   || 0.2,
-    pixel_size:           parseFloat(document.getElementById('c-px').value)       || 0.5,
-    max_distance_um:      parseFloat(document.getElementById('c-max-dist').value) || 10.0,
-    enable_registration:  isOn('c-reg-toggle'),
-    cleanup_intermediates: isOn('c-cleanup-toggle'),
-  };
-
-  activeMode = 'coloc';
-  showView('coloc', 'running');
-  document.getElementById('coloc-log').innerHTML = '';
-  setProgress('coloc', 0, 'Starting co-localization...');
-  appendLog('coloc-log', `Co-localization started · ${colocPairs.length} pair(s)`, 'info');
-  appendLog('coloc-log', `Max distance: ${settings.max_distance_um} µm · Threshold: ${settings.dab_threshold.toFixed(2)} OD`, 'normal');
-  appendLog('coloc-log', `Registration: ${settings.enable_registration ? 'enabled (ORB + RANSAC)' : 'disabled'}`, 'normal');
-
-  await window.pywebview.api.run_coloc_pipeline(settings);
 }
 
 // ── Pipeline event handler ────────────────────────────────
 window.onPipelineEvent = function(event) {
   const { type, data } = event;
-  const m = activeMode;   // 'quant' or 'coloc'
+  const m = activeMode;   // 'quant' or 'spatial'
   const logId = m + '-log';
 
   if (type === 'log') {
@@ -1249,12 +2134,16 @@ window.onPipelineEvent = function(event) {
     setProgress(m, 100, 'Complete');
     if (data.ok) {
       appendLog(logId, 'Pipeline finished successfully ✓', 'ok');
-      if (m === 'quant') showQuantResults(data.results);
-      else               showColocResults(data.results);
+      if (m === 'quant')        showQuantResults(data.results);
+      else if (m === 'spatial') spatialAssocShowResults(data);
     } else {
       appendLog(logId, 'Pipeline failed: ' + (data.msg || 'unknown error'), 'error');
       showToast('Pipeline failed');
     }
+  } else if (type === 'spatial_assoc_complete') {
+    setProgress('spatial', 100, 'Complete');
+    appendLog('spatial-log', 'Spatial association finished ✓', 'ok');
+    spatialAssocShowResults(data);
   }
 };
 
@@ -1280,18 +2169,41 @@ function showQuantResults(r) {
     </div>
   `;
 
+  const srcLabel = s => ({metadata:'from metadata', manual:'manual', scale_bar:'scale-bar',
+    scale:'scale-bar', filename:'from filename', ui_default:'session default',
+    default_fallback:'default (unverified)', unknown:'unknown'}[s] || s || '');
+  const flagged = metrics.filter(m => m.pixel_size_warning);
+  const memFlagged = metrics.filter(m => m.membrane_quality_warning);
+  let warnHtml = flagged.length ? `
+    <div class="info-box amber" style="margin:0 0 12px">
+      ⚠ Pixel size unverified or cell density implausible for
+      ${flagged.length} image(s) — results depend on a correct pixel size.
+      Set it explicitly (metadata, manual, or scale-bar) and re-run if the density looks wrong.
+    </div>` : '';
+  if (memFlagged.length) warnHtml += `
+    <div class="info-box amber" style="margin:0 0 12px">
+      ⚠ Low membrane confidence for ${memFlagged.length} image(s) — faint / low-contrast
+      tissue where the ring background approaches the threshold, so the marker over-calls.
+      TIM-3 may not be reliably callable on these; treat their positivity as unverified.
+    </div>`;
+  document.getElementById('quant-warning').innerHTML = warnHtml;
+
   document.getElementById('quant-tbody').innerHTML = metrics.length === 0
     ? '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">No results</td></tr>'
-    : metrics.map(m => `
+    : metrics.map(m => {
+      const low = m.confidence === 'LOW' || m.membrane_quality_warning;
+      const dens = (m.cells_per_mm2 != null) ? ` · ${Math.round(m.cells_per_mm2).toLocaleString()}/mm²` : '';
+      return `
       <tr>
         <td class="cyan">${esc(m.name)}</td>
         <td>${(m.total_cells||0).toLocaleString()}</td>
         <td>${(m.positive||0).toLocaleString()}</td>
         <td class="green"><b>${(m.positivity||0).toFixed(2)}%</b></td>
-        <td class="muted">${m.pixel_size} µm/px</td>
-        <td><span class="badge green">Complete</span></td>
-      </tr>
-    `).join('');
+        <td class="muted">${m.pixel_size} µm/px${m.pixel_size_warning?' <span style="color:var(--amber,#e0a030)">⚠</span>':''}
+          <div style="font-size:9px;color:var(--text3)">${srcLabel(m.pixel_size_source)}${dens}</div></td>
+        <td><span class="badge ${low?'amber':'green'}">${low?'Low confidence':'Complete'}</span></td>
+      </tr>`;
+    }).join('');
 
   document.getElementById('quant-actions').innerHTML = [
     r.dashboard_path ? `<button class="btn primary" onclick="window.pywebview.api.open_file('${esc(r.dashboard_path)}')">Open Dashboard</button>` : '',
@@ -1311,105 +2223,835 @@ function exportQuantCSV() {
   downloadCSV([headers, ...rows], 'ihc_quantification.csv');
 }
 
-// ── Coloc results ─────────────────────────────────────────
-function showColocResults(pairs) {
-  resultsData.coloc = pairs;
-  if (!Array.isArray(pairs) || pairs.length === 0) {
-    showView('coloc', 'results'); return;
+// ── SPATIAL ASSOCIATION ───────────────────────────────────
+
+function spatialAssocSetMode(mode) {
+  spatialMode = mode;
+  document.getElementById('spatial-single-config').style.display = mode === 'single' ? 'block' : 'none';
+  document.getElementById('spatial-batch-config').style.display  = mode === 'batch'  ? 'block' : 'none';
+  document.getElementById('spatial-mode-single-btn').classList.toggle('active', mode === 'single');
+  document.getElementById('spatial-mode-batch-btn').classList.toggle('active', mode === 'batch');
+  document.getElementById('spatial-cert-pair-row').style.display =
+    mode === 'batch' && spatialPairs.length ? 'block' : 'none';
+  spatialCertifications = {};
+  spatialCertResetView();
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialAssocSetFolderMode(mode) {
+  spatialFolderMode = mode;
+  document.getElementById('spatial-two-inputs').style.display   = mode === 'two_folder'   ? 'block' : 'none';
+  document.getElementById('spatial-single-input').style.display = mode === 'single_folder' ? 'block' : 'none';
+  document.getElementById('spatial-fmode-two-btn').classList.toggle('active', mode === 'two_folder');
+  document.getElementById('spatial-fmode-single-btn').classList.toggle('active', mode === 'single_folder');
+  spatialPairs = [];
+  document.getElementById('spatial-preview-card').style.display = 'none';
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialAssocSetSessionPxMode(mode) {
+  spatialSessionPxMode = mode;
+  document.getElementById('spatial-session-manual').style.display = mode === 'manual' ? 'block' : 'none';
+  document.getElementById('spatial-session-scale').style.display  = mode === 'scale'  ? 'block' : 'none';
+  spatialAssocRefreshOverrideDefaults();
+  spatialCertInvalidate();
+}
+
+function spatialAssocSessionPxText() {
+  if (spatialSessionPxMode === 'scale') {
+    return spatialSessionScale.px ? `${spatialSessionScale.px} µm/px (scale image)` : 'scale image (not set)';
+  }
+  const v = parseFloat(document.getElementById('spatial-session-px-val').value);
+  return (v > 0 ? v : 0.5) + ' µm/px';
+}
+
+function spatialAssocRefreshOverrideDefaults() {
+  ['a','b'].forEach(side => {
+    const el = document.getElementById('spatial-ov-default-' + side);
+    if (el && !spatialOverride[side]) el.textContent = 'Using session default: ' + spatialAssocSessionPxText();
+  });
+}
+
+async function spatialAssocExtract(path, resultElId) {
+  const el = document.getElementById(resultElId);
+  if (el) el.innerHTML = '<span class="spinner"></span> Extracting…';
+  const r = await window.pywebview.api.extract_pixel_size(path);
+  if (r.status === 'ok') {
+    if (el) el.textContent = `Detected: ${r.pixel_size} µm/px (scale bar: ${r.bar_length_px}px)`;
+    return r.pixel_size;
+  }
+  if (el) el.textContent = 'Could not detect scale bar — enter manually instead';
+  return null;
+}
+
+async function spatialAssocPickSessionScale() {
+  const p = await window.pywebview.api.pick_file();
+  if (!p) return;
+  spatialSessionScale.path = p;
+  spatialSessionScale.px = await spatialAssocExtract(p, 'spatial-session-scale-result');
+  spatialAssocRefreshOverrideDefaults();
+  spatialCertInvalidate();
+}
+
+function spatialAssocIsScaled(path) {
+  // True when the filename stem (case-insensitive, extension stripped) ends '_scale'
+  const base = String(path).split(/[\\/]/).pop();
+  const stem = base.replace(/\.[^.]*$/, '');
+  return stem.toLowerCase().endsWith('_scale');
+}
+
+async function spatialAssocPickImage(side) {
+  const p = await window.pywebview.api.pick_file();
+  if (!p) return;
+  const errEl = document.getElementById('spatial-image-err-' + side);
+  if (spatialAssocIsScaled(p)) {
+    // Scaled calibration image — reject as an analysis image
+    spatialImage[side] = '';
+    document.getElementById('spatial-image-' + side).value = '';
+    if (errEl) {
+      errEl.textContent = "This appears to be a scaled calibration image. Please select the unscaled analysis image instead. Use 'Override pixel size' to use this image for calibration.";
+      errEl.style.display = 'block';
+    }
+    spatialAssocUpdateRunBtn();
+    return;
+  }
+  if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+  spatialImage[side] = p;
+  spatialCertifications = {};
+  spatialCertResetView();
+  document.getElementById('spatial-image-' + side).value = p;
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialAssocToggleOverride(side) {
+  const box = document.getElementById('spatial-ov-' + side);
+  const open = box.style.display === 'none';
+  box.style.display = open ? 'block' : 'none';
+  document.getElementById('spatial-ov-toggle-' + side).textContent =
+    (open ? '⌃' : '⌄') + ' Override pixel size for this image';
+  if (open && !spatialOverride[side]) {
+    spatialOverride[side] = { mode: 'manual' };
+    spatialAssocRefreshOverrideDefaults();
+  }
+}
+
+function spatialAssocSetOverrideMode(side, mode) {
+  spatialOverride[side] = { ...(spatialOverride[side] || {}), mode };
+  document.getElementById('spatial-ov-manual-' + side).style.display = mode === 'manual' ? 'block' : 'none';
+  document.getElementById('spatial-ov-scale-' + side).style.display  = mode === 'scale'  ? 'block' : 'none';
+}
+
+async function spatialAssocPickOverrideScale(side) {
+  const p = await window.pywebview.api.pick_file();
+  if (!p) return;
+  const px = await spatialAssocExtract(p, 'spatial-ov-scale-result-' + side);
+  spatialOverride[side] = { mode: 'scale', scalePath: p, scalePx: px };
+  spatialCertInvalidate();
+}
+
+function spatialAssocClearOverride(side) {
+  spatialOverride[side] = null;
+  const px = document.getElementById('spatial-ov-px-' + side); if (px) px.value = '';
+  const sr = document.getElementById('spatial-ov-scale-result-' + side); if (sr) sr.textContent = '';
+  document.getElementById('spatial-ov-' + side).style.display = 'none';
+  document.getElementById('spatial-ov-toggle-' + side).textContent = '⌄ Override pixel size for this image';
+  spatialAssocRefreshOverrideDefaults();
+}
+
+async function spatialAssocPreview() {
+  const btn = document.getElementById('spatial-preview-btn');
+  let folder_a = '', folder_b = null;
+  if (spatialFolderMode === 'two_folder') {
+    folder_a = document.getElementById('spatial-folder-a').value.trim();
+    folder_b = document.getElementById('spatial-folder-b').value.trim();
+    if (!folder_a || !folder_b) { showToast('Please select both folders'); return; }
+  } else {
+    folder_a = document.getElementById('spatial-folder-single').value.trim();
+    if (!folder_a) { showToast('Please select a folder'); return; }
+  }
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner amber"></span> Previewing…';
+  const res = await window.pywebview.api.preview_batch_pairs(folder_a, folder_b || null, spatialFolderMode);
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg> Preview Matches`;
+
+  if (res.status !== 'ok') { showToast('Error: ' + (res.error || 'match failed')); return; }
+  spatialPairs = res.pairs || [];
+  spatialCertifications = {};
+  const certSel = document.getElementById('spatial-cert-pair');
+  certSel.innerHTML = spatialPairs.map((p,i) => `<option value="${i}">${esc(p.sample_id || p.filename_a)}</option>`).join('');
+  document.getElementById('spatial-cert-pair-row').style.display = spatialPairs.length ? 'block' : 'none';
+  const unmatched = res.unmatched || [];
+  const scaled    = res.scaled_excluded || [];
+
+  document.getElementById('spatial-preview-badge').textContent = `${spatialPairs.length} pairs`;
+  const pxSrc = spatialAssocSessionPxText();
+  document.getElementById('spatial-preview-tbody').innerHTML = spatialPairs.length
+    ? spatialPairs.map(p => `<tr><td>${esc(p.filename_a)}</td><td>${esc(p.filename_b)}</td><td class="muted">session · ${esc(pxSrc)}</td></tr>`).join('')
+    : '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">No pairs found</td></tr>';
+
+  const warn = document.getElementById('spatial-preview-warn');
+  if (unmatched.length) {
+    warn.style.display = 'block';
+    warn.innerHTML = `${unmatched.length} file(s) unmatched:<br>` +
+      unmatched.slice(0, 6).map(u => `• ${esc(u.filename)} — ${esc(u.reason)}`).join('<br>') +
+      (unmatched.length > 6 ? '<br>…' : '');
+  } else { warn.style.display = 'none'; }
+
+  const scaledEl = document.getElementById('spatial-preview-scaled');
+  if (scaled.length) {
+    scaledEl.style.display = 'block';
+    scaledEl.textContent = `${scaled.length} scale image(s) excluded from matching: ${scaled.join(', ')}`;
+  } else { scaledEl.style.display = 'none'; }
+
+  document.getElementById('spatial-preview-summary').textContent =
+    `${spatialPairs.length} pairs matched, ${unmatched.length} files unmatched`;
+  document.getElementById('spatial-preview-card').style.display = 'block';
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialAssocUpdateRunBtn() {
+  const btn = document.getElementById('spatial-run-btn');
+  if (!btn) return;
+  const required = spatialMode === 'single' ? (spatialImage.a && spatialImage.b ? 1 : 0) : spatialPairs.length;
+  const certified = Object.values(spatialCertifications).filter(c => c && c.is_certified).length;
+  btn.disabled = !required || certified < required;
+  btn.title = btn.disabled ? 'Complete landmark certification for every pair first' : '';
+}
+
+function spatialCertCurrentPair() {
+  if (spatialMode === 'single') {
+    if (!spatialImage.a || !spatialImage.b) return null;
+    const sid = spatialImage.a.split(/[\\/]/).pop().replace(/\.[^.]+$/, '');
+    return { sample_id: sid, path_a: spatialImage.a, path_b: spatialImage.b };
+  }
+  const i = parseInt(document.getElementById('spatial-cert-pair').value || '0');
+  return spatialPairs[i] || null;
+}
+
+function spatialCertResetView() {
+  spatialCertWork = { pair:null, ref:null, mov:null, refPoints:[], movPoints:[], conf:[], pending:null };
+  const work = document.getElementById('spatial-cert-work'); if (work) work.style.display = 'none';
+  const badge = document.getElementById('spatial-cert-badge');
+  if (badge) { badge.textContent = 'NOT STARTED'; badge.className = 'badge gray'; }
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialCertInvalidate() {
+  if (Object.keys(spatialCertifications).length) showToast('Pixel calibration changed — certification must be repeated');
+  spatialCertifications = {};
+  spatialCertResetView();
+}
+
+function spatialCertSelectPair() {
+  const p = spatialCertCurrentPair();
+  const c = p && spatialCertifications[p.sample_id];
+  spatialCertResetView();
+  if (c) {
+    const b = document.getElementById('spatial-cert-badge');
+    b.textContent = c.status; b.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber');
+  }
+}
+
+async function spatialCertLoad() {
+  const pair = spatialCertCurrentPair();
+  if (!pair) { showToast('Select the analysis images or preview batch pairs first'); return; }
+  const match = await window.pywebview.api.validate_pair_paths(pair.path_a, pair.path_b);
+  if (match.status === 'ok' && !match.compatible) {
+    document.getElementById('spatial-cert-result').innerHTML = `<span style="color:#b91c1c"><b>Pair mismatch:</b> ${esc(match.reason)}. Select the corresponding image pair.</span>`;
+    document.getElementById('spatial-cert-work').style.display = 'block';
+    showToast('These filenames identify different samples'); return;
+  }
+  const btn = document.getElementById('spatial-cert-load');
+  btn.disabled = true; btn.textContent = 'Loading…';
+  const r = await window.pywebview.api.prepare_landmark_pair(pair.path_a, pair.path_b);
+  btn.disabled = false; btn.textContent = 'Load images for landmarking';
+  if (r.status !== 'ok') { showToast(r.error || 'Could not load images'); return; }
+  spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], conf:[], pending:null };
+  const imgR = document.getElementById('spatial-cert-ref'), imgM = document.getElementById('spatial-cert-mov');
+  imgR.onload = () => { lmFit('ref'); spatialCertRender(); };
+  imgM.onload = () => { lmFit('mov'); spatialCertRender(); };
+  imgR.src = r.ref.data_url;
+  imgM.src = r.mov.data_url;
+  spatialCertApplyColour();
+  document.getElementById('spatial-cert-work').style.display = 'block';
+  document.getElementById('spatial-cert-result').textContent = '';
+  spatialCertRender();
+}
+
+function spatialCertApplyColour() {
+  ['spatial-cert-ref','spatial-cert-mov'].forEach(id => {
+    document.getElementById(id).style.filter = spatialCertColour ? 'none' : 'grayscale(1) contrast(1.08)';
+  });
+  document.getElementById('spatial-cert-colour').textContent = spatialCertColour ? 'Use blind grayscale' : 'Show colour';
+}
+function spatialCertToggleColour() { spatialCertColour = !spatialCertColour; spatialCertApplyColour(); }
+
+function spatialCertPoint(ev, image, meta) {
+  const r = image.getBoundingClientRect();
+  return [(ev.clientX-r.left)/r.width*meta.width, (ev.clientY-r.top)/r.height*meta.height];
+}
+
+// Confidence → dot colour: high=green, mid=amber, low=red; manual (null)=cyan.
+function spatialCertConfColour(c) {
+  if (c == null) return '#06b6d4';
+  if (c >= 0.7) return '#16a34a';
+  if (c >= 0.4) return '#f59e0b';
+  return '#ef4444';
+}
+function spatialCertRender() {
+  const w = spatialCertWork;
+  const dots = (pts, meta, side, pending, conf) => {
+    // Keep dots ~constant on screen regardless of zoom by dividing by the pane scale.
+    const sc = (lmPanes[side] && lmPanes[side].scale) || 1;
+    const iw = document.getElementById('spatial-cert-'+side).naturalWidth || meta.width;
+    const u = meta.width / iw;                       // full-res units per displayed px
+    const r = 7 * u / sc, sw = 1.6 * u / sc, fs = 11 * u / sc;
+    const all = pending ? [...pts, pending] : pts;
+    return all.map((p,i) => {
+      const isPending = pending && i === all.length - 1;
+      const fill = isPending ? '#f59e0b' : spatialCertConfColour(conf ? conf[i] : null);
+      return `<g><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${fill}" fill-opacity="0.85" stroke="white" stroke-width="${sw}"/><text x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="central" fill="white" font-size="${fs}" font-weight="700">${i+1}</text></g>`;
+    }).join('');
+  };
+  if (w.ref) {
+    const ro = document.getElementById('spatial-cert-ref-ov'), mo = document.getElementById('spatial-cert-mov-ov');
+    ro.setAttribute('viewBox', `0 0 ${w.ref.width} ${w.ref.height}`); mo.setAttribute('viewBox', `0 0 ${w.mov.width} ${w.mov.height}`);
+    ro.innerHTML = dots(w.refPoints, w.ref, 'ref', w.pending, w.conf);
+    mo.innerHTML = dots(w.movPoints, w.mov, 'mov', null, w.conf);
+  }
+  const anyConf = (w.conf || []).some(c => c != null);
+  document.getElementById('spatial-cert-count').textContent =
+    `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${w.pending?' · click moving image':''}`
+    + (anyConf ? ' · dot colour = match confidence' : '');
+}
+
+document.getElementById('spatial-cert-ref').addEventListener('click', e => {
+  if (!spatialCertWork.ref || spatialCertWork.pending) return;
+  if ((lmPanes.ref.moved || 0) > 4) return;            // it was a pan, not a click
+  spatialCertWork.pending = spatialCertPoint(e, e.currentTarget, spatialCertWork.ref); spatialCertRender();
+});
+document.getElementById('spatial-cert-mov').addEventListener('click', e => {
+  if (!spatialCertWork.mov || !spatialCertWork.pending) return;
+  if ((lmPanes.mov.moved || 0) > 4) return;
+  spatialCertWork.refPoints.push(spatialCertWork.pending);
+  spatialCertWork.movPoints.push(spatialCertPoint(e, e.currentTarget, spatialCertWork.mov));
+  spatialCertWork.conf.push(null);                     // hand-placed → no confidence
+  spatialCertWork.pending = null; spatialCertRender();
+});
+
+// ── Landmark pan/zoom stages (independent per pane) ──────────────────────────
+const lmPanes = { ref:{scale:1,tx:0,ty:0,drag:false,px:0,py:0,moved:0},
+                  mov:{scale:1,tx:0,ty:0,drag:false,px:0,py:0,moved:0} };
+function lmApply(side){ const p=lmPanes[side];
+  const w=document.getElementById('lm-world-'+side);
+  if(w) w.style.transform=`translate(${p.tx}px,${p.ty}px) scale(${p.scale})`; }
+function lmFit(side){
+  const meta = side==='ref' ? spatialCertWork.ref : spatialCertWork.mov;
+  const stage=document.getElementById('lm-stage-'+side), img=document.getElementById('spatial-cert-'+side);
+  if(!meta || !stage || !img) return;
+  const r=stage.getBoundingClientRect(); if(!r.width||!r.height){ setTimeout(()=>lmFit(side),60); return; }
+  const iw=img.naturalWidth||meta.width, ih=img.naturalHeight||meta.height;
+  img.style.width=iw+'px'; img.style.height=ih+'px';
+  const ov=document.getElementById('spatial-cert-'+side+'-ov'); ov.setAttribute('width',iw); ov.setAttribute('height',ih);
+  const s=Math.min(r.width/iw, r.height/ih)*0.98;
+  const p=lmPanes[side]; p.scale=s; p.tx=(r.width-iw*s)/2; p.ty=(r.height-ih*s)/2; lmApply(side); spatialCertRender();
+}
+function spatialCertZoomFit(){ lmFit('ref'); lmFit('mov'); }
+function lmWheel(side,e){ e.preventDefault(); const p=lmPanes[side];
+  const r=document.getElementById('lm-stage-'+side).getBoundingClientRect();
+  const mx=e.clientX-r.left, my=e.clientY-r.top;
+  let f=e.deltaY<0?1.15:0.87; const ns=Math.min(Math.max(p.scale*f,0.05),40); f=ns/p.scale;
+  p.tx=mx-(mx-p.tx)*f; p.ty=my-(my-p.ty)*f; p.scale=ns; lmApply(side); spatialCertRender(); }
+function lmDown(side,e){ const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
+function lmMove(side,e){ const p=lmPanes[side]; if(!p.drag) return;
+  const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
+  p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY; lmApply(side); }
+function lmUp(side){ lmPanes[side].drag=false; }
+['ref','mov'].forEach(side=>{
+  const st=document.getElementById('lm-stage-'+side); if(!st) return;
+  st.addEventListener('wheel', e=>lmWheel(side,e), {passive:false});
+  st.addEventListener('pointerdown', e=>lmDown(side,e));
+  st.addEventListener('pointermove', e=>lmMove(side,e));
+});
+addEventListener('pointerup', ()=>{ lmUp('ref'); lmUp('mov'); });
+function spatialCertToggleFullscreen(){
+  const work=document.getElementById('spatial-cert-work');
+  const on=work.classList.toggle('lm-fullscreen');
+  document.getElementById('spatial-cert-fs-btn').textContent = on ? '✕ Exit fullscreen' : '⛶ Fullscreen';
+  requestAnimationFrame(()=>{ lmFit('ref'); lmFit('mov'); });
+}
+
+async function spatialCertPropose() {
+  const w = spatialCertWork;
+  if (!w.pair || !w.ref) { showToast('Load images for landmarking first'); return; }
+  const px = spatialCertPixelSize();
+  if (!(px > 0)) { showToast('Set a valid pixel size first'); return; }
+  if ((w.refPoints.length || w.pending) &&
+      !confirm('Replace the current landmarks with auto-proposed ones?')) return;
+  const btn = document.getElementById('spatial-cert-propose');
+  btn.disabled = true; btn.textContent = 'Proposing…';
+  const r = await window.pywebview.api.propose_landmarks(w.pair.path_a, w.pair.path_b, px);
+  btn.disabled = false; btn.textContent = 'Auto-propose landmarks';
+  if (r.status !== 'ok') { showToast(r.error || 'Could not propose landmarks — place them manually'); return; }
+  spatialCertWork.refPoints = r.ref_points || [];
+  spatialCertWork.movPoints = r.mov_points || [];
+  spatialCertWork.conf = r.confidences || (r.ref_points || []).map(() => null);
+  spatialCertWork.pending = null;
+  spatialCertRender();
+  const cov = (typeof r.coverage_frac === 'number') ? (r.coverage_frac*100).toFixed(0)+'%' : '—';
+  const res = (typeof r.fit_residual_um === 'number') ? r.fit_residual_um.toFixed(1)+' µm' : '—';
+  const modeTxt = r.mode === 'roi'
+    ? `<b style="color:#b45309">ROI mode</b> — consistent only within a ${cov} region; the certification will likely be LOCALLY_CERTIFIED to that ROI.`
+    : `<b style="color:#166534">Field-wide</b> — ${cov} coverage.`;
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#0e7490">Proposed ${r.n} correspondence${r.n===1?'':'s'} (lumens ref/mov ${r.n_lumen_ref}/${r.n_lumen_mov}). ${modeTxt} Median self-residual ${res}. <b>Verify each pair against the images and delete any mismatches before certifying.</b></span>`;
+}
+
+function spatialCertUndo() {
+  if (spatialCertWork.pending) spatialCertWork.pending = null;
+  else { spatialCertWork.refPoints.pop(); spatialCertWork.movPoints.pop(); spatialCertWork.conf.pop(); }
+  spatialCertRender();
+}
+function spatialCertClear() { spatialCertWork.refPoints=[]; spatialCertWork.movPoints=[]; spatialCertWork.conf=[]; spatialCertWork.pending=null; spatialCertRender(); }
+
+function spatialCertPixelSize() {
+  const ov = spatialOverride.a;
+  if (ov?.mode === 'scale' && ov.scalePx) return ov.scalePx;
+  if (ov?.mode === 'manual') { const v=parseFloat(document.getElementById('spatial-ov-px-a').value); if(v>0)return v; }
+  return spatialSessionPxMode === 'scale' ? spatialSessionScale.px : (parseFloat(document.getElementById('spatial-session-px-val').value)||0.5);
+}
+
+async function spatialCertRun() {
+  const w = spatialCertWork;
+  if (!w.pair || w.refPoints.length < 6) { showToast('Place at least 6 matching landmarks'); return; }
+  const r = await window.pywebview.api.certify_landmarks({
+    ref_points:w.refPoints, mov_points:w.movPoints, pixel_size_um:spatialCertPixelSize(),
+    image_wh:[w.ref.width,w.ref.height]
+  });
+  if (r.status !== 'ok') { showToast(r.error || 'Certification failed'); return; }
+  const c = r.certification; spatialCertifications[w.pair.sample_id] = c;
+  const badge = document.getElementById('spatial-cert-badge');
+  badge.textContent = c.status; badge.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber');
+  document.getElementById('spatial-cert-result').innerHTML = `<b>${esc(c.status)}</b> · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'}<br>${esc(c.reason || '')}`;
+  spatialAssocUpdateRunBtn();
+}
+
+async function spatialCertImport() {
+  const pair = spatialCertCurrentPair();
+  if (!pair) { showToast('Select the analysis images or preview batch pairs first'); return; }
+  const btn = document.getElementById('spatial-cert-import');
+  btn.disabled = true; btn.textContent = 'Importing…';
+  const r = await window.pywebview.api.certify_expert_landmarks(pair.path_a, pair.path_b, spatialCertPixelSize());
+  btn.disabled = false; btn.textContent = 'Import expert landmarks';
+  if (r.status !== 'ok') { showToast(r.error || 'No bundled expert landmarks for this pair'); return; }
+  const c = r.certification; spatialCertifications[pair.sample_id] = c;
+  const badge = document.getElementById('spatial-cert-badge');
+  if (badge) { badge.textContent = c.status; badge.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber'); }
+  document.getElementById('spatial-cert-work').style.display = 'block';
+  document.getElementById('spatial-cert-result').innerHTML = `<b>${esc(c.status)}</b> · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'} · <span style="color:#64748b">expert landmarks (${esc((c.landmark_source||'').split('/').pop())})</span><br>${esc(c.reason || '')}`;
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialAssocBuildOverride(side) {
+  // Returns {pixel_size, scale_image} for an image based on its override state
+  const ov = spatialOverride[side];
+  if (!ov) return { pixel_size: null, scale_image: null };
+  if (ov.mode === 'scale') return { pixel_size: null, scale_image: ov.scalePath || null };
+  const v = parseFloat(document.getElementById('spatial-ov-px-' + side).value);
+  return { pixel_size: (v > 0 ? v : null), scale_image: null };
+}
+
+async function spatialAssocRun() {
+  const sessionManual = spatialSessionPxMode === 'manual'
+    ? (parseFloat(document.getElementById('spatial-session-px-val').value) || 0.5) : null;
+  const sessionScale  = spatialSessionPxMode === 'scale' ? (spatialSessionScale.path || null) : null;
+
+  const config = {
+    mode:                  spatialMode,
+    session_pixel_size:    sessionManual,
+    session_scale_image:   sessionScale,
+    max_distance_um:       parseFloat(document.getElementById('spatial-max-dist').value) || 10.0,
+    dab_threshold_a:       parseFloat(document.getElementById('spatial-thresh-a').value) || 0.20,
+    dab_threshold_b:       parseFloat(document.getElementById('spatial-thresh-b').value) || 0.10,
+    enable_registration:   isOn('spatial-reg-toggle'),
+    // Membranous (cytoplasmic-ring) quantification with per-marker calibrated cutoffs.
+    use_cytoplasm_a:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-a-toggle'),
+    use_cytoplasm_b:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-b-toggle'),
+    calib_profile_a:       document.getElementById('spatial-calib-a')?.value || '',
+    calib_profile_b:       document.getElementById('spatial-calib-b')?.value || '',
+    cleanup_intermediates: isOn('spatial-cleanup-toggle'),
+    output_dir:            document.getElementById('spatial-output').value.trim() || '~/Desktop/ihc_spatial_results',
+    certifications:        spatialCertifications,
+  };
+
+  if (spatialMode === 'single') {
+    if (!spatialImage.a || !spatialImage.b) { showToast('Select both images'); return; }
+    const ovA = spatialAssocBuildOverride('a'), ovB = spatialAssocBuildOverride('b');
+    Object.assign(config, {
+      image_a: spatialImage.a, image_b: spatialImage.b,
+      label_a: document.getElementById('spatial-label-a').value.trim() || 'MARKER_A',
+      label_b: document.getElementById('spatial-label-b').value.trim() || 'MARKER_B',
+      pixel_size_a: ovA.pixel_size, scale_image_a: ovA.scale_image,
+      pixel_size_b: ovB.pixel_size, scale_image_b: ovB.scale_image,
+    });
+  } else {
+    if (spatialPairs.length === 0) { showToast('Run Preview Matches first'); return; }
+    Object.assign(config, {
+      folder_a: spatialFolderMode === 'two_folder'
+        ? document.getElementById('spatial-folder-a').value.trim()
+        : document.getElementById('spatial-folder-single').value.trim(),
+      folder_b: spatialFolderMode === 'two_folder'
+        ? document.getElementById('spatial-folder-b').value.trim() : null,
+      folder_mode: spatialFolderMode,
+    });
   }
 
-  let totalA = 0, totalB = 0, totalCoexpr = 0;
-  pairs.forEach(p => {
-    const pm    = p.coloc?.per_marker || {};
-    const marks = Object.keys(pm);
-    if (marks[0]) totalA += pm[marks[0]].positive || 0;
-    if (marks[1]) totalB += pm[marks[1]].positive || 0;
-    Object.values(p.coloc?.coexpression || {}).forEach(v => totalCoexpr += v.count || 0);
+  const preflight = await window.pywebview.api.preflight_check('spatial');
+  if (!preflight.ok) {
+    const failed = preflight.checks.filter(x => !x.ok).map(x => x.name).join(', ');
+    showToast('Preflight failed: ' + failed + '. Check Settings.'); return;
+  }
+
+  activeMode = 'spatial';
+  showView('spatial', 'running');
+  document.getElementById('spatial-log').innerHTML = '';
+  setProgress('spatial', 0, 'Starting spatial association…');
+  appendLog('spatial-log', `Spatial association started · ${spatialMode} mode`, 'info');
+  appendLog('spatial-log', `Cross-type Ripley's K · proximity ${config.max_distance_um} µm · Thresholds: A ${config.dab_threshold_a.toFixed(2)} / B ${config.dab_threshold_b.toFixed(2)} OD`, 'normal');
+  appendLog('spatial-log', `Registration: ${config.enable_registration ? 'enabled' : 'disabled'}`, 'normal');
+
+  await window.pywebview.api.run_spatial_association(config);
+}
+
+function spatialAssocShowResults(data) {
+  const results = (data && data.results) || [];
+  const summary = (data && data.summary) || {};
+  resultsData.spatial = results;
+
+  const fmtP = (p) => (typeof p === 'number') ? p.toFixed(4) : '—';
+  const fmtR = (r) => (typeof r === 'number') ? r.toFixed(0) + ' µm' : '—';
+  const fmtArea = (a) => (typeof a === 'number') ? (a/1e6).toFixed(2) + ' mm²' : '—';
+
+  // Recompute summary counts here so QC-invalid pairs are always excluded, and so
+  // ROBUST findings (significant under the structure-preserving nulls) are counted
+  // separately from CSR-ONLY findings (significant only under homogeneous CSR — a
+  // critical result, never hidden), regardless of the result source.
+  let nRobust = 0, nCsrOnly = 0, nExcludedQc = 0, gpsValid = [];
+  results.forEach(p => {
+    const qInvalid = ((p.registration_qc || {}).status) === 'invalid';
+    if (qInvalid) { nExcludedQc++; return; }
+    Object.values((p.spatial_association || {}).association || {}).forEach(v => {
+      const g = v.global || {};
+      const verdict = (v.robustness || {}).verdict;
+      if (verdict === 'robust') nRobust++;
+      else if (verdict === 'csr_only') nCsrOnly++;
+      if (typeof g.global_p_dclf === 'number') gpsValid.push(g.global_p_dclf);
+    });
   });
-
-  const stainA     = pairs[0]?.stain_a || 'Marker A';
-  const stainB     = pairs[0]?.stain_b || 'Marker B';
-  const coexprPct  = totalA > 0 ? (totalCoexpr / totalA * 100).toFixed(1) : '—';
-
-  document.getElementById('coloc-metrics').innerHTML = `
-    <div class="metric cyan">
-      <div class="metric-label">Pairs analyzed</div>
-      <div class="metric-value cyan">${pairs.length}</div>
-      <div class="metric-sub">sample pairs</div>
-    </div>
-    <div class="metric cyan">
-      <div class="metric-label">${esc(stainA)} positive</div>
-      <div class="metric-value cyan">${totalA.toLocaleString()}</div>
-      <div class="metric-sub">total cells</div>
-    </div>
-    <div class="metric amber">
-      <div class="metric-label">${esc(stainB)} positive</div>
-      <div class="metric-value amber">${totalB.toLocaleString()}</div>
-      <div class="metric-sub">total cells</div>
-    </div>
-    <div class="metric green">
-      <div class="metric-label">Co-expressing</div>
-      <div class="metric-value green">${coexprPct}%</div>
-      <div class="metric-sub">${totalCoexpr.toLocaleString()} cells</div>
-    </div>
+  document.getElementById('spatial-summary').innerHTML = `
+    <div class="metric"><div class="metric-label">Pairs</div><div class="metric-value">${summary.pairs ?? results.length}</div><div class="metric-sub">processed</div></div>
+    <div class="metric"><div class="metric-label">Cell-scale engagement</div><div class="metric-value">${nRobust}</div><div class="metric-sub">robust (both nulls)</div></div>
+    <div class="metric"><div class="metric-label">Co-infiltration only</div><div class="metric-value">${nCsrOnly}</div><div class="metric-sub">compartment-scale</div></div>
+    <div class="metric"><div class="metric-label">Excluded (QC)</div><div class="metric-value">${nExcludedQc}</div><div class="metric-sub">failed registration QC</div></div>
   `;
 
-  document.getElementById('coloc-tbody').innerHTML = pairs.map(p => {
-    const pm     = p.coloc?.per_marker || {};
-    const marks  = Object.keys(pm);
-    const cntA   = marks[0] ? (pm[marks[0]].positive ?? '—') : '—';
-    const cntB   = marks[1] ? (pm[marks[1]].positive ?? '—') : '—';
-    const coexp  = Object.values(p.coloc?.coexpression || {})[0];
-    const coCnt  = coexp?.count ?? '—';
-    const coPct  = (typeof cntA === 'number' && typeof coCnt === 'number' && cntA > 0)
-      ? (coCnt / cntA * 100).toFixed(1) + '%' : '—';
-    return `
-      <tr>
-        <td class="amber">${esc(p.sample_id)}</td>
-        <td><span class="badge cyan">${esc(p.stain_a)}</span></td>
-        <td>${typeof cntA === 'number' ? cntA.toLocaleString() : cntA}</td>
-        <td><span class="badge amber">${esc(p.stain_b)}</span></td>
-        <td>${typeof cntB === 'number' ? cntB.toLocaleString() : cntB}</td>
-        <td class="green"><b>${typeof coCnt === 'number' ? coCnt.toLocaleString() : coCnt}</b></td>
-        <td class="green">${coPct}</td>
-        <td><span class="badge gray">${esc(p.registration_method || '—')}</span></td>
-      </tr>
-    `;
-  }).join('');
+  // ── Cohort-level multiple-comparison correction (NEVER quote the bare minimum
+  // p across pairs as a cohort finding). Prefer the backend's FDR result; fall
+  // back to a client-side Benjamini-Hochberg over the QC-valid pairs' p-values.
+  const bhAdjust = (ps) => {
+    const n = ps.length;
+    if (!n) return [];
+    const idx = ps.map((p, i) => i).sort((a, b) => ps[a] - ps[b]);
+    const q = new Array(n);
+    let prev = 1;
+    for (let r = n; r >= 1; r--) {
+      const i = idx[r - 1];
+      prev = Math.min(prev, Math.min(1, ps[i] * n / r));
+      q[i] = prev;
+    }
+    return q;
+  };
+  const fdr = summary.cohort_fdr;
+  let nTested, nSigRaw, nSigAdj, minAdj;
+  if (fdr && typeof fdr.n_tested === 'number') {
+    nTested = fdr.n_tested; nSigRaw = fdr.n_significant_raw;
+    nSigAdj = fdr.n_significant_adjusted; minAdj = fdr.min_adjusted_p;
+  } else {
+    const adj = bhAdjust(gpsValid);
+    nTested = gpsValid.length;
+    nSigRaw = gpsValid.filter(p => p <= 0.05).length;
+    nSigAdj = adj.filter(q => q <= 0.05).length;
+    minAdj = adj.length ? Math.min(...adj) : null;
+  }
+  const fmtAdj = (x) => (typeof x === 'number') ? x.toFixed(4) : '—';
+  document.getElementById('spatial-cohort-note').innerHTML = nTested ? `
+    <div class="info-box" style="margin:10px 0;font-size:12px;line-height:1.5">
+      <strong>Cohort (across ${nTested} QC-valid pair${nTested === 1 ? '' : 's'}):</strong>
+      ${nSigAdj} significant after Benjamini-Hochberg FDR correction (raw, uncorrected: ${nSigRaw}); smallest FDR-adjusted p = ${fmtAdj(minAdj)}.
+      <br><span class="muted">Per-pair results above are descriptive. Any cohort-level claim must use the FDR-adjusted values — do not quote the single smallest per-pair p as a cohort finding.</span>
+    </div>` : '';
 
-  const outDir = pairs[0]?.output_dir || '';
-  document.getElementById('coloc-actions').innerHTML = [
+  const cards = document.getElementById('spatial-results-cards');
+  const pill = (bg, fg, txt) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${bg};color:${fg}">${txt}</span>`;
+  const twoQuestionLegend = `
+    <div class="info-box" style="margin:0 0 14px;font-size:12px;line-height:1.6">
+      <strong>How to read these results — two questions, two nulls.</strong> Cross-type spatial analysis answers two <em>different</em> biological questions, and each null tests one of them:
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:flex-start">${pill('#f0fdf4','#166534','Cell-scale engagement')}
+        <span>Significant under <em>both</em> nulls. The two populations are closer (or further) than expected <em>even after accounting for the tissue compartments they share</em> — a genuine cell-neighbourhood relationship. This is the strong claim.</span></div>
+      <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start">${pill('#eff6ff','#1e40af','Co-infiltration only')}
+        <span>Significant under the homogeneous-CSR baseline but <em>not</em> the reweighted null. The two populations occupy the <em>same compartments</em> (real, and expected for almost any two immune markers) but show no extra proximity at the cell scale. A <em>distinct, weaker</em> finding — not an error, and not a cell-scale association.</span></div>
+      <div style="margin-top:8px" class="muted">The reweighted null holds the tissue architecture fixed (75 µm bandwidth) and asks only about the 10–50 µm cell-neighbourhood band, so "shared tissue preference" is subtracted rather than mistaken for engagement.</div>
+    </div>`;
+  if (!results.length) {
+    cards.innerHTML = '<div class="card" style="text-align:center;color:var(--text3)">No results</div>';
+  } else {
+    cards.innerHTML = twoQuestionLegend + results.map(p => {
+      const sa = p.spatial_association || {};
+      const a = Object.values(sa.association || {})[0] || {};
+      const g = a.global || {};
+      const na = a.n_a, nb = a.n_b;
+      const sig = !!g.significant;
+      // ── Registration QC verdict (gates whether the stats are trustworthy) ──
+      const q = p.registration_qc || {};
+      const qStatus = q.status || (q.valid === true ? 'valid' : (q.valid === false ? 'invalid' : 'unknown'));
+      const qInvalid = qStatus === 'invalid';
+      const qWarn = qStatus === 'warning';
+      const qMethod = q.method || p.registration_method || 'none';
+      const qResUm = q.residual_error_um;
+      const qOverlap = q.tissue_overlap_fraction;
+      const qReason = q.reason || '';
+      // Dim/grey out the statistical claim when registration is invalid so an
+      // unreliable result cannot be mistaken for a real finding.
+      const statsDim = qInvalid ? 'opacity:.38;filter:grayscale(1)' : '';
+      const qcBanner = (qInvalid || qWarn) ? `
+        <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
+             border:1px solid ${qInvalid ? '#dc2626' : '#d97706'};
+             background:${qInvalid ? '#fef2f2' : '#fffbeb'};
+             color:${qInvalid ? '#991b1b' : '#92400e'}">
+          <strong>${qInvalid ? '⚠ Registration failed QC — spatial statistics are unreliable' : '⚠ Registration QC caution'}</strong><br>
+          ${esc(qReason)}
+        </div>` : '';
+      // A1/B1: the app's registration QC is NOT the §18–20 landmark certification.
+      // Always disclose this so "valid" is never mistaken for "CERTIFIED".
+      const cert = p.certification || a.certification || {};
+      const certBanner = (cert.is_certified === true) ? `
+        <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
+             border:1px solid #16a34a;background:#f0fdf4;color:#166534">
+          <strong>✓ ${esc(cert.status || 'CERTIFIED')} by anatomical landmarks</strong> ·
+          TRE ${cert.tre_median_um ?? '—'} µm · p90 ${cert.tre_p90_um ?? '—'} µm ·
+          coverage ${cert.coverage_frac != null ? (cert.coverage_frac*100).toFixed(0)+'%' : '—'}
+        </div>` : `
+        <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
+             border:1px solid #d97706;background:#fffbeb;color:#92400e">
+          <strong>⚠ Not landmark-certified (registration QC only).</strong> This pair used the automated
+          registration QC, which is <em>not</em> the §18–20 landmark certification and is known-unreliable
+          on field-of-view serial sections (ihc.md §18.4). "Valid" here means the legacy QC gate passed —
+          a weaker claim than CERTIFIED. Do not report a biological finding from an uncertified pair.
+        </div>`;
+      const qcPill = (txt, color) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid ${color};color:${color}">${txt}</span>`;
+      const qcColor = qInvalid ? '#dc2626' : (qWarn ? '#d97706' : '#16a34a');
+
+      // ── Robustness verdict (calibrated reweighted primary vs CSR baseline) ──
+      const rob = a.robustness || {};
+      const verdict = rob.verdict || 'unknown';
+      const nullsObj = a.nulls || {};
+      const robDirEarly = (rob.direction && rob.direction !== 'none') ? rob.direction
+        : ((a.global || {}).direction || 'none');
+      const robMeta = ({
+        robust:   ['#16a34a', '#f0fdf4', '#166534', '✓ Cell-scale engagement — significant beyond shared tissue compartments'],
+        csr_only: ['#2563eb', '#eff6ff', '#1e40af', 'ⓘ Co-infiltration only — same compartments, no cell-scale engagement'],
+        none:     ['#6b7280', '#f9fafb', '#374151', 'No significant association under the calibrated null'],
+        mixed:    ['#d97706', '#fffbeb', '#92400e', '⚠ Ambiguous — interpret with caution'],
+      })[verdict] || ['#6b7280', '#f9fafb', '#374151', '—'];
+      // Co-infiltration is an ASSOCIATION-direction statement; when the CSR-only call
+      // is segregation it means compartment-scale exclusion, not co-infiltration.
+      if (verdict === 'csr_only' && robDirEarly === 'segregation')
+        robMeta[3] = 'ⓘ Compartment-scale exclusion only — different compartments, no cell-scale relationship';
+      const robBanner = (!qInvalid && verdict !== 'unknown') ? `
+        <div style="margin:4px 0 10px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;
+             border:1px solid ${robMeta[0]};background:${robMeta[1]};color:${robMeta[2]}">
+          <strong>${robMeta[3]}</strong><br>${esc(rob.summary || '')}
+        </div>` : '';
+      const nullRow = (key, label) => {
+        const nd = nullsObj[key] || {};
+        const ng = nd.global || {};
+        const nsig = !!ng.significant, ndir = ng.direction || 'none', np2 = ng.global_p_dclf;
+        const col = nsig ? (ndir === 'segregation' ? '#b45309' : '#16a34a') : '#6b7280';
+        let extra = '';
+        if (key === 'reweighted' && typeof nd.bandwidth_um === 'number') {
+          extra = `<div class="muted" style="font-size:10px">intensity bandwidth ${nd.bandwidth_um} µm (calibrated, ihc.md §15)</div>`;
+        }
+        return `<tr style="border-top:1px solid var(--border)">
+          <td style="padding:5px 8px"><strong>${label}</strong>${extra}</td>
+          <td style="padding:5px 8px;color:${col};font-weight:600">${nsig ? ndir : 'n.s.'}</td>
+          <td style="padding:5px 8px">${typeof np2 === 'number' ? fmtP(np2) : '—'}</td>
+        </tr>`;
+      };
+      const nullTable = (nullsObj && Object.keys(nullsObj).length) ? `
+        <div style="margin-top:12px;${statsDim}">
+          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = the calibrated reweighted inhomogeneous cross-K, which tests cell-scale engagement (10–50 µm) with tissue architecture held fixed. Homogeneous CSR is the compartment-scale baseline: significant under CSR but not the primary ⇒ co-infiltration (shared compartments), a distinct, weaker finding — not cell-scale engagement.</div>`}
+          <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
+            <thead><tr style="background:var(--bg3)">
+              <th style="text-align:left;padding:5px 8px">Null model</th>
+              <th style="text-align:left;padding:5px 8px">Direction</th>
+              <th style="text-align:left;padding:5px 8px">Global DCLF p</th>
+            </tr></thead>
+            <tbody>
+              ${nullRow('reweighted', 'Reweighted inhomogeneous cross-K (PRIMARY)')}
+              ${nullRow('homogeneous', 'Homogeneous CSR (baseline only)')}
+            </tbody>
+          </table>
+        </div>` : '';
+      const overlapIoU = p.intersection_overlap_iou ?? a.intersection_overlap_iou;
+
+      const peakR = g.peak_r_um;
+      const gp = g.global_p_dclf;                 // whole-curve DCLF p-value
+      const dir = g.direction || 'none';
+      const rmin = g.dclf_rmin_um, rmax = g.dclf_rmax_um;
+      const band = (typeof rmin === 'number' && typeof rmax === 'number')
+        ? `${rmin.toFixed(0)}–${rmax.toFixed(0)} µm` : 'the tested range';
+      const gpTxt = (typeof gp === 'number' && gp < 0.0001) ? '< 0.0001' : '= ' + fmtP(gp);
+      const area = p.tissue_area_um2 ?? sa.tissue_area_um2 ?? a.tissue_area_um2;
+      const mask = p.tissue_mask_method || sa.tissue_mask_method || a.tissue_mask_method;
+      // Headline direction comes from the robustness verdict (which null carried
+      // the call), falling back to the primary null's direction only for legacy
+      // results that predate the robustness block.
+      const robDir = (rob.direction && rob.direction !== 'none') ? rob.direction : dir;
+      const dirWord = robDir === 'segregation' ? 'segregation' : 'association';
+      // The headline interpretation is driven by robustness.verdict — NEVER by a
+      // single null's significance — so we never advertise a finding the
+      // cross-null robustness logic does not support.
+      const interp = qInvalid
+        ? `Statistics not interpretable — registration did not pass QC (${esc(qMethod)}). The call below is shown for transparency only and must NOT be reported as a finding.`
+        : verdict === 'robust'
+        ? `Significant spatial ${dirWord} under the calibrated reweighted inhomogeneous cross-K (size-controlled against a shared tissue preference; homogeneous CSR shown only as a shared-preference flag); tested r = ${band}, strongest deviation near ${fmtR(peakR)}. Assumes the tissue architecture scale exceeds the ~75 µm calibration bandwidth (ihc.md §15.5) — this scale is not measured, so treat the call with caution if architecture is fine (cell-scale).`
+        : verdict === 'csr_only'
+        ? (robDir === 'segregation'
+          ? `Compartment-scale exclusion only: the populations occupy largely different tissue compartments, but once that compartment structure is accounted for they show no cell-scale relationship. A distinct, weaker finding — it does NOT support a cell-scale segregation claim.`
+          : `Co-infiltration only: the populations occupy the same tissue compartments (a real but expected result for immune markers), but show no extra proximity at the 10–50 µm cell scale beyond that shared preference. A distinct, weaker finding — it does NOT support a cell-scale association claim.`)
+        : verdict === 'mixed'
+        ? `Mixed / ambiguous across null models — interpret with caution (see the per-null table below).`
+        : verdict === 'none'
+        ? `No significant spatial association under any null model (across r = ${band}).`
+        // legacy result without a robustness verdict → fall back to the primary null
+        : (sig
+        ? `Significant spatial ${dirWord} (global DCLF p ${gpTxt} across r = ${band}); strongest deviation near ${fmtR(peakR)}.`
+        : `No significant spatial association (global DCLF p ${gpTxt}; whole L−r curve within the null envelope across r = ${band}).`);
+      const sA = esc(p.stain_a || 'A'), sB = esc(p.stain_b || 'B');
+      const img = (path, alt) => path
+        ? `<img src="file://${esc(path)}?t=${Date.now()}" style="width:100%;border:1px solid var(--border);border-radius:var(--r-sm);cursor:zoom-in" alt="${alt}" title="Click to zoom" onclick="openLightbox(this.src, '${esc(alt)}')">`
+        : '<div style="padding:24px;text-align:center;color:var(--text3);border:1px dashed var(--border);border-radius:var(--r-sm);font-size:12px">not generated</div>';
+      const cap = (t) => `<div class="muted" style="font-size:11px;margin:0 0 4px">${t}</div>`;
+      // 1+2: segmentation overlays side by side
+      const segRow = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
+          <div>${cap(`${sA} segmentation — positive = red`)}${img(a.seg_a, 'CD8 segmentation')}</div>
+          <div>${cap(`${sB} segmentation — positive = blue`)}${img(a.seg_b, 'TIM-3 segmentation')}</div>
+        </div>`;
+      // 3: consolidated density heatmap
+      const consBlock = `<div style="margin-top:10px">${cap(`Consolidated density — green = ${sA}+, blue = ${sB}+, cyan = overlap`)}${img(a.consolidated, 'Consolidated density')}</div>`;
+      // 4: association plot
+      const plotBlock = `<div style="margin-top:10px">${cap("Reweighted inhomogeneous cross-K association (L−r vs distance) with the 95% envelope of the calibrated null")}${img(a.association_plot, 'Association plot')}</div>`;
+      const labels = (Object.keys(sa.association || {})[0] || '').replace('__', ' ↔ ');
+      // Headline badge reflects the cross-null ROBUSTNESS verdict, never a single
+      // null's global.significant — so a CSR-only / mixed result can never show a
+      // "robust" badge.
+      const badgeByVerdict = {
+        robust:   ['green', robDir === 'segregation' ? 'engaged: segregated' : 'engaged: associated'],
+        csr_only: ['cyan',  robDir === 'segregation' ? 'compartment exclusion only' : 'co-infiltration only'],
+        mixed:    ['amber', 'mixed across nulls'],
+        none:     ['gray',  'n.s.'],
+      };
+      const bv = badgeByVerdict[verdict] || (
+        // legacy data with no robustness verdict → fall back to the primary null
+        sig ? ['green', dir === 'segregation' ? 'segregated (p < 0.05)' : 'associated (p < 0.05)'] : ['gray', 'n.s.']);
+      const titleBadge = qInvalid
+        ? qcPill('registration invalid', '#dc2626')
+        : `<span class="badge ${bv[0]}">${bv[1]}</span>${qWarn ? ' ' + qcPill('QC caution', '#d97706') : ''}`;
+      return `
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            ${esc(p.sample_id)} <span class="muted" style="font-size:12px">${esc(labels)}</span>
+            ${titleBadge}
+          </div>
+          ${qcBanner}
+          ${certBanner}
+          ${robBanner}
+          ${segRow}
+          ${consBlock}
+          <div style="${statsDim}">${plotBlock}</div>
+          ${nullTable}
+          <div class="metrics-row c4" style="margin:14px 0 10px">
+            <div class="metric"><div class="metric-label">${sA}+ cells</div><div class="metric-value">${(typeof na==='number'?na:0).toLocaleString()}</div><div class="metric-sub">positive</div></div>
+            <div class="metric"><div class="metric-label">${sB}+ cells</div><div class="metric-value">${(typeof nb==='number'?nb:0).toLocaleString()}</div><div class="metric-sub">registered</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Peak r</div><div class="metric-value">${fmtR(peakR)}</div><div class="metric-sub">max deviation</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Global p</div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub">DCLF, whole curve</div></div>
+          </div>
+          <div style="font-size:12px;color:var(--text2);display:flex;gap:14px;flex-wrap:wrap;align-items:center">
+            <span>Window: <strong>${fmtArea(area)}</strong>${mask ? ` <span class="badge gray">${esc(mask)}</span>` : ''}</span>
+            <span>A∩B overlap: <strong>${typeof overlapIoU === 'number' ? (overlapIoU*100).toFixed(0) + '% IoU' : '—'}</strong></span>
+            ${(a.n_a_excluded || a.n_b_excluded) ? `<span class="muted">excluded ${a.n_a_excluded||0}+${a.n_b_excluded||0} pts outside ∩</span>` : ''}
+            <span>Registration: <span class="badge gray">${esc(qMethod)}</span></span>
+            <span>Residual: <strong>${typeof qResUm === 'number' ? qResUm.toFixed(1) + ' µm' : '—'}</strong></span>
+            <span>QC: ${qcPill(esc(qStatus), qcColor)}</span>
+          </div>
+          <div class="info-box ${qInvalid ? '' : (['robust','csr_only','mixed'].includes(verdict) ? 'amber' : (verdict === 'none' ? '' : (sig ? 'amber' : '')))}" style="margin-top:10px;font-weight:600;${statsDim}">${interp}</div>
+        </div>`;
+    }).join('');
+  }
+
+  const outDir = (data && data.output_dir) || results[0]?.output_dir || '';
+  document.getElementById('spatial-actions').innerHTML = [
     outDir ? `<button class="btn amber" onclick="window.pywebview.api.open_folder('${esc(outDir)}')">Open Output Folder</button>` : '',
-    `<button class="btn" onclick="exportColocCSV()">Export CSV</button>`,
-    `<button class="btn" onclick="showView('coloc','config')">New Analysis</button>`,
+    `<button class="btn" onclick="showView('spatial','config')">New Analysis</button>`,
   ].join('');
 
-  showView('coloc', 'results');
+  showView('spatial', 'results');
 }
 
-function exportColocCSV() {
-  const pairs = resultsData.coloc;
-  if (!pairs) return;
-  const headers = ['Sample','Stain A','A Positive','Stain B','B Positive','Co-expressing','Co-expression %','Registration'];
-  const rows = pairs.map(p => {
-    const pm    = p.coloc?.per_marker || {};
-    const marks = Object.keys(pm);
-    const cntA  = marks[0] ? (pm[marks[0]].positive ?? '') : '';
-    const cntB  = marks[1] ? (pm[marks[1]].positive ?? '') : '';
-    const coexp = Object.values(p.coloc?.coexpression || {})[0];
-    const coCnt = coexp?.count ?? '';
-    const coPct = (cntA > 0 && typeof coCnt === 'number') ? (coCnt / cntA * 100).toFixed(2) : '';
-    return [p.sample_id, p.stain_a, cntA, p.stain_b, cntB, coCnt, coPct, p.registration_method || ''];
-  });
-  downloadCSV([headers, ...rows], 'ihc_colocalization.csv');
+// ── Image lightbox (zoom/pan any result overlay) ────────────
+const lbox = { scale:1, tx:0, ty:0, drag:false, px:0, py:0 };
+function lbApply(){ document.getElementById('lightbox-world').style.transform =
+  `translate(${lbox.tx}px,${lbox.ty}px) scale(${lbox.scale})`; }
+function lightboxFit(){
+  const stage=document.getElementById('lightbox-stage'), img=document.getElementById('lightbox-img');
+  const r=stage.getBoundingClientRect(); const iw=img.naturalWidth, ih=img.naturalHeight;
+  if(!r.width||!iw){ setTimeout(lightboxFit,60); return; }
+  img.style.width=iw+'px'; img.style.height=ih+'px';
+  const s=Math.min(r.width/iw, r.height/ih)*0.98;
+  lbox.scale=s; lbox.tx=(r.width-iw*s)/2; lbox.ty=(r.height-ih*s)/2; lbApply();
 }
+function openLightbox(src, caption){
+  const box=document.getElementById('lightbox'), img=document.getElementById('lightbox-img');
+  document.getElementById('lightbox-caption').textContent = caption || '';
+  img.onload = lightboxFit; img.src = src;
+  box.classList.add('show');
+}
+function closeLightbox(){ document.getElementById('lightbox').classList.remove('show'); }
+(function(){
+  const stage=document.getElementById('lightbox-stage'); if(!stage) return;
+  stage.addEventListener('wheel', e=>{ e.preventDefault();
+    const r=stage.getBoundingClientRect(), mx=e.clientX-r.left, my=e.clientY-r.top;
+    let f=e.deltaY<0?1.15:0.87; const ns=Math.min(Math.max(lbox.scale*f,0.05),40); f=ns/lbox.scale;
+    lbox.tx=mx-(mx-lbox.tx)*f; lbox.ty=my-(my-lbox.ty)*f; lbox.scale=ns; lbApply(); }, {passive:false});
+  stage.addEventListener('pointerdown', e=>{ lbox.drag=true; lbox.px=e.clientX; lbox.py=e.clientY; });
+  stage.addEventListener('pointermove', e=>{ if(!lbox.drag) return;
+    lbox.tx+=e.clientX-lbox.px; lbox.ty+=e.clientY-lbox.py; lbox.px=e.clientX; lbox.py=e.clientY; lbApply(); });
+  addEventListener('pointerup', ()=>{ lbox.drag=false; });
+  addEventListener('keydown', e=>{ if(e.key==='Escape') closeLightbox(); });
+})();
 
 // ── Init ──────────────────────────────────────────────────
 window.addEventListener('pywebviewready', async () => {
   await loadSetup();
   renderQuantOverrides();
-  setColocMode('two_folder');
+  renderQuantBiomarkers();
+  quantSetMode('single');
+  spatialAssocSetMode('single');
+  spatialAssocSetFolderMode('two_folder');
+  spatialAssocRefreshOverrideDefaults();
 });
 </script>
+<script src="restained_coexpression.js"></script>
 </body>
 </html>

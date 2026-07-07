@@ -22,6 +22,37 @@ output_dir: ./ihc_results
 overlay_downsample: 1.0
 overlay_show_negative: true
 qupath_binary: /Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64
+# Optional per-stain DAB thresholds. The image filename is matched (case-
+# insensitive substring) against these keys; the first match wins, otherwise
+# dab_threshold above is used.
+stain_thresholds:
+  cd8: 0.2
+  tim3: 0.1
+  tim-3: 0.1
 stain_type: hdab
+# Membrane-marker support. When true, DAB is measured in the cytoplasmic ring
+# (Voronoi-clipped expanded cell minus nucleus) instead of inside the nucleus —
+# correct for membranous markers like CD8 / TIM-3. Default false keeps the
+# validated nuclear behaviour. cell_expansion_um is the ring width in microns.
+#
+# NOTE (spatial association, --mode spatial): cytoplasm measurement uses a
+# ROLE-BASED default applied identically by the CLI and the desktop UI
+# (run_pipeline.cytoplasm_overrides_for_pair): OFF for the reference / image-A
+# role (CD8 nuclear is the validated path) and ON for the moving / image-B role
+# (membranous TIM-3, measured in the cytoplasmic ring). Override per image via
+# cytoplasm_overrides: {filename.tif: true|false}. The use_cytoplasm_measurement
+# flag below governs the quantification pipeline only.
+use_cytoplasm_measurement: false
+cell_expansion_um: 2.0
+# Membrane-completeness classifier for FAINT membranous markers (e.g. TIM-3),
+# where the ring MEAN dilutes a thin stained arc below threshold and loses real
+# positives. When membrane_pix_thr AND membrane_frac_min are set, a cell is
+# positive iff >= membrane_frac_min of its ring pixels exceed membrane_pix_thr
+# (calibrated OD), optionally AND its 90th-pct ring OD > membrane_p90_thr. Unset
+# => legacy ring-mean classification. Fit these to hand-labelled cells with
+# validation/tune_membrane_threshold.py — do NOT guess them.
+# membrane_pix_thr: 0.06
+# membrane_frac_min: 0.15
+# membrane_p90_thr: 0.12
 tile_dims: 512
 timeout_seconds: 1800

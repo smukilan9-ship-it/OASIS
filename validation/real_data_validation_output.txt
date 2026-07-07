@@ -1,0 +1,96 @@
+Loading real CODEX single-cell table…
+  258,385 cells, 140 spots
+  pixel size 0.3775 µm/px (published nominal CODEX 20x); radii 0–100 µm step 2 µm; n_perm=1000; DCLF band 10–50 µm
+
+==========================================================================
+TEST 1  CD8+  vs  CD4+ T cells
+  expect: POSITIVE association (co-infiltrating T cells)
+==========================================================================
+  pixel size            : 0.3775 µm/px
+  DCLF band             : 10–50 µm  (@ 0.3775 µm/px)
+  qualifying spots (N)  : 100   (>= 30 CD8+ and >= 30 of target)
+  mean observed L−r (µm): r=15µm ->  +3.92   r=30µm ->  +8.87   r=50µm -> +12.10
+  global DCLF p (median): 0.0010
+  GLOBAL DCLF verdict (pipeline's actual call):
+     significant (two-sided p<0.05) : 86/100 (86%)
+        ├─ direction = ASSOCIATION   : 86/100 (86%)
+        └─ direction = SEGREGATION   : 0/100 (0%)
+  one-sided p<0.05  association      : 88/100 (88%)
+  one-sided p<0.05  segregation      : 0/100 (0%)
+  [diag] per-radius dip below null env in band: 1/100 (1%)  (NOT the pipeline call)
+
+==========================================================================
+TEST 2  CD8+  vs  Tregs (FOXP3+)
+  expect: POSITIVE-ish (co-infiltrating immune; informational)
+==========================================================================
+  pixel size            : 0.3775 µm/px
+  DCLF band             : 10–50 µm  (@ 0.3775 µm/px)
+  qualifying spots (N)  : 31   (>= 30 CD8+ and >= 30 of target)
+  mean observed L−r (µm): r=15µm ->  +2.82   r=30µm ->  +6.40   r=50µm ->  +8.41
+  global DCLF p (median): 0.0210
+  GLOBAL DCLF verdict (pipeline's actual call):
+     significant (two-sided p<0.05) : 21/31 (68%)
+        ├─ direction = ASSOCIATION   : 21/31 (68%)
+        └─ direction = SEGREGATION   : 0/31 (0%)
+  one-sided p<0.05  association      : 23/31 (74%)
+  one-sided p<0.05  segregation      : 0/31 (0%)
+  [diag] per-radius dip below null env in band: 0/31 (0%)  (NOT the pipeline call)
+
+==========================================================================
+TEST 3  CD8+  vs  tumor cells
+  expect: SEGREGATION (immune/tumor compartments separate)
+==========================================================================
+  pixel size            : 0.3775 µm/px
+  DCLF band             : 10–50 µm  (@ 0.3775 µm/px)
+  qualifying spots (N)  : 107   (>= 30 CD8+ and >= 30 of target)
+  mean observed L−r (µm): r=15µm ->  -2.90   r=30µm ->  -4.49   r=50µm ->  -6.51
+  global DCLF p (median): 0.0010
+  GLOBAL DCLF verdict (pipeline's actual call):
+     significant (two-sided p<0.05) : 74/107 (69%)
+        ├─ direction = ASSOCIATION   : 12/107 (11%)
+        └─ direction = SEGREGATION   : 62/107 (58%)
+  one-sided p<0.05  association      : 16/107 (15%)
+  one-sided p<0.05  segregation      : 62/107 (58%)
+  [diag] per-radius dip below null env in band: 65/107 (61%)  (NOT the pipeline call)
+
+
+##########################################################################
+# LEGACY ARTIFACT REPRODUCTION — buggy pixel_size_um = 1.0
+# (DCLF 10–50 µm band collapses to 10–50 px ≈ 3.8–18.9 µm = hard-core zone)
+##########################################################################
+
+==========================================================================
+LEGACY  CD8+ vs CD4+  (buggy px=1.0; same statistic)
+  expect: should still be POSITIVE — any segregation here is artifact
+==========================================================================
+  pixel size            : 1.0000 µm/px
+  DCLF band             : 10–50 px  (@ 1.0000 µm/px)
+  qualifying spots (N)  : 100   (>= 30 CD8+ and >= 30 of target)
+  mean observed L−r (µm): r=15µm ->  -6.75   r=30µm ->  +7.25   r=50µm -> +15.35
+  global DCLF p (median): 0.0110
+  GLOBAL DCLF verdict (pipeline's actual call):
+     significant (two-sided p<0.05) : 69/100 (69%)
+        ├─ direction = ASSOCIATION   : 63/100 (63%)
+        └─ direction = SEGREGATION   : 6/100 (6%)
+  one-sided p<0.05  association      : 67/100 (67%)
+  one-sided p<0.05  segregation      : 9/100 (9%)
+  [diag] per-radius dip below null env in band: 31/100 (31%)  (NOT the pipeline call)
+
+  reproduced OLD per-radius metric (35 spots, px=1.0, band r<=130px):
+     'positive association' flagged : 33/35 (94%)  <- the figure the old report headlined
+     'segregation' flagged (SAME spots, omitted before): 25/35 (71%)
+     => the old metric was mixed-sign: it called BOTH on a positive control, because r=0–26 px hard-core leaked into the band.
+
+==========================================================================
+VERDICT (corrected conditions, pixel size 0.3775 µm/px)
+==========================================================================
+  TEST 1 CD8–CD4 (expect association):  PASS  assoc 86/100, seg 0/100, mean L−r@15µm=+3.92
+  TEST 2 CD8–Treg (informational):      assoc 21/31, seg 0/31, mean L−r@15µm=+2.82
+  TEST 3 CD8–tumor (expect segregation):PASS  seg 62/107, assoc 12/107, mean L−r@15µm=-2.90
+
+  HARD-CORE ARTIFACT CHECK (CD8–CD4 positive control):
+     corrected band 10–50 µm : segregation called in 0/100 spots  (DCLF direction)
+     legacy band  10–50 px   : segregation called in 6/100 spots  (DCLF direction)
+     -> artifact GONE after the pixel-size fix
+
+  Statistic reproduces known biology: YES

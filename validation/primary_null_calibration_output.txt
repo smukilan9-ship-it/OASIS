@@ -1,0 +1,59 @@
+==============================================================================
+PRIMARY-NULL CALIBRATION
+==============================================================================
+  realizations NREAL=4   permutations NPERM=49   DCLF band 10–50 µm   pixel size 1.0 µm/px
+  * inhomogeneous 1x (50 µm) is the PRODUCTION primary null (the headline).
+
+==============================================================================
+H0-A  SHARED PREFERENCE — A,B independent draws from the SAME coarse field
+      (σ=70px > 50µm band; the biologically realistic regime)
+==============================================================================
+
+null / bandwidth         mean p  P(p<=.05)  P(p<=.10)   calibration
+------------------------------------------------------------------------------
+homogeneous CSR           0.020      1.000      1.000   ANTI-CONSERVATIVE (inflates findings)
+inhomogeneous 0.5x        0.410      0.000      0.000   well-calibrated
+inhomogeneous 1x*         0.025      1.000      1.000   ANTI-CONSERVATIVE (inflates findings)
+inhomogeneous 2x          0.020      1.000      1.000   ANTI-CONSERVATIVE (inflates findings)
+toroidal shift            0.040      0.750      1.000   ANTI-CONSERVATIVE (inflates findings)
+------------------------------------------------------------------------------
+  inhomogeneous-1x p histogram (uniform ⇒ ~0/bin): 4 0 0 0 0 0 0 0 0 0
+
+==============================================================================
+H0-B  SANITY CONTROL — A,B uniform CSR (true independence, NO shared preference)
+      (every null, incl. structure-preserving, MUST be ~well-calibrated here)
+==============================================================================
+
+null / bandwidth         mean p  P(p<=.05)  P(p<=.10)   calibration
+------------------------------------------------------------------------------
+homogeneous CSR           0.380      0.000      0.000   well-calibrated
+inhomogeneous 0.5x        0.640      0.000      0.000   well-calibrated
+inhomogeneous 1x*         0.470      0.000      0.000   well-calibrated
+inhomogeneous 2x          0.340      0.000      0.000   well-calibrated
+toroidal shift            0.410      0.000      0.000   well-calibrated
+------------------------------------------------------------------------------
+  inhomogeneous-1x p histogram (uniform ⇒ ~0/bin): 0 0 1 0 0 3 0 0 0 0
+
+==============================================================================
+INTERPRETATION
+==============================================================================
+  Sanity control (H0-B, uniform independence) — proves the harness is fair:
+     homogeneous CSR        P(p<=.05)=0.000  -> well-calibrated
+     inhomogeneous 1x*      P(p<=.05)=0.000  -> well-calibrated
+     toroidal shift         P(p<=.05)=0.000  -> well-calibrated
+     → harness FAIR (all nulls ~5% under true independence)
+
+  Shared preference (H0-A, the regime that matters):
+     homogeneous CSR        P(p<=.05)=1.000  -> ANTI-CONSERVATIVE (inflates findings) (expected weak baseline)
+     PRODUCTION primary 1x  P(p<=.05)=1.000  -> ANTI-CONSERVATIVE (inflates findings)
+     toroidal               P(p<=.05)=0.750  -> ANTI-CONSERVATIVE (inflates findings)
+     inhomogeneous 0.5x     P(p<=.05)=0.000  -> well-calibrated
+     inhomogeneous 2x       P(p<=.05)=1.000  -> ANTI-CONSERVATIVE (inflates findings)
+
+  ⚠⚠ FINDING: the harness is FAIR (all nulls ~5% under true independence),
+  yet under the realistic SHARED-PREFERENCE H0 the structure-preserving nulls
+  (production primary + toroidal) are ANTI-CONSERVATIVE. This is a real property
+  of the estimated-intensity KDE-resampling and toroidal-shift tests, NOT a harness
+  artifact. The production 'robust' verdict therefore does NOT control the
+  false-positive rate against shared tissue preference — 'robust' findings are
+  INFLATED and must be reported with this caveat. Do NOT adjust thresholds to hide it.

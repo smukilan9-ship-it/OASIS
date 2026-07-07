@@ -1,0 +1,23 @@
+==============================================================================
+EDGE CORRECTION vs reweighted cross-K calibration (bw=75µm + LOO)
+==============================================================================
+  NREAL=500  NPERM=199  window 960px  field σ=70px
+
+  translation-correction implementation vs spatstat 'translate': max rel diff 3.65e-03  -> CHECK
+
+correction    shared P05  uniform P05   pow@7px  pow@25px
+------------------------------------------------------------------------------
+none               0.032        0.064     1.000     0.992
+translate          0.032        0.064     1.000     0.992
+------------------------------------------------------------------------------
+  none      : shared 0.032 [0.017,0.047]  uniform 0.064 [0.043,0.085]
+  translate : shared 0.032 [0.017,0.047]  uniform 0.064 [0.043,0.085]
+
+==============================================================================
+DECISION
+==============================================================================
+  Calibration AND power are UNCHANGED (within noise) between uncorrected
+  and translation-corrected. The boundary undercount cancels in the DCLF
+  rank test exactly as hypothesized (it hits observed and null K alike).
+  → UNCORRECTED IS JUSTIFIED. Keep production as-is; this is the evidence
+    that retires the edge-correction reviewer objection.

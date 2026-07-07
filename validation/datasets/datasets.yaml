@@ -1,0 +1,115 @@
+version: 1
+datasets:
+  codex_crc:
+    title: Schürch et al. 2020 CRC CODEX single-cell table
+    dir: CODEX
+    key_path: inputs/CRC_clusters_neighborhoods_markers.csv
+    checksum_kind: file
+    checksum: 416cc3926a7a900ce3b22a33be699535ca35ae85fca4585a8ba5dad6d7f3c677
+    size_hint: 213 MB
+    source_url: https://doi.org/10.17632/mpjzbtfgfr.1
+    license: CC BY 4.0
+    redistributable: true
+    citation: Schürch CM, et al. Coordinated Cellular Neighborhoods Orchestrate Antitumoral
+      Immunity at the Colorectal Cancer Invasive Front. Cell 182(5):1341-1359 (2020).
+      Mendeley Data 10.17632/mpjzbtfgfr.1.
+    what: Single-cell table (coordinates + CODEX marker intensities incl. CD8, PD-1)
+      from CRC tissue measured on ONE physical section, so the true cross-type verdict
+      between any two markers is known.
+    structure: "inputs/\n  CRC_clusters_neighborhoods_markers.csv\n"
+    legacy_paths:
+    - validation/CRC_clusters_neighborhoods_markers.csv
+    used_by:
+    - keystone_degradation
+    - real_data
+    - real_data_production
+    - spatstat_crossval
+    - phase_b_certified
+  cima_landmarks:
+    title: ANHIR / CIMA expert histology registration landmarks
+    dir: CIMA_ANHIR
+    key_path: inputs/annotations
+    checksum_kind: manifest
+    checksum: 0f6b053bd0474f05fe1d8f1f3338141fbae54a4253e513be8d6bc2032815bdbe
+    size_hint: 1.6 MB
+    source_url: https://github.com/Borda/dataset-histology-landmarks
+    license: CC BY 4.0 (landmarks); source images CC BY-NC-SA — not bundled
+    redistributable: true
+    citation: 'Borovec J, et al. ANHIR: Automatic Non-rigid Histological Image Registration
+      Challenge. IEEE Trans. Med. Imaging 39(10):3042-3052 (2020). Landmarks: github.com/Borda/dataset-histology-landmarks.'
+    what: Expert corresponding landmarks on consecutive histology sections (lung-lesion,
+      lung-lobes, mammary-gland, ...). Ground truth for registration target-registration-error
+      (TRE) certification.
+    structure: "inputs/\n  annotations/     expert landmark CSVs\n  dataset/     \
+      \    image manifest / scale metadata (no full-res images)\n  <tissue>_<n>/ \
+      \   per-sample landmark folders\n"
+    legacy_paths:
+    - validation/public_landmarks
+    used_by:
+    - anhir_landmarks
+    - phase_b_certified
+  deepliif:
+    title: DeepLIIF — registered IHC + inferred multiplex IF
+    dir: DeepLIIF
+    key_path: inputs/DeepLIIF_Testing_Set
+    checksum_kind: manifest
+    checksum: a875d0aef4913f14965a3b469b85271ec1bb125075852258ad275f74c607c303
+    size_hint: ≈4 GB (raw testing set only; generated outputs excluded)
+    source_url: https://github.com/nadeemlab/DeepLIIF
+    license: Research use (see DeepLIIF repository / Zenodo record)
+    redistributable: false
+    citation: 'Ghahremani P, et al. Deep learning-inferred multiplex immunofluorescence
+      for immunohistochemical image quantification. Nature Machine Intelligence 4:401-412
+      (2022). Data: github.com/nadeemlab/DeepLIIF.'
+    what: Co-registered IHC (DAB) + IF panels with SegMask ground truth. IF-derived
+      per-cell truth for cell detection + positive/negative classification.
+    structure: "inputs/\n  DeepLIIF_Testing_Set/   raw registered IHC+IF tiles + SegMask\n\
+      # NOTE: phase2_RESULTS.md, pipeline_validation/, *_pred_vs_truth.jpg are\n#\
+      \ generated OUTPUTS and are moved out of inputs/ during consolidation.\n"
+    legacy_paths:
+    - ~/Desktop/DeepLIIF_data
+    used_by:
+    - deepliif_pipeline_validation
+  hnscc:
+    title: HNSCC mIF / mIHC comparison v2 (TCIA)
+    dir: HNSCC
+    key_path: inputs/mIF_Data
+    checksum_kind: manifest
+    checksum: e48eb1f8e92ed0e3b6477e5663e44785f97b4fc5a06c434248bbb249d58e1c29
+    size_hint: ≈1 GB
+    source_url: 'https://www.cancerimagingarchive.net/ (search: HNSCC-mIF-mIHC-comparison)'
+    license: TCIA — registration/login required; NOT redistributable
+    redistributable: false
+    citation: HNSCC-mIF-mIHC-comparison collection, The Cancer Imaging Archive (TCIA).
+      Access requires a TCIA account; see the collection's Data Usage Policy.
+    what: Co-registered mIHC (AEC) + mIF for HNSCC with CD8 immunofluorescence truth.
+      Membranous CD8 validation and restained co-expression validation.
+    structure: "inputs/\n  mIF_Data/     *_CD8.png IF ground-truth panels\n  <mIHC\
+      \ tiles>  co-registered chromogenic tiles\n"
+    legacy_paths:
+    - ~/PKG - HNSCC-mIF-mIHC-comparison_v2
+    used_by:
+    - membrane_cd8_hnscc
+    - hnscc_restained_all
+  tim3_crc_icm:
+    title: CRC-ICM TIM-3 IHC (hand-label harness)
+    dir: TIM3_CRC_ICM
+    key_path: inputs/TIM3_images
+    checksum_kind: manifest
+    checksum: c89b5b4a7877a4ef687a434ac6cc8020b0e83d63085de25fff06206bc830e62e
+    size_hint: ≈1 GB (raw images + clinical table; generated outputs excluded)
+    source_url: https://arxiv.org/abs/2308.10033
+    license: Mendeley Data (see CRC-ICM record / arXiv:2308.10033)
+    redistributable: true
+    citation: 'CRC-ICM: colorectal cancer immunohistochemistry (TIM-3 + CD8) dataset.
+      arXiv:2308.10033; data on Mendeley Data.'
+    what: DAB IHC tiles (TIM-3 / CD8) with a hand-label harness. TIM-3 membrane callability
+      (hand-labelled positive/negative cells).
+    structure: "inputs/\n  TIM3_images/           raw DAB tiles (extracted from CRC_ICM_images.zip)\n\
+      \  CRC_ICM_clinical.xlsx  clinical metadata\n  labeling/              hand-label\
+      \ harness inputs\n# NOTE: phase1_diagnostic/, seg_compare/, *_contactsheet.jpg\
+      \ are generated\n# OUTPUTS and are moved out of inputs/ during consolidation.\n"
+    legacy_paths:
+    - ~/Desktop/tim3 data
+    used_by:
+    - tune_membrane_threshold

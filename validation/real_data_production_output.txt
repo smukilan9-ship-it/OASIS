@@ -1,0 +1,64 @@
+Loading real CODEX single-cell table…
+  258,385 cells, 140 spots; PRODUCTION path (cross_k_all_nulls, 3 nulls + robustness); NPERM=499 SPOT_CAP=40
+
+==============================================================================
+CD8+ vs CD4+ T cells
+  expect: POSITIVE → robust association
+==============================================================================
+  qualifying spots analysed : 40  (capped from more; SPOT_CAP=40)
+  n_perm                    : 499   pixel size 0.3775 µm/px   band 10–50 µm
+  mean reweighted L−r (µm)  : r=15→+4.01   r=30→+9.17   r=50→+11.20
+  per-null significant (direction):
+     reweighted*   : assoc 20/40 (50%)   seg 0/40 (0%)
+     homog-CSR     : assoc 37/40 (92%)   seg 0/40 (0%)
+  * reweighted = the calibrated PRODUCTION primary (gates the verdict).
+  VERDICT distribution (gated on the calibrated primary):
+     robust   : 20/40 (50%)
+     csr_only : 18/40 (45%)
+     none     : 2/40 (5%)
+     (significant breakdown: association 20, segregation 0)
+
+==============================================================================
+CD8+ vs Tregs (FOXP3+)
+  expect: informational (co-infiltrating immune)
+==============================================================================
+  qualifying spots analysed : 31  (capped from more; SPOT_CAP=40)
+  n_perm                    : 499   pixel size 0.3775 µm/px   band 10–50 µm
+  mean reweighted L−r (µm)  : r=15→+6.16   r=30→+11.99   r=50→+18.18
+  per-null significant (direction):
+     reweighted*   : assoc 3/31 (10%)   seg 0/31 (0%)
+     homog-CSR     : assoc 21/31 (68%)   seg 0/31 (0%)
+  * reweighted = the calibrated PRODUCTION primary (gates the verdict).
+  VERDICT distribution (gated on the calibrated primary):
+     robust   : 3/31 (10%)
+     csr_only : 19/31 (61%)
+     none     : 9/31 (29%)
+     (significant breakdown: association 3, segregation 0)
+
+==============================================================================
+CD8+ vs tumor cells
+  expect: NEGATIVE → robust segregation
+==============================================================================
+  qualifying spots analysed : 40  (capped from more; SPOT_CAP=40)
+  n_perm                    : 499   pixel size 0.3775 µm/px   band 10–50 µm
+  mean reweighted L−r (µm)  : r=15→+2.64   r=30→+5.66   r=50→+7.16
+  per-null significant (direction):
+     reweighted*   : assoc 4/40 (10%)   seg 9/40 (22%)
+     homog-CSR     : assoc 6/40 (15%)   seg 29/40 (72%)
+  * reweighted = the calibrated PRODUCTION primary (gates the verdict).
+  VERDICT distribution (gated on the calibrated primary):
+     robust   : 13/40 (32%)
+     csr_only : 22/40 (55%)
+     none     : 5/40 (12%)
+     (significant breakdown: association 4, segregation 9)
+
+==============================================================================
+VERDICT (production three-null path)
+==============================================================================
+  CD8–CD4 : robust association in 20/40 spots (mean L−r@15µm=+4.01)
+  CD8–tumor: robust segregation in 9/40 spots (mean L−r@15µm=+2.64)
+  CD8–Treg : robust association in 3/31 (informational)
+
+  Mean-curve direction recovers known biology (CD8–CD4 > 0, CD8–tumor < 0): NO
+  NOTE: interpret the robust-fraction in light of validate_primary_null_calibration.py — if the structure-preserving nulls
+  are anti-conservative under shared preference, the robust counts here are an UPPER bound, not a clean type-I-controlled rate.

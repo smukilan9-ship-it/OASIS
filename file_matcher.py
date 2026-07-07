@@ -17,6 +17,8 @@ import os
 import re
 from pathlib import Path
 
+from pixel_size_util import is_scaled_image
+
 # Recognized stain identifiers sorted longest-first to prevent partial matches
 # (e.g. "tim-3" must be checked before "tim")
 DEFAULT_STAIN_TOKENS = sorted([
@@ -24,6 +26,8 @@ DEFAULT_STAIN_TOKENS = sorted([
     "panck", "tim-3", "tim3",
     "hdab", "cd8", "cd4", "cd3", "ck",
     "ki67", "ki-67",
+    # Lung IHC markers (CIMA/ANHIR serial sections)
+    "prospc", "pro-spc", "cc10", "cd31",
     "dab", "he", "h&e",
 ], key=len, reverse=True)
 
@@ -63,6 +67,8 @@ def normalize_name(stem: str, stain_tokens=DEFAULT_STAIN_TOKENS):
 
     # Collapse leftover separators and trim
     s = re.sub(r'[\-_\s\.]+', '_', s).strip('_')
+    # Canonicalize magnification spelling so "x10" and "10X" pair correctly.
+    s = re.sub(r'(?<!\d)x(\d+)(?!\d)', r'\1x', s)
     return s, found
 
 
@@ -111,8 +117,12 @@ def match_two_folders(
           "mode": "two_folder",
         }
     """
-    files_a = get_image_files(folder_a)
-    files_b = get_image_files(folder_b)
+    # Scaled images (calibration-only) never enter the matching pool
+    raw_a = get_image_files(folder_a)
+    raw_b = get_image_files(folder_b)
+    scaled_excluded = [f for f in raw_a + raw_b if is_scaled_image(f)]
+    files_a = [f for f in raw_a if not is_scaled_image(f)]
+    files_b = [f for f in raw_b if not is_scaled_image(f)]
 
     # Build norm → entry maps
     norm_a = {}
@@ -152,14 +162,27 @@ def match_two_folders(
     unmatched_a = [v["file"] for k, v in norm_a.items() if k not in norm_b]
     unmatched_b = [v["file"] for k, v in norm_b.items() if k not in matched_b]
 
+    # Structured unmatched list (path + reason) for the Spatial Association UI
+    unmatched = (
+        [{"path": norm_a[k]["path"], "filename": norm_a[k]["file"],
+          "reason": "no matching file in folder B"}
+         for k, _ in norm_a.items() if k not in norm_b]
+        + [{"path": norm_b[k]["path"], "filename": norm_b[k]["file"],
+            "reason": "no matching file in folder A"}
+           for k, _ in norm_b.items() if k not in matched_b]
+    )
+
     print(f"  Two-folder match: {len(pairs)} pairs, "
-          f"{len(unmatched_a)} unmatched in A, {len(unmatched_b)} unmatched in B")
+          f"{len(unmatched_a)} unmatched in A, {len(unmatched_b)} unmatched in B, "
+          f"{len(scaled_excluded)} scaled excluded")
 
     return {
-        "pairs":       pairs,
-        "unmatched_a": unmatched_a,
-        "unmatched_b": unmatched_b,
-        "mode":        "two_folder",
+        "pairs":           pairs,
+        "unmatched_a":     unmatched_a,
+        "unmatched_b":     unmatched_b,
+        "unmatched":       unmatched,
+        "scaled_excluded": scaled_excluded,
+        "mode":            "two_folder",
     }
 
 
@@ -183,7 +206,10 @@ def match_single_folder(
         "detected_stains": sorted list of all stain tokens found in the folder
         "groups":          full grouping dict for inspection / N-marker use
     """
-    files = get_image_files(folder)
+    # Scaled images (calibration-only) never enter the matching pool
+    raw_files = get_image_files(folder)
+    scaled_excluded = [f for f in raw_files if is_scaled_image(f)]
+    files = [f for f in raw_files if not is_scaled_image(f)]
 
     # norm_name → {stain_token: full_path}
     groups: dict = {}
@@ -196,7 +222,7 @@ def match_single_folder(
             continue
         groups.setdefault(norm, {})[stain] = os.path.join(folder, f)
 
-    pairs, unmatched, all_stains = [], [], set()
+    pairs, unmatched_files, unmatched, all_stains = [], [], [], set()
     for norm, stain_map in groups.items():
         all_stains.update(stain_map.keys())
         stain_list = sorted(stain_map.keys())  # deterministic order
@@ -215,18 +241,27 @@ def match_single_folder(
             })
         else:
             # Only one stain found for this sample — can't pair
-            unmatched.extend(Path(v).name for v in stain_map.values())
+            for v in stain_map.values():
+                unmatched_files.append(Path(v).name)
+                unmatched.append({"path": v, "filename": Path(v).name,
+                                  "reason": "only one stain found for this sample"})
 
     # Files with no stain token at all are also unmatched
-    unmatched.extend(no_stain)
+    unmatched_files.extend(no_stain)
+    for f in no_stain:
+        unmatched.append({"path": os.path.join(folder, f), "filename": f,
+                          "reason": "no stain token in filename"})
 
     print(f"  Single-folder match: {len(pairs)} pairs, "
-          f"{len(unmatched)} unmatched, stains found: {sorted(all_stains)}")
+          f"{len(unmatched_files)} unmatched, {len(scaled_excluded)} scaled excluded, "
+          f"stains found: {sorted(all_stains)}")
 
     return {
         "pairs":            pairs,
-        "unmatched_a":      unmatched,
+        "unmatched_a":      unmatched_files,
         "unmatched_b":      [],
+        "unmatched":        unmatched,
+        "scaled_excluded":  scaled_excluded,
         "detected_stains":  sorted(all_stains),
         "groups":           {k: {s: Path(v).name for s, v in sm.items()}
                              for k, sm in groups.items()},
