@@ -18,8 +18,9 @@ and does not require committing image data, API keys, or per-machine paths.
 - HTML dashboard and Excel workbook generation.
 - pywebview desktop UI for setup, experiment management, analysis, results,
   and optional AI-assisted result discussion.
-- Co-localization workflow for paired serial-section stains using image
-  registration and mutual nearest-neighbour cell matching.
+- Spatial-association workflow for paired serial-section stains using image
+  registration and population-level cross-type Ripley's K analysis (NOT
+  single-cell co-expression, which serial sections cannot establish).
 
 ## Architecture
 
@@ -27,7 +28,7 @@ and does not require committing image data, API keys, or per-machine paths.
 Raw images
   -> QuPath headless + InstanSeg
   -> CSV / GeoJSON / JSON exports
-  -> Python overlays, dashboard, Excel, co-localization
+  -> Python overlays, dashboard, Excel, spatial association
   -> pywebview desktop UI
 ```
 
@@ -78,17 +79,50 @@ python run_pipeline.py --config config.yaml
 The pipeline scans `input_dir` for supported image files, runs QuPath
 headlessly, and writes results to `output_dir` and `dashboard_dir`.
 
-## Run Co-Localization
+## Run Spatial Association
 
-Co-localization is launched from the desktop UI, or from the command line with a
-config that includes `coloc_pairs`:
+Spatial association is launched from the desktop UI, or from the command line
+with a config that includes `spatial_pairs`:
 
 ```bash
-python run_pipeline.py --config config.yaml --mode coloc
+python run_pipeline.py --config config.yaml --mode spatial
 ```
 
-Pairs are processed stain-by-stain, registered into a shared coordinate space,
-and matched by mutual nearest neighbour within `max_distance_um`.
+(`--mode coloc` is accepted as a deprecated alias of `--mode spatial`.)
+
+Pairs are processed stain-by-stain and registered into a shared coordinate
+space. Population-level spatial association is then measured with the cross-type
+Ripley's K / pair-correlation g(r) functions against a tissue-mask-bounded Monte
+Carlo null, with a global DCLF envelope test for significance. This is a
+population statistic and does **not** assert single-cell co-expression — serial
+sections cannot establish co-expression (different Z-planes, TIM-3 is not
+CD8-restricted, membrane-vs-nuclear compartments).
+
+## Validation & Reproducibility
+
+Every scientific claim is validated by a registered validation, runnable from the
+desktop **Validation** tab or the command line — same runner, same report bundles.
+
+```bash
+python -m validation.run --list                 # list validations + dataset/preflight status
+python -m validation.run cross_k                  # run one validation
+python -m validation.run all --tier instant        # run all no-dataset statistical checks
+python -m validation.datasets.verify              # dataset presence + checksum table
+python -m validation.datasets.acquire --apply       # consolidate datasets into the tree
+```
+
+Each run writes a paper-grade bundle to `validation_reports/<id>/<timestamp>/`
+(`report.json` with metrics, status, expected result, software + git SHA, dataset
+checksums, timing; `run.log`; any plots) — suitable for supplementary material.
+
+Datasets live in one consolidated tree at `validation_data_dir`
+(default `~/oasis_validation_datasets`, override via `~/.ihc_analyzer/setup.yaml`
+or the `IHC_VALIDATION_DATA_DIR` env var), with raw **inputs** separated from
+generated **outputs** and a per-dataset README + license + checksum. Datasets are
+never committed; see `validation/datasets/README.md` and `datasets.yaml` for
+sources, licenses, and citations. Restricted datasets (e.g. HNSCC/TCIA) are
+documented but never redistributed. Missing datasets skip their validations with a
+message naming the exact dataset and source.
 
 ## Configuration
 

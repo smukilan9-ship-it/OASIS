@@ -1,0 +1,20 @@
+# TIM-3 membrane-completeness cutoffs — data-backed (2026-07-05).
+# Fit to 281 positive / 318 negative hand-labelled CRC-ICM cells across 4 images,
+# validated by leave-one-image-out CV with the hardened cell_expansion
+# (per-image Macenko stain vectors + DAB>H per-pixel gate).
+#
+# Held-out (fixed threshold, production-representative):
+#   adequately-stained images: F1 0.934  (precision 0.90, recall 0.97)
+#   all images incl. faint 92290_IM:      F1 0.80   (faint tissue is the failure mode)
+#
+# A cell is positive iff membrane_pos_frac >= membrane_frac_min, i.e. at least
+# ~14% of its Voronoi-clipped cytoplasmic ring is DAB-dominant (DAB_OD > H_OD)
+# above the calibrated pixel threshold. Add these to the pipeline config to enable
+# the completeness classifier for TIM-3.
+membrane_pix_thr: 0.30
+membrane_frac_min: 0.14
+# membrane_p90_thr: 0.40   # optional brightest-arc guard; omit to classify on fraction alone
+#
+# CAVEAT: on very faint tissue (negative-ring background OD >~0.7, e.g. 92290_IM)
+# TIM-3 is not reliably callable (held-out F1 0.30). Such images should be FLAGGED,
+# not reported — recommend a membrane-quality gate on the per-image background OD.

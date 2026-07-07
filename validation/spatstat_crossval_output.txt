@@ -1,0 +1,57 @@
+========================================================================
+CROSS-VALIDATION vs spatstat — intensity-reweighted inhomogeneous cross-K
+========================================================================
+  Inputs identical (pixels); Stage B feeds spatstat the SAME Python λ̂.
+  GATE = Stage B correction='none' L(r) max rel diff < 1e-3.
+  R owin area = 1000400.0314   (python area = 1000400.0314, ratio 1.000000)
+  R done.
+
+────────────────────────────────────────────────────────────────────────
+CASE: CSR  (n_a=220 n_b=180 h=75.00px)
+  Stage A intensity λ̂: max rel diff (unfloored) A=6.77e-04  B=8.66e-04   (floored 0% of A, all-points rel 6.77e-04)
+  Stage B estimator (correction=none = OURS): K max rel 1.34e-13  mean 3.24e-14  L max rel 6.74e-14  median K ratio 1.000000
+     [border   ] K max rel 3.91e-01 (expected to differ — edge-corrected, not ours)
+     [translate] K max rel 8.06e-02 (expected to differ — edge-corrected, not ours)
+     [isotropic] K max rel 1.65e-01 (expected to differ — edge-corrected, not ours)
+  R owin area = 1000400.0314   (python area = 1000400.0314, ratio 1.000000)
+  R done.
+
+────────────────────────────────────────────────────────────────────────
+CASE: clustered_shared  (n_a=220 n_b=200 h=75.00px)
+  Stage A intensity λ̂: max rel diff (unfloored) A=5.13e-04  B=4.45e-04   (floored 0% of A, all-points rel 5.13e-04)
+  Stage B estimator (correction=none = OURS): K max rel 4.92e-14  mean 2.76e-14  L max rel 1.42e-14  median K ratio 1.000000
+     [border   ] K max rel 7.36e-01 (expected to differ — edge-corrected, not ours)
+     [translate] K max rel 7.33e-02 (expected to differ — edge-corrected, not ours)
+     [isotropic] K max rel 4.92e-14 (expected to differ — edge-corrected, not ours)
+  R owin area = 921968.6689   (python area = 921968.6689, ratio 1.000000)
+  R done.
+
+────────────────────────────────────────────────────────────────────────
+CASE: calibration_field  (n_a=250 n_b=250 h=75.00px)
+  Stage A intensity λ̂: max rel diff (unfloored) A=1.12e-03  B=1.32e-03   (floored 0% of A, all-points rel 1.12e-03)
+  Stage B estimator (correction=none = OURS): K max rel 9.84e-14  mean 8.12e-14  L max rel 4.93e-14  median K ratio 1.000000
+     [border   ] K max rel 1.24e-01 (expected to differ — edge-corrected, not ours)
+     [translate] K max rel 8.27e-02 (expected to differ — edge-corrected, not ours)
+     [isotropic] K max rel 4.84e-02 (expected to differ — edge-corrected, not ours)
+  R owin area = 2461853.4217   (python area = 2461853.4224, ratio 1.000000)
+  R done.
+
+────────────────────────────────────────────────────────────────────────
+CASE: real_schurch_CD8_CD4  (n_a=410 n_b=422 h=198.68px)
+  Stage A intensity λ̂: max rel diff (unfloored) A=5.82e-04  B=1.02e-03   (floored 0% of A, all-points rel 5.82e-04)
+  Stage B estimator (correction=none = OURS): K max rel 2.79e-10  mean 2.79e-10  L max rel 1.40e-10  median K ratio 1.000000
+     [border   ] K max rel 2.27e-01 (expected to differ — edge-corrected, not ours)
+     [translate] K max rel 1.25e-01 (expected to differ — edge-corrected, not ours)
+     [isotropic] K max rel 1.70e-01 (expected to differ — edge-corrected, not ours)
+
+========================================================================
+VERDICT (Stage B estimator gate)
+========================================================================
+  CSR                       : L max rel 6.74e-14  K ratio 1.000000  -> MATCH
+  clustered_shared          : L max rel 1.42e-14  K ratio 1.000000  -> MATCH
+  calibration_field         : L max rel 4.93e-14  K ratio 1.000000  -> MATCH
+  real_schurch_CD8_CD4      : L max rel 1.40e-10  K ratio 1.000000  -> MATCH
+
+  PASS — our reweighted cross-K estimator matches spatstat within tolerance on
+  synthetic AND real inputs. Recommendation: KEEP the Python core; cite spatstat
+  as cross-validation in the paper.

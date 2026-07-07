@@ -45,3 +45,11 @@ ihc_coloc_results/
 *.ndpi
 *.tif
 *.tiff
+
+# Validation framework generated artifacts (datasets live outside the repo at
+# validation_data_dir, default ~/oasis_validation_datasets; reports are per-run)
+validation_reports/
+validation_datasets/
+
+# Claude Code session/agent files
+.claude/

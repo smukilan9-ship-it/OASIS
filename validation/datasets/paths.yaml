@@ -1,0 +1,17 @@
+# LEGACY override map (back-compat only).
+#
+# Datasets now live in the consolidated `validation_data_dir` tree
+# (default ~/oasis_validation_datasets), resolved by
+# `validation/datasets/resolve.py`. Prefer setting `validation_data_dir` in
+# ~/.ihc_analyzer/setup.yaml (or the IHC_VALIDATION_DATA_DIR env var) and running
+# `python -m validation.datasets.acquire --apply`.
+#
+# This file is still honoured as a fallback: uncomment a line to point a single
+# dataset at a custom location. Anything left commented resolves via the
+# consolidated tree; a dataset not found anywhere simply SKIPS its test.
+
+# codex_crc:      /path/to/CRC_clusters_neighborhoods_markers.csv
+# cima_landmarks: /path/to/public_landmarks
+# deepliif:       /path/to/DeepLIIF_data
+# hnscc:          /path/to/PKG - HNSCC-mIF-mIHC-comparison_v2
+# tim3_crc_icm:   /path/to/tim3 data
