@@ -1,0 +1,107 @@
+{
+  "config": {
+    "sims": 300,
+    "nperm": 199,
+    "morph_smooth_um": [
+      0.0
+    ],
+    "bands": [
+      [
+        10.0,
+        30.0
+      ]
+    ],
+    "radii_max": 60.0,
+    "radii_step": 4.0,
+    "window_um": 800.0,
+    "n_points": 260,
+    "grid": 128,
+    "sigma_log": 1.15,
+    "dense_corr_um": 45.0,
+    "intermediate_corr_um": 75.0,
+    "band_period_um": 90.0,
+    "band_sigma_um": 18.0,
+    "short_jitter_um": 5.0,
+    "mid_jitter_um": 12.0,
+    "planted_fraction": 1.0
+  },
+  "screen": [
+    {
+      "combo": {
+        "morph_smooth_um": 0.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.0567,
+        "mean_p": 0.498,
+        "median_p": 0.5,
+        "assoc_rate": 0.02,
+        "seg_rate": 0.0167,
+        "verdict": "pass",
+        "ci95": [
+          0.0305,
+          0.0828
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 0.0467,
+        "mean_p": 0.5128,
+        "median_p": 0.54,
+        "assoc_rate": 0.0167,
+        "seg_rate": 0.0133,
+        "verdict": "pass",
+        "ci95": [
+          0.0228,
+          0.0705
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.04,
+        "mean_p": 0.508,
+        "median_p": 0.51,
+        "assoc_rate": 0.0133,
+        "seg_rate": 0.0233,
+        "verdict": "pass",
+        "ci95": [
+          0.0178,
+          0.0622
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.0733,
+        "mean_p": 0.4918,
+        "median_p": 0.485,
+        "assoc_rate": 0.0433,
+        "seg_rate": 0.03,
+        "verdict": "borderline",
+        "ci95": [
+          0.0438,
+          0.1028
+        ]
+      },
+      "power_short": {
+        "association_power": 0.9933,
+        "any_significant": 0.9933,
+        "mean_p": 0.0063,
+        "verdict": "pass",
+        "ci95": [
+          0.9841,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 0.9433,
+        "any_significant": 0.9433,
+        "mean_p": 0.0176,
+        "verdict": "pass",
+        "ci95": [
+          0.9172,
+          0.9695
+        ]
+      },
+      "score": 6,
+      "candidate_verdict": "BORDERLINE_NEEDS_MORE_SIM"
+    }
+  ]
+}

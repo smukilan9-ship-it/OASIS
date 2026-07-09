@@ -98,6 +98,15 @@ population statistic and does **not** assert single-cell co-expression — seria
 sections cannot establish co-expression (different Z-planes, TIM-3 is not
 CD8-restricted, membrane-vs-nuclear compartments).
 
+Dense tissue is fail-closed: when the per-image architecture check says the
+75 µm primary null is not trustworthy, OASIS does not report a robust cell-scale
+engagement claim. A public CODEX calibration currently promotes a
+morphology-conditioned dense-null candidate, and rendered H-DAB-like CODEX images
+show that nuclei-derived morphology can preserve its calibration. That mode is
+still not shipped; the LL477 real-pair demonstration passed on two usable certified
+pairs and skipped one sparse pair, but production needs provenance, ROI handling,
+and sparsity gates before this becomes a UI/CLI option.
+
 ## Validation & Reproducibility
 
 Every scientific claim is validated by a registered validation, runnable from the

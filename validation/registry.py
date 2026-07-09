@@ -161,6 +161,85 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "public_codex_dense_null",
+        "title": "Dense morphology-conditioned null — public CODEX calibration",
+        "category": "statistical",
+        "claim": "A candidate dense-tissue null can control false positives on real "
+                 "CRC tissue architecture templates without using biological marker "
+                 "pairs as ground truth.",
+        "purpose": "Use Schürch CRC CODEX cell coordinates as real dense architecture, "
+                   "simulate known independent and planted-associated marker pairs, "
+                   "and calibrate morphology-conditioned dense-null candidates.",
+        "why": "Dense LL477 fields fail the 75 µm architecture gate; this tests whether "
+               "a marker-independent total-cell morphology field is a plausible next "
+               "primary null instead of shipping an uncalibrated 35-45 µm bandwidth.",
+        "datasets": ["codex_crc"],
+        "assumptions": "CODEX coordinates approximate total-cell architecture; simulated "
+                       "A/B populations are known-truth null/positive controls; this is "
+                       "coordinate-level calibration, not image segmentation validation.",
+        "limitations": "Does not validate H-DAB/hematoxylin morphology extraction and does "
+                       "not ship a production dense null. Passing promotes a candidate "
+                       "only to real-image morphology validation.",
+        "interpretation": "PASS-like result = candidate worth pursuing; any H0 over-rejection "
+                          "means do not ship. Current focused result promotes 10-30 µm, "
+                          "2 µm total-cell support jitter, but production remains fail-closed.",
+        "expected": "Homogeneous CSR over-rejects; the candidate controls H0 near 5% and "
+                    "retains planted-positive power.",
+        "runner": {"kind": "script", "script": "validate_public_codex_dense_null.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
+        "id": "dense_null_image_morphology",
+        "title": "Dense null — rendered H-DAB morphology extraction",
+        "category": "statistical",
+        "claim": "The dense morphology-conditioned candidate remains calibrated when "
+                 "the marker-independent morphology field is recovered from rendered "
+                 "H-DAB-like hematoxylin pixels rather than oracle coordinates.",
+        "purpose": "Bridge public CODEX coordinate calibration to image-derived OASIS "
+                   "morphology extraction by rendering real cell architectures, detecting "
+                   "nuclei from hematoxylin pixels, and re-running known-null/planted "
+                   "dense-null calibration.",
+        "why": "The public CODEX coordinate null is not enough to ship; production needs "
+               "lambda_M(x) from images. This checks that the image-derived morphology "
+               "field is not the failure point before real LL477 validation.",
+        "datasets": ["codex_crc"],
+        "assumptions": "Rendered H-DAB-like nuclei are a controlled bridge, not real DAB "
+                       "serial-section images. Marker truth is simulated over real CODEX "
+                       "architecture.",
+        "limitations": "Does not validate real LL477 H-DAB staining, section artifacts, "
+                       "or certification ROI behavior. Passing still does not ship dense mode.",
+        "interpretation": "Current focused result: 10-30 µm / 2 µm image-derived nuclei "
+                          "morphology passes screen (worst H0 0.063, power 1.0, median "
+                          "field correlation 0.939). Real serial-section validation remains.",
+        "expected": "Image-derived morphology controls H0 near 5%, preserves planted-positive "
+                    "power, and recovers the coordinate morphology field.",
+        "runner": {"kind": "script", "script": "validate_dense_null_image_derived_morphology.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
+        "id": "dense_null_real_ll477",
+        "title": "Dense null — real LL477 serial-section demonstration",
+        "category": "spatial_association",
+        "claim": "The dense morphology-conditioned candidate can run on completed real "
+                 "LL477 OASIS serial-section bundles with sparse-pair exclusion.",
+        "purpose": "Apply the 10-30 µm / 2 µm support-jitter candidate to certified real "
+                   "CD8/TIM-3 H-DAB pairs using OASIS all-cell detections as the "
+                   "marker-independent morphology support.",
+        "why": "Public CODEX and rendered-image calibration are necessary but not enough; "
+               "the candidate also has to behave on the user's actual serial-section data.",
+        "datasets": [],
+        "assumptions": "Reads completed local LL477 result bundles under Desktop; not a "
+                       "known-null calibration because LL477 biology is not ground truth.",
+        "limitations": "Only two usable pairs; one sparse pair skipped. Significant calls "
+                       "are real-use demonstrations, not publication-grade biological proof.",
+        "interpretation": "Current result: x10_1 p=0.007, x10_3 p=0.024 under the 10-30 µm "
+                          "dense candidate; x10_2 skipped for only 10 TIM-3 positives.",
+        "expected": "Usable certified pairs run; sparse pair is skipped; no dense mode is "
+                    "shipped solely from this demonstration.",
+        "runner": {"kind": "script", "script": "validate_dense_null_real_ll477.py"},
+        "runtime_tier": "short", "external_deps": [],
+    },
+    {
         "id": "internal_controls",
         "title": "Internal negative/positive controls",
         "category": "statistical",
@@ -417,6 +496,29 @@ VALIDATIONS = [
     },
 
     # ── End-to-End ──────────────────────────────────────────────────────────────
+    {
+        "id": "e2e_knownwarp_deepliif",
+        "title": "End-to-end B: real-DAB known-warp reconstruction",
+        "category": "end_to_end",
+        "claim": "Real chromogenic DAB pixels flow correctly through the whole pipeline "
+                 "(segmentation → registration → cross-K) at cell scale.",
+        "purpose": "Warp a real DeepLIIF IHC panel by a known transform, segment both, "
+                   "register, and check the reconstruction TRE + that the verdict is "
+                   "recovered only WITH registration (necessity control).",
+        "why": "Bounds one side of the untestable real-DAB cell-scale gap (ihc.md §10): "
+               "real pixels + full pipeline, with a geometric ground truth we can build.",
+        "datasets": ["deepliif"],
+        "assumptions": "Same-image warp → the two cell populations are identical (trivial, "
+                       "maximal association); DeepLIIF ≈ 0.25 µm/px.",
+        "limitations": "Same marker, not two different markers (association is trivial) — "
+                       "that is Validation A. Registration is the automated path here.",
+        "interpretation": "Small reconstruction TRE + registered verdict associated + "
+                          "unregistered verdict different = pipeline sound on real pixels.",
+        "expected": "Median reconstruction TRE ≤ 5 µm; registered→associated; "
+                    "registration necessary on most tiles.",
+        "runner": {"kind": "script", "script": "validate_e2e_knownwarp_deepliif.py"},
+        "runtime_tier": "long", "external_deps": ["qupath", "instanseg"],
+    },
     {
         "id": "keystone_degradation",
         "title": "Serial-section degradation keystone (CODEX)",

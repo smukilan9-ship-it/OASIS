@@ -455,6 +455,130 @@ def run_coloc(
 # Cross-type spatial association pipeline (Ripley's K / g(r))
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _build_analysis_window(layer_order, registered, reg_results, pixel_size_um,
+                           ref_image_path, layer_images, certified_roi_polygon):
+    """Build the cross-section analysis window used by BOTH the bandwidth pre-flight and
+    the statistic, so they measure on the identical support:
+
+        window = A_tissue ∩ B_tissue(registered) ∩ certification_ROI
+
+    Regions present in only one section (folds/tears) cannot inform cross-section
+    analysis, so they are excluded from area normalization, observed points, and null
+    sampling alike. A drawn Certification ROI further restricts the window. Falls back to
+    a bounding box (mask_method="bbox", conservative null) when no tissue mask is found.
+
+    Returns (window|None, mask_method, area_px, overlap_iou, overlap_frac_a).
+    """
+    from spatial_stats import (estimate_tissue_polygon, transform_polygon,
+                               intersection_window, bounding_box_area)
+    mov_marker = layer_order[1] if len(layer_order) > 1 else None
+
+    _, poly_a = estimate_tissue_polygon(ref_image_path, pixel_size_um)
+    window, mask_method = None, "otsu_intersection"
+    overlap_iou = overlap_frac_a = None
+    if poly_a is not None:
+        poly_b_in_a = None
+        b_img = layer_images.get(mov_marker) if mov_marker else None
+        if b_img:
+            _, poly_b_native = estimate_tissue_polygon(b_img, pixel_size_um)
+            if poly_b_native is not None:
+                reg = reg_results.get(mov_marker)
+                poly_b_in_a = (transform_polygon(poly_b_native, reg)
+                               if reg else poly_b_native)
+        if poly_b_in_a is not None:
+            w, a_inter, iou, frac = intersection_window(poly_a, poly_b_in_a)
+            if w is not None and a_inter > 0:
+                window, overlap_iou, overlap_frac_a = w, iou, frac
+                print(f"  Tissue mask: A∩B intersection "
+                      f"{a_inter * pixel_size_um**2:.0f} µm² "
+                      f"(IoU {iou:.2f}, {frac*100:.0f}% of A's tissue)")
+        if window is None:
+            window, mask_method = poly_a, "otsu_a_only"
+            print("  Tissue mask: A-only Otsu (B mask unavailable or empty "
+                  "intersection) — cross-section overlap NOT enforced")
+
+    # LOCALLY_CERTIFIED / drawn Certification ROI: permit the statistic only inside the
+    # trusted region, never across the whole field.
+    if certified_roi_polygon:
+        try:
+            from shapely.geometry import Polygon
+            roi = Polygon(certified_roi_polygon)
+            if not roi.is_valid or roi.is_empty:
+                raise ValueError("empty or invalid polygon")
+            window = window.intersection(roi) if window is not None else roi
+            if window.is_empty or window.area <= 0:
+                raise ValueError("certified ROI does not overlap the tissue window")
+            mask_method += "_certified_roi"
+            print(f"  Certification ROI applied "
+                  f"({window.area * pixel_size_um**2:.0f} µm²)")
+        except Exception as e:
+            raise ValueError(f"Invalid certified ROI polygon: {e}")
+
+    area_px = window.area if window is not None else None
+    if not area_px or area_px <= 0:
+        all_pts = [registered[m] for m in layer_order]
+        area_px = bounding_box_area(
+            all_pts[0] if all_pts else np.empty((0, 2)),
+            np.vstack([p for p in all_pts[1:]]) if len(all_pts) > 1
+            else np.empty((0, 2)),
+        )
+        window, mask_method = None, "bbox"
+        print(f"  Tissue mask: bounding-box fallback "
+              f"({area_px:.0f} px² — null is biased/conservative without a mask)")
+    return window, mask_method, area_px, overlap_iou, overlap_frac_a
+
+
+def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, window,
+                                     bandwidth_um=None):
+    """Per-image validity of the 75 µm reweight bandwidth, measured WITHIN the analysis
+    window (NOT a universal image property — the same image under a different ROI can
+    give a different verdict). For each marker, restrict its registered positive centroids
+    to `window` and measure the tissue architecture scale ℓ̂; classify it against the
+    bandwidth with the calibrated envelope (spatial_stats.architecture_scale_verdict):
+
+        ok        ℓ̂ ≥ 2·bw   — size-controlled; primary reweighted null trustworthy
+        caution   bw ≤ ℓ̂ < 2·bw
+        unreliable ℓ̂ < bw     — architecture near/inside the interaction band
+        unknown   too few cells in the window to estimate ℓ̂
+
+    `valid` is False when the worst status is `unreliable` OR `unknown` — neither can
+    support a size-controlled "robust" claim (fail closed). Registration certification is
+    a SEPARATE concern and is never affected by this check.
+    """
+    from spatial_stats import (estimate_architecture_scale, architecture_scale_verdict,
+                               filter_points_in_polygon, _REWEIGHT_BANDWIDTH_UM)
+    bw = float(bandwidth_um if bandwidth_um is not None else _REWEIGHT_BANDWIDTH_UM)
+    rank = {"ok": 0, "caution": 1, "unreliable": 2, "unknown": 2}
+    per_image = {}
+    worst = "ok"
+    for marker in layer_order:
+        pts = np.asarray(registered.get(marker, np.empty((0, 2))), float).reshape(-1, 2)
+        if window is not None and len(pts):
+            pts, _excl = filter_points_in_polygon(pts, window)
+        ell = estimate_architecture_scale(pts, pixel_size_um, tissue_polygon=window)
+        v = architecture_scale_verdict(ell, bandwidth_um=bw)
+        per_image[marker] = {"scale_um": v.get("scale_um"), "status": v.get("status"),
+                             "ok": v.get("ok"), "n": int(len(pts)),
+                             "min_ok_scale_um": v.get("min_ok_scale_um")}
+        if rank.get(v.get("status"), 2) > rank.get(worst, 0):
+            worst = v.get("status")
+    valid = worst in ("ok", "caution")
+    reason = {
+        "ok": f"tissue architecture is coarser than {bw:.0f} µm in every image — the "
+              f"reweighted primary null is size-controlled within this window.",
+        "caution": f"architecture is only marginally coarser than {bw:.0f} µm — treat a "
+                   f"'robust' verdict with care.",
+        "unreliable": f"architecture is at/inside the {bw:.0f} µm interaction band in at "
+                      f"least one image — the reweighted test is anti-conservative here; "
+                      f"do not report 'robust'.",
+        "unknown": "too few positive cells inside the window to measure the architecture "
+                   "scale — cannot validate the bandwidth assumption (insufficient data).",
+    }[worst]
+    return {"bandwidth_um": bw, "window_scope": "certified_analysis_window",
+            "per_image": per_image, "worst_status": worst, "valid": bool(valid),
+            "reason": reason}
+
+
 def run_spatial_association(
     layer_geojsons: dict,
     layer_order: list,
@@ -466,6 +590,7 @@ def run_spatial_association(
     n_perm: int = N_PERMUTATIONS,
     layer_images: dict = None,
     certified_roi_polygon=None,
+    precheck_only: bool = False,
 ) -> dict:
     """
     Population-level cross-type spatial association for N markers.
@@ -541,63 +666,41 @@ def run_spatial_association(
         else:
             registered[marker] = raw
 
-    # ── A∩B intersection tissue window ────────────────────────────────────────
-    # Window = A_tissue ∩ B_tissue(registered). Regions present in only one section
-    # (folds/tears/missing tissue) cannot contribute valid cross-section info, so
-    # they are excluded from the area normalization, the observed points, and the
-    # null sampling alike.
-    area_a, poly_a = estimate_tissue_polygon(ref_image_path, pixel_size_um)
-    window, mask_method = None, "otsu_intersection"
-    overlap_iou = overlap_frac_a = None
-    if poly_a is not None:
-        poly_b_in_a = None
-        b_img = layer_images.get(mov_marker) if mov_marker else None
-        if b_img:
-            _, poly_b_native = estimate_tissue_polygon(b_img, pixel_size_um)
-            if poly_b_native is not None:
-                reg = reg_results.get(mov_marker)
-                poly_b_in_a = (transform_polygon(poly_b_native, reg)
-                               if reg else poly_b_native)
-        if poly_b_in_a is not None:
-            w, a_inter, iou, frac = intersection_window(poly_a, poly_b_in_a)
-            if w is not None and a_inter > 0:
-                window, overlap_iou, overlap_frac_a = w, iou, frac
-                print(f"  Tissue mask: A∩B intersection "
-                      f"{a_inter * pixel_size_um**2:.0f} µm² "
-                      f"(IoU {iou:.2f}, {frac*100:.0f}% of A's tissue)")
-        if window is None:
-            window, mask_method = poly_a, "otsu_a_only"
-            print("  Tissue mask: A-only Otsu (B mask unavailable or empty "
-                  "intersection) — cross-section overlap NOT enforced")
+    # ── A∩B intersection tissue window (∩ certification ROI) ──────────────────
+    window, mask_method, area_px, overlap_iou, overlap_frac_a = _build_analysis_window(
+        layer_order, registered, reg_results, pixel_size_um,
+        ref_image_path, layer_images, certified_roi_polygon)
 
-    # LOCALLY_CERTIFIED means the statistic is permitted only inside the
-    # landmark-supported convex hull, never across the whole field.
-    if certified_roi_polygon:
-        try:
-            from shapely.geometry import Polygon
-            roi = Polygon(certified_roi_polygon)
-            if not roi.is_valid or roi.is_empty:
-                raise ValueError("empty or invalid polygon")
-            window = window.intersection(roi) if window is not None else roi
-            if window.is_empty or window.area <= 0:
-                raise ValueError("certified ROI does not overlap the tissue window")
-            mask_method += "_certified_roi"
-            print(f"  Certification ROI applied "
-                  f"({window.area * pixel_size_um**2:.0f} µm²)")
-        except Exception as e:
-            raise ValueError(f"Invalid certified ROI polygon: {e}")
+    # ── Pre-flight: is the 75 µm reweight bandwidth valid WITHIN this window? ──
+    # Measured on the real positive centroids inside the analysis window (per image);
+    # gates trust in the primary reweighted null BEFORE the statistic is reported.
+    bandwidth_precheck = precheck_bandwidth_within_window(
+        registered, layer_order, pixel_size_um, window)
+    _pc = bandwidth_precheck.get("per_image", {})
+    print(f"  Bandwidth 75 µm pre-flight (within analysis window): "
+          f"worst={bandwidth_precheck.get('worst_status')} "
+          f"valid={bandwidth_precheck.get('valid')}")
+    for _m in layer_order:
+        _e = _pc.get(_m)
+        if _e:
+            print(f"     {_m}: ℓ̂={_e.get('scale_um')} µm status={_e.get('status')} "
+                  f"(n={_e.get('n')})")
 
-    area_px = window.area if window is not None else None
-    if not area_px or area_px <= 0:
-        all_pts = [registered[m] for m in layer_order]
-        area_px = bounding_box_area(
-            all_pts[0] if all_pts else np.empty((0, 2)),
-            np.vstack([p for p in all_pts[1:]]) if len(all_pts) > 1
-            else np.empty((0, 2)),
-        )
-        window, mask_method = None, "bbox"
-        print(f"  Tissue mask: bounding-box fallback "
-              f"({area_px:.0f} px² — null is biased/conservative without a mask)")
+    # Pre-flight-only mode (the UI "Validate 75 µm bandwidth" button): return the
+    # bandwidth verdict without the expensive Monte-Carlo cross-K loop. Segmentation
+    # already ran, so a subsequent full run can reuse the GeoJSONs.
+    if precheck_only:
+        return {
+            "per_marker":               per_marker,
+            "association":              {},
+            "tissue_area_um2":          (float(area_px) * pixel_size_um ** 2
+                                         if area_px else None),
+            "tissue_mask_method":       mask_method,
+            "intersection_overlap_iou": overlap_iou,
+            "intersection_overlap_frac_a": overlap_frac_a,
+            "bandwidth_precheck":       bandwidth_precheck,
+            "_registered":              registered,
+        }
 
     # Evaluation radii: 0 → max_radius_um in radius_step_um steps (µm → px)
     radii_um = np.arange(0.0, max_radius_um + radius_step_um, radius_step_um)
@@ -681,5 +784,6 @@ def run_spatial_association(
         "tissue_mask_method":       mask_method,
         "intersection_overlap_iou": overlap_iou,
         "intersection_overlap_frac_a": overlap_frac_a,
+        "bandwidth_precheck":       bandwidth_precheck,
         "_registered":              registered,
     }

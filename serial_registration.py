@@ -593,10 +593,62 @@ def _hull_area(pts):
     return float(cv2.contourArea(cv2.convexHull(pts)))
 
 
+def _polygon_from_points(poly_pts):
+    """Build a valid shapely Polygon from an Nx2 point list, or None."""
+    if poly_pts is None or len(poly_pts) < 3:
+        return None
+    try:
+        from shapely.geometry import Polygon
+        p = Polygon([(float(x), float(y)) for x, y in poly_pts])
+        if not p.is_valid:
+            p = p.buffer(0)                      # repair self-intersections
+        return p if (p.is_valid and not p.is_empty and p.area > 0) else None
+    except Exception:
+        return None
+
+
+def _points_inside(pts, poly):
+    """Boolean mask of the Nx2 points inside (or on) the shapely polygon `poly`."""
+    from shapely.geometry import Point
+    pts = np.asarray(pts, float)
+    if not len(pts) or poly is None:
+        return np.zeros(len(pts), bool)
+    return np.array([poly.covers(Point(float(x), float(y))) for x, y in pts], bool)
+
+
+def _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac):
+    """When the operator drew a Certification ROI, the certified analysis window is the
+    ROI intersected with any tighter LOCALLY_CERTIFIED hull. Fail closed (downgrade to
+    NOT_CERTIFIABLE) on an empty / invalid / sliver window — never emit a sliver."""
+    if roi_poly is None:
+        return out
+    local_hull = _polygon_from_points(out.get("roi_polygon"))
+    if local_hull is not None:
+        final, source = roi_poly.intersection(local_hull), "local_hull_within_roi"
+    else:
+        final, source = roi_poly, "user_roi"
+    ok = final is not None and final.is_valid and (not final.is_empty) and final.area > 0
+    frac = (final.area / float(image_wh[0] * image_wh[1])) if (ok and image_wh) else 0.0
+    if not ok or (image_wh and frac < min_roi_frac):
+        out.update(verdict="NOT_CERTIFIABLE", roi_polygon=None,
+                   certified_window_source=None,
+                   reason="certified region (drawn ROI ∩ landmark-supported area) is too "
+                          "small to analyse — enlarge the Certification ROI or improve the "
+                          "landmarks inside it")
+        return out
+    geom = final
+    if geom.geom_type == "MultiPolygon":
+        geom = max(geom.geoms, key=lambda g: g.area)
+    out["roi_polygon"] = [[float(x), float(y)] for x, y in geom.exterior.coords[:-1]]
+    out["certified_window_source"] = source
+    return out
+
+
 def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
                                  val_ref_pts=None, val_mov_pts=None, image_wh=None,
                                  min_n=6, target_n=12, loo_max_um=5.0, fit_max_um=5.0,
-                                 deformed_loo_um=15.0, min_roi_frac=0.10):
+                                 deformed_loo_um=15.0, min_roi_frac=0.10,
+                                 user_roi_polygon=None):
     """
     GOLD-STANDARD, landmark-DRIVEN registration + verification (Phase A).
 
@@ -626,11 +678,30 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
     import cv2
     ref = np.asarray(ref_pts, float)
     mov = np.asarray(mov_pts, float)
-    n = len(ref)
-    out = {"n": n, "matrix": None, "est_scale": None, "fit_residual_um": None,
+    out = {"n": len(ref), "matrix": None, "est_scale": None, "fit_residual_um": None,
            "tre_median_um": None, "tre_p90_um": None, "tre_max_um": None,
            "validation": None, "coverage_frac": None, "n_good": 0,
-           "roi_polygon": None, "verdict": None, "reason": None}
+           "roi_polygon": None, "certified_window_source": None,
+           "verdict": None, "reason": None}
+
+    # Certification ROI (operator-drawn, full-res ref coords): landmarks OUTSIDE the
+    # trusted region cannot drive the verdict — drop them before fitting (fail closed).
+    roi_poly = _polygon_from_points(user_roi_polygon)
+    if roi_poly is not None:
+        keep = _points_inside(ref, roi_poly)
+        ref, mov = ref[keep], mov[keep]
+        if val_ref_pts is not None and val_mov_pts is not None and len(val_ref_pts):
+            vr, vm = np.asarray(val_ref_pts, float), np.asarray(val_mov_pts, float)
+            vk = _points_inside(vr, roi_poly)
+            val_ref_pts, val_mov_pts = vr[vk], vm[vk]
+        if len(ref) < min_n:
+            out.update(n=len(ref), verdict="NOT_CERTIFIABLE",
+                       reason=f"only {len(ref)} landmark(s) fall inside the drawn "
+                              f"Certification ROI (need ≥{min_n}) — enlarge the ROI or "
+                              f"add landmarks inside it")
+            return out
+    n = len(ref)
+    out["n"] = n
 
     M = _fit_similarity_ls(mov, ref) if n >= 2 else None
     if M is not None:
@@ -673,7 +744,8 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
         out.update(verdict="CERTIFIED",
                    reason=f"held-out TRE median {med} µm (p90 {out['tre_p90_um']}), "
                           f"fit-residual {fr} µm, n={n}{tier}")
-        return out
+        # A drawn ROI becomes the certified analysis window (whole field otherwise).
+        return _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac)
     # Locally certified? a spatially-coherent subset of good points (LOO case only)
     if local_ok and out["n_good"] >= min_n:
         gref = ref[:len(err)][good]
@@ -686,7 +758,8 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
                                     cv2.convexHull(gref.astype(np.float32)).reshape(-1, 2)],
                        reason=f"{out['n_good']} of {n} landmarks pass within an ROI "
                               f"(~{roi_frac*100:.0f}% of field); analyse that ROI only")
-            return out
+            # Tighten to (drawn ROI ∩ local hull) when the operator drew one.
+            return _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac)
     if med <= deformed_loo_um:
         out.update(verdict="DEFORMED",
                    reason=f"held-out TRE {med} µm / fit-residual {fr} µm exceed "
@@ -842,7 +915,8 @@ def _local_ncc_refine(ref_struct, mov_struct, ref_xy, mov_xy, search, patch):
     return best, max(best_ncc, 0.0)
 
 
-def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transform=None):
+def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transform=None,
+                      roi_polygon=None):
     """
     Auto-PROPOSE consistent corresponding landmarks (mov↔ref) for HUMAN verification.
 
@@ -868,14 +942,21 @@ def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transf
          same coverage-vs-ROI logic the certifier uses, applied at proposal time so
          the operator starts from the set most likely to certify.
 
+    `roi_polygon` (optional, thumbnail/array-pixel REFERENCE coords) is an operator-drawn
+    Certification ROI: proposals are restricted to correspondences whose reference point
+    falls inside it (fail closed with a clear message if too few remain — never silently
+    fall back to a field-wide proposal). The ROI is also mapped into moving space via the
+    fitted transform's inverse and returned as `mov_roi_polygon` for the moving-pane crop.
+
     Returns dict: ref_points/mov_points (Nx2 lists, array-pixel coords), confidences,
     n, n_lumen_ref, n_lumen_mov, mode ('global'|'roi'), coverage_frac,
-    fit_residual_um, roi_polygon, ok, msg.
+    fit_residual_um, roi_polygon, mov_roi_polygon, ok, msg.
     """
     import cv2
     out = {"ref_points": [], "mov_points": [], "confidences": [], "n": 0,
            "n_lumen_ref": 0, "n_lumen_mov": 0, "mode": None, "coverage_frac": None,
-           "fit_residual_um": None, "roi_polygon": None, "ok": False, "msg": ""}
+           "fit_residual_um": None, "roi_polygon": None, "mov_roi_polygon": None,
+           "ok": False, "msg": ""}
     try:
         rs = structural_channel(ref_rgb, pixel_size_um)
         ms = structural_channel(mov_rgb, pixel_size_um)
@@ -924,6 +1005,19 @@ def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transf
                 keep = inl.ravel().astype(bool)
                 rr2, mm2 = rr2[keep], mm2[keep]
 
+        # Certification ROI: keep only correspondences whose REFERENCE point is inside the
+        # operator's trusted region. Fail closed rather than proposing outside it.
+        roi_cnt = None
+        if roi_polygon is not None and len(roi_polygon) >= 3:
+            roi_cnt = np.asarray(roi_polygon, np.float32).reshape(-1, 1, 2)
+            inside = np.array([cv2.pointPolygonTest(roi_cnt, (float(x), float(y)), False) >= 0
+                               for x, y in rr2], bool)
+            rr2, mm2 = rr2[inside], mm2[inside]
+            if len(rr2) < 3:
+                out["msg"] = ("not enough structural landmarks inside the Certification "
+                              "ROI — enlarge the ROI or place landmarks manually inside it")
+                return out
+
         if len(rr2) < 3:
             out["msg"] = ("could not find enough geometrically-consistent "
                           "correspondences; place landmarks manually")
@@ -954,6 +1048,17 @@ def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transf
         sel = _spread_select_idx(gref, max_points)
         sref, smov = gref[sel], gmov[sel]
         med_res = float(np.median(gres)) if len(gres) and np.isfinite(gres).all() else None
+
+        # Map the reference ROI into moving space (Mfit maps mov→ref, so use its inverse)
+        # so the UI can show the cropped moving region the operator is certifying within.
+        mov_roi = None
+        if roi_polygon is not None and Mfit is not None:
+            try:
+                Minv = cv2.invertAffineTransform(np.asarray(Mfit, np.float32))
+                mroi = _apply_affine(np.asarray(roi_polygon, float), Minv)
+                mov_roi = [[round(float(x), 1), round(float(y), 1)] for x, y in mroi]
+            except Exception:
+                mov_roi = None
         out.update(
             ref_points=[[round(float(x), 2), round(float(y), 2)] for x, y in sref],
             mov_points=[[round(float(x), 2), round(float(y), 2)] for x, y in smov],
@@ -963,6 +1068,7 @@ def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transf
             roi_polygon=([[round(float(x), 1), round(float(y), 1)] for x, y in
                           cv2.convexHull(gref.astype(np.float32)).reshape(-1, 2)]
                          if mode == "roi" and len(gref) >= 3 else None),
+            mov_roi_polygon=mov_roi,
             msg=(f"proposed {len(sel)} correspondences · "
                  f"{'field-wide' if mode == 'global' else 'ROI'} coverage "
                  f"{cover*100:.0f}%"

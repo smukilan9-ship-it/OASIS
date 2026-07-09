@@ -98,7 +98,14 @@ def _estimate_background(rgb: np.ndarray):
     fixed [255,255,254] white is what let the counterstain leak into DAB on
     tone-cast slides (CRC-ICM)."""
     flat = np.asarray(rgb, dtype=np.float64).reshape(-1, 3)
-    bright = flat[flat.mean(1) > np.percentile(flat.mean(1), 80)]
+    means = flat.mean(1)
+    # `>=` (not `>`) so a large saturated-white border can't empty this set: when
+    # ≥20% of the frame is clipped white the 80th-percentile brightness equals the
+    # ceiling, and strict `>` would drop every pixel → np.percentile of an empty
+    # array crashes ("index -1 is out of bounds for axis 0 with size 0").
+    bright = flat[means >= np.percentile(means, 80)]
+    if bright.size == 0:                      # degenerate (fully uniform) image
+        bright = flat
     return np.clip(np.percentile(bright, 99, axis=0), 200, 255)
 
 

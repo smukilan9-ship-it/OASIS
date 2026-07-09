@@ -618,10 +618,14 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                 return {"status": "error", "error": "A valid pixel size is required"}
             wh = payload.get("image_wh") or None
             image_wh = tuple(wh) if wh and len(wh) == 2 else None
+            # Certification ROI (full-res ref coords, same space as ref_points): if drawn,
+            # it constrains the fit to the trusted region AND becomes the certified window.
+            user_roi = payload.get("roi_polygon") or None
             result = landmark_register_and_verify(
                 ref, mov, px, image_wh=image_wh,
                 min_n=6, target_n=12, loo_max_um=5.0, fit_max_um=5.0,
                 deformed_loo_um=15.0, min_roi_frac=0.10,
+                user_roi_polygon=user_roi,
             )
             matrix = result.get("matrix")
             result["matrix"] = (matrix.tolist() if hasattr(matrix, "tolist") else matrix)
@@ -637,7 +641,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             return {"status": "error", "error": str(e)}
 
     def propose_landmarks(self, ref_path: str, mov_path: str,
-                          pixel_size_um: float, max_points: int = 8) -> dict:
+                          pixel_size_um: float, max_points: int = 8,
+                          roi_polygon=None) -> dict:
         """Auto-propose corresponding landmarks for the operator to VERIFY.
 
         Runs the structural (lumen + corner) proposal on downsampled thumbnails,
@@ -645,6 +650,12 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         straight into the landmark canvas (same coordinate space as hand-placed
         clicks). These are proposals only — the human must confirm them; nothing is
         certified here.
+
+        `roi_polygon` (optional) is the operator's Certification ROI in FULL-RES
+        REFERENCE coords (from the canvas). It is converted to the proposal's thumbnail
+        space (× ref_scale) on the way in; proposals are then restricted to inside it,
+        and the ROI mapped into moving space is returned (mov_roi_polygon, full-res
+        moving coords) so the UI can show the cropped moving region.
         """
         try:
             sys.path.insert(0, str(PROJECT_DIR))
@@ -662,9 +673,15 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             if ref_rgb is None or mov_rgb is None:
                 return {"status": "error", "error": "Could not load one or both images"}
 
+            # Full-res ref ROI → thumbnail coords for the (thumbnail-space) proposal.
+            roi_thumb = None
+            if roi_polygon and len(roi_polygon) >= 3:
+                roi_thumb = [[float(x) * ref_scale, float(y) * ref_scale]
+                             for x, y in roi_polygon]
+
             # Proposal runs in thumbnail space; measure at the thumbnail's pixel size.
             prop = _propose(ref_rgb, mov_rgb, px / max(ref_scale, 1e-9),
-                            max_points=int(max_points))
+                            max_points=int(max_points), roi_polygon=roi_thumb)
             if not prop.get("ok"):
                 return {"status": "error", "error": prop.get("msg") or "no proposals"}
 
@@ -673,12 +690,15 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             mov_pts = [[x / mov_scale, y / mov_scale] for x, y in prop["mov_points"]]
             roi = prop.get("roi_polygon")
             roi_full = ([[x / ref_scale, y / ref_scale] for x, y in roi] if roi else None)
+            mov_roi = prop.get("mov_roi_polygon")
+            mov_roi_full = ([[x / mov_scale, y / mov_scale] for x, y in mov_roi]
+                            if mov_roi else None)
             return {"status": "ok", "ref_points": ref_pts, "mov_points": mov_pts,
                     "confidences": prop.get("confidences") or [],
                     "n": prop["n"], "msg": prop["msg"],
                     "mode": prop.get("mode"), "coverage_frac": prop.get("coverage_frac"),
                     "fit_residual_um": prop.get("fit_residual_um"),
-                    "roi_polygon": roi_full,
+                    "roi_polygon": roi_full, "mov_roi_polygon": mov_roi_full,
                     "n_lumen_ref": prop["n_lumen_ref"], "n_lumen_mov": prop["n_lumen_mov"]}
         except Exception as e:
             return {"status": "error", "error": str(e)}
@@ -798,11 +818,46 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         results = self._load_spatial_results(output_dir)   # null stats now persisted
         return {"status": "ok", "results": results, "output_dir": output_dir}
 
-    def run_spatial_association(self, config: dict) -> dict:
+    def _scale_px_map(self, folder) -> dict:
+        """Map {analysis_filename: measured_pixel_size} for a folder's scale images.
+
+        Reuses the Quant scale-matcher so Spatial batch mode can calibrate each
+        analysis image from its own burned-in scale bar (the "_scale" sibling)
+        instead of applying one session pixel size to the whole cohort. Only
+        readable pairs are returned; unmatched images fall back to the session
+        value in the caller.
+        """
+        out = {}
+        if not folder:
+            return out
+        prev = self.preview_quant_scale_matches(folder)
+        if prev.get("status") != "ok":
+            return out
+        for p in prev.get("pairs", []):
+            if p.get("filename") and p.get("pixel_size"):
+                out[p["filename"]] = float(p["pixel_size"])
+        return out
+
+    def precheck_bandwidth_for_pair(self, config: dict) -> dict:
+        """Pre-run '75 µm bandwidth validity' check for one pair (the UI button).
+
+        Segments the pair (writing reusable GeoJSONs to the same output dir the full
+        run uses), builds the certified analysis window, and returns the per-image
+        architecture-scale verdict WITHOUT the expensive Monte-Carlo statistic. Runs
+        synchronously and returns the verdict directly. A subsequent full run with
+        reuse_existing_geojson=True skips re-segmentation.
+        """
+        return self.run_spatial_association({**config, "mode": "single"},
+                                            precheck_only=True)
+
+    def run_spatial_association(self, config: dict, precheck_only: bool = False) -> dict:
         """
         Run the spatial-association pipeline (single pair or batch) in a thread.
         Reuses the shared pipeline (run_pipeline.py --mode spatial); per-image
         pixel sizes are resolved up front and injected as pixel_overrides.
+
+        When precheck_only is True, runs synchronously in a special bandwidth-pre-flight
+        mode (segment → window → 75 µm verdict, no permutations) and returns the verdict.
         """
         try:
             sys.path.insert(0, str(PROJECT_DIR))
@@ -833,6 +888,16 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         use_cyto_a = bool(config.get("use_cytoplasm_a", False))
         use_cyto_b = bool(config.get("use_cytoplasm_b", False))
         cell_expansion_um = config.get("cell_expansion_um", 2.0)
+        # Batch-mode options mirrored from the Quant tab:
+        #   adaptive_threshold   – classify each image at its own per-image Otsu cut
+        #   preprocess_normalize – white-balance every input to its own white point
+        #   match_scale_images   – calibrate each image from its "_scale" sibling
+        # Adaptive is mutually exclusive with a fixed per-image threshold override
+        # (run_pipeline suppresses adaptive when threshold_overrides is set), so we
+        # skip populating threshold_overrides when adaptive is on.
+        adaptive_threshold   = bool(config.get("adaptive_threshold", False))
+        preprocess_normalize = bool(config.get("preprocess_normalize", False))
+        match_scale_images   = bool(config.get("match_scale_images", False))
         pixel_overrides, threshold_overrides, cytoplasm_overrides = {}, {}, {}
         membrane_overrides = {}          # per-image calibrated membrane cutoffs
         pairs, unmatched = [], []
@@ -883,8 +948,9 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                                     config.get("pixel_size_b"))
             pixel_overrides[os.path.basename(ia)] = pa
             pixel_overrides[os.path.basename(ib)] = pb
-            threshold_overrides[os.path.basename(ia)] = dab_threshold_a
-            threshold_overrides[os.path.basename(ib)] = dab_threshold_b
+            if not adaptive_threshold:
+                threshold_overrides[os.path.basename(ia)] = dab_threshold_a
+                threshold_overrides[os.path.basename(ib)] = dab_threshold_b
             cytoplasm_overrides[os.path.basename(ia)] = use_cyto_a
             cytoplasm_overrides[os.path.basename(ib)] = use_cyto_b
             _membrane_cutoffs(ia, config.get("calib_profile_a"), la, use_cyto_a)
@@ -907,13 +973,33 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             for p in pairs:
                 p["certification"] = certifications.get(p.get("sample_id"))
             unmatched = prev.get("unmatched", [])
-            # One session pixel size applied to every image in the batch
+            # Session pixel size is the default for every image in the batch…
             ref_px = resolve_pixel_size(session_value, "", None, None)
+            # …unless "match scale images" is on: then each analysis image is
+            # calibrated from its own "_scale" sibling's burned-in bar, and only
+            # images without a readable scale fall back to the session value.
+            scale_px = {}
+            if match_scale_images:
+                if config.get("folder_mode", "two_folder") == "two_folder":
+                    scale_px.update(self._scale_px_map(config.get("folder_a")))
+                    scale_px.update(self._scale_px_map(config.get("folder_b")))
+                else:
+                    scale_px.update(self._scale_px_map(config.get("folder_a")))
+                n = len(scale_px)
+                self._emit("log", {"msg": (
+                    f"Matched scale images: {n} image(s) calibrated from their own "
+                    f"scale bar; the rest use the session pixel size ({ref_px:.4f} µm/px)"
+                ) if n else (
+                    "Match scale images: no readable scale bars found — using the "
+                    f"session pixel size ({ref_px:.4f} µm/px) for all images"
+                ), "level": "info" if n else "warn"})
             for p in pairs:
-                pixel_overrides[os.path.basename(p["path_a"])] = ref_px
-                pixel_overrides[os.path.basename(p["path_b"])] = ref_px
-                threshold_overrides[os.path.basename(p["path_a"])] = dab_threshold_a
-                threshold_overrides[os.path.basename(p["path_b"])] = dab_threshold_b
+                fa, fb = os.path.basename(p["path_a"]), os.path.basename(p["path_b"])
+                pixel_overrides[fa] = scale_px.get(fa, ref_px)
+                pixel_overrides[fb] = scale_px.get(fb, ref_px)
+                if not adaptive_threshold:
+                    threshold_overrides[fa] = dab_threshold_a
+                    threshold_overrides[fb] = dab_threshold_b
                 cytoplasm_overrides[os.path.basename(p["path_a"])] = use_cyto_a
                 cytoplasm_overrides[os.path.basename(p["path_b"])] = use_cyto_b
                 _membrane_cutoffs(p["path_a"], config.get("calib_profile_a"),
@@ -946,6 +1032,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             "threshold_overrides": threshold_overrides,
             "cytoplasm_overrides": cytoplasm_overrides,
             "membrane_overrides":  membrane_overrides,
+            "adaptive_threshold":  adaptive_threshold,
+            "preprocess_normalize": preprocess_normalize,
             "cell_expansion_um":   cell_expansion_um,
             "_pixel_size_from_ui": True,
             "pixel_size_mode":     "global",
@@ -954,7 +1042,15 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             "cleanup_intermediates": config.get("cleanup_intermediates", False),
             "spatial_pairs":       pairs,
             "require_landmark_certification": True,
+            # Reuse existing segmentation when a prior pre-flight already produced it
+            # (skips a second QuPath pass). Fresh segmentation during the pre-flight.
+            "reuse_existing_geojson": (False if precheck_only
+                                       else bool(config.get("reuse_existing_geojson", False))),
         }
+        if precheck_only:
+            cfg["precheck_bandwidth_only"] = True
+            # Certification is not required just to validate the bandwidth assumption.
+            cfg["require_landmark_certification"] = False
 
         # Per-stain DAB thresholds — mirror the CLI pipeline so the Spatial
         # Association tab also gives TIM-3 images 0.1 and CD8 images 0.2. Use the
@@ -968,9 +1064,39 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                 "tim-3": 0.1,
             }
 
-        config_path = str(CONFIG_DIR / "spatial_config.yaml")
+        config_name = ("spatial_precheck_config.yaml" if precheck_only
+                       else "spatial_config.yaml")
+        config_path = str(CONFIG_DIR / config_name)
         with open(config_path, "w") as f:
             yaml.dump(cfg, f, default_flow_style=False)
+
+        # ── Synchronous bandwidth pre-flight (UI "Validate 75 µm bandwidth") ──────
+        if precheck_only:
+            import json as _json
+            try:
+                proc = subprocess.run(
+                    [str(Path(sys.executable)), str(PROJECT_DIR / "run_pipeline.py"),
+                     "--config", config_path, "--mode", "spatial"],
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                    cwd=str(PROJECT_DIR), timeout=cfg.get("timeout_seconds", 1800))
+            except Exception as e:
+                return {"status": "error", "error": f"pre-flight failed: {e}"}
+            by_pair = {}
+            for line in (proc.stdout or "").splitlines():
+                line = line.strip()
+                if line.startswith("BANDWIDTH_PRECHECK_JSON:"):
+                    try:
+                        d = _json.loads(line[len("BANDWIDTH_PRECHECK_JSON:"):])
+                        by_pair[d.get("sample_id")] = d
+                    except Exception:
+                        pass
+            if not by_pair:
+                tail = "\n".join((proc.stdout or "").splitlines()[-15:])
+                return {"status": "error",
+                        "error": "Could not compute the bandwidth pre-flight "
+                                 "(segmentation may have failed).",
+                        "log_tail": tail}
+            return {"status": "ok", "precheck_by_pair": by_pair}
 
         def run():
             try:

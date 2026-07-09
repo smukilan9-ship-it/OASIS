@@ -1,0 +1,963 @@
+{
+  "config": {
+    "sims": 40,
+    "nperm": 99,
+    "tile_sizes": [
+      20.0,
+      30.0,
+      40.0,
+      50.0,
+      60.0,
+      80.0
+    ],
+    "bands": [
+      [
+        5.0,
+        20.0
+      ],
+      [
+        10.0,
+        30.0
+      ]
+    ],
+    "radii_max": 60.0,
+    "radii_step": 4.0,
+    "window_um": 800.0,
+    "n_points": 260,
+    "grid": 128,
+    "sigma_log": 1.15,
+    "dense_corr_um": 45.0,
+    "intermediate_corr_um": 75.0,
+    "band_period_um": 90.0,
+    "band_sigma_um": 18.0,
+    "short_jitter_um": 5.0,
+    "mid_jitter_um": 12.0,
+    "planted_fraction": 1.0
+  },
+  "screen": [
+    {
+      "combo": {
+        "tile_um": 20.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.05,
+        "mean_p": 0.5043,
+        "median_p": 0.46,
+        "assoc_rate": 0.025,
+        "seg_rate": 0.0,
+        "verdict": "pass",
+        "ci95": [
+          0.0,
+          0.1175
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 0.225,
+        "mean_p": 0.254,
+        "median_p": 0.165,
+        "assoc_rate": 0.225,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.0956,
+          0.3544
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.075,
+        "mean_p": 0.4278,
+        "median_p": 0.4,
+        "assoc_rate": 0.075,
+        "seg_rate": 0.0,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.1566
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.05,
+        "mean_p": 0.3355,
+        "median_p": 0.27,
+        "assoc_rate": 0.05,
+        "seg_rate": 0.0,
+        "verdict": "pass",
+        "ci95": [
+          0.0,
+          0.1175
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 0.875,
+        "any_significant": 0.875,
+        "mean_p": 0.0198,
+        "verdict": "pass",
+        "ci95": [
+          0.7725,
+          0.9775
+        ]
+      },
+      "score": 5,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 20.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.05,
+        "mean_p": 0.5685,
+        "median_p": 0.59,
+        "assoc_rate": 0.05,
+        "seg_rate": 0.0,
+        "verdict": "pass",
+        "ci95": [
+          0.0,
+          0.1175
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 0.475,
+        "mean_p": 0.1045,
+        "median_p": 0.06,
+        "assoc_rate": 0.475,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.3202,
+          0.6298
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.075,
+        "mean_p": 0.4425,
+        "median_p": 0.43,
+        "assoc_rate": 0.025,
+        "seg_rate": 0.0,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.1566
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.2,
+        "mean_p": 0.364,
+        "median_p": 0.245,
+        "assoc_rate": 0.15,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.076,
+          0.324
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 0.925,
+        "any_significant": 0.925,
+        "mean_p": 0.0155,
+        "verdict": "pass",
+        "ci95": [
+          0.8434,
+          1.0
+        ]
+      },
+      "score": 4,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 30.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.05,
+        "mean_p": 0.568,
+        "median_p": 0.67,
+        "assoc_rate": 0.025,
+        "seg_rate": 0.025,
+        "verdict": "pass",
+        "ci95": [
+          0.0,
+          0.1175
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 0.65,
+        "mean_p": 0.1428,
+        "median_p": 0.025,
+        "assoc_rate": 0.625,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.5022,
+          0.7978
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.275,
+        "mean_p": 0.2875,
+        "median_p": 0.265,
+        "assoc_rate": 0.2,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.1366,
+          0.4134
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.15,
+        "mean_p": 0.385,
+        "median_p": 0.31,
+        "assoc_rate": 0.125,
+        "seg_rate": 0.0,
+        "verdict": "borderline",
+        "ci95": [
+          0.0393,
+          0.2607
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.0103,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 4,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 30.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.025,
+        "mean_p": 0.5357,
+        "median_p": 0.565,
+        "assoc_rate": 0.025,
+        "seg_rate": 0.0,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.0734
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 0.825,
+        "mean_p": 0.054,
+        "median_p": 0.01,
+        "assoc_rate": 0.8,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.7072,
+          0.9428
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.425,
+        "mean_p": 0.189,
+        "median_p": 0.09,
+        "assoc_rate": 0.4,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.2718,
+          0.5782
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.3,
+        "mean_p": 0.2075,
+        "median_p": 0.135,
+        "assoc_rate": 0.3,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.158,
+          0.442
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.0103,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 40.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.05,
+        "mean_p": 0.4875,
+        "median_p": 0.46,
+        "assoc_rate": 0.025,
+        "seg_rate": 0.025,
+        "verdict": "pass",
+        "ci95": [
+          0.0,
+          0.1175
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 0.875,
+        "mean_p": 0.039,
+        "median_p": 0.01,
+        "assoc_rate": 0.875,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.7725,
+          0.9775
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.4,
+        "mean_p": 0.2285,
+        "median_p": 0.095,
+        "assoc_rate": 0.375,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.2482,
+          0.5518
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.5,
+        "mean_p": 0.1235,
+        "median_p": 0.055,
+        "assoc_rate": 0.475,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.345,
+          0.655
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 40.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.0,
+        "mean_p": 0.5105,
+        "median_p": 0.525,
+        "assoc_rate": 0.0,
+        "seg_rate": 0.0,
+        "verdict": "conservative",
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.011,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.725,
+        "mean_p": 0.0775,
+        "median_p": 0.03,
+        "assoc_rate": 0.7,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.5866,
+          0.8634
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.6,
+        "mean_p": 0.117,
+        "median_p": 0.035,
+        "assoc_rate": 0.575,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.4482,
+          0.7518
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 2,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 50.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.025,
+        "mean_p": 0.4895,
+        "median_p": 0.445,
+        "assoc_rate": 0.0,
+        "seg_rate": 0.025,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.0734
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.0108,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.65,
+        "mean_p": 0.114,
+        "median_p": 0.03,
+        "assoc_rate": 0.575,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.5022,
+          0.7978
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.475,
+        "mean_p": 0.1762,
+        "median_p": 0.06,
+        "assoc_rate": 0.425,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.3202,
+          0.6298
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 50.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.075,
+        "mean_p": 0.4813,
+        "median_p": 0.485,
+        "assoc_rate": 0.0,
+        "seg_rate": 0.05,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.1566
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.0103,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.85,
+        "mean_p": 0.0318,
+        "median_p": 0.01,
+        "assoc_rate": 0.825,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.7393,
+          0.9607
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.65,
+        "mean_p": 0.0838,
+        "median_p": 0.025,
+        "assoc_rate": 0.65,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.5022,
+          0.7978
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 60.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.05,
+        "mean_p": 0.4095,
+        "median_p": 0.38,
+        "assoc_rate": 0.025,
+        "seg_rate": 0.025,
+        "verdict": "pass",
+        "ci95": [
+          0.0,
+          0.1175
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.01,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.75,
+        "mean_p": 0.0688,
+        "median_p": 0.02,
+        "assoc_rate": 0.725,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.6158,
+          0.8842
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.75,
+        "mean_p": 0.061,
+        "median_p": 0.015,
+        "assoc_rate": 0.725,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.6158,
+          0.8842
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 60.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.075,
+        "mean_p": 0.5043,
+        "median_p": 0.52,
+        "assoc_rate": 0.05,
+        "seg_rate": 0.025,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.1566
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.01,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.925,
+        "mean_p": 0.0298,
+        "median_p": 0.01,
+        "assoc_rate": 0.9,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.8434,
+          1.0
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.95,
+        "mean_p": 0.033,
+        "median_p": 0.01,
+        "assoc_rate": 0.925,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.8825,
+          1.0
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 80.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.0,
+        "mean_p": 0.5188,
+        "median_p": 0.475,
+        "assoc_rate": 0.0,
+        "seg_rate": 0.0,
+        "verdict": "conservative",
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.01,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.975,
+        "mean_p": 0.018,
+        "median_p": 0.01,
+        "assoc_rate": 0.95,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.9266,
+          1.0
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.825,
+        "mean_p": 0.059,
+        "median_p": 0.01,
+        "assoc_rate": 0.825,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.7072,
+          0.9428
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 2,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    },
+    {
+      "combo": {
+        "tile_um": 80.0,
+        "dclf_rmin_um": 10.0,
+        "dclf_rmax_um": 30.0
+      },
+      "uniform_h0": {
+        "p05": 0.025,
+        "mean_p": 0.5493,
+        "median_p": 0.575,
+        "assoc_rate": 0.0,
+        "seg_rate": 0.025,
+        "verdict": "borderline",
+        "ci95": [
+          0.0,
+          0.0734
+        ]
+      },
+      "shared_dense_h0": {
+        "p05": 1.0,
+        "mean_p": 0.01,
+        "median_p": 0.01,
+        "assoc_rate": 1.0,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.975,
+        "mean_p": 0.012,
+        "median_p": 0.01,
+        "assoc_rate": 0.975,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.9266,
+          1.0
+        ]
+      },
+      "shared_banded_h0": {
+        "p05": 0.95,
+        "mean_p": 0.0182,
+        "median_p": 0.01,
+        "assoc_rate": 0.95,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.8825,
+          1.0
+        ]
+      },
+      "power_short": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "power_mid": {
+        "association_power": 1.0,
+        "any_significant": 1.0,
+        "mean_p": 0.01,
+        "verdict": "pass",
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "score": 3,
+      "candidate_verdict": "REJECT_ANTI_CONSERVATIVE"
+    }
+  ]
+}
