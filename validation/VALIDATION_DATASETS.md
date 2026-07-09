@@ -28,6 +28,10 @@ Legend — Rel.: expected relationship. **+** co-localization (positive control)
 - **Link:** Mendeley Data `10.17632/mpjzbtfgfr.1` (CC BY 4.0). Paper: Cell 2020, https://doi.org/10.1016/j.cell.2020.07.005
 - **Modality / markers:** CODEX, 56 markers; CD8, CD4, FoxP3 (Treg), tumor, B, macrophage. 258k cells, 140 TMA spots.
 - **Why it tests us:** the dataset we already use; clean cross-type controls within the same cores.
+- **Dense-null calibration use:** `validation/validate_public_codex_dense_null.py`
+  uses the same real CRC cell-coordinate fields as marker-independent architecture
+  templates, then simulates known-null and planted-positive marker pairs on top.
+  This avoids pretending any biological marker pair is true null ground truth.
 - **Expected:** CD8↔CD4 **+** ; CD8↔Treg **+** (weaker) ; CD8↔tumor **−** .
 - **Caveat:** **no TIM-3** (checkpoints are PD-1/PD-L1/LAG-3/VISTA/ICOS/IDO-1). Nominal 0.3775 µm/px (stated, not in table).
 

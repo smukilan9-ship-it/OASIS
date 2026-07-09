@@ -38,14 +38,97 @@ Living checklist of what's left after the validation-infrastructure refactor.
 - [ ] Fix the stale `.claude/launch.json` `tim3-label` preview server (points at the moved
       `~/Desktop/tim3 data/labeling`).
 
-## Redesign later (removed on purpose)
-- [ ] Image-based end-to-end degradation/recovery validation — removed (tissue-scale data
-      was scientifically inappropriate). Redesign on a proper **cell-scale** two-marker
-      dataset. The CODEX coordinate keystone (`tests/test_degradation.py`) remains.
-
 ## Open scientific items (from the audit — for the paper, not blocking the tool)
 - [ ] Real quantification agreement number (nuclear + membrane) via `validate_segmentation.py`
       with manual GeoJSON — replaces the removed "~90%" claim.
-- [ ] Measure per-image architecture scale → turn the 75 µm bandwidth assumption into a
-      runtime guard (currently disclosed, not measured).
+- [x] Measure per-image architecture scale → runtime guard (DONE: `estimate_architecture_scale`
+      + `validate_architecture_scale.py` + spatial-path gate; ihc.md §7).
 - [ ] Report leave-one-**image**-out calibration alongside leave-one-cell-out.
+
+---
+
+# ▶ NEXT SESSION TASK: Build Validation A (`validate_e2e_render_codex.py`)
+
+**This brief is self-contained — a fresh session with no prior context can execute it.**
+
+## Context (what OASIS is, in one paragraph)
+OASIS is a deterministic pipeline for **cross-type spatial association** on serial-section
+single-plex H-DAB IHC (e.g. CD8 vs TIM-3). It segments nuclei (QuPath + InstanSeg),
+registers two serial sections (similarity only, never warping), and measures whether two
+cell **populations** are spatially associated beyond chance via **cross-type Ripley's K**
+with a reweighted-inhomogeneous null (population-level, NOT single-cell co-expression).
+Read `ihc.md` first (esp. §4 statistics, §7 validation, §10 end-to-end suite).
+
+## Why A exists (the scientific gap it closes)
+Every cell-scale validation is a **proxy** because real-DAB cell-scale ground truth for two
+*different* markers on corresponding sections cannot exist (serial sections = different
+slices). We bound the gap from three sides (`ihc.md §10`):
+- **Keystone** (`tests/test_degradation.py`, done): real cross-marker truth, but *coordinates* only.
+- **B** (`validation/validate_e2e_knownwarp_deepliif.py`, done): real DAB *pixels* + full pipeline, but *trivial* same-marker truth.
+- **A** (THIS TASK): full pipeline on **real cross-marker truth**, with *synthetic* pixels.
+A + B + keystone jointly bound the untestable real case. A supplies the missing corner:
+full pixel pipeline (segment → register → cross-K) driven by genuine cross-marker truth.
+
+## What A does (design)
+Render real CODEX cross-marker cells into **cell-scale brightfield H-DAB tiles**, run the
+FULL real pipeline, and check the recovered verdict matches the known CODEX verdict.
+1. Load the CODEX table (dataset `codex_crc`, already installed). Pick the largest spot;
+   gate two markers (CD8 = `CD8 - cytotoxic T cells:Cyc_3_ch_2`, PD-1 =
+   `PD-1 - checkpoint:Cyc_12_ch_4`) at the 80th percentile — SAME as `tests/test_degradation.py`.
+2. **Ground-truth verdict** = run `spatial_stats.cross_k_all_nulls` on the raw CODEX
+   coordinates (this is what the keystone already trusts) → `truth_verdict`.
+3. **Render two brightfield tiles** at cell scale (target ~0.5 µm/px):
+   - tile_A: a light H&E-like background; draw a **hematoxylin nucleus blob** at every
+     CD8 cell centroid, and brown **DAB** (nuclear or a membrane ring) for CD8+ cells.
+   - tile_B: same, for the PD-1 cell centroids.
+   - CODEX coords are in µm-ish pixels; scale coords → tile pixels so the field is a few
+     thousand px and the 10–50 µm interaction band spans tens of px (cell-scale, NOT the
+     <2 px mistake that killed the old image e2e).
+4. Apply a **known misregistration** to tile_B (rotation+translation, like B's `_warp`).
+5. Run the **real pipeline** on both tiles (InstanSeg via `run_pipeline --mode quant`) →
+   cell centroids. Register tile_B→tile_A (`serial_registration.register_similarity`).
+6. Apply recovered transform → cross-K (`cross_k_all_nulls`) → `recovered_verdict`.
+7. **PASS** if `recovered_verdict == truth_verdict` across engaged/independent/csr_only
+   regimes AND survives the injected registration error (mirror the keystone's 3 regimes:
+   real pair; planted-engaged partner; planted-independent partner).
+
+## Exact steps
+1. Copy the skeleton/patterns from **`validation/validate_e2e_knownwarp_deepliif.py`**
+   (Validation B) — reuse its `_setup()`, `_segment()`, `_warp()`, `_apply()`, `_verdict()`
+   almost verbatim (the segment→register→cross-K plumbing is identical).
+2. Copy CODEX loading + marker gating + the 3-regime construction from
+   **`tests/test_degradation.py`** (`_largest_spot`, the CD8/PD-1 columns, the engaged/
+   independent partner synthesis).
+3. Write a **`render_brightfield(centroids, marker_pos_mask, size_px, pixel_size_um)`**
+   helper: white background (≈245,245,245); for each cell draw a hematoxylin disc
+   (bluish, radius ~3–4 px) via `cv2.circle`; for marker-positive cells overlay DAB brown
+   (≈110,64,32) as a nuclear fill or a ring. Keep it simple and deterministic.
+4. New file **`validation/validate_e2e_render_codex.py`** with `main()` returning 0/1,
+   printing `##METRICS## {json}` (truth vs recovered verdict per regime, reconstruction
+   TRE, n cells) and saving a comparison figure to `os.environ.get("OASIS_REPORT_DIR",".")`.
+5. **Register** in `validation/registry.py` under category `end_to_end` (copy the
+   `e2e_knownwarp_deepliif` record; set `datasets: ["codex_crc"]`,
+   `external_deps: ["qupath","instanseg"]`, `runtime_tier: "long"`).
+6. Update `ihc.md §10` table: flip row **A** from ⏳ to ✅ with the measured result.
+
+## Reuse map (paths)
+- Segment/register/cross-K plumbing: `validation/validate_e2e_knownwarp_deepliif.py`
+- CODEX load + gating + regimes: `tests/test_degradation.py`
+- Statistic: `spatial_stats.cross_k_all_nulls(a, b, radii, area_px, pixel_size_um, n_perm, seed)`
+  → `["robustness"]["verdict"]` ∈ {robust, csr_only, none, mixed}
+- Registration: `serial_registration.register_similarity(ref_rgb, mov_rgb, pixel_size_um)`
+  → `{matrix (2x3, moving→ref), struct_dice, success}`; apply with `(M @ [pts,1].T).T`
+- Dataset path: `from validation.datasets import resolve; resolve.resolve("codex_crc")`
+  (returns the CODEX CSV file path)
+- Run/verify: `python validation/validate_e2e_render_codex.py --tiles/--nperm ...`, then
+  `python -m validation.run e2e_render_codex` (report bundle → `validation_reports/`).
+
+## Gotchas
+- **Resolution is the whole point**: render so the 10–50 µm band spans tens of px, else you
+  repeat the tissue-scale mistake that got the old e2e deleted. Verify pixel_size_um flows
+  into `cross_k_all_nulls` correctly.
+- InstanSeg won't segment overly cartoonish blobs well — make nuclei look nucleus-like
+  (soft edges, slight size variation) or validate detection count vs input count first.
+- The comparison must be verdict-level (truth vs recovered), not exact-count.
+- Datasets live at `~/oasis_validation_datasets` (`validation_data_dir`); `codex_crc` is
+  redistributable and already present. QuPath+InstanSeg must be installed (preflight gates it).

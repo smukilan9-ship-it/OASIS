@@ -1,0 +1,222 @@
+{
+  "config": {
+    "sims": 300,
+    "arch_sims": 80,
+    "nperm": 199,
+    "bandwidths": [
+      40.0
+    ],
+    "bands": [
+      [
+        5.0,
+        20.0
+      ]
+    ],
+    "radii_max": 80.0,
+    "radii_step": 4.0,
+    "window_um": 800.0,
+    "n_points": 260,
+    "grid": 128,
+    "sigma_log": 1.15,
+    "dense_corr_um": 45.0,
+    "intermediate_corr_um": 75.0,
+    "band_period_um": 90.0,
+    "band_sigma_um": 18.0,
+    "short_jitter_um": 5.0,
+    "mid_jitter_um": 12.0,
+    "planted_fraction": 1.0,
+    "arch_corrs": [
+      25.0,
+      35.0,
+      45.0,
+      60.0,
+      80.0,
+      100.0,
+      130.0,
+      160.0
+    ]
+  },
+  "screen": [
+    {
+      "combo": {
+        "bandwidth_um": 40.0,
+        "dclf_rmin_um": 5.0,
+        "dclf_rmax_um": 20.0
+      },
+      "uniform_h0": {
+        "p05": 0.04,
+        "mean_p": 0.5504,
+        "median_p": 0.595,
+        "assoc_rate": 0.0267,
+        "seg_rate": 0.0,
+        "verdict": "pass",
+        "ci95": [
+          0.0178,
+          0.0622
+        ],
+        "ell_hat_a_median_um": 28.9,
+        "ell_hat_b_median_um": 28.8,
+        "n": 300
+      },
+      "shared_dense_h0": {
+        "p05": 0.15,
+        "mean_p": 0.421,
+        "median_p": 0.3175,
+        "assoc_rate": 0.14,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.1096,
+          0.1904
+        ],
+        "ell_hat_a_median_um": 39.2,
+        "ell_hat_b_median_um": 39.3,
+        "n": 300
+      },
+      "shared_intermediate_h0": {
+        "p05": 0.1133,
+        "mean_p": 0.5222,
+        "median_p": 0.56,
+        "assoc_rate": 0.1033,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.0775,
+          0.1492
+        ],
+        "ell_hat_a_median_um": 50.5,
+        "ell_hat_b_median_um": 50.4,
+        "n": 300
+      },
+      "shared_banded_h0": {
+        "p05": 0.2,
+        "mean_p": 0.24,
+        "median_p": 0.15,
+        "assoc_rate": 0.1767,
+        "seg_rate": 0.0,
+        "verdict": "anti_conservative",
+        "ci95": [
+          0.1547,
+          0.2453
+        ],
+        "ell_hat_a_median_um": 28.5,
+        "ell_hat_b_median_um": 28.5,
+        "n": 300
+      },
+      "power_short": {
+        "association_power": 0.9833,
+        "any_significant": 0.9833,
+        "mean_p": 0.0096,
+        "verdict": "pass",
+        "ci95": [
+          0.9688,
+          0.9978
+        ],
+        "n": 300
+      },
+      "power_mid": {
+        "association_power": 0.8433,
+        "any_significant": 0.8433,
+        "mean_p": 0.0254,
+        "verdict": "pass",
+        "ci95": [
+          0.8022,
+          0.8845
+        ],
+        "n": 300
+      },
+      "ship_score": 3,
+      "ship_verdict": "REJECT_ANTI_CONSERVATIVE"
+    }
+  ],
+  "architecture_gate": [
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 25.0,
+      "ell_hat_median_um": 32.8,
+      "size_type_I": 0.4125,
+      "power_short": 1.0,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 35.0,
+      "ell_hat_median_um": 35.3,
+      "size_type_I": 0.1625,
+      "power_short": 1.0,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 45.0,
+      "ell_hat_median_um": 38.7,
+      "size_type_I": 0.175,
+      "power_short": 0.975,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 60.0,
+      "ell_hat_median_um": 45.2,
+      "size_type_I": 0.15,
+      "power_short": 0.9875,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 80.0,
+      "ell_hat_median_um": 52.7,
+      "size_type_I": 0.1125,
+      "power_short": 1.0,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 100.0,
+      "ell_hat_median_um": 61.1,
+      "size_type_I": 0.0625,
+      "power_short": 0.9875,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 130.0,
+      "ell_hat_median_um": 78.1,
+      "size_type_I": 0.025,
+      "power_short": 0.9625,
+      "n": 80
+    },
+    {
+      "combo": "h40_r5-20",
+      "bandwidth_um": 40.0,
+      "dclf_rmin_um": 5.0,
+      "dclf_rmax_um": 20.0,
+      "architecture_corr_knob_um": 160.0,
+      "ell_hat_median_um": 84.8,
+      "size_type_I": 0.05,
+      "power_short": 0.975,
+      "n": 80
+    }
+  ]
+}

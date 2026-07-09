@@ -617,6 +617,21 @@ def run_single_image(img_path, cfg, groovy_script):
     # quantification path ignores the source field — behaviour unchanged.
     cfg["_resolved_pixel_size"] = pixel_size
     cfg["_resolved_pixel_size_source"] = pixel_size_source
+
+    # Segmentation reuse: if a prior step (e.g. the 75 µm bandwidth pre-flight) already
+    # produced this image's summary JSON + GeoJSON in the output dir and they are newer
+    # than the source image, skip the (expensive) QuPath run and reuse them. Gated by an
+    # explicit flag so CLI re-runs are never silently short-circuited.
+    if cfg.get("reuse_existing_geojson"):
+        _prefix = os.path.splitext(img_filename)[0]
+        _js = sorted(glob.glob(os.path.join(cfg["output_dir"],
+                                            f"{_prefix}*_summary.json")))
+        _geo = _find_geojson(img_path, cfg["output_dir"])
+        if (_js and _geo and os.path.exists(_geo)
+                and os.path.getmtime(_js[0]) >= os.path.getmtime(img_path)):
+            print(f"  Reusing existing segmentation for {img_filename} (skip QuPath)")
+            return _js[0]
+
     generate_groovy_script(cfg, groovy_script, img_path)
 
     # Optional preprocessing: run segmentation/measurement on a per-image
@@ -1320,9 +1335,26 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                 max_radius_um=cfg.get("max_radius_um", 100.0),
                 radius_step_um=cfg.get("radius_step_um", 2.0),
                 certified_roi_polygon=landmark_cert.get("roi_polygon"),
+                precheck_only=bool(cfg.get("precheck_bandwidth_only")),
             )
         except Exception as e:
             print(f"  Spatial association error: {e}")
+
+        # Pre-flight-only mode: emit a machine-parseable bandwidth verdict for the UI
+        # button and stop before overlays / QC / result JSON. Segmentation has run, so
+        # the subsequent full run reuses the GeoJSONs (reuse_existing_geojson).
+        if cfg.get("precheck_bandwidth_only"):
+            import json as _json
+            _pc = (assoc_result or {}).get("bandwidth_precheck") or {
+                "valid": None, "worst_status": None,
+                "reason": "bandwidth pre-flight could not be computed"}
+            print("BANDWIDTH_PRECHECK_JSON:" + _json.dumps({
+                "sample_id": sample_id, "stain_a": stain_a, "stain_b": stain_b,
+                "precheck": _pc,
+                "tissue_area_um2": (assoc_result or {}).get("tissue_area_um2"),
+                "tissue_mask_method": (assoc_result or {}).get("tissue_mask_method"),
+            }))
+            continue
 
         # ── Visualizations: 3 overlays (A seg, B seg, consolidated) + plot ─────
         reg_method = reg_result["method"] if reg_result else "none"
@@ -1367,13 +1399,17 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                     if seg_b:
                         data["seg_b"] = seg_b
 
-                    # Image 3 — consolidated dual-channel density heatmap
+                    # Image 3 — consolidated dual-channel density heatmap. When the
+                    # certified analysis window is an ROI (LOCALLY_CERTIFIED or an
+                    # operator-drawn Certification ROI), burn that region into this
+                    # results figure so a reviewer sees the statistics were restricted.
                     cons = generate_consolidated_density(
                         ref_image_path=path_a,
                         points_a=p_a, points_b=p_b,
                         pixel_size_um=ref_px, assoc=data,
                         out_path=os.path.join(pair_out, f"{sample_id}_consolidated.png"),
-                        label_a=f"{stain_a}+", label_b=f"{stain_b}+")
+                        label_a=f"{stain_a}+", label_b=f"{stain_b}+",
+                        roi_polygon=landmark_cert.get("roi_polygon"))
                     if cons:
                         data["consolidated"] = cons
 
@@ -1447,11 +1483,38 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                      "an uncertified pair (run landmark certification — ihc.md §19)."),
         }
 
-        # Stamp every association entry with the validity flag + certification status
+        # ── 75 µm bandwidth spatial-validity gate (SEPARATE from registration) ─────
+        # The reweighted primary null is size-controlled only when tissue architecture
+        # is coarser than the 75 µm bandwidth. This is a SPATIAL-STATISTIC assumption,
+        # NOT registration: a bandwidth failure must never change certification.status
+        # (registration passed). It only flags whether the numbers can be trusted. Fail
+        # closed: worst_status ∈ {unreliable, unknown} → statistics not valid.
+        bw_precheck = (assoc_result or {}).get("bandwidth_precheck") or {}
+        bw_valid = bool(bw_precheck.get("valid", True))  # absent (no assoc) → don't block
+        spatial_validity = {
+            "bandwidth_75um_valid": bw_valid,
+            "worst_status":         bw_precheck.get("worst_status"),
+            "window_scope":         bw_precheck.get("window_scope"),
+            "per_image":            bw_precheck.get("per_image"),
+            "reason":               bw_precheck.get("reason"),
+        }
+        statistics_valid = bool(registration_qc["valid"] and bw_valid)
+        if bw_precheck:
+            print(f"\n  BANDWIDTH 75 µm VALIDITY (within analysis window): "
+                  f"{str(bw_precheck.get('worst_status')).upper()} "
+                  f"(valid={bw_valid})")
+            print(f"    {bw_precheck.get('reason')}")
+            if not bw_valid:
+                print(f"  ⚠ Spatial statistics for {sample_id} are flagged NOT "
+                      f"TRUSTWORTHY at 75 µm — registration is still CERTIFIED; the "
+                      f"reweighted 'robust' claim is withheld (see spatial_validity).")
+
+        # Stamp every association entry with the validity flags + certification status
         # so any consumer of the per-pair association knows the statistics are gated.
         if assoc_result and assoc_result.get("association"):
             for _k, _data in assoc_result["association"].items():
-                _data["statistics_valid"] = registration_qc["valid"]
+                _data["statistics_valid"] = statistics_valid
+                _data["spatial_validity"] = spatial_validity
                 _data["certification"] = certification
 
         result = {
@@ -1466,7 +1529,8 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
             "registration_method": reg_method,
             "registration_qc":     registration_qc,
             "certification":       certification,
-            "statistics_valid":    registration_qc["valid"],
+            "spatial_validity":    spatial_validity,
+            "statistics_valid":    statistics_valid,
             "pixel_size_ref_um":   ref_px,
             "pixel_size_source":   ref_px_source,
             "provenance":          build_provenance(

@@ -1014,6 +1014,10 @@ td.muted { color: var(--text3); font-size: 11px; }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             Preview Matches
           </button>
+          <div class="toggle-row" style="margin-top:10px">
+            <span>Match scale images in these folders <span style="color:var(--text3);font-size:11px">— calibrate each image from its own <b>_scale</b> sibling's bar (falls back to the session pixel size)</span></span>
+            <div class="toggle" id="spatial-scale-match-toggle" onclick="toggleEl('spatial-scale-match-toggle')"></div>
+          </div>
         </div>
         <div id="spatial-preview-card" style="display:none">
           <div class="card">
@@ -1058,6 +1062,17 @@ td.muted { color: var(--text3); font-size: 11px; }
             <div><div class="section-label">Moving — matching point</div>
               <div class="lm-stage" id="lm-stage-mov"><div class="lm-world" id="lm-world-mov"><img id="spatial-cert-mov"><svg id="spatial-cert-mov-ov"></svg></div></div></div>
           </div>
+          <!-- Certification ROI: draw the trusted registration sub-field on the fixed
+               (reference) image. Landmark proposal + certification are restricted to it,
+               and it becomes the certified analysis window (burnt into the results). -->
+          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;padding:8px;border:1px dashed var(--border);border-radius:8px">
+            <span class="section-label" style="margin:0">Certification ROI</span>
+            <span id="spatial-cert-roi-badge" class="badge gray">none</span>
+            <button class="btn sm" id="spatial-cert-roi-draw" onclick="spatialCertRoiToggle()" title="Click vertices on the REFERENCE image to outline the sub-field where the sections truly correspond. Proposal + certification are restricted here.">Draw certification ROI</button>
+            <button class="btn sm" onclick="spatialCertRoiFinish()">Finish ROI</button>
+            <button class="btn sm" onclick="spatialCertRoiClear()">Clear ROI</button>
+            <span style="font-size:11px;color:var(--text3)">Restricts proposal + certification to the region you trust; becomes the certified analysis window.</span>
+          </div>
           <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
             <button class="btn sm" id="spatial-cert-propose" onclick="spatialCertPropose()" title="Auto-detect matching lumen/structural landmarks for you to verify — machine proposes, you confirm before certifying">Auto-propose landmarks</button>
@@ -1068,6 +1083,19 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div id="spatial-cert-propose-note" style="font-size:11px;color:var(--text3);margin-top:6px">Proposed points are a starting draft — drag-verify each pair against the images and delete any that don't correspond before certifying.</div>
           <div id="spatial-cert-result" style="font-size:12px;line-height:1.55;margin-top:10px"></div>
         </div>
+      </div>
+
+      <!-- 75 µm bandwidth validity (pre-flight) -->
+      <div class="card" id="spatial-bandwidth-card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>3 · Bandwidth (75 µm) validity — within certified analysis window</span>
+          <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
+        </div>
+        <div class="info-box amber" style="margin-bottom:12px">
+          The intensity-reweighted primary null uses a 75 µm bandwidth and is size-controlled only where the tissue architecture is <b>coarser</b> than it (ℓ̂ ≳ 150 µm). This validates that assumption per image on the real positive cells <b>inside the current analysis window</b> (it depends on the ROI/intersection — not a universal image property). Segments the pair once; a following run reuses that segmentation. A failure never invalidates registration certification — it only withholds the “robust” claim.
+        </div>
+        <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
+        <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
       </div>
 
       <!-- Matching parameters -->
@@ -1086,6 +1114,14 @@ td.muted { color: var(--text3); font-size: 11px; }
             <input type="number" id="spatial-thresh-b" value="0.10" step="0.01" min="0.01" max="1.0">
             <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.10 for TIM-3</div>
           </div>
+        </div>
+        <div class="toggle-row" style="margin-top:6px">
+          <span>Adaptive threshold <span style="color:var(--text3);font-size:11px">— per-image Otsu on each image's own DAB distribution (ignores the OD fields above)</span></span>
+          <div class="toggle" id="spatial-adaptive-toggle" onclick="toggleEl('spatial-adaptive-toggle')"></div>
+        </div>
+        <div class="toggle-row" style="margin-top:6px">
+          <span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input to its own white point (recommended for faint / variable stains)</span></span>
+          <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div>
         </div>
         <div class="toggle-row" style="margin-top:6px">
           <span>Enable image registration (recommended for serial sections)</span>
@@ -2627,7 +2663,9 @@ async function spatialCertLoad() {
   const r = await window.pywebview.api.prepare_landmark_pair(pair.path_a, pair.path_b);
   btn.disabled = false; btn.textContent = 'Load images for landmarking';
   if (r.status !== 'ok') { showToast(r.error || 'Could not load images'); return; }
-  spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], conf:[], pending:null };
+  spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], conf:[], pending:null,
+                      roiPoints:[], movRoi:null, roiMode:false };
+  spatialCertRoiUpdateBadge();
   const imgR = document.getElementById('spatial-cert-ref'), imgM = document.getElementById('spatial-cert-mov');
   imgR.onload = () => { lmFit('ref'); spatialCertRender(); };
   imgM.onload = () => { lmFit('mov'); spatialCertRender(); };
@@ -2674,22 +2712,71 @@ function spatialCertRender() {
       return `<g><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${fill}" fill-opacity="0.85" stroke="white" stroke-width="${sw}"/><text x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="central" fill="white" font-size="${fs}" font-weight="700">${i+1}</text></g>`;
     }).join('');
   };
+  // Certification-ROI polygon on a pane (yellow, zoom-invariant stroke + vertices).
+  const roiSvg = (poly, meta, side, closed) => {
+    if (!poly || poly.length < 1) return '';
+    const sc = (lmPanes[side] && lmPanes[side].scale) || 1;
+    const iw = document.getElementById('spatial-cert-'+side).naturalWidth || meta.width;
+    const u = meta.width / iw, sw = 2.2 * u / sc, vr = 4 * u / sc;
+    const pstr = poly.map(p => `${p[0]},${p[1]}`).join(' ');
+    const tag = closed ? 'polygon' : 'polyline';
+    const shape = `<${tag} points="${pstr}" fill="${closed?'#facc15':'none'}" fill-opacity="0.10" stroke="#facc15" stroke-width="${sw}" stroke-dasharray="${closed?'0':6*u/sc}"/>`;
+    const verts = poly.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${vr}" fill="#facc15" stroke="#1e293b" stroke-width="${sw*0.5}"/>`).join('');
+    return shape + verts;
+  };
   if (w.ref) {
     const ro = document.getElementById('spatial-cert-ref-ov'), mo = document.getElementById('spatial-cert-mov-ov');
     ro.setAttribute('viewBox', `0 0 ${w.ref.width} ${w.ref.height}`); mo.setAttribute('viewBox', `0 0 ${w.mov.width} ${w.mov.height}`);
-    ro.innerHTML = dots(w.refPoints, w.ref, 'ref', w.pending, w.conf);
-    mo.innerHTML = dots(w.movPoints, w.mov, 'mov', null, w.conf);
+    const roiClosed = !w.roiMode && (w.roiPoints||[]).length >= 3;
+    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', roiClosed) + dots(w.refPoints, w.ref, 'ref', w.pending, w.conf);
+    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3) + dots(w.movPoints, w.mov, 'mov', null, w.conf);
   }
   const anyConf = (w.conf || []).some(c => c != null);
   document.getElementById('spatial-cert-count').textContent =
-    `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${w.pending?' · click moving image':''}`
-    + (anyConf ? ' · dot colour = match confidence' : '');
+    (w.roiMode ? `ROI draw mode · ${(w.roiPoints||[]).length} vertices · click reference to add`
+     : `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${w.pending?' · click moving image':''}`)
+    + (anyConf && !w.roiMode ? ' · dot colour = match confidence' : '');
+}
+
+function spatialCertRoiUpdateBadge() {
+  const w = spatialCertWork, b = document.getElementById('spatial-cert-roi-badge');
+  const draw = document.getElementById('spatial-cert-roi-draw');
+  if (!b) return;
+  const n = (w.roiPoints||[]).length;
+  if (w.roiMode) { b.textContent = `drawing (${n})`; b.className = 'badge amber'; }
+  else if (n >= 3) { b.textContent = `ROI set (${n} pts)`; b.className = 'badge cyan'; }
+  else { b.textContent = 'none'; b.className = 'badge gray'; }
+  if (draw) draw.textContent = w.roiMode ? 'Drawing… click reference' : 'Draw certification ROI';
+}
+function spatialCertRoiToggle() {
+  const w = spatialCertWork;
+  if (!w.ref) { showToast('Load images for landmarking first'); return; }
+  w.roiMode = !w.roiMode;
+  if (w.roiMode) { w.roiPoints = []; w.movRoi = null; w.pending = null; }
+  spatialCertRoiUpdateBadge(); spatialCertRender();
+}
+function spatialCertRoiFinish() {
+  const w = spatialCertWork;
+  if ((w.roiPoints||[]).length < 3) { showToast('Click at least 3 points on the reference to close the ROI'); return; }
+  w.roiMode = false; spatialCertRoiUpdateBadge(); spatialCertRender();
+  showToast('Certification ROI set — proposal & certification will be restricted to it');
+}
+function spatialCertRoiClear() {
+  const w = spatialCertWork;
+  w.roiPoints = []; w.movRoi = null; w.roiMode = false;
+  spatialCertRoiUpdateBadge(); spatialCertRender();
 }
 
 document.getElementById('spatial-cert-ref').addEventListener('click', e => {
-  if (!spatialCertWork.ref || spatialCertWork.pending) return;
+  const w = spatialCertWork;
+  if (!w.ref) return;
   if ((lmPanes.ref.moved || 0) > 4) return;            // it was a pan, not a click
-  spatialCertWork.pending = spatialCertPoint(e, e.currentTarget, spatialCertWork.ref); spatialCertRender();
+  if (w.roiMode) {                                     // add an ROI vertex (full-res ref)
+    w.roiPoints.push(spatialCertPoint(e, e.currentTarget, w.ref));
+    spatialCertRoiUpdateBadge(); spatialCertRender(); return;
+  }
+  if (w.pending) return;
+  w.pending = spatialCertPoint(e, e.currentTarget, w.ref); spatialCertRender();
 });
 document.getElementById('spatial-cert-mov').addEventListener('click', e => {
   if (!spatialCertWork.mov || !spatialCertWork.pending) return;
@@ -2749,14 +2836,17 @@ async function spatialCertPropose() {
   if (!(px > 0)) { showToast('Set a valid pixel size first'); return; }
   if ((w.refPoints.length || w.pending) &&
       !confirm('Replace the current landmarks with auto-proposed ones?')) return;
+  if (w.roiMode) { showToast('Finish the certification ROI first (Finish ROI)'); return; }
+  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
   const btn = document.getElementById('spatial-cert-propose');
   btn.disabled = true; btn.textContent = 'Proposing…';
-  const r = await window.pywebview.api.propose_landmarks(w.pair.path_a, w.pair.path_b, px);
+  const r = await window.pywebview.api.propose_landmarks(w.pair.path_a, w.pair.path_b, px, 8, roi);
   btn.disabled = false; btn.textContent = 'Auto-propose landmarks';
   if (r.status !== 'ok') { showToast(r.error || 'Could not propose landmarks — place them manually'); return; }
   spatialCertWork.refPoints = r.ref_points || [];
   spatialCertWork.movPoints = r.mov_points || [];
   spatialCertWork.conf = r.confidences || (r.ref_points || []).map(() => null);
+  spatialCertWork.movRoi = r.mov_roi_polygon || spatialCertWork.movRoi;
   spatialCertWork.pending = null;
   spatialCertRender();
   const cov = (typeof r.coverage_frac === 'number') ? (r.coverage_frac*100).toFixed(0)+'%' : '—';
@@ -2785,15 +2875,23 @@ function spatialCertPixelSize() {
 async function spatialCertRun() {
   const w = spatialCertWork;
   if (!w.pair || w.refPoints.length < 6) { showToast('Place at least 6 matching landmarks'); return; }
+  if (w.roiMode) { showToast('Finish the certification ROI first (Finish ROI)'); return; }
+  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
   const r = await window.pywebview.api.certify_landmarks({
     ref_points:w.refPoints, mov_points:w.movPoints, pixel_size_um:spatialCertPixelSize(),
-    image_wh:[w.ref.width,w.ref.height]
+    image_wh:[w.ref.width,w.ref.height], roi_polygon:roi
   });
   if (r.status !== 'ok') { showToast(r.error || 'Certification failed'); return; }
   const c = r.certification; spatialCertifications[w.pair.sample_id] = c;
+  // If certification returned a (possibly tightened) window, show it on both panes.
+  if (c.roi_polygon) w.roiPoints = c.roi_polygon;
+  spatialCertRoiUpdateBadge(); spatialCertRender();
   const badge = document.getElementById('spatial-cert-badge');
   badge.textContent = c.status; badge.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber');
-  document.getElementById('spatial-cert-result').innerHTML = `<b>${esc(c.status)}</b> · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'}<br>${esc(c.reason || '')}`;
+  const winTxt = c.certified_window_source
+    ? ` · window: ${c.certified_window_source === 'user_roi' ? 'your Certification ROI' : 'ROI ∩ landmark hull'} (burnt into the result overlay)`
+    : '';
+  document.getElementById('spatial-cert-result').innerHTML = `<b>${esc(c.status)}</b> · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'}${winTxt}<br>${esc(c.reason || '')}`;
   spatialAssocUpdateRunBtn();
 }
 
@@ -2822,18 +2920,27 @@ function spatialAssocBuildOverride(side) {
   return { pixel_size: (v > 0 ? v : null), scale_image: null };
 }
 
-async function spatialAssocRun() {
+// Build the spatial-association config from the current UI. Returns null (after a
+// toast) on a validation error. Shared by the full run and the bandwidth pre-flight so
+// they segment/measure identically. `force` overrides mode (the pre-flight is per-pair).
+function spatialBuildConfig(forceMode) {
+  const mode = forceMode || spatialMode;
   const sessionManual = spatialSessionPxMode === 'manual'
     ? (parseFloat(document.getElementById('spatial-session-px-val').value) || 0.5) : null;
   const sessionScale  = spatialSessionPxMode === 'scale' ? (spatialSessionScale.path || null) : null;
 
   const config = {
-    mode:                  spatialMode,
+    mode:                  mode,
     session_pixel_size:    sessionManual,
     session_scale_image:   sessionScale,
     max_distance_um:       parseFloat(document.getElementById('spatial-max-dist').value) || 10.0,
     dab_threshold_a:       parseFloat(document.getElementById('spatial-thresh-a').value) || 0.20,
     dab_threshold_b:       parseFloat(document.getElementById('spatial-thresh-b').value) || 0.10,
+    // Mirrored from the Quant tab: per-image Otsu, per-image white-balance, and
+    // per-image pixel-size calibration from "_scale" siblings (batch only).
+    adaptive_threshold:    isOn('spatial-adaptive-toggle'),
+    preprocess_normalize:  isOn('spatial-normalize-toggle'),
+    match_scale_images:    mode === 'batch' && isOn('spatial-scale-match-toggle'),
     enable_registration:   isOn('spatial-reg-toggle'),
     // Membranous (cytoplasmic-ring) quantification with per-marker calibrated cutoffs.
     use_cytoplasm_a:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-a-toggle'),
@@ -2845,8 +2952,8 @@ async function spatialAssocRun() {
     certifications:        spatialCertifications,
   };
 
-  if (spatialMode === 'single') {
-    if (!spatialImage.a || !spatialImage.b) { showToast('Select both images'); return; }
+  if (mode === 'single') {
+    if (!spatialImage.a || !spatialImage.b) { showToast('Select both images'); return null; }
     const ovA = spatialAssocBuildOverride('a'), ovB = spatialAssocBuildOverride('b');
     Object.assign(config, {
       image_a: spatialImage.a, image_b: spatialImage.b,
@@ -2856,7 +2963,7 @@ async function spatialAssocRun() {
       pixel_size_b: ovB.pixel_size, scale_image_b: ovB.scale_image,
     });
   } else {
-    if (spatialPairs.length === 0) { showToast('Run Preview Matches first'); return; }
+    if (spatialPairs.length === 0) { showToast('Run Preview Matches first'); return null; }
     Object.assign(config, {
       folder_a: spatialFolderMode === 'two_folder'
         ? document.getElementById('spatial-folder-a').value.trim()
@@ -2866,6 +2973,14 @@ async function spatialAssocRun() {
       folder_mode: spatialFolderMode,
     });
   }
+  return config;
+}
+
+async function spatialAssocRun() {
+  const config = spatialBuildConfig();
+  if (!config) return;
+  // Reuse the segmentation the bandwidth pre-flight already produced for this pair.
+  config.reuse_existing_geojson = true;
 
   const preflight = await window.pywebview.api.preflight_check('spatial');
   if (!preflight.ok) {
@@ -2878,10 +2993,61 @@ async function spatialAssocRun() {
   document.getElementById('spatial-log').innerHTML = '';
   setProgress('spatial', 0, 'Starting spatial association…');
   appendLog('spatial-log', `Spatial association started · ${spatialMode} mode`, 'info');
-  appendLog('spatial-log', `Cross-type Ripley's K · proximity ${config.max_distance_um} µm · Thresholds: A ${config.dab_threshold_a.toFixed(2)} / B ${config.dab_threshold_b.toFixed(2)} OD`, 'normal');
-  appendLog('spatial-log', `Registration: ${config.enable_registration ? 'enabled' : 'disabled'}`, 'normal');
+  const spThr = config.adaptive_threshold ? 'adaptive (per-image Otsu)'
+    : `A ${config.dab_threshold_a.toFixed(2)} / B ${config.dab_threshold_b.toFixed(2)} OD`;
+  appendLog('spatial-log', `Cross-type Ripley's K · proximity ${config.max_distance_um} µm · Thresholds: ${spThr}`, 'normal');
+  const spOpts = [];
+  if (config.preprocess_normalize) spOpts.push('stain-normalized');
+  if (config.match_scale_images)   spOpts.push('per-image scale calibration');
+  appendLog('spatial-log', `Registration: ${config.enable_registration ? 'enabled' : 'disabled'}${spOpts.length ? ' · ' + spOpts.join(' · ') : ''}`, 'normal');
 
   await window.pywebview.api.run_spatial_association(config);
+}
+
+// Colour + label for a per-image bandwidth verdict chip.
+function spatialBwChip(marker, e) {
+  const map = { ok:['#16a34a','ok'], caution:['#f59e0b','caution'],
+                unreliable:['#ef4444','unreliable'], unknown:['#94a3b8','unknown'] };
+  const [col, lbl] = map[e && e.status] || ['#94a3b8', e && e.status || '—'];
+  const ell = (e && e.scale_um != null) ? `ℓ̂ ${e.scale_um} µm` : 'ℓ̂ —';
+  return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:12px;background:${col}22;border:1px solid ${col};color:${col};font-weight:600" title="Architecture scale measured inside the current analysis window (ROI/intersection) — not a universal image property. n=${(e&&e.n)||0} cells.">${esc(marker)}: ${lbl} · ${ell}</span>`;
+}
+
+async function spatialBandwidthCheck() {
+  if (spatialMode !== 'single') { showToast('Bandwidth pre-flight validates one pair — use single-pair mode'); return; }
+  const config = spatialBuildConfig('single');
+  if (!config) return;
+  const btn = document.getElementById('spatial-bw-btn');
+  const badge = document.getElementById('spatial-bw-badge');
+  const out = document.getElementById('spatial-bw-result');
+  btn.disabled = true; btn.textContent = 'Segmenting & measuring…';
+  badge.textContent = 'CHECKING'; badge.className = 'badge gray';
+  out.innerHTML = '<span style="color:var(--text3)">Segmenting the pair and measuring tissue architecture within the analysis window… (first run segments; a following analysis reuses it)</span>';
+  let r;
+  try { r = await window.pywebview.api.precheck_bandwidth_for_pair(config); }
+  catch (e) { r = { status: 'error', error: String(e) }; }
+  btn.disabled = false; btn.textContent = 'Validate 75 µm bandwidth';
+  if (!r || r.status !== 'ok') {
+    badge.textContent = 'ERROR'; badge.className = 'badge amber';
+    out.innerHTML = `<span style="color:#b91c1c">${esc((r && r.error) || 'Pre-flight failed')}</span>`
+      + (r && r.log_tail ? `<pre style="font-size:10px;color:var(--text3);white-space:pre-wrap;margin-top:6px">${esc(r.log_tail)}</pre>` : '');
+    return;
+  }
+  const byPair = r.precheck_by_pair || {};
+  const first = Object.values(byPair)[0];
+  const pc = first && first.precheck || {};
+  const worst = pc.worst_status || 'unknown';
+  const badgeMap = { ok:['cyan','VALID'], caution:['cyan','VALID · CAUTION'],
+                     unreliable:['amber','NOT TRUSTWORTHY'], unknown:['amber','INSUFFICIENT DATA'] };
+  const [cls, lbl] = badgeMap[worst] || ['gray', String(worst).toUpperCase()];
+  badge.textContent = lbl; badge.className = 'badge ' + cls;
+  const chips = Object.entries(pc.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
+  const note = pc.valid
+    ? '<span style="color:#166534">The 75 µm reweighted primary null is size-controlled within this window.</span>'
+    : '<span style="color:#b45309">The 75 µm assumption fails within this window — the “robust” claim will be withheld. <b>Registration certification is unaffected.</b></span>';
+  out.innerHTML = `<div style="margin-bottom:6px">${chips || '<span style="color:var(--text3)">no markers</span>'}</div>`
+    + `<div>${esc(pc.reason || '')}</div><div style="margin-top:4px">${note}</div>`
+    + `<div style="font-size:11px;color:var(--text3);margin-top:6px">Measured inside the certified analysis window (A∩B intersection ∩ any Certification ROI). Segmentation is cached — Run analysis reuses it.</div>`;
 }
 
 function spatialAssocShowResults(data) {
@@ -3009,6 +3175,21 @@ function spatialAssocShowResults(data) {
           on field-of-view serial sections (ihc.md §18.4). "Valid" here means the legacy QC gate passed —
           a weaker claim than CERTIFIED. Do not report a biological finding from an uncertified pair.
         </div>`;
+      // ── 75 µm bandwidth spatial-validity (SEPARATE from registration cert) ──────
+      const sv = p.spatial_validity || a.spatial_validity || null;
+      const bwBanner = (sv && sv.worst_status) ? (() => {
+        const ok = sv.bandwidth_75um_valid;
+        const col = ok ? (sv.worst_status === 'caution' ? '#d97706' : '#16a34a') : '#dc2626';
+        const bg  = ok ? (sv.worst_status === 'caution' ? '#fffbeb' : '#f0fdf4') : '#fef2f2';
+        const chips = Object.entries(sv.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
+        return `<div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
+             border:1px solid ${col};background:${bg};color:${col}">
+          <strong>${ok ? '✓' : '⚠'} 75 µm bandwidth ${ok ? 'valid' : 'NOT trustworthy'} within analysis window (${esc(sv.worst_status)})</strong>
+          ${ok ? '' : ' — the “robust” claim is withheld; registration certification is unaffected.'}
+          <div style="margin-top:6px">${chips}</div>
+          <div style="margin-top:4px">${esc(sv.reason || '')}</div>
+        </div>`;
+      })() : '';
       const qcPill = (txt, color) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid ${color};color:${color}">${txt}</span>`;
       const qcColor = qInvalid ? '#dc2626' : (qWarn ? '#d97706' : '#16a34a');
 
@@ -3136,6 +3317,7 @@ function spatialAssocShowResults(data) {
           </div>
           ${qcBanner}
           ${certBanner}
+          ${bwBanner}
           ${robBanner}
           ${segRow}
           ${consBlock}

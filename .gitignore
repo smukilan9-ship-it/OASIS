@@ -50,6 +50,7 @@ ihc_coloc_results/
 # validation_data_dir, default ~/oasis_validation_datasets; reports are per-run)
 validation_reports/
 validation_datasets/
+graphify-out/
 
 # Claude Code session/agent files
 .claude/

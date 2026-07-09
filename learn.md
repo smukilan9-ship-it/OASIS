@@ -371,12 +371,12 @@ and target image are not locally in the same place.
 
 ---
 
-## 5. Slide 6: TIM-3 membrane remeasurement, what was tried, and why it was disabled
+## 5. Slide 6: TIM-3 membrane remeasurement — how it failed naively, and how it was fixed and validated
 
 TIM-3 is biologically membrane-associated. That means the signal can sit around
 the cell edge, not in the nucleus.
 
-The project tried a membrane/cytoplasm-ring measurement:
+The project measures stain in a **cytoplasm ring**:
 
 1. Start with the segmented nucleus.
 2. Expand outward by a small physical distance.
@@ -388,27 +388,38 @@ closer to itself than to any other nucleus. The ring cannot cross the border int
 a neighbor's territory. That prevents one cell from stealing another cell's
 membrane stain.
 
-The problem was not the geometry. The problem was calibration.
+The geometry was never the problem — **calibration was.** The first, naive
+version reused a nuclear threshold on the ring **mean** and reclassified the same
+field from **61** positives to **4,433** (32%). That jump was untrustworthy: the
+same cutoff was applied to a different measurement distribution, and a thin
+membrane arc gets **diluted** when averaged over a whole ring. So that naive
+version was, correctly, not shipped.
 
-In the controlled TIM-3 ring experiment:
+**What fixed it (current, shipping):**
 
-- original QuPath-positive objects: **61**,
-- direct ring-threshold reclassification: **4,433**,
-- resulting positive fraction: **32.0%**.
+- **Completeness, not mean.** A cell is positive when a calibrated *fraction* of
+  its ring pixels exceed a calibrated optical-density cutoff (gated by DAB>H), so a
+  real thin arc counts and diffuse background does not — the ring **mean** could not
+  make that distinction.
+- **Per-cohort calibration** (the Calibrate tab). DAB is not quantitative, so you
+  fit the cutoffs to *your own* hand-labelled cells; the tab reports an honest
+  **leave-one-cell-out** held-out F1/AUC and refuses markers it cannot call
+  (AUC ≥ 0.75 gate).
 
-That jump was too large to trust. The same threshold was being reused on a
-different measurement distribution. Also, a thin membrane signal can be diluted
-when averaged over a whole ring.
-
-Therefore the visible workflow disables TIM-3 ring reclassification until a
-proper manual validation set exists.
+**It is now validated and re-enabled.** Held-out results against orthogonal ground
+truth: TIM-3 **leave-one-image-out F1 0.93** on CRC-ICM (hand labels); the same
+membranous method scores **F1 0.76 / AUC 0.89** on CD8 vs CD8 immunofluorescence
+(HNSCC — AEC chromogen, so this validates the membranous *method*, not the literal
+DAB cutoffs). Segmentation itself sits at recall ~0.73–0.75 (small-nucleus ceiling),
+which caps end-to-end recall.
 
 Plain meaning:
 
-> The project tried a biologically motivated measurement, found that it was not
-> calibrated, and did not hide that failure. The safer current choice is to keep
-> the original classification rather than ship a flashy but unreliable TIM-3
-> membrane call.
+> The project tried a biologically motivated measurement, found the *naive* version
+> was miscalibrated, did not hide that, then fixed it properly (completeness +
+> per-cohort calibration) and validated it held-out (F1 0.93). The honest caveat:
+> this is validated **per cohort** — the numbers above are for those datasets, which
+> is exactly why you re-calibrate on your own slides before trusting a TIM-3 call.
 
 ---
 
@@ -1049,6 +1060,64 @@ This assumes that the tissue architecture being adjusted for is coarser than the
 10-50 µm interaction band. If architecture exists at the same scale as individual
 cells, no statistic can perfectly separate "shared tissue preference" from "real
 cell-cell attraction" without extra tissue covariates.
+
+### 12.10 Dense tissue and the morphology-conditioned candidate
+
+Dense tissue breaks the simple 75 µm story because the architecture itself can live
+at the same 35-45 µm scale as the interaction being tested. In that regime, a
+smaller 35-45 µm reweighted bandwidth was tested and rejected: it had high power,
+but it still called too many true shared-architecture nulls significant.
+
+The current research candidate is different. It uses a marker-independent
+morphology field:
+
+```text
+lambda_M(x) = total-cell / hematoxylin / tissue-architecture field
+```
+
+Then the null keeps A fixed and redraws B from `lambda_M(x)`, asking:
+
+> Are A and B closer than expected after accounting for dense tissue architecture
+> measured independently of marker positivity?
+
+Public Schürch CRC CODEX calibration used real dense CRC cell-coordinate fields as
+architecture templates, then simulated known null and planted-positive marker pairs
+on top. Homogeneous CSR over-rejected true nulls at about 10-25%. The best
+morphology-conditioned candidate used a total-cell support field with 2 µm jitter
+and a 10-30 µm DCLF band; across 60 real CODEX spots, 5 simulations per spot, and
+199 permutations, its H0 rejection rates were 3.7-6.7% with planted-positive power
+1.0.
+
+The next bridge rendered those same CODEX cell architectures into synthetic
+H-DAB-like hematoxylin images and extracted the morphology field back from pixels.
+That image-derived nuclei morphology recovered the coordinate morphology well
+(median field correlation 0.939; median detected/true nuclei ratio 0.844; median
+nearest detected nucleus distance 0.234 µm) and kept the 10-30 µm candidate
+calibrated: worst H0 rejection 6.3%, planted-positive power 1.0.
+
+Finally, the candidate was run on the completed real LL477 CD8/TIM-3 serial-section
+bundles using all reference-section OASIS nuclei detections as the morphology support.
+Two certified non-sparse pairs were significant under the dense candidate:
+
+| Pair | Dense candidate p | Result |
+|---|---:|---|
+| LL477 x10_1 | 0.007 | association |
+| LL477 x10_3 | 0.024 | association |
+
+LL477 x10_2 was skipped because only 10 TIM-3 positives were inside the certified
+analysis window. That is the right behavior: sparse data should be called
+insufficient, not negative.
+
+Plain meaning:
+
+> The dense-null idea is statistically promising on public real tissue
+> architecture and survives rendered H-DAB-like morphology extraction, but it is
+> not a shipped OASIS mode yet.
+
+The missing step is productionization. OASIS must wire this into the actual Spatial
+tab with provenance, ROI handling, sparsity gates, and reviewer-facing wording.
+Until then, dense tissues should be flagged as not trustworthy for a shipped robust
+cell-scale engagement claim.
 
 ---
 

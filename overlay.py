@@ -405,6 +405,7 @@ def generate_consolidated_density(
     label_b: str = "TIM-3+",
     bandwidth_um: float = 30.0,
     max_side: int = 1400,
+    roi_polygon=None,
 ) -> str:
     """
     Consolidated spatial-result image: a dual-channel density heatmap on the
@@ -474,13 +475,41 @@ def generate_consolidated_density(
     glow[..., 0] = db * 255.0                               # blue channel  (B)
     out = np.clip(canvas + glow, 0, 255).astype(np.uint8)   # additive glow
 
+    # ── Certified analysis ROI burn-in ───────────────────────────────────────
+    # When statistics were restricted to a region (LOCALLY_CERTIFIED hull or an
+    # operator-drawn Certification ROI, in full-res reference coords), dim outside it
+    # and draw a bright contour so the paper figure visibly reads "restricted here".
+    roi_drawn = False
+    if roi_polygon is not None and len(roi_polygon) >= 3:
+        poly = np.array([[int(round(x * scale)), int(round(y * scale))]
+                         for x, y in roi_polygon], np.int32)
+        m = np.zeros((H, W), np.uint8)
+        cv2.fillPoly(m, [poly], 255)
+        outside = m == 0
+        out[outside] = (out[outside].astype(np.float64) * 0.42).astype(np.uint8)
+        cv2.polylines(out, [poly], isClosed=True, color=(0, 255, 255),
+                      thickness=2, lineType=cv2.LINE_AA)
+        ti = int(poly[:, 1].argmin())
+        tx = int(np.clip(poly[ti, 0] - 10, 6, W - 320))
+        ty = int(np.clip(poly[ti, 1] - 8, 16, H - 8))
+        lbl = "Certified analysis ROI - statistics restricted here"
+        cv2.putText(out, lbl, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 0, 0), 3, cv2.LINE_AA)
+        cv2.putText(out, lbl, (tx, ty), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                    (0, 255, 255), 1, cv2.LINE_AA)
+        roi_drawn = True
+
     # ── Legend (bottom-left) ─────────────────────────────────────────────────
-    lx, ly = 12, H - 78
-    cv2.rectangle(out, (lx - 6, ly - 6), (lx + 210, ly + 66), (20, 20, 20), -1)
-    cv2.rectangle(out, (lx - 6, ly - 6), (lx + 210, ly + 66), (90, 90, 90), 1)
     legend = [((0, 220, 0),   f"{label_a} density"),
               ((255, 90, 0),  f"{label_b} density"),
               ((220, 220, 0), "overlap")]
+    if roi_drawn:
+        legend.append(((0, 255, 255), "certified ROI"))
+    lx, ly = 12, H - 18 - 20 * len(legend)
+    cv2.rectangle(out, (lx - 6, ly - 6), (lx + 210, ly + 20 * len(legend) + 4),
+                  (20, 20, 20), -1)
+    cv2.rectangle(out, (lx - 6, ly - 6), (lx + 210, ly + 20 * len(legend) + 4),
+                  (90, 90, 90), 1)
     for i, (col, txt) in enumerate(legend):
         yy = ly + 8 + i * 20
         cv2.rectangle(out, (lx, yy - 9), (lx + 18, yy + 5), col, -1)

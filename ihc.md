@@ -130,6 +130,23 @@ architecture). Emits `global_p_dclf`, direction, significance. KDE bandwidth 50 
 (Scott's/Silverman's rejected — over-smooths multimodal intensity); 0.5×/1×/2× sweep
 reported.
 
+**Dense-tissue status**: the shipped primary remains the 75 µm reweighted null, and
+it is trusted only when the per-image architecture pre-flight says the tissue field is
+coarser than the bandwidth. Dense fields (ℓ̂ around 35–45 µm in LL477) are fail-closed:
+they may report CSR/co-infiltration, but not a robust cell-scale engagement claim. A
+separate dense candidate was calibrated in `validation/validate_public_codex_dense_null.py`
+on public Schürch CRC CODEX architecture templates: homogeneous CSR over-rejected true
+nulls (≈10–25%); a total-cell morphology-conditioned candidate with a **10–30 µm**
+DCLF band and **2 µm** support jitter controlled H0 at 3.7–6.7% with planted-positive
+power 1.0. A rendered-pixel bridge (`validate_dense_null_image_derived_morphology.py`)
+then recovered morphology from synthetic H-DAB-like hematoxylin pixels (median field
+correlation 0.939) and kept H0 at 3.7–6.3% with power 1.0 for the same **10–30 µm /
+2 µm** candidate. A real LL477 demonstration then ran the candidate on completed
+certified H-DAB bundles using all reference-section OASIS detections as morphology
+support: x10_1 p=0.007, x10_3 p=0.024, and sparse x10_2 was skipped (10 TIM-3 positives
+inside the window). This is **not shipped** until the candidate is wired into production
+with provenance, ROI handling, sparsity gates, and reviewer-facing wording.
+
 **Robustness verdict** (never a single null's significance):
 `robust` (reweighted-significant → cell-scale engagement) · `csr_only` (CSR-only →
 co-infiltration) · `none` · `mixed`.
@@ -192,6 +209,14 @@ runner, same reports):
 - **Reweighted null** — 3-regime proof. *Caveat*: mildly **anti-conservative** (~10 %
   type-I vs 5 % on synthetic CSR; homogeneous CSR conservative at 0 %) → p near 0.05 needs
   caution.
+- **Dense-tissue null exploration** — smaller 35–45 µm reweighted bandwidths and
+  square-tile conditioning were rejected. Public Schürch CRC CODEX calibration on real
+  dense cell-coordinate architecture promoted one morphology-conditioned candidate
+  (`10–30 µm`, total-cell field jitter `2 µm`). Rendered CODEX H-DAB-like pixels then
+  showed image-derived nuclei morphology can recover the field and preserve calibration.
+  A real LL477 demonstration ran on two usable certified CD8/TIM-3 pairs and skipped the
+  sparse third pair. It is still not production because the candidate has not been wired
+  into the app with gates/provenance/ROI handling.
 - **Registration** — TRE vs **ANHIR/CIMA expert landmarks**; best certified real pair
   (lung-lesion Cc10↔proSPC) LOCALLY_CERTIFIED at 3.66 µm ROI. HyReCo blocked (233 GB+login).
   No public two-marker same-section DAB set exists.
@@ -219,8 +244,9 @@ honest compartment-vs-engagement separation.
   underpowered (3 pairs, one cohort, nothing survives cohort FDR).
 - Certs are single-annotator LOO, n=8 provisional; one annotator-independent number only.
 - Segmentation recall ~0.75 non-randomly thins dense infiltrate → biases the pattern.
-- Reweighted null mildly anti-conservative; 75 µm architecture-scale assumption unmeasured
-  per image.
+- Reweighted null mildly anti-conservative; 75 µm architecture-scale is now measured
+  per image, but dense tissues still fail closed until the morphology-conditioned
+  candidate is validated on real H-DAB/hematoxylin morphology fields.
 - DAB not quantitative; membrane accuracy on DAB extrapolated from IF proxies.
 
 **Paper framing**: a **methods/tools paper** (pipeline + honest null framework + fail-
@@ -245,23 +271,35 @@ cohort `spatial_cohort_fdr.json`.
 
 ---
 
-## 10. End-to-end validation — note
+## 10. End-to-end validation — the bounding suite
 
-The `tests/` suite validates the **statistic** on real ground-truth *coordinates* (the
-CODEX degradation keystone, `tests/test_degradation.py`) and components in isolation.
+A conclusive real-DAB **cell-scale** end-to-end (real chromogenic pixels of two
+*different* markers on corresponding sections, with a known cross-marker association)
+cannot be assembled — serial sections put the two markers on different physical slices,
+so that ground truth does not exist. We therefore **bound** the untestable case from
+three sides rather than claim to close it. (An earlier image-level experiment on ~5 %
+scale CIMA/IMC tiles was **removed**: at ~20 µm/px the 10–50 µm band spans <2 px, so it
+was tissue-scale, not cell-scale — reading it as a cell-scale result would overclaim.)
 
-An earlier **image-level** end-to-end experiment (warp a real image → OUR registration
-reconstructs → InstanSeg → cross-K) ran on local CIMA lung-lesion / IMC-rendered tiles.
-It was **removed** because that data was scientifically inappropriate for the claim: the
-images are ~5 % scale (~20 µm/px), so their cross-K is **tissue-scale, not cell-scale**
-(the 10–50 µm band spans <2 px). It validated pipeline *machinery + registration
-reconstruction* but not cell-scale association, and reading it as an end-to-end cell-scale
-result would overclaim.
+| # | Validation | Pixels | Ground truth | Pipeline exercised | Status |
+|---|---|---|---|---|---|
+| Keystone | `tests/test_degradation.py` | none (coords) | real, cross-marker (CODEX CD8/PD-1) | statistic + registration-error tolerance | ✅ |
+| **B** | `validate_e2e_knownwarp_deepliif.py` | **real DAB** | trivial (same cells, known warp) | **full** (InstanSeg → registration → cross-K) | ✅ |
+| **A** | `validate_e2e_render_codex.py` (planned) | synthetic brightfield | **real, cross-marker** (CODEX) | **full** | ⏳ TODO.md |
 
-A conclusive image-level **cell-scale** end-to-end needs higher-resolution two-marker
-corresponding images with known association ground truth, which do not exist publicly for
-DAB. The honest achievable options: (a) render CODEX ground-truth cells into brightfield
-tiles (real pipeline, true cross-marker truth, synthetic pixels) or (b) known-warp
-reconstruction on real DeepLIIF IHC (real pixels, same-marker/trivial association). Neither
-alone closes the gap; with the CODEX keystone they would bound it. **This validation is to
-be redesigned on an appropriate dataset — not currently shipped.**
+**B (shipped).** Warp a real DeepLIIF IHC panel by a known transform, segment both with
+the real pipeline, register, and check: reconstruction TRE small (measured ≈1.6 µm
+median, ≤5 µm), the registered verdict recovers association, and the verdict **breaks
+without registration** (necessity control). Proves real DAB pixels segment + register +
+feed the statistic correctly at cell scale. *Limit:* same marker → association is
+trivial.
+
+**A (planned, see TODO.md).** Render real CODEX cross-marker cells into cell-scale
+brightfield tiles and run the full pipeline against the known CODEX verdict. Proves the
+full pixel pipeline on **real cross-marker truth**. *Limit:* pixels are synthetic.
+
+No single row is the real thing; **B gives real pixels + full pipeline, A gives real
+cross-marker truth + full pipeline, and the keystone gives real truth for the statistic
+— jointly they bound the gap from every side.** The honest residual, stated plainly: the
+combination of real chromogenic pixels *and* real non-trivial cross-marker truth cannot
+be built for serial DAB; we bound it, we do not close it.

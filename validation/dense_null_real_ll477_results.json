@@ -1,0 +1,308 @@
+{
+  "parameters": {
+    "results_root": "/Users/mukilan/Desktop/ihc_spatial_results",
+    "asset_roots": [
+      "/Users/mukilan/Desktop/assets"
+    ],
+    "nperm": 999,
+    "seed": 0,
+    "jitter_um": 2.0,
+    "min_positive": 30,
+    "min_support": 500
+  },
+  "records": [
+    {
+      "pair_dir": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_1",
+      "result_json": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_1/LL477_CD8_x10_1_spatial_association.json",
+      "sample_id": "LL477_CD8_x10_1",
+      "filename_a": "LL477_CD8_x10_1.tif",
+      "filename_b": "LL477_Tim3_x10_1.tif",
+      "ref_pixel_size_um": 0.6410256410256411,
+      "mov_pixel_size_um": 0.5747126436781609,
+      "certification": {
+        "status": "CERTIFIED",
+        "is_certified": true,
+        "n": 8,
+        "tre_median_um": 1.513,
+        "tre_p90_um": 3.558
+      },
+      "window": {
+        "area_um2": 823450.4598609399,
+        "overlap_iou": 0.7069372613485596,
+        "overlap_frac_a": 0.8401273467221553
+      },
+      "counts": {
+        "positive_a_total": 282,
+        "positive_b_total": 61,
+        "positive_a_inside_window": 236,
+        "positive_b_inside_window": 52,
+        "positive_a_excluded": 46,
+        "positive_b_excluded": 9,
+        "all_reference_cells_total": 14050,
+        "all_reference_cells_inside_window": 11611
+      },
+      "existing_oasis": {
+        "robustness": {
+          "verdict": "robust",
+          "direction": "association",
+          "summary": "Significant association under the calibrated reweighted inhomogeneous cross-K (the production primary, size-controlled under shared tissue preference) \u2014 association beyond the shared architectural response.",
+          "primary_null": "reweighted",
+          "per_null_significant": {
+            "reweighted": true,
+            "homogeneous": true
+          },
+          "per_null_direction": {
+            "reweighted": "association",
+            "homogeneous": "association"
+          },
+          "per_null_global_p": {
+            "reweighted": 0.00599,
+            "homogeneous": 0.001
+          }
+        },
+        "spatial_validity": null,
+        "global": {
+          "significant": true,
+          "global_p_dclf": 0.00599,
+          "global_p_association": 0.00599,
+          "global_p_segregation": 0.88112,
+          "direction": "association",
+          "peak_r_um": 44.0,
+          "peak_L_minus_r": 116.107,
+          "peak_p_value": 0.001,
+          "dclf_rmin_um": 10.0,
+          "dclf_rmax_um": 50.0,
+          "relevant_scale_um": 50.0
+        }
+      },
+      "status": "tested",
+      "candidate": {
+        "method": "image_derived_all_reference_nuclei_support_jitter",
+        "support_source": "OASIS reference-section all-cell detections CSV",
+        "jitter_um": 2.0,
+        "n_perm": 999,
+        "bands": {
+          "10-30": {
+            "significant": true,
+            "global_p_dclf": 0.007,
+            "global_p_association": 0.003,
+            "global_p_segregation": 1.0,
+            "direction": "association",
+            "peak_r_um": 30.0,
+            "peak_L_minus_r": 6.095,
+            "peak_p_value": 0.002,
+            "dclf_rmin_um": 10.0,
+            "dclf_rmax_um": 30.0,
+            "relevant_scale_um": 50.0
+          },
+          "5-20": {
+            "significant": false,
+            "global_p_dclf": 0.052,
+            "global_p_association": 0.014,
+            "global_p_segregation": 1.0,
+            "direction": "none",
+            "peak_r_um": 20.0,
+            "peak_L_minus_r": 5.732,
+            "peak_p_value": 0.002,
+            "dclf_rmin_um": 5.0,
+            "dclf_rmax_um": 20.0,
+            "relevant_scale_um": 50.0
+          }
+        }
+      }
+    },
+    {
+      "pair_dir": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_2",
+      "result_json": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_2/LL477_CD8_x10_2_spatial_association.json",
+      "sample_id": "LL477_CD8_x10_2",
+      "filename_a": "LL477_CD8_x10_2.tif",
+      "filename_b": "LL477_Tim3_x10_2.tif",
+      "ref_pixel_size_um": 0.7194244604316546,
+      "mov_pixel_size_um": 0.7518796992481203,
+      "certification": {
+        "status": "CERTIFIED",
+        "is_certified": true,
+        "n": 8,
+        "tre_median_um": 2.674,
+        "tre_p90_um": 3.184
+      },
+      "window": {
+        "area_um2": 709224.7687358848,
+        "overlap_iou": 0.5498611481545086,
+        "overlap_frac_a": 0.709110993875318
+      },
+      "counts": {
+        "positive_a_total": 119,
+        "positive_b_total": 23,
+        "positive_a_inside_window": 72,
+        "positive_b_inside_window": 10,
+        "positive_a_excluded": 47,
+        "positive_b_excluded": 13,
+        "all_reference_cells_total": 9251,
+        "all_reference_cells_inside_window": 5721
+      },
+      "existing_oasis": {
+        "robustness": {
+          "verdict": "csr_only",
+          "direction": "segregation",
+          "summary": "CRITICAL: significant segregation ONLY under the weak homogeneous-CSR baseline; it VANISHES under the calibrated primary null \u2014 consistent with NO association beyond shared tissue preference.",
+          "primary_null": "reweighted",
+          "per_null_significant": {
+            "reweighted": false,
+            "homogeneous": true
+          },
+          "per_null_direction": {
+            "reweighted": "none",
+            "homogeneous": "segregation"
+          },
+          "per_null_global_p": {
+            "reweighted": 0.17882,
+            "homogeneous": 0.03197
+          }
+        },
+        "spatial_validity": null,
+        "global": {
+          "significant": false,
+          "global_p_dclf": 0.17882,
+          "global_p_association": 1.0,
+          "global_p_segregation": 0.01898,
+          "direction": "none",
+          "peak_r_um": 10.0,
+          "peak_L_minus_r": -10.0,
+          "peak_p_value": 1.0,
+          "dclf_rmin_um": 10.0,
+          "dclf_rmax_um": 50.0,
+          "relevant_scale_um": 50.0
+        }
+      },
+      "status": "skipped",
+      "skip_reason": "requires certified pair, >= 30 positives per marker inside window, >= 500 support cells"
+    },
+    {
+      "pair_dir": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_3",
+      "result_json": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_3/LL477_CD8_x10_3_spatial_association.json",
+      "sample_id": "LL477_CD8_x10_3",
+      "filename_a": "LL477_CD8_x10_3.tif",
+      "filename_b": "LL477_Tim3_10X_3.tif",
+      "ref_pixel_size_um": 0.7518796992481203,
+      "mov_pixel_size_um": 0.6060606060606061,
+      "certification": {
+        "status": "CERTIFIED",
+        "is_certified": true,
+        "n": 8,
+        "tre_median_um": 4.898,
+        "tre_p90_um": 7.088
+      },
+      "window": {
+        "area_um2": 496030.03644304123,
+        "overlap_iou": 0.493176132895733,
+        "overlap_frac_a": 0.6845180294426321
+      },
+      "counts": {
+        "positive_a_total": 143,
+        "positive_b_total": 183,
+        "positive_a_inside_window": 59,
+        "positive_b_inside_window": 75,
+        "positive_a_excluded": 84,
+        "positive_b_excluded": 108,
+        "all_reference_cells_total": 4796,
+        "all_reference_cells_inside_window": 2685
+      },
+      "existing_oasis": {
+        "robustness": {
+          "verdict": "csr_only",
+          "direction": "association",
+          "summary": "CRITICAL: significant association ONLY under the weak homogeneous-CSR baseline; it VANISHES under the calibrated primary null \u2014 consistent with NO association beyond shared tissue preference.",
+          "primary_null": "reweighted",
+          "per_null_significant": {
+            "reweighted": false,
+            "homogeneous": true
+          },
+          "per_null_direction": {
+            "reweighted": "none",
+            "homogeneous": "association"
+          },
+          "per_null_global_p": {
+            "reweighted": 0.72128,
+            "homogeneous": 0.001
+          }
+        },
+        "spatial_validity": {
+          "bandwidth_75um_valid": false,
+          "worst_status": "unreliable",
+          "window_scope": "certified_analysis_window",
+          "per_image": {
+            "CD8": {
+              "scale_um": 35.2,
+              "status": "unreliable",
+              "ok": false,
+              "n": 59,
+              "min_ok_scale_um": 150.0
+            },
+            "TIM-3": {
+              "scale_um": 44.2,
+              "status": "unreliable",
+              "ok": false,
+              "n": 75,
+              "min_ok_scale_um": 150.0
+            }
+          },
+          "reason": "architecture is at/inside the 75 \u00b5m interaction band in at least one image \u2014 the reweighted test is anti-conservative here; do not report 'robust'."
+        },
+        "global": {
+          "significant": false,
+          "global_p_dclf": 0.72128,
+          "global_p_association": 0.30569,
+          "global_p_segregation": 0.72827,
+          "direction": "none",
+          "peak_r_um": 48.0,
+          "peak_L_minus_r": 64.327,
+          "peak_p_value": 0.54845,
+          "dclf_rmin_um": 10.0,
+          "dclf_rmax_um": 50.0,
+          "relevant_scale_um": 50.0
+        }
+      },
+      "status": "tested",
+      "candidate": {
+        "method": "image_derived_all_reference_nuclei_support_jitter",
+        "support_source": "OASIS reference-section all-cell detections CSV",
+        "jitter_um": 2.0,
+        "n_perm": 999,
+        "bands": {
+          "10-30": {
+            "significant": true,
+            "global_p_dclf": 0.024,
+            "global_p_association": 0.009,
+            "global_p_segregation": 1.0,
+            "direction": "association",
+            "peak_r_um": 16.0,
+            "peak_L_minus_r": 4.693,
+            "peak_p_value": 0.007,
+            "dclf_rmin_um": 10.0,
+            "dclf_rmax_um": 30.0,
+            "relevant_scale_um": 50.0
+          },
+          "5-20": {
+            "significant": false,
+            "global_p_dclf": 0.113,
+            "global_p_association": 0.041,
+            "global_p_segregation": 1.0,
+            "direction": "none",
+            "peak_r_um": 16.0,
+            "peak_L_minus_r": 4.693,
+            "peak_p_value": 0.007,
+            "dclf_rmin_um": 5.0,
+            "dclf_rmax_um": 20.0,
+            "relevant_scale_um": 50.0
+          }
+        }
+      }
+    }
+  ],
+  "summary": {
+    "tested": 2,
+    "skipped": 1,
+    "significant_10_30": 2
+  }
+}
