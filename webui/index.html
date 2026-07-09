@@ -1016,7 +1016,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           </button>
           <div class="toggle-row" style="margin-top:10px">
             <span>Match scale images in these folders <span style="color:var(--text3);font-size:11px">— calibrate each image from its own <b>_scale</b> sibling's bar (falls back to the session pixel size)</span></span>
-            <div class="toggle" id="spatial-scale-match-toggle" onclick="toggleEl('spatial-scale-match-toggle')"></div>
+            <div class="toggle" id="spatial-scale-match-toggle" onclick="spatialScaleMatchToggle()"></div>
           </div>
         </div>
         <div id="spatial-preview-card" style="display:none">
@@ -1076,11 +1076,14 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
             <button class="btn sm" id="spatial-cert-propose" onclick="spatialCertPropose()" title="Auto-detect matching lumen/structural landmarks for you to verify — machine proposes, you confirm before certifying">Auto-propose landmarks</button>
+            <button class="btn sm" id="spatial-cert-guide-next" onclick="spatialCertGuideRequestNext(true)" title="Ask OASIS for the next best landmark pair to verify">Guide next</button>
+            <button class="btn sm" id="spatial-cert-guide-accept" onclick="spatialCertAcceptGuide()" style="display:none">Accept suggested pair</button>
+            <button class="btn sm" id="spatial-cert-guide-reject" onclick="spatialCertRejectGuide()" style="display:none">Reject</button>
             <button class="btn sm" onclick="spatialCertUndo()">Undo</button>
             <button class="btn sm" onclick="spatialCertClear()">Clear</button>
             <button class="btn amber" onclick="spatialCertRun()">Fit transform & certify</button>
           </div>
-          <div id="spatial-cert-propose-note" style="font-size:11px;color:var(--text3);margin-top:6px">Proposed points are a starting draft — drag-verify each pair against the images and delete any that don't correspond before certifying.</div>
+          <div id="spatial-cert-propose-note" style="font-size:11px;color:var(--text3);margin-top:6px">After the first pair, guided mode suggests the next anatomical correspondence one at a time. Accept only if both dots mark the same structure; OASIS keeps trying certification/local certification before making a final failed call.</div>
           <div id="spatial-cert-result" style="font-size:12px;line-height:1.55;margin-top:10px"></div>
         </div>
       </div>
@@ -1092,7 +1095,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
         </div>
         <div class="info-box amber" style="margin-bottom:12px">
-          The intensity-reweighted primary null uses a 75 µm bandwidth and is size-controlled only where the tissue architecture is <b>coarser</b> than it (ℓ̂ ≳ 150 µm). This validates that assumption per image on the real positive cells <b>inside the current analysis window</b> (it depends on the ROI/intersection — not a universal image property). Segments the pair once; a following run reuses that segmentation. A failure never invalidates registration certification — it only withholds the “robust” claim.
+          The intensity-reweighted primary null uses a 75 µm bandwidth and is size-controlled only where the tissue architecture is <b>coarser</b> than it (ℓ̂ ≳ 150 µm). This validates that assumption per image on the real positive cells <b>inside each certified analysis window</b> (it depends on the ROI/intersection — not a universal image property). Works in <b>single and batch</b> mode; in batch it validates every matched pair in one pass. Runs only after <b>every</b> pair is CERTIFIED or LOCALLY_CERTIFIED — never on DEFORMED / uncertified pairs. Segments each pair once; a following run reuses that segmentation. Each pair is labelled with the null a full run will use: the 75 µm reweighted <b>primary null</b>, the <b>dense-tissue morphological null</b> when dense/fine architecture is detected and gates pass, or <b>fail-closed</b> when the field is underpowered or no valid primary null is available.
         </div>
         <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
         <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
@@ -1147,7 +1150,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           </div>
         </div>
         <div class="info-box amber" style="margin-top:10px">
-          Cross-type analysis measures whether CD8+ and TIM-3+ cell populations are spatially associated across registered serial sections, using the calibrated intensity-reweighted inhomogeneous cross-K — which tests for association BEYOND a shared tissue preference (both cell types favouring the same architecture), the failure mode of a naive model (see ihc.md §15). This is a population-level statistic and does not imply single-cell co-expression, which requires multiplex imaging on the same section.
+          Cross-type analysis measures whether CD8+ and TIM-3+ cell populations are spatially associated across registered serial sections. OASIS uses the calibrated 75 µm intensity-reweighted primary when its architecture check passes; if it fails because tissue is fine/dense, a full run automatically attempts the dense morphology-conditioned primary null and reports the switch. If the field is sparse/underpowered instead, the robust spatial-association claim is not tested. This is a population-level statistic and does not imply single-cell co-expression, which requires multiplex imaging on the same section.
         </div>
       </div>
 
@@ -1410,6 +1413,7 @@ let spatialMode          = 'single';        // 'single' | 'batch'
 let spatialFolderMode    = 'two_folder';    // 'two_folder' | 'single_folder'
 let spatialSessionPxMode = 'manual';        // 'manual' | 'scale'
 let spatialSessionScale  = { path: '', px: null };
+let spatialBatchScale    = { px: null, count: 0, map: {} };
 let spatialImage         = { a: '', b: '' };
 let spatialOverride      = { a: null, b: null };  // {mode, px?, scalePath?, scalePx?}
 let spatialPairs         = [];
@@ -1612,7 +1616,7 @@ function validationCard(v) {
   const blocked = !pf.ok;
   const dsChips = (v.datasets||[]).length
     ? (v.datasets.map(d => `<span class="vchip">${esc(d)}</span>`).join(''))
-    : `<span style="color:var(--text3)">No image dataset required — purely statistical.</span>`;
+    : `<span style="color:var(--text3)">No registered dataset dependency.</span>`;
   const deps = (v.external_deps||[]).length
     ? `<span style="color:var(--text3);font-size:11px">needs: ${v.external_deps.join(', ')}</span>` : '';
   const metrics = (v.last && v.last.metrics && Object.keys(v.last.metrics).length)
@@ -2441,8 +2445,18 @@ function spatialAssocSetFolderMode(mode) {
   document.getElementById('spatial-fmode-two-btn').classList.toggle('active', mode === 'two_folder');
   document.getElementById('spatial-fmode-single-btn').classList.toggle('active', mode === 'single_folder');
   spatialPairs = [];
+  spatialBatchScale = { px: null, count: 0, map: {} };
   document.getElementById('spatial-preview-card').style.display = 'none';
   spatialAssocUpdateRunBtn();
+}
+
+function spatialScaleMatchToggle() {
+  toggleEl('spatial-scale-match-toggle');
+  spatialBatchScale = { px: null, count: 0, map: {} };
+  spatialPairs = [];
+  document.getElementById('spatial-preview-card').style.display = 'none';
+  spatialCertInvalidate();
+  showToast('Preview matches again so scale calibration is applied before landmarking');
 }
 
 function spatialAssocSetSessionPxMode(mode) {
@@ -2574,6 +2588,26 @@ async function spatialAssocPreview() {
   if (res.status !== 'ok') { showToast('Error: ' + (res.error || 'match failed')); return; }
   spatialPairs = res.pairs || [];
   spatialCertifications = {};
+  spatialBatchScale = { px: null, count: 0, map: {} };
+  if (isOn('spatial-scale-match-toggle')) {
+    const sr = await window.pywebview.api.preview_spatial_scale_matches(folder_a, folder_b || null, spatialFolderMode);
+    if (sr && sr.status === 'ok' && sr.global_pixel_size) {
+      spatialBatchScale = {
+        px: Number(sr.global_pixel_size),
+        count: sr.count || 0,
+        map: sr.pixel_sizes || {},
+      };
+      const spx = document.getElementById('spatial-session-px-val');
+      if (spx) spx.value = Number(spatialBatchScale.px).toFixed(4);
+      spatialSessionPxMode = 'manual';
+      document.querySelector('input[name="spatial-session-px"][value="manual"]').checked = true;
+      document.getElementById('spatial-session-manual').style.display = 'block';
+      document.getElementById('spatial-session-scale').style.display = 'none';
+      spatialAssocRefreshOverrideDefaults();
+    } else {
+      showToast('No readable scale matches found — landmarking will use the session pixel size');
+    }
+  }
   const certSel = document.getElementById('spatial-cert-pair');
   certSel.innerHTML = spatialPairs.map((p,i) => `<option value="${i}">${esc(p.sample_id || p.filename_a)}</option>`).join('');
   document.getElementById('spatial-cert-pair-row').style.display = spatialPairs.length ? 'block' : 'none';
@@ -2581,9 +2615,13 @@ async function spatialAssocPreview() {
   const scaled    = res.scaled_excluded || [];
 
   document.getElementById('spatial-preview-badge').textContent = `${spatialPairs.length} pairs`;
-  const pxSrc = spatialAssocSessionPxText();
+  const pxSrc = isOn('spatial-scale-match-toggle')
+    ? (spatialBatchScale.px
+      ? `folder scale-match · global ${spatialBatchScale.px.toFixed(4)} µm/px before landmarks`
+      : 'folder scale-match requested · no readable scale yet')
+    : 'session · ' + spatialAssocSessionPxText();
   document.getElementById('spatial-preview-tbody').innerHTML = spatialPairs.length
-    ? spatialPairs.map(p => `<tr><td>${esc(p.filename_a)}</td><td>${esc(p.filename_b)}</td><td class="muted">session · ${esc(pxSrc)}</td></tr>`).join('')
+    ? spatialPairs.map(p => `<tr><td>${esc(p.filename_a)}</td><td>${esc(p.filename_b)}</td><td class="muted">${esc(pxSrc)}</td></tr>`).join('')
     : '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">No pairs found</td></tr>';
 
   const warn = document.getElementById('spatial-preview-warn');
@@ -2601,7 +2639,8 @@ async function spatialAssocPreview() {
   } else { scaledEl.style.display = 'none'; }
 
   document.getElementById('spatial-preview-summary').textContent =
-    `${spatialPairs.length} pairs matched, ${unmatched.length} files unmatched`;
+    `${spatialPairs.length} pairs matched, ${unmatched.length} files unmatched`
+    + (spatialBatchScale.px ? ` · ${spatialBatchScale.count} scale match(es), global ${spatialBatchScale.px.toFixed(4)} µm/px applied before landmarking` : '');
   document.getElementById('spatial-preview-card').style.display = 'block';
   spatialAssocUpdateRunBtn();
 }
@@ -2626,7 +2665,8 @@ function spatialCertCurrentPair() {
 }
 
 function spatialCertResetView() {
-  spatialCertWork = { pair:null, ref:null, mov:null, refPoints:[], movPoints:[], conf:[], pending:null };
+  spatialCertWork = { pair:null, ref:null, mov:null, refPoints:[], movPoints:[], conf:[], pending:null, guiding:false,
+                      guideCandidate:null, guideCandidates:[], guideRejected:[], guideExhausted:false, certifying:false };
   const work = document.getElementById('spatial-cert-work'); if (work) work.style.display = 'none';
   const badge = document.getElementById('spatial-cert-badge');
   if (badge) { badge.textContent = 'NOT STARTED'; badge.className = 'badge gray'; }
@@ -2664,7 +2704,8 @@ async function spatialCertLoad() {
   btn.disabled = false; btn.textContent = 'Load images for landmarking';
   if (r.status !== 'ok') { showToast(r.error || 'Could not load images'); return; }
   spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], conf:[], pending:null,
-                      roiPoints:[], movRoi:null, roiMode:false };
+                      guiding:false, guideCandidate:null, guideCandidates:[], guideRejected:[], guideExhausted:false,
+                      certifying:false, roiPoints:[], movRoi:null, roiMode:false };
   spatialCertRoiUpdateBadge();
   const imgR = document.getElementById('spatial-cert-ref'), imgM = document.getElementById('spatial-cert-mov');
   imgR.onload = () => { lmFit('ref'); spatialCertRender(); };
@@ -2673,7 +2714,8 @@ async function spatialCertLoad() {
   imgM.src = r.mov.data_url;
   spatialCertApplyColour();
   document.getElementById('spatial-cert-work').style.display = 'block';
-  document.getElementById('spatial-cert-result').textContent = '';
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#64748b">Certification pixel size: ${spatialCertPixelSize().toFixed(4)} µm/px${(spatialMode === 'batch' && isOn('spatial-scale-match-toggle')) ? ' (folder scale-match applied before landmarking)' : ''}</span>`;
   spatialCertRender();
 }
 
@@ -2712,6 +2754,23 @@ function spatialCertRender() {
       return `<g><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${fill}" fill-opacity="0.85" stroke="white" stroke-width="${sw}"/><text x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="central" fill="white" font-size="${fs}" font-weight="700">${i+1}</text></g>`;
     }).join('');
   };
+  const candidateDots = (cands, side) => {
+    if (!cands || !cands.length) return '';
+    const meta = side === 'ref' ? w.ref : w.mov;
+    const sc = (lmPanes[side] && lmPanes[side].scale) || 1;
+    const iw = document.getElementById('spatial-cert-'+side).naturalWidth || meta.width;
+    const u = meta.width / iw;
+    const r = 9 * u / sc, sw = 2.2 * u / sc, fs = 10 * u / sc;
+    return cands.map((c, i) => {
+      const p = side === 'ref' ? c.ref_point : c.mov_point;
+      if (!p) return '';
+      const key = spatialCertCandidateKey(c);
+      const selected = w.guideCandidate && spatialCertCandidateKey(w.guideCandidate) === key;
+      const fill = selected ? '#f59e0b' : '#7c3aed';
+      const label = `C${i + 1}`;
+      return `<g><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${fill}" fill-opacity="${selected ? '0.75' : '0.35'}" stroke="white" stroke-width="${sw}"/><circle cx="${p[0]}" cy="${p[1]}" r="${r*1.45}" fill="none" stroke="${fill}" stroke-width="${sw}" stroke-dasharray="${3*u/sc} ${3*u/sc}"/><text x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="central" fill="white" font-size="${fs}" font-weight="800">${label}</text></g>`;
+    }).join('');
+  };
   // Certification-ROI polygon on a pane (yellow, zoom-invariant stroke + vertices).
   const roiSvg = (poly, meta, side, closed) => {
     if (!poly || poly.length < 1) return '';
@@ -2728,14 +2787,24 @@ function spatialCertRender() {
     const ro = document.getElementById('spatial-cert-ref-ov'), mo = document.getElementById('spatial-cert-mov-ov');
     ro.setAttribute('viewBox', `0 0 ${w.ref.width} ${w.ref.height}`); mo.setAttribute('viewBox', `0 0 ${w.mov.width} ${w.mov.height}`);
     const roiClosed = !w.roiMode && (w.roiPoints||[]).length >= 3;
-    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', roiClosed) + dots(w.refPoints, w.ref, 'ref', w.pending, w.conf);
-    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3) + dots(w.movPoints, w.mov, 'mov', null, w.conf);
+    const showingCandidateSet = (w.guideCandidates || []).length > 0;
+    const gRef = (w.guideCandidate && !showingCandidateSet) ? w.guideCandidate.ref_point : w.pending;
+    const gMov = (w.guideCandidate && !showingCandidateSet) ? w.guideCandidate.mov_point : null;
+    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', roiClosed) + dots(w.refPoints, w.ref, 'ref', gRef, w.conf) + candidateDots(w.guideCandidates, 'ref');
+    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3) + dots(w.movPoints, w.mov, 'mov', gMov, w.conf) + candidateDots(w.guideCandidates, 'mov');
   }
   const anyConf = (w.conf || []).some(c => c != null);
+  const guideTxt = (w.guideCandidates || []).length ? ` · ${w.guideCandidates.length} candidate spots` : (w.guideCandidate ? ' · suggested pair pending' : '');
   document.getElementById('spatial-cert-count').textContent =
     (w.roiMode ? `ROI draw mode · ${(w.roiPoints||[]).length} vertices · click reference to add`
-     : `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${w.pending?' · click moving image':''}`)
+     : `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${guideTxt}${w.certifying?' · certifying…':(w.guiding?' · finding next match…':(w.pending?' · click moving image':''))}`)
     + (anyConf && !w.roiMode ? ' · dot colour = match confidence' : '');
+  const a = document.getElementById('spatial-cert-guide-accept');
+  const r = document.getElementById('spatial-cert-guide-reject');
+  if (a && r) {
+    a.style.display = w.guideCandidate ? 'inline-flex' : 'none';
+    r.style.display = w.guideCandidate ? 'inline-flex' : 'none';
+  }
 }
 
 function spatialCertRoiUpdateBadge() {
@@ -2768,6 +2837,10 @@ function spatialCertRoiClear() {
 }
 
 document.getElementById('spatial-cert-ref').addEventListener('click', e => {
+  spatialCertHandleRefClick(e);
+});
+
+async function spatialCertHandleRefClick(e) {
   const w = spatialCertWork;
   if (!w.ref) return;
   if ((lmPanes.ref.moved || 0) > 4) return;            // it was a pan, not a click
@@ -2775,16 +2848,59 @@ document.getElementById('spatial-cert-ref').addEventListener('click', e => {
     w.roiPoints.push(spatialCertPoint(e, e.currentTarget, w.ref));
     spatialCertRoiUpdateBadge(); spatialCertRender(); return;
   }
-  if (w.pending) return;
-  w.pending = spatialCertPoint(e, e.currentTarget, w.ref); spatialCertRender();
-});
+  const clickPt = spatialCertPoint(e, e.currentTarget, w.ref);
+  if ((w.guideCandidates || []).length) {
+    const picked = spatialCertCandidateAt(clickPt);
+    if (picked) { await spatialCertAcceptCandidate(picked); return; }
+    showToast('Click one of the shown candidate spots, or reject/refresh the suggestions');
+    return;
+  }
+  if (w.guideCandidate) { showToast('Accept or reject the suggested pair first'); return; }
+  if (w.pending || w.guiding) return;
+  const refPt = clickPt;
+  w.pending = refPt;
+  w.guiding = true;
+  spatialCertRender();
+  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
+  let r = null;
+  try {
+    r = await window.pywebview.api.suggest_moving_landmark(
+      w.pair.path_a, w.pair.path_b, spatialCertPixelSize(), refPt,
+      w.refPoints, w.movPoints, roi);
+  } catch (err) {
+    r = { status:'error', error:String(err) };
+  }
+  w.guiding = false;
+  if (!w.pending || w.pending !== refPt) { spatialCertRender(); return; }
+  if (r && r.status === 'ok' && r.mov_point) {
+    w.refPoints.push(refPt);
+    w.movPoints.push(r.mov_point);
+    w.conf.push(typeof r.confidence === 'number' ? r.confidence : null);
+    w.pending = null;
+    w.guideCandidate = null;
+    w.guideCandidates = [];
+    spatialCertForgetCurrentCertification();
+    const confTxt = typeof r.confidence === 'number' ? ` · confidence ${r.confidence.toFixed(2)}` : '';
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#0e7490">Guided landmark added by ${esc(r.method || 'RANSAC')}${confTxt}. OASIS will keep guiding landmarks until the pair certifies or the candidate search is exhausted.</span>`;
+    spatialCertRender();
+    await spatialCertGuideContinue('guided landmarking');
+    return;
+  }
+  showToast((r && r.error) ? `Guided match unavailable: ${r.error}` : 'Guided match unavailable — click moving image manually');
+  spatialCertRender();
+}
 document.getElementById('spatial-cert-mov').addEventListener('click', e => {
   if (!spatialCertWork.mov || !spatialCertWork.pending) return;
+  if (spatialCertWork.guiding) return;
   if ((lmPanes.mov.moved || 0) > 4) return;
   spatialCertWork.refPoints.push(spatialCertWork.pending);
   spatialCertWork.movPoints.push(spatialCertPoint(e, e.currentTarget, spatialCertWork.mov));
   spatialCertWork.conf.push(null);                     // hand-placed → no confidence
-  spatialCertWork.pending = null; spatialCertRender();
+  spatialCertWork.pending = null;
+  spatialCertForgetCurrentCertification();
+  spatialCertRender();
+  spatialCertGuideContinue('manual fallback landmarking');
 });
 
 // ── Landmark pan/zoom stages (independent per pane) ──────────────────────────
@@ -2848,6 +2964,9 @@ async function spatialCertPropose() {
   spatialCertWork.conf = r.confidences || (r.ref_points || []).map(() => null);
   spatialCertWork.movRoi = r.mov_roi_polygon || spatialCertWork.movRoi;
   spatialCertWork.pending = null;
+  spatialCertWork.guideCandidate = null;
+  spatialCertWork.guideCandidates = [];
+  spatialCertForgetCurrentCertification();
   spatialCertRender();
   const cov = (typeof r.coverage_frac === 'number') ? (r.coverage_frac*100).toFixed(0)+'%' : '—';
   const res = (typeof r.fit_residual_um === 'number') ? r.fit_residual_um.toFixed(1)+' µm' : '—';
@@ -2856,34 +2975,52 @@ async function spatialCertPropose() {
     : `<b style="color:#166534">Field-wide</b> — ${cov} coverage.`;
   document.getElementById('spatial-cert-result').innerHTML =
     `<span style="color:#0e7490">Proposed ${r.n} correspondence${r.n===1?'':'s'} (lumens ref/mov ${r.n_lumen_ref}/${r.n_lumen_mov}). ${modeTxt} Median self-residual ${res}. <b>Verify each pair against the images and delete any mismatches before certifying.</b></span>`;
+  spatialCertGuideContinue('auto-proposed landmarks');
 }
 
 function spatialCertUndo() {
-  if (spatialCertWork.pending) spatialCertWork.pending = null;
+  if ((spatialCertWork.guideCandidates || []).length) {
+    spatialCertWork.guideCandidate = null;
+    spatialCertWork.guideCandidates = [];
+  }
+  else if (spatialCertWork.pending) spatialCertWork.pending = null;
   else { spatialCertWork.refPoints.pop(); spatialCertWork.movPoints.pop(); spatialCertWork.conf.pop(); }
+  spatialCertForgetCurrentCertification();
   spatialCertRender();
 }
-function spatialCertClear() { spatialCertWork.refPoints=[]; spatialCertWork.movPoints=[]; spatialCertWork.conf=[]; spatialCertWork.pending=null; spatialCertRender(); }
+function spatialCertClear() {
+  spatialCertWork.refPoints=[]; spatialCertWork.movPoints=[]; spatialCertWork.conf=[];
+  spatialCertWork.pending=null; spatialCertWork.guideCandidate=null;
+  spatialCertWork.guideCandidates=[]; spatialCertWork.guideRejected=[]; spatialCertWork.guideExhausted=false;
+  spatialCertForgetCurrentCertification(); spatialCertRender();
+}
 
 function spatialCertPixelSize() {
+  const pair = spatialCertCurrentPair();
+  if (spatialMode === 'batch' && isOn('spatial-scale-match-toggle') && pair) {
+    const fa = String(pair.filename_a || pair.path_a || '').split(/[\\/]/).pop();
+    const matched = spatialBatchScale.map && spatialBatchScale.map[fa];
+    if (matched > 0) return Number(matched);
+    if (spatialBatchScale.px > 0) return Number(spatialBatchScale.px);
+  }
   const ov = spatialOverride.a;
   if (ov?.mode === 'scale' && ov.scalePx) return ov.scalePx;
   if (ov?.mode === 'manual') { const v=parseFloat(document.getElementById('spatial-ov-px-a').value); if(v>0)return v; }
   return spatialSessionPxMode === 'scale' ? spatialSessionScale.px : (parseFloat(document.getElementById('spatial-session-px-val').value)||0.5);
 }
 
-async function spatialCertRun() {
+function spatialCertForgetCurrentCertification() {
   const w = spatialCertWork;
-  if (!w.pair || w.refPoints.length < 6) { showToast('Place at least 6 matching landmarks'); return; }
-  if (w.roiMode) { showToast('Finish the certification ROI first (Finish ROI)'); return; }
-  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
-  const r = await window.pywebview.api.certify_landmarks({
-    ref_points:w.refPoints, mov_points:w.movPoints, pixel_size_um:spatialCertPixelSize(),
-    image_wh:[w.ref.width,w.ref.height], roi_polygon:roi
-  });
-  if (r.status !== 'ok') { showToast(r.error || 'Certification failed'); return; }
-  const c = r.certification; spatialCertifications[w.pair.sample_id] = c;
-  // If certification returned a (possibly tightened) window, show it on both panes.
+  if (!w || !w.pair) return;
+  if (spatialCertifications[w.pair.sample_id]) delete spatialCertifications[w.pair.sample_id];
+  const badge = document.getElementById('spatial-cert-badge');
+  if (badge) { badge.textContent = 'NOT CERTIFIED'; badge.className = 'badge gray'; }
+  spatialAssocUpdateRunBtn();
+}
+
+function spatialCertApplyCertification(c, source) {
+  const w = spatialCertWork;
+  spatialCertifications[w.pair.sample_id] = c;
   if (c.roi_polygon) w.roiPoints = c.roi_polygon;
   spatialCertRoiUpdateBadge(); spatialCertRender();
   const badge = document.getElementById('spatial-cert-badge');
@@ -2891,8 +3028,217 @@ async function spatialCertRun() {
   const winTxt = c.certified_window_source
     ? ` · window: ${c.certified_window_source === 'user_roi' ? 'your Certification ROI' : 'ROI ∩ landmark hull'} (burnt into the result overlay)`
     : '';
-  document.getElementById('spatial-cert-result').innerHTML = `<b>${esc(c.status)}</b> · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'}${winTxt}<br>${esc(c.reason || '')}`;
+  const sourceTxt = source ? ` · ${esc(source)}` : '';
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<b>${esc(c.status)}</b>${sourceTxt} · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'}${winTxt}<br>${esc(c.reason || '')}`;
   spatialAssocUpdateRunBtn();
+}
+
+function spatialCertCandidateKey(c) {
+  if (!c) return '';
+  const r = c.ref_point || [];
+  const m = c.mov_point || [];
+  return [r[0], r[1], m[0], m[1]].map(v => Math.round(Number(v) || 0)).join(':');
+}
+
+function spatialCertCandidateAt(refPt) {
+  const w = spatialCertWork;
+  const cands = w.guideCandidates || [];
+  if (!cands.length || !w.ref) return null;
+  const img = document.getElementById('spatial-cert-ref');
+  const iw = img.naturalWidth || w.ref.width;
+  const u = w.ref.width / iw;
+  const sc = (lmPanes.ref && lmPanes.ref.scale) || 1;
+  const hitRadius = Math.max(16 * u / sc, 20);
+  let best = null, bestD = Infinity;
+  cands.forEach(c => {
+    const p = c.ref_point;
+    if (!p) return;
+    const d = Math.hypot(refPt[0] - p[0], refPt[1] - p[1]);
+    if (d < bestD) { bestD = d; best = c; }
+  });
+  return bestD <= hitRadius ? best : null;
+}
+
+async function spatialCertGuideRequestNext(userRequested) {
+  const w = spatialCertWork;
+  if (!w.pair || !w.ref) { if (userRequested) showToast('Load images for landmarking first'); return false; }
+  if (w.roiMode) { if (userRequested) showToast('Finish the certification ROI first'); return false; }
+  if (w.pending) { if (userRequested) showToast('Finish the current manual pair first'); return false; }
+  if ((w.guideCandidates || []).length || w.guideCandidate) {
+    if (userRequested) showToast('Pick one of the shown candidate spots, or reject the highlighted one');
+    return true;
+  }
+  const px = spatialCertPixelSize();
+  if (!(px > 0)) { if (userRequested) showToast('Set a valid pixel size first'); return false; }
+  w.guiding = true;
+  spatialCertRender();
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#64748b">Searching for the next landmark that improves certification coverage…</span>`;
+  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
+  let r = null;
+  try {
+    r = await window.pywebview.api.guide_landmark_candidates(
+      w.pair.path_a, w.pair.path_b, px, w.refPoints, w.movPoints, roi, 24,
+      [w.ref.width, w.ref.height]);
+  } catch (err) {
+    r = { status:'error', error:String(err) };
+  }
+  w.guiding = false;
+  if (!r || r.status !== 'ok') {
+    w.guideExhausted = true;
+    if (userRequested) showToast((r && r.error) || 'No further guided landmarks found');
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#b45309">No further guided landmark candidates were found. OASIS will now rely on the current accepted landmarks for the final certification verdict.</span>`;
+    spatialCertRender();
+    return false;
+  }
+  const rejected = new Set(w.guideRejected || []);
+  const candidates = (r.candidates || []).filter(c => !rejected.has(spatialCertCandidateKey(c)));
+  if (!candidates.length) {
+    w.guideExhausted = true;
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#b45309">All guided candidates have been accepted or rejected. OASIS will now rely on the current accepted landmarks for the final certification verdict.</span>`;
+    spatialCertRender();
+    return false;
+  }
+  w.guideCandidates = candidates;
+  w.guideCandidate = candidates[0];
+  w.guideExhausted = false;
+  const conf = typeof candidates[0].confidence === 'number' ? ` · top confidence ${candidates[0].confidence.toFixed(2)}` : '';
+  const certMsg = r.certification_ready
+    ? ' Every shown C# spot is predicted to certify or locally certify if accepted; C1 is the best-ranked option.'
+    : ' These spots build toward certification; choose the best anatomical correspondence.';
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#0e7490">Showing ${candidates.length} candidate spots${conf}.${certMsg} Click the best C# anatomical correspondence in the reference pane; the matching C# is shown on moving tissue.</span>`;
+  spatialCertRender();
+  return true;
+}
+
+async function spatialCertAcceptCandidate(c) {
+  const w = spatialCertWork;
+  if (!c) return;
+  w.refPoints.push(c.ref_point);
+  w.movPoints.push(c.mov_point);
+  w.conf.push(typeof c.confidence === 'number' ? c.confidence : null);
+  w.guideCandidate = null;
+  w.guideCandidates = [];
+  spatialCertForgetCurrentCertification();
+  spatialCertRender();
+  await spatialCertGuideContinue('accepted guided landmark');
+}
+
+async function spatialCertAcceptGuide() {
+  await spatialCertAcceptCandidate(spatialCertWork.guideCandidate);
+}
+
+async function spatialCertRejectGuide() {
+  const w = spatialCertWork;
+  if (!w.guideCandidate) return;
+  w.guideRejected = w.guideRejected || [];
+  w.guideRejected.push(spatialCertCandidateKey(w.guideCandidate));
+  w.guideCandidates = (w.guideCandidates || []).filter(c =>
+    spatialCertCandidateKey(c) !== spatialCertCandidateKey(w.guideCandidate));
+  w.guideCandidate = w.guideCandidates[0] || null;
+  spatialCertRender();
+  if (!w.guideCandidate) await spatialCertGuideRequestNext(false);
+}
+
+async function spatialCertGuideContinue(source) {
+  const w = spatialCertWork;
+  if (!w.pair || w.roiMode || (w.guideCandidates || []).length || w.guideCandidate || w.pending) return;
+  if (w.refPoints.length >= 6) {
+    const cert = await spatialCertTryAutoCertify(source, false, { provisional: true });
+    if (cert && cert.is_certified) return;
+  }
+  const hasNext = await spatialCertGuideRequestNext(false);
+  if (!hasNext && w.refPoints.length >= 6) {
+    await spatialCertTryAutoCertify('final guided attempt', true, { provisional: false });
+  }
+}
+
+async function spatialCertTryLocalRoiRecovery(cert, source, userRequested) {
+  const w = spatialCertWork;
+  if (!w.pair || !cert || cert.is_certified || cert.status !== 'DEFORMED') return false;
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#64748b">Global fit looks deformed. Searching for a local ROI that can certify before making a final failed call…</span>`;
+  let r = null;
+  try {
+    r = await window.pywebview.api.suggest_local_certification_roi({
+      ref_points:w.refPoints, mov_points:w.movPoints,
+      pixel_size_um:spatialCertPixelSize(),
+      image_wh:[w.ref.width,w.ref.height],
+      min_n:6
+    });
+  } catch (err) {
+    r = { status:'error', error:String(err) };
+  }
+  if (!r || r.status !== 'ok' || !r.certification) {
+    if (userRequested) showToast((r && r.error) || 'No certifiable local ROI found');
+    return false;
+  }
+  w.roiPoints = r.roi_polygon || r.certification.roi_polygon || w.roiPoints;
+  w.guideCandidate = null;
+  w.guideCandidates = [];
+  spatialCertApplyCertification(r.certification, 'auto-suggested local ROI');
+  showToast('LOCALLY_CERTIFIED ROI suggested automatically');
+  return true;
+}
+
+async function spatialCertTryAutoCertify(source, userRequested, opts = {}) {
+  const w = spatialCertWork;
+  if (!w.pair) return false;
+  if (w.roiMode) {
+    if (userRequested) showToast('Finish the certification ROI first (Finish ROI)');
+    return false;
+  }
+  if (w.refPoints.length < 6) {
+    if (userRequested) showToast('Place at least 6 matching landmarks');
+    return false;
+  }
+  if (w.certifying) return false;
+  w.certifying = true;
+  spatialCertRender();
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#64748b">Trying certification from ${esc(source || 'current landmarks')}…</span>`;
+  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
+  let r = null;
+  try {
+    r = await window.pywebview.api.certify_landmarks({
+      ref_points:w.refPoints, mov_points:w.movPoints, pixel_size_um:spatialCertPixelSize(),
+      image_wh:[w.ref.width,w.ref.height], roi_polygon:roi
+    });
+  } catch (err) {
+    r = { status:'error', error:String(err) };
+  }
+  w.certifying = false;
+  if (r.status !== 'ok') {
+    if (userRequested) showToast(r.error || 'Certification failed');
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#b91c1c">Certification attempt failed: ${esc(r.error || 'unknown error')}</span>`;
+    spatialCertRender();
+    return false;
+  }
+  const c = r.certification;
+  if (!c.is_certified && c.status === 'DEFORMED') {
+    const recovered = await spatialCertTryLocalRoiRecovery(c, source, userRequested);
+    if (recovered) return { ...c, is_certified:true, status:'LOCALLY_CERTIFIED' };
+  }
+  if (c.is_certified || !opts.provisional || userRequested) {
+    spatialCertApplyCertification(c, source || 'current landmarks');
+  } else {
+    const badge = document.getElementById('spatial-cert-badge');
+    if (badge) { badge.textContent = 'GUIDING'; badge.className = 'badge amber'; }
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#64748b">Not certified yet after ${w.refPoints.length} landmarks (${esc(c.status || 'not certified')}: ${esc(c.reason || 'needs more spatial support')}). Searching for another landmark before making a final call.</span>`;
+    spatialCertRender();
+  }
+  if (c.is_certified) showToast(`${c.status} from ${source || 'current landmarks'}`);
+  return c;
+}
+
+async function spatialCertRun() {
+  await spatialCertTryAutoCertify('manual certification', true, { provisional: false });
 }
 
 async function spatialCertImport() {
@@ -2928,11 +3274,13 @@ function spatialBuildConfig(forceMode) {
   const sessionManual = spatialSessionPxMode === 'manual'
     ? (parseFloat(document.getElementById('spatial-session-px-val').value) || 0.5) : null;
   const sessionScale  = spatialSessionPxMode === 'scale' ? (spatialSessionScale.path || null) : null;
+  const batchMatchedSession = (mode === 'batch' && isOn('spatial-scale-match-toggle') && spatialBatchScale.px)
+    ? Number(spatialBatchScale.px) : null;
 
   const config = {
     mode:                  mode,
-    session_pixel_size:    sessionManual,
-    session_scale_image:   sessionScale,
+    session_pixel_size:    batchMatchedSession || sessionManual,
+    session_scale_image:   batchMatchedSession ? null : sessionScale,
     max_distance_um:       parseFloat(document.getElementById('spatial-max-dist').value) || 10.0,
     dab_threshold_a:       parseFloat(document.getElementById('spatial-thresh-a').value) || 0.20,
     dab_threshold_b:       parseFloat(document.getElementById('spatial-thresh-b').value) || 0.10,
@@ -3007,22 +3355,90 @@ async function spatialAssocRun() {
 // Colour + label for a per-image bandwidth verdict chip.
 function spatialBwChip(marker, e) {
   const map = { ok:['#16a34a','ok'], caution:['#f59e0b','caution'],
-                unreliable:['#ef4444','unreliable'], unknown:['#94a3b8','unknown'] };
+                dense_tissue:['#7c3aed','dense tissue'],
+                unreliable:['#7c3aed','dense tissue'], unknown:['#94a3b8','unknown'] };
   const [col, lbl] = map[e && e.status] || ['#94a3b8', e && e.status || '—'];
   const ell = (e && e.scale_um != null) ? `ℓ̂ ${e.scale_um} µm` : 'ℓ̂ —';
-  return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:12px;background:${col}22;border:1px solid ${col};color:${col};font-weight:600" title="Architecture scale measured inside the current analysis window (ROI/intersection) — not a universal image property. n=${(e&&e.n)||0} cells.">${esc(marker)}: ${lbl} · ${ell}</span>`;
+  const why = (e && e.reason) ? ` ${e.reason}` : '';
+  return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:12px;background:${col}22;border:1px solid ${col};color:${col};font-weight:600" title="Architecture scale measured inside the current analysis window (ROI/intersection), not a universal image property. n=${(e&&e.n)||0} cells.${esc(why)}">${esc(marker)}: ${lbl} · ${ell}</span>`;
+}
+
+// Pairs that still need certification before the bandwidth pre-flight may run.
+// Returns {pairs:[...], uncertified:[sample_id...]} where uncertified are the ones
+// NOT in {CERTIFIED, LOCALLY_CERTIFIED} (i.e. DEFORMED / not-certified / missing).
+function spatialUncertifiedPairs() {
+  const pairs = spatialMode === 'single'
+    ? [spatialCertCurrentPair()].filter(Boolean)
+    : (spatialPairs || []);
+  const uncertified = pairs.filter(p => {
+    const c = spatialCertifications[p.sample_id];
+    return !(c && c.is_certified);
+  }).map(p => p.sample_id || p.filename_a);
+  return { pairs, uncertified };
+}
+
+// One-line "which null" tag for a per-pair null plan.
+function spatialNullTag(plan) {
+  const key = plan && plan.primary_null;
+  const map = {
+    reweighted_75um: ['#166534', '#16a34a', 'Primary null · 75 µm reweighted inhomogeneous cross-K'],
+    dense_morphology: ['#6d28d9', '#7c3aed', 'Dense-tissue morphological null · morphology-conditioned cross-K'],
+    none: ['#b91c1c', '#ef4444', 'Fail-closed · no valid primary null'],
+  };
+  const [col, bd, lbl] = map[key] || ['#64748b', '#94a3b8', 'Null plan unavailable'];
+  return `<span style="display:inline-block;margin-top:4px;padding:3px 10px;border-radius:12px;background:${bd}18;border:1px solid ${bd};color:${col};font-weight:700;font-size:11px">${esc(lbl)}</span>`;
+}
+
+function spatialBandwidthStatusLabel(status) {
+  return ({
+    ok: '75 µm bandwidth valid',
+    caution: '75 µm bandwidth valid · caution',
+    dense_tissue_bandwidth_invalid: 'Dense/fine tissue detected',
+    underpowered_insufficient_positives: 'Insufficient positive cells',
+    architecture_not_estimable: 'Architecture not estimable',
+    dense_tissue: 'Dense tissue',
+    unreliable: 'Dense/fine tissue detected',
+    unknown: 'Insufficient data',
+  })[status] || String(status || 'unknown');
+}
+
+// Render one pair's bandwidth verdict + null plan into an HTML block.
+function spatialBwPairBlock(sid, entry) {
+  const pc = (entry && entry.precheck) || {};
+  const plan = (entry && entry.null_plan) || {};
+  const chips = Object.entries(pc.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
+  const certLbl = entry && entry.certification_status ? ` · <span style="color:#64748b">${esc(entry.certification_status)}</span>` : '';
+  return `<div style="padding:10px 0;border-top:1px solid var(--border)">
+    <div style="font-weight:600;margin-bottom:4px">${esc(sid)}${certLbl}</div>
+    <div style="margin-bottom:4px">${chips || '<span style="color:var(--text3)">no markers</span>'}</div>
+    <div>${spatialNullTag(plan)}</div>
+    <div style="font-size:11px;color:var(--text2);margin-top:5px">${esc(plan.reason || pc.reason || '')}</div>
+  </div>`;
 }
 
 async function spatialBandwidthCheck() {
-  if (spatialMode !== 'single') { showToast('Bandwidth pre-flight validates one pair — use single-pair mode'); return; }
-  const config = spatialBuildConfig('single');
-  if (!config) return;
   const btn = document.getElementById('spatial-bw-btn');
   const badge = document.getElementById('spatial-bw-badge');
   const out = document.getElementById('spatial-bw-result');
+
+  // ── Gate: run only after EVERY pair is certified or locally-certified ──────
+  const { pairs, uncertified } = spatialUncertifiedPairs();
+  if (!pairs.length) {
+    showToast(spatialMode === 'single' ? 'Select both images first' : 'Run Preview Matches first');
+    return;
+  }
+  if (uncertified.length) {
+    badge.textContent = 'CERT REQUIRED'; badge.className = 'badge amber';
+    out.innerHTML = `<span style="color:#b45309">The 75 µm bandwidth is only meaningful inside a <b>certified</b> analysis window, so this runs only after every pair is <b>CERTIFIED</b> or <b>LOCALLY_CERTIFIED</b> — never on DEFORMED / uncertified pairs. ${uncertified.length} of ${pairs.length} pair(s) not yet certified: ${uncertified.map(esc).join(', ')}. Complete landmark certification in step 2, then re-run.</span>`;
+    showToast(`Certify all pairs first — ${uncertified.length} not certified/locally-certified`);
+    return;
+  }
+
+  const config = spatialBuildConfig();
+  if (!config) return;
   btn.disabled = true; btn.textContent = 'Segmenting & measuring…';
   badge.textContent = 'CHECKING'; badge.className = 'badge gray';
-  out.innerHTML = '<span style="color:var(--text3)">Segmenting the pair and measuring tissue architecture within the analysis window… (first run segments; a following analysis reuses it)</span>';
+  out.innerHTML = `<span style="color:var(--text3)">Segmenting ${spatialMode === 'batch' ? pairs.length + ' pair(s)' : 'the pair'} and measuring tissue architecture within each certified analysis window… (first run segments; a following analysis reuses it)</span>`;
   let r;
   try { r = await window.pywebview.api.precheck_bandwidth_for_pair(config); }
   catch (e) { r = { status: 'error', error: String(e) }; }
@@ -3034,20 +3450,28 @@ async function spatialBandwidthCheck() {
     return;
   }
   const byPair = r.precheck_by_pair || {};
-  const first = Object.values(byPair)[0];
-  const pc = first && first.precheck || {};
-  const worst = pc.worst_status || 'unknown';
-  const badgeMap = { ok:['cyan','VALID'], caution:['cyan','VALID · CAUTION'],
-                     unreliable:['amber','NOT TRUSTWORTHY'], unknown:['amber','INSUFFICIENT DATA'] };
-  const [cls, lbl] = badgeMap[worst] || ['gray', String(worst).toUpperCase()];
-  badge.textContent = lbl; badge.className = 'badge ' + cls;
-  const chips = Object.entries(pc.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
-  const note = pc.valid
-    ? '<span style="color:#166534">The 75 µm reweighted primary null is size-controlled within this window.</span>'
-    : '<span style="color:#b45309">The 75 µm assumption fails within this window — the “robust” claim will be withheld. <b>Registration certification is unaffected.</b></span>';
-  out.innerHTML = `<div style="margin-bottom:6px">${chips || '<span style="color:var(--text3)">no markers</span>'}</div>`
-    + `<div>${esc(pc.reason || '')}</div><div style="margin-top:4px">${note}</div>`
-    + `<div style="font-size:11px;color:var(--text3);margin-top:6px">Measured inside the certified analysis window (A∩B intersection ∩ any Certification ROI). Segmentation is cached — Run analysis reuses it.</div>`;
+  // Order pairs to match the preview list when in batch mode.
+  const order = spatialMode === 'batch'
+    ? (spatialPairs || []).map(p => p.sample_id).filter(sid => byPair[sid])
+    : Object.keys(byPair);
+  // Summarise which null each pair will use for the header badge.
+  let nPrimary = 0, nDense = 0, nFail = 0;
+  order.forEach(sid => {
+    const k = ((byPair[sid] || {}).null_plan || {}).primary_null;
+    if (k === 'reweighted_75um') nPrimary++;
+    else if (k === 'dense_morphology') nDense++;
+    else nFail++;
+  });
+  if (nFail) { badge.textContent = `${nFail} FAIL-CLOSED`; badge.className = 'badge amber'; }
+  else if (nDense) { badge.textContent = nPrimary ? 'MIXED NULLS' : 'DENSE NULL'; badge.className = 'badge cyan'; }
+  else { badge.textContent = 'ALL PRIMARY (75 µm)'; badge.className = 'badge cyan'; }
+
+  const legend = spatialMode === 'batch'
+    ? `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${nPrimary} pair(s) → 75 µm reweighted primary null · ${nDense} → dense-tissue morphological null · ${nFail} → fail-closed. Each pair's null is named below.</div>`
+    : '';
+  const blocks = order.map(sid => spatialBwPairBlock(sid, byPair[sid])).join('');
+  out.innerHTML = legend + blocks
+    + `<div style="font-size:11px;color:var(--text3);margin-top:8px;border-top:1px solid var(--border);padding-top:8px">Measured inside each pair's certified analysis window (A∩B intersection ∩ any Certification ROI), using the landmark-certified transform. Segmentation is cached — Run analysis reuses it. <b>Registration certification is unaffected by the bandwidth verdict.</b></div>`;
 }
 
 function spatialAssocShowResults(data) {
@@ -3060,7 +3484,7 @@ function spatialAssocShowResults(data) {
   const fmtArea = (a) => (typeof a === 'number') ? (a/1e6).toFixed(2) + ' mm²' : '—';
 
   // Recompute summary counts here so QC-invalid pairs are always excluded, and so
-  // ROBUST findings (significant under the structure-preserving nulls) are counted
+  // ROBUST findings (significant under the calibrated primary null) are counted
   // separately from CSR-ONLY findings (significant only under homogeneous CSR — a
   // critical result, never hidden), regardless of the result source.
   let nRobust = 0, nCsrOnly = 0, nExcludedQc = 0, gpsValid = [];
@@ -3077,7 +3501,7 @@ function spatialAssocShowResults(data) {
   });
   document.getElementById('spatial-summary').innerHTML = `
     <div class="metric"><div class="metric-label">Pairs</div><div class="metric-value">${summary.pairs ?? results.length}</div><div class="metric-sub">processed</div></div>
-    <div class="metric"><div class="metric-label">Cell-scale engagement</div><div class="metric-value">${nRobust}</div><div class="metric-sub">robust (both nulls)</div></div>
+    <div class="metric"><div class="metric-label">Cell-scale engagement</div><div class="metric-value">${nRobust}</div><div class="metric-sub">primary-null significant</div></div>
     <div class="metric"><div class="metric-label">Co-infiltration only</div><div class="metric-value">${nCsrOnly}</div><div class="metric-sub">compartment-scale</div></div>
     <div class="metric"><div class="metric-label">Excluded (QC)</div><div class="metric-value">${nExcludedQc}</div><div class="metric-sub">failed registration QC</div></div>
   `;
@@ -3122,12 +3546,12 @@ function spatialAssocShowResults(data) {
   const pill = (bg, fg, txt) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${bg};color:${fg}">${txt}</span>`;
   const twoQuestionLegend = `
     <div class="info-box" style="margin:0 0 14px;font-size:12px;line-height:1.6">
-      <strong>How to read these results — two questions, two nulls.</strong> Cross-type spatial analysis answers two <em>different</em> biological questions, and each null tests one of them:
+      <strong>How to read these results — primary null plus CSR baseline.</strong> Cross-type spatial analysis separates the strong cell-neighbourhood claim from the weaker shared-compartment signal:
       <div style="margin-top:8px;display:flex;gap:8px;align-items:flex-start">${pill('#f0fdf4','#166534','Cell-scale engagement')}
-        <span>Significant under <em>both</em> nulls. The two populations are closer (or further) than expected <em>even after accounting for the tissue compartments they share</em> — a genuine cell-neighbourhood relationship. This is the strong claim.</span></div>
+        <span>Significant under the selected calibrated primary null. For coarse architecture this is the 75 µm reweighted null; for dense fields that fail the 75 µm check, OASIS can switch to the dense morphology-conditioned primary. This is the strong population-level claim.</span></div>
       <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start">${pill('#eff6ff','#1e40af','Co-infiltration only')}
-        <span>Significant under the homogeneous-CSR baseline but <em>not</em> the reweighted null. The two populations occupy the <em>same compartments</em> (real, and expected for almost any two immune markers) but show no extra proximity at the cell scale. A <em>distinct, weaker</em> finding — not an error, and not a cell-scale association.</span></div>
-      <div style="margin-top:8px" class="muted">The reweighted null holds the tissue architecture fixed (75 µm bandwidth) and asks only about the 10–50 µm cell-neighbourhood band, so "shared tissue preference" is subtracted rather than mistaken for engagement.</div>
+        <span>Significant under homogeneous CSR but <em>not</em> the selected primary. The two populations share or avoid compartments, but do not show extra proximity after the appropriate tissue/morphology null is applied.</span></div>
+      <div style="margin-top:8px" class="muted">If the 75 µm architecture check fails, the result card states whether dense morphology-conditioned mode was selected or why it was unavailable.</div>
     </div>`;
   if (!results.length) {
     cards.innerHTML = '<div class="card" style="text-align:center;color:var(--text3)">No results</div>';
@@ -3179,15 +3603,32 @@ function spatialAssocShowResults(data) {
       const sv = p.spatial_validity || a.spatial_validity || null;
       const bwBanner = (sv && sv.worst_status) ? (() => {
         const ok = sv.bandwidth_75um_valid;
-        const col = ok ? (sv.worst_status === 'caution' ? '#d97706' : '#16a34a') : '#dc2626';
-        const bg  = ok ? (sv.worst_status === 'caution' ? '#fffbeb' : '#f0fdf4') : '#fef2f2';
+        const denseSel = !!sv.dense_null_selected;
+        const dense = sv.dense_null || {};
+        const underpowered = sv.worst_status === 'underpowered_insufficient_positives';
+        const notEstimable = sv.worst_status === 'architecture_not_estimable';
+        const col = ok ? (sv.worst_status === 'caution' ? '#d97706' : '#16a34a')
+          : (denseSel ? '#7c3aed' : (underpowered || notEstimable ? '#b45309' : '#dc2626'));
+        const bg  = ok ? (sv.worst_status === 'caution' ? '#fffbeb' : '#f0fdf4')
+          : (denseSel ? '#f5f3ff' : (underpowered || notEstimable ? '#fffbeb' : '#fef2f2'));
         const chips = Object.entries(sv.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
+        const denseLine = denseSel
+          ? `<div style="margin-top:6px"><strong>Dense null selected:</strong> all-cell morphology support + ${dense.jitter_um ?? 2} µm jitter; DCLF band ${(dense.dclf_band_um||[10,30]).join('–')} µm; support n=${(dense.gates||{}).n_support ?? '—'}.</div>`
+          : (!ok && dense ? `<div style="margin-top:6px"><strong>Dense fallback unavailable:</strong> ${esc(dense.reason || 'support/count gates failed')}</div>` : '');
+        const invalidMsg = denseSel
+          ? ' — 75 µm null was bypassed; switched to dense morphology-conditioned primary null.'
+          : underpowered
+          ? ' — not tested as a robust spatial association: too few positive cells inside the certified window; this is underpowered, not dense tissue.'
+          : notEstimable
+          ? ' — not tested as a robust spatial association: architecture scale could not be estimated.'
+          : ' — 75 µm null was bypassed, but dense fallback gates did not pass, so the primary robust claim is withheld; registration certification is unaffected.';
         return `<div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid ${col};background:${bg};color:${col}">
-          <strong>${ok ? '✓' : '⚠'} 75 µm bandwidth ${ok ? 'valid' : 'NOT trustworthy'} within analysis window (${esc(sv.worst_status)})</strong>
-          ${ok ? '' : ' — the “robust” claim is withheld; registration certification is unaffected.'}
+          <strong>${ok ? '✓' : (denseSel ? '✓' : '⚠')} ${esc(spatialBandwidthStatusLabel(sv.worst_status))} within analysis window (${esc(sv.worst_status)})</strong>
+          ${ok ? '' : invalidMsg}
           <div style="margin-top:6px">${chips}</div>
           <div style="margin-top:4px">${esc(sv.reason || '')}</div>
+          ${denseLine}
         </div>`;
       })() : '';
       const qcPill = (txt, color) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid ${color};color:${color}">${txt}</span>`;
@@ -3197,6 +3638,8 @@ function spatialAssocShowResults(data) {
       const rob = a.robustness || {};
       const verdict = rob.verdict || 'unknown';
       const nullsObj = a.nulls || {};
+      const primaryNull = a.primary_null || (rob.primary_null) || 'reweighted';
+      const densePrimary = primaryNull === 'dense_morphology';
       const robDirEarly = (rob.direction && rob.direction !== 'none') ? rob.direction
         : ((a.global || {}).direction || 'none');
       const robMeta = ({
@@ -3222,6 +3665,8 @@ function spatialAssocShowResults(data) {
         let extra = '';
         if (key === 'reweighted' && typeof nd.bandwidth_um === 'number') {
           extra = `<div class="muted" style="font-size:10px">intensity bandwidth ${nd.bandwidth_um} µm (calibrated, ihc.md §15)</div>`;
+        } else if (key === 'dense_morphology') {
+          extra = `<div class="muted" style="font-size:10px">all-cell support + ${nd.jitter_um ?? 2} µm jitter; DCLF ${(nd.dclf_band_um||[10,30]).join('–')} µm; support n=${nd.support_n ?? '—'}</div>`;
         }
         return `<tr style="border-top:1px solid var(--border)">
           <td style="padding:5px 8px"><strong>${label}</strong>${extra}</td>
@@ -3229,9 +3674,13 @@ function spatialAssocShowResults(data) {
           <td style="padding:5px 8px">${typeof np2 === 'number' ? fmtP(np2) : '—'}</td>
         </tr>`;
       };
+      const primaryLabel = densePrimary
+        ? 'Dense morphology-conditioned cross-K (PRIMARY)'
+        : 'Reweighted inhomogeneous cross-K (PRIMARY)';
+      const primaryKey = densePrimary ? 'dense_morphology' : 'reweighted';
       const nullTable = (nullsObj && Object.keys(nullsObj).length) ? `
         <div style="margin-top:12px;${statsDim}">
-          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = the calibrated reweighted inhomogeneous cross-K, which tests cell-scale engagement (10–50 µm) with tissue architecture held fixed. Homogeneous CSR is the compartment-scale baseline: significant under CSR but not the primary ⇒ co-infiltration (shared compartments), a distinct, weaker finding — not cell-scale engagement.</div>`}
+          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = ${densePrimary ? 'dense morphology-conditioned cross-K for fine/dense tissue (10–30 µm, all-cell support + 2 µm jitter)' : 'the calibrated reweighted inhomogeneous cross-K (10–50 µm, 75 µm architecture bandwidth)'}. Homogeneous CSR is the compartment-scale baseline: significant under CSR but not the primary ⇒ shared compartments/co-infiltration, not cell-scale engagement.</div>`}
           <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
             <thead><tr style="background:var(--bg3)">
               <th style="text-align:left;padding:5px 8px">Null model</th>
@@ -3239,7 +3688,7 @@ function spatialAssocShowResults(data) {
               <th style="text-align:left;padding:5px 8px">Global DCLF p</th>
             </tr></thead>
             <tbody>
-              ${nullRow('reweighted', 'Reweighted inhomogeneous cross-K (PRIMARY)')}
+              ${nullRow(primaryKey, primaryLabel)}
               ${nullRow('homogeneous', 'Homogeneous CSR (baseline only)')}
             </tbody>
           </table>
@@ -3266,7 +3715,9 @@ function spatialAssocShowResults(data) {
       const interp = qInvalid
         ? `Statistics not interpretable — registration did not pass QC (${esc(qMethod)}). The call below is shown for transparency only and must NOT be reported as a finding.`
         : verdict === 'robust'
-        ? `Significant spatial ${dirWord} under the calibrated reweighted inhomogeneous cross-K (size-controlled against a shared tissue preference; homogeneous CSR shown only as a shared-preference flag); tested r = ${band}, strongest deviation near ${fmtR(peakR)}. Assumes the tissue architecture scale exceeds the ~75 µm calibration bandwidth (ihc.md §15.5) — this scale is not measured, so treat the call with caution if architecture is fine (cell-scale).`
+        ? (densePrimary
+          ? `Significant spatial ${dirWord} under the dense morphology-conditioned primary null; tested r = ${band}, strongest deviation near ${fmtR(peakR)}. This mode was selected because the 75 µm architecture check found fine/dense tissue; it conditions on all reference-section nuclei inside the certified window and does not imply same-cell co-expression.`
+          : `Significant spatial ${dirWord} under the calibrated reweighted inhomogeneous cross-K (size-controlled against a shared tissue preference; homogeneous CSR shown only as a shared-preference flag); tested r = ${band}, strongest deviation near ${fmtR(peakR)}.`)
         : verdict === 'csr_only'
         ? (robDir === 'segregation'
           ? `Compartment-scale exclusion only: the populations occupy largely different tissue compartments, but once that compartment structure is accounted for they show no cell-scale relationship. A distinct, weaker finding — it does NOT support a cell-scale segregation claim.`
@@ -3292,7 +3743,7 @@ function spatialAssocShowResults(data) {
       // 3: consolidated density heatmap
       const consBlock = `<div style="margin-top:10px">${cap(`Consolidated density — green = ${sA}+, blue = ${sB}+, cyan = overlap`)}${img(a.consolidated, 'Consolidated density')}</div>`;
       // 4: association plot
-      const plotBlock = `<div style="margin-top:10px">${cap("Reweighted inhomogeneous cross-K association (L−r vs distance) with the 95% envelope of the calibrated null")}${img(a.association_plot, 'Association plot')}</div>`;
+      const plotBlock = `<div style="margin-top:10px">${cap(`${densePrimary ? 'Dense morphology-conditioned' : 'Reweighted inhomogeneous'} cross-K association (L−r vs distance) with the 95% envelope of the calibrated primary null`)}${img(a.association_plot, 'Association plot')}</div>`;
       const labels = (Object.keys(sa.association || {})[0] || '').replace('__', ' ↔ ');
       // Headline badge reflects the cross-null ROBUSTNESS verdict, never a single
       // null's global.significant — so a CSR-only / mixed result can never show a
