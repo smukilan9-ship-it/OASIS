@@ -93,6 +93,68 @@ def test_propose_landmarks_recovers_transform():
     assert all(0.0 <= c <= 1.0 for c in r["confidences"])
 
 
+def test_guided_landmark_suggests_moving_correspondence_from_existing_pairs():
+    import cv2
+    ref, mov = _synthetic_pair(angle=4.0, tx=14, ty=-7)
+    H, W = ref.shape[:2]
+    M_ref_to_mov = cv2.getRotationMatrix2D((W / 2, H / 2), 4.0, 1.0)
+    M_ref_to_mov[0, 2] += 14
+    M_ref_to_mov[1, 2] += -7
+
+    ref_pts = np.array([
+        [120, 120], [520, 130], [130, 430], [500, 410],
+        [310, 160], [330, 390],
+    ], dtype=float)
+    mov_pts = _apply(M_ref_to_mov, ref_pts)
+    new_ref = np.array([360, 285], dtype=float)
+    true_mov = _apply(M_ref_to_mov, new_ref.reshape(1, 2))[0]
+
+    r = sr.suggest_moving_landmark(
+        ref, mov, new_ref, pixel_size_um=0.75,
+        existing_ref_pts=ref_pts, existing_mov_pts=mov_pts)
+
+    assert r["ok"], r["msg"]
+    assert r["method"] == "confirmed_landmark_ransac"
+    assert np.linalg.norm(np.array(r["mov_point"]) - true_mov) * 0.75 < 12.0
+
+
+def test_auto_local_roi_recovers_deformed_global_landmarks():
+    from webui.api import API
+
+    clean_mov = np.array([
+        [180, 180], [760, 180], [180, 760], [760, 760],
+        [470, 250], [470, 690],
+    ], dtype=float)
+    M = _similarity(4.0, 1.0, 30, -18)
+    clean_ref = _apply(M, clean_mov)
+
+    bad_mov = np.array([
+        [1250, 1250], [1820, 1260], [1260, 1820],
+        [1820, 1820], [1540, 1320], [1600, 1720],
+    ], dtype=float)
+    bad_ref = _apply(M, bad_mov) + np.array([
+        [60, -30], [-45, 55], [80, 70], [-70, -65], [95, 20], [-20, 90],
+    ], dtype=float)
+
+    ref = np.vstack([clean_ref, bad_ref])
+    mov = np.vstack([clean_mov, bad_mov])
+    global_res = sr.landmark_register_and_verify(
+        ref, mov, pixel_size_um=0.5, image_wh=(2000, 2000))
+    assert global_res["verdict"] in ("DEFORMED", "NOT_CERTIFIABLE")
+
+    r = API().suggest_local_certification_roi({
+        "ref_points": ref.tolist(),
+        "mov_points": mov.tolist(),
+        "pixel_size_um": 0.5,
+        "image_wh": [2000, 2000],
+    })
+
+    assert r["status"] == "ok", r.get("error")
+    assert r["certification"]["status"] == "LOCALLY_CERTIFIED"
+    assert r["certification"]["is_certified"] is True
+    assert r["roi_polygon"]
+
+
 def test_register_similarity_selects_non_identity():
     ref, mov = _synthetic_pair(angle=6.0, tx=18, ty=-10)
     reg = sr.register_similarity(ref, mov, pixel_size_um=0.75)

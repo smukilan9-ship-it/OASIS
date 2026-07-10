@@ -880,6 +880,98 @@ def _spread_select(ref_pts, mov_pts, k):
     return ref_pts[sel], mov_pts[sel]
 
 
+def _estimate_landmark_guidance_transform(ref_rgb, mov_rgb, pixel_size_um,
+                                          existing_ref_pts=None, existing_mov_pts=None,
+                                          seed_transform=None):
+    """Estimate a moving→reference similarity for interactive landmark guidance.
+
+    Existing human-confirmed pairs get first priority and are fit with RANSAC so a
+    bad earlier click does not dominate the next suggestion. If too few pairs are
+    available, fall back to the same structural lumen/corner RANSAC used by
+    auto-proposal. Returns (M, meta, ref_struct, mov_struct).
+    """
+    import cv2
+
+    rs = structural_channel(ref_rgb, pixel_size_um)
+    ms = structural_channel(mov_rgb, pixel_size_um)
+
+    eref_src = [] if existing_ref_pts is None else existing_ref_pts
+    emov_src = [] if existing_mov_pts is None else existing_mov_pts
+    eref = np.asarray(eref_src, dtype=np.float64).reshape(-1, 2)
+    emov = np.asarray(emov_src, dtype=np.float64).reshape(-1, 2)
+    n = min(len(eref), len(emov))
+    if n >= 2:
+        eref, emov = eref[:n], emov[:n]
+        threshold_px = max(8.0 / float(pixel_size_um), 3.0)
+        M = None
+        inliers = None
+        if n >= 3:
+            M, inliers = cv2.estimateAffinePartial2D(
+                emov.astype(np.float32), eref.astype(np.float32),
+                method=cv2.RANSAC, ransacReprojThreshold=threshold_px)
+        if M is None:
+            M = _fit_similarity_ls(emov, eref)
+        if M is not None:
+            nin = int(inliers.sum()) if inliers is not None else n
+            return M.astype(float), {
+                "method": "confirmed_landmark_ransac",
+                "n_existing": int(n),
+                "n_inliers": int(nin),
+            }, rs, ms
+
+    rmask = tissue_mask(ref_rgb, pixel_size_um)
+    mmask = tissue_mask(mov_rgb, pixel_size_um)
+    H, W = rs.shape
+    center = np.array([W / 2.0, H / 2.0])
+    tol_px = 12.0 / float(pixel_size_um)
+    max_shift_px = 0.15 * max(H, W)
+
+    ref_lum = lumen_centroids(rmask, pixel_size_um)
+    mov_lum = lumen_centroids(mmask, pixel_size_um)
+    seed = None
+    if len(ref_lum) >= 3 and len(mov_lum) >= 3:
+        seed = _grid_seed(ref_lum, mov_lum, center, tol_px, max_shift_px)
+    if seed is None and seed_transform is not None:
+        seed = np.asarray(seed_transform, float)[:2]
+    if seed is None:
+        return None, {
+            "method": "structural_ransac",
+            "reason": f"too few structural lumens (ref {len(ref_lum)}, mov {len(mov_lum)})",
+        }, rs, ms
+
+    M = seed
+    rr, mm = _mutual_matches(ref_lum, mov_lum, seed, 1.4 * tol_px)
+    if len(rr) >= 3:
+        Mr, _ = cv2.estimateAffinePartial2D(mm.astype(np.float32),
+                                            rr.astype(np.float32),
+                                            method=cv2.RANSAC,
+                                            ransacReprojThreshold=8.0)
+        if Mr is not None:
+            M = Mr.astype(float)
+
+    ref_all = np.vstack([ref_lum, _structural_corners(rs, rmask, pixel_size_um)]) \
+        if len(ref_lum) else _structural_corners(rs, rmask, pixel_size_um)
+    mov_all = np.vstack([mov_lum, _structural_corners(ms, mmask, pixel_size_um)]) \
+        if len(mov_lum) else _structural_corners(ms, mmask, pixel_size_um)
+    rr2, mm2 = _mutual_matches(ref_all, mov_all, M, tol_px)
+    inlier_count = len(rr2)
+    if len(rr2) >= 3:
+        Mf, inl = cv2.estimateAffinePartial2D(mm2.astype(np.float32),
+                                              rr2.astype(np.float32),
+                                              method=cv2.RANSAC,
+                                              ransacReprojThreshold=6.0)
+        if Mf is not None:
+            M = Mf.astype(float)
+        if inl is not None:
+            inlier_count = int(inl.sum())
+    return M, {
+        "method": "structural_ransac",
+        "n_lumen_ref": int(len(ref_lum)),
+        "n_lumen_mov": int(len(mov_lum)),
+        "n_inliers": int(inlier_count),
+    }, rs, ms
+
+
 def _local_ncc_refine(ref_struct, mov_struct, ref_xy, mov_xy, search, patch):
     """Snap the moving point to the local zero-mean-NCC maximum around its current
     position, on the structural channel. The search window includes (0,0), so the
@@ -913,6 +1005,62 @@ def _local_ncc_refine(ref_struct, mov_struct, ref_xy, mov_xy, search, patch):
             if ncc > best_ncc:
                 best_ncc, best = ncc, (float(mx), float(my))
     return best, max(best_ncc, 0.0)
+
+
+def suggest_moving_landmark(ref_rgb, mov_rgb, ref_point, pixel_size_um,
+                            existing_ref_pts=None, existing_mov_pts=None,
+                            roi_polygon=None, seed_transform=None):
+    """Suggest the moving-image mate for one newly placed reference landmark.
+
+    This is the semi-automated/manual bridge: the user chooses the anatomical
+    point in fixed/reference tissue, then RANSAC estimates the current
+    moving→reference geometry and the inverse transform predicts the moving-side
+    location. A local NCC search snaps the suggestion to the best nearby
+    structural match. The returned point is still a proposal; certification later
+    uses the unchanged held-out/LOO landmark TRE gates.
+    """
+    import cv2
+
+    out = {"ok": False, "mov_point": None, "confidence": 0.0, "method": None,
+           "n_inliers": 0, "msg": ""}
+    try:
+        ref_xy = np.asarray(ref_point, dtype=np.float64).reshape(2)
+        if roi_polygon is not None and len(roi_polygon) >= 3:
+            cnt = np.asarray(roi_polygon, np.float32).reshape(-1, 1, 2)
+            if cv2.pointPolygonTest(cnt, (float(ref_xy[0]), float(ref_xy[1])), False) < 0:
+                out["msg"] = "the fixed-tissue point is outside the Certification ROI"
+                return out
+
+        M, meta, rs, ms = _estimate_landmark_guidance_transform(
+            ref_rgb, mov_rgb, pixel_size_um,
+            existing_ref_pts=existing_ref_pts, existing_mov_pts=existing_mov_pts,
+            seed_transform=seed_transform)
+        out.update({k: v for k, v in meta.items() if k != "reason"})
+        if M is None:
+            out["msg"] = meta.get("reason") or "could not estimate a guidance transform"
+            return out
+
+        Minv = cv2.invertAffineTransform(np.asarray(M, np.float32))
+        pred = _apply_affine(ref_xy.reshape(1, 2), Minv)[0]
+        search = max(int(10.0 / float(pixel_size_um)), 4)
+        patch = max(int(44.0 / float(pixel_size_um)), 24)
+        patch += patch % 2
+        refined, conf = _local_ncc_refine(rs, ms, ref_xy, pred, search, patch)
+        mov_xy = np.asarray(refined, dtype=np.float64).reshape(2)
+        Hm, Wm = ms.shape
+        if not (0 <= mov_xy[0] < Wm and 0 <= mov_xy[1] < Hm):
+            out["msg"] = "suggested moving point falls outside the moving image"
+            return out
+
+        out.update(ok=True,
+                   mov_point=[round(float(mov_xy[0]), 2), round(float(mov_xy[1]), 2)],
+                   confidence=round(float(conf), 3),
+                   msg=("RANSAC-guided moving landmark proposed; verify before "
+                        "certifying."))
+        return out
+    except Exception as e:
+        out["msg"] = f"guided landmark failed: {e}"
+        return out
 
 
 def propose_landmarks(ref_rgb, mov_rgb, pixel_size_um, max_points=8, seed_transform=None,
