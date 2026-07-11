@@ -1063,6 +1063,105 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             import traceback
             return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
 
+    def certify_spatial_auto(self, payload: dict) -> dict:
+        """LoFTR-default certification with the global-FIRST policy the Spatial tab leads with:
+
+          1. Try to certify the WHOLE field (tissue outline as one window). If the FW gate
+             returns CERTIFIED, the pair is analysable whole — no regions needed.
+          2. Otherwise fall back to all locally-certified sub-regions (disjoint allowed) via
+             auto_certify_regions.
+          3. If neither certifies, say so plainly (the sections are too deformed) — never
+             manufacture a pass.
+
+        Returns {mode: 'global' | 'local' | 'none', regions: [...], ...}. Both modes hand back
+        the SAME region shape (roi_polygon, mov_roi_polygon, local_matrix, cell_error_um), so
+        the UI and the pipeline fan-out treat 'global' as a single whole-field region."""
+        try:
+            import numpy as np
+            import cv2
+            sys.path.insert(0, str(PROJECT_DIR))
+            from oasis.common.registration import _load_rgb_thumbnail
+            from oasis.spatial import serial_registration as sr
+            from oasis.spatial import loftr_matcher as lm
+
+            px = float(payload.get("pixel_size_um") or 0)
+            if px <= 0:
+                return {"status": "error", "error": "A valid pixel size is required"}
+            ref_rgb, ref_scale = _load_rgb_thumbnail(
+                os.path.expanduser(payload["ref_path"]), max_side=1920)
+            mov_rgb, mov_scale = _load_rgb_thumbnail(
+                os.path.expanduser(payload["mov_path"]), max_side=1920)
+            if ref_rgb is None or mov_rgb is None:
+                return {"status": "error", "error": "Could not load one or both images"}
+            px_t = px / max(ref_scale, 1e-9)
+            ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
+            if ck not in self._prov_cache:
+                self._prov_cache[ck] = np.asarray(
+                    sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
+            M_t = self._prov_cache[ck]
+            H, W = ref_rgb.shape[:2]
+
+            # Whole-tissue outline = the global analysis window.
+            g = cv2.cvtColor(ref_rgb, cv2.COLOR_RGB2GRAY)
+            mask = cv2.morphologyEx((g < 235).astype(np.uint8), cv2.MORPH_CLOSE,
+                                    np.ones((15, 15), np.uint8))
+            cnts, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            global_roi = None
+            if cnts:
+                c = max(cnts, key=cv2.contourArea)
+                c = cv2.approxPolyDP(c, 0.004 * cv2.arcLength(c, True), True).reshape(-1, 2)
+                if len(c) >= 3:
+                    global_roi = np.asarray(c, float)
+            if global_roi is None:
+                global_roi = np.array([[0, 0], [W, 0], [W, H], [0, H]], float)
+
+            def _to_full(cert, roi_t):
+                local_t = cert.get("local_matrix")
+                local_full = mov_roi_full = None
+                if local_t is not None:
+                    A = np.asarray(local_t, float)[:2, :2]
+                    t = np.asarray(local_t, float)[:2, 2]
+                    local_full = np.hstack(
+                        [A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
+                    mov_roi_t = (roi_t - t) @ np.linalg.inv(A).T
+                    mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
+                cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
+                        or cert.get("tre_median_um"))
+                return {"index": 0, "verdict": cert.get("verdict"), "is_certified": True,
+                        "source": cert.get("source"),
+                        "n_correspondences": cert.get("n_correspondences"),
+                        "cell_error_um": cell,
+                        "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
+                        "mov_roi_polygon": mov_roi_full, "local_matrix": local_full}
+
+            # 1) GLOBAL — whole field, measured FLE (one real attempt).
+            gcert = lm.certify_local_roi(ref_rgb, mov_rgb, global_roi, px_t,
+                                         provisional_matrix=M_t, fle_fast=False,
+                                         work_max_dim=1000)
+            if gcert.get("verdict") == "CERTIFIED":
+                return {"status": "ok", "mode": "global", "verdict": "CERTIFIED",
+                        "regions": [_to_full(gcert, global_roi)], "n": 1,
+                        "cell_error_um": (gcert.get("cell_error_p90_um")
+                                          or gcert.get("tre_p90_um"))}
+
+            # 2) LOCAL fallback — disjoint certified regions.
+            loc = self.auto_certify_regions(payload)
+            if loc.get("status") != "ok":
+                return loc
+            if loc.get("n", 0) > 0:
+                loc.update(mode="local", global_verdict=gcert.get("verdict"))
+                return loc
+
+            # 3) Nothing certifies — report it, do not force a pass.
+            return {"status": "ok", "mode": "none", "regions": [], "n": 0,
+                    "global_verdict": gcert.get("verdict"),
+                    "reason": "Neither the whole field nor any sub-region could be certified — "
+                              "the sections are too deformed for cell-scale spatial analysis. "
+                              "Try the manual-landmark path, or a different pair."}
+        except Exception as e:
+            import traceback
+            return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
+
     def propose_landmarks(self, ref_path: str, mov_path: str,
                           pixel_size_um: float, max_points: int = 8,
                           roi_polygon=None) -> dict:
