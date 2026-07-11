@@ -1131,14 +1131,14 @@ td.muted { color: var(--text3); font-size: 11px; }
                regions freehand/polygon, LoFTR correspondences, options). -->
           <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--text3);margin-right:4px">Certification method:</span>
-            <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab" onclick="spatialCertSetMode('landmark')" title="The validated manual + guided landmark certification. Place/verify anatomical correspondences; optional single certification ROI.">Landmark · validated</button>
-            <button class="btn sm cert-mode-tab" id="cert-mode-loftr-tab" onclick="spatialCertSetMode('loftr')" title="Automatic LoFTR path: fully-automatic region finder, draw analysis regions (freehand or polygon), each certified independently with no manual landmarks.">LoFTR · automatic</button>
+            <button class="btn sm cert-mode-tab" id="cert-mode-loftr-tab" onclick="spatialCertSetMode('loftr')" title="Automatic LoFTR path (default): first try to certify the whole field; if it can't, find or draw disjoint local regions — each certified independently, no manual landmarks.">LoFTR · automatic (default)</button>
+            <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab" onclick="spatialCertSetMode('landmark')" title="Advanced: the scientifically validated manual landmark certification. Place and verify anatomical correspondences by hand; optional single certification ROI.">Advanced · manual landmarks</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
             <button class="btn sm" id="spatial-cert-fs-btn" onclick="spatialCertToggleFullscreen()" title="Expand both serial-section images to the full application window">⛶ Fullscreen</button>
             <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both tissue images to their viewing panes">Reset zoom</button>
-            <span class="cert-only-landmark" style="font-size:11px;color:var(--text2)"><b>Click the fixed section, then the matching structure on the moving section.</b> OASIS never places the matching point for you. Press <b>Guide next</b> if you want ranked C# suggestions — accept only those you can verify.</span>
-            <span class="cert-only-loftr" style="font-size:11px;color:var(--text2)"><b>No landmarks needed.</b> Use <b>Auto-find regions</b> for a fully-automatic sweep, or draw your own analysis regions (polygon or freehand) on the fixed section — each is certified independently by LoFTR.</span>
+            <span class="cert-only-landmark" style="font-size:11px;color:var(--text2)"><b>Click the fixed section, then the matching structure on the moving section.</b> OASIS never places the matching point for you — the verdict is re-measured after every pair.</span>
+            <span class="cert-only-loftr" style="font-size:11px;color:var(--text2)"><b>No landmarks needed.</b> Use <b>Certify (auto)</b> to try the whole field first, then disjoint local regions — or draw your own regions (polygon or freehand) on the fixed section, each certified independently by LoFTR.</span>
           </div>
           <div class="row2">
             <div><div class="section-label">Reference — click first</div>
@@ -1193,15 +1193,11 @@ td.muted { color: var(--text3); font-size: 11px; }
           </div>
           <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
-            <button class="btn sm" id="spatial-cert-propose" onclick="spatialCertPropose()" title="Auto-detect matching lumen/structural landmarks for you to verify — machine proposes, you confirm before certifying">Auto-propose landmarks</button>
-            <button class="btn sm" id="spatial-cert-guide-next" onclick="spatialCertGuideRequestNext(true)" title="Ask OASIS for the next best landmark pair to verify">Guide next</button>
-            <button class="btn sm" id="spatial-cert-guide-accept" onclick="spatialCertAcceptGuide()" style="display:none" title="Accept the highlighted C1 correspondence and immediately re-test certification">Accept C1</button>
-            <button class="btn sm" id="spatial-cert-guide-reject" onclick="spatialCertRejectGuide()" style="display:none" title="Reject the highlighted correspondence and advance to the next ranked candidate">Reject C1</button>
             <button class="btn sm" onclick="spatialCertUndo()" title="Remove the most recently accepted landmark pair">Undo</button>
             <button class="btn sm" onclick="spatialCertClear()" title="Remove all landmarks and restart guided certification for this pair">Clear</button>
             <button class="btn amber" onclick="spatialCertRun()" title="Fit the landmark transform, calculate TRE and coverage, and issue the strongest defensible certificate">Fit transform & certify</button>
           </div>
-          <div id="spatial-cert-propose-note" class="cert-only-landmark" style="font-size:11px;color:var(--text3);margin-top:6px">Two ways to add a pair. <b>By hand:</b> click the fixed section, then the same structure on the moving section — OASIS never guesses the match for you, and the verdict is re-measured after every pair. <b>Guided:</b> press Guide next for ranked C# suggestions; accept only if both dots mark the same structure, reject otherwise and place it yourself. Guided mode always pursues a field-wide CERTIFIED result first, falling back to a locally certified ROI only once no further landmark can be proposed.</div>
+          <div id="spatial-cert-propose-note" class="cert-only-landmark" style="font-size:11px;color:var(--text3);margin-top:6px"><b>Place landmarks by hand:</b> click the fixed section, then the same structure on the moving section — OASIS never guesses the match for you, and the verdict is re-measured after every pair. This manual path is the scientifically validated gate; use it when the automatic LoFTR path can't certify a pair you trust.</div>
           <div id="spatial-cert-result" class="cert-result-shell" style="font-size:12px;line-height:1.55"></div>
         </div>
       </div>
