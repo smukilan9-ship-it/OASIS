@@ -25,23 +25,33 @@ Two distinct questions, two nulls (§4):
 
 ## 2. Architecture
 
-Two entry points share one core and produce identical results.
+All code lives in one `oasis/` package. Three entry points at the repo root share one core
+and produce identical results:
 - **CLI**: `run_pipeline.py --config cfg.yaml --mode {quant|spatial}`
-- **Desktop UI**: `app.py` (pywebview) → `webui/api.py` + `webui/index.html`; the API
-  writes a config and shells to `run_pipeline.py`.
+- **Desktop UI**: `app.py` (pywebview) → `oasis/webui/api.py` + `oasis/webui/index.html`; the
+  API writes a config and shells to `run_pipeline.py`.
+- **Browser UI**: `serve.py` — serves the *same* `oasis/webui` over HTTP (thin `fetch` shim +
+  long-poll bridge for the `evaluate_js` push channel), so the identical UI runs in a browser
+  and can be driven/validated without the desktop window. pywebview is untouched.
 
 | Module | Role |
 |---|---|
 | `run_pipeline.py` | Orchestrator: QuPath/InstanSeg segmentation, quant, spatial driver |
-| `pixel_size_util.py` | µm/px from burned-in scale bar; per-image resolution |
-| `cell_expansion.py` | Membrane markers: cytoplasmic-ring DAB + completeness cutoffs |
-| `webui/calibration.py` | Fit per-marker membrane cutoffs from hand-labelled cells |
-| `registration.py` | Thumbnail loading, hematoxylin deconvolution, SITK helpers |
-| `serial_registration.py` | Serial registration, landmark certification, auto-propose, NGF |
-| `spatial_stats.py` | Cross-type K/g/L, three nulls, DCLF test, cohort FDR |
-| `overlay.py` | Segmentation / density / association figures |
-| `file_matcher.py` | Pair matching by filename stain tokens |
-| `restained_coexpression.py` | Separate same-section restained tab (not this flow) |
+| `oasis/common/pixel_size_util.py` | µm/px from burned-in scale bar; per-image resolution |
+| `oasis/common/registration.py` | Thumbnail loading, hematoxylin deconvolution, SITK helpers |
+| `oasis/common/file_matcher.py` | Pair matching by filename stain tokens |
+| `oasis/quant/cell_expansion.py` | Membrane markers: cytoplasmic-ring DAB + completeness cutoffs |
+| `oasis/spatial/serial_registration.py` | Serial registration, landmark + FW certification, auto-propose |
+| `oasis/spatial/spatial_stats.py` | Cross-type K/g/L, three nulls, DCLF test, cohort FDR |
+| `oasis/spatial/spatial.py` | Spatial-association driver |
+| `oasis/spatial/loftr_matcher.py` | LoFTR correspondences + LoFTR-in-ROI local certification |
+| `oasis/reporting/overlay.py` | Segmentation / density / association figures |
+| `oasis/reporting/dashboard.py` | Result dashboards |
+| `oasis/webui/calibration.py` | Fit per-marker membrane cutoffs from hand-labelled cells |
+| `oasis/restained/restained_coexpression.py` | Separate same-section restained tab (not this flow) |
+
+Validation harnesses stay in `validation/` (the registry references them by filename);
+quarantined scratch lives in `legacy/`.
 
 Segmentation: QuPath 0.7 + InstanSeg `brightfield_nuclei` (config `qupath_binary`,
 `instanseg_model`, `device=mps`).
