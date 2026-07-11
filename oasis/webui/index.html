@@ -3360,14 +3360,25 @@ async function loftrAutoFind() {
   btn.disabled = false; btn.textContent = label;
   if (r.status !== 'ok') { showToast(r.error || 'Certification failed'); return; }
   if (r.mode === 'none') {
-    showToast(r.reason || 'Could not certify — the sections are too deformed for cell-scale analysis.');
+    const badge = document.getElementById('spatial-cert-badge');
+    if (badge) { badge.textContent = 'NOT CERTIFIABLE'; badge.className = 'badge amber'; }
+    const res = document.getElementById('spatial-cert-result');
+    if (res) res.innerHTML = `<div class="science-summary"><div class="science-summary-copy">`
+      + `<strong>Not certifiable</strong> — ${esc(r.reason || 'the sections are too deformed for cell-scale analysis')}`
+      + `<br>Try the <b>Advanced · manual landmarks</b> path, or a different pair.</div></div>`;
+    spatialAssocUpdateRunBtn();
+    showToast('Could not certify — too deformed.');
     return;
   }
   (r.regions || []).forEach(reg => w.loftrRois.push({ points: reg.roi_polygon, cert: reg }));
   loftrRoiCommitCertifications();
   loftrRoiSync();
   if (r.mode === 'global') {
-    showToast('✓ Whole field CERTIFIED' + (r.cell_error_um ? ` (cell error ${r.cell_error_um} µm)` : '') + ' — analysable as one field.');
+    const res = document.getElementById('spatial-cert-result');
+    if (res) res.innerHTML = `<div class="science-summary"><div class="science-summary-copy">`
+      + `<strong>Whole field CERTIFIED</strong>${r.cell_error_um ? ' · cell error ' + r.cell_error_um + ' µm' : ''} · LoFTR global fit`
+      + `<br>The entire section certified — analysed as one window, no regions needed.</div></div>`;
+    showToast('✓ Whole field CERTIFIED' + (r.cell_error_um ? ` (${r.cell_error_um} µm)` : ''));
   } else {
     showToast(`${r.n} disjoint region(s) certified locally` + (r.global_verdict ? ` — whole field was ${r.global_verdict}` : ''));
   }
