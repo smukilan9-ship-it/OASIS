@@ -309,6 +309,10 @@ td.muted { color: var(--text3); font-size: 11px; }
   font-size: 10px; font-weight: 600; letter-spacing: .04em;
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
+/* Certification mode show/hide (Landmark vs LoFTR). */
+.cert-hidden { display: none !important; }
+.cert-mode-tab { cursor: pointer; }
+.cert-mode-tab.active { background: var(--accent, #06b6d4); color: #fff; border-color: var(--accent, #06b6d4); }
 .badge.cyan, .badge.amber, .badge.gray {
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
@@ -578,6 +582,75 @@ td.muted { color: var(--text3); font-size: 11px; }
 .lightbox-stage:active { cursor: grabbing; }
 .lightbox-world { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
 .lightbox-world img { display: block; }
+
+/* Scientific result disclosure: decision first, rigor one click away. */
+.science-summary {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 14px;
+  padding: 11px 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: #fafafa; color: var(--text2); font-size: 11px; line-height: 1.55;
+}
+.science-summary strong { color: var(--text); font-size: 12px; }
+.science-summary-copy { max-width: 980px; }
+.help-tip {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; margin-left: 4px; border: 1px solid var(--border2);
+  border-radius: 50%; color: var(--text2); background: #fff; font-size: 10px;
+  font-weight: 700; line-height: 1; cursor: help; vertical-align: text-bottom;
+}
+.window-chip, .science-chip {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 3px 8px;
+  border: 1px solid var(--border2); border-radius: 5px; background: #fff;
+  color: var(--text2); font-size: 10px; font-weight: 650; white-space: nowrap;
+}
+.window-chip::before { content: ""; width: 6px; height: 6px; margin-right: 5px; border-radius: 2px; background: #0e7490; }
+.science-chip.dense { color: #6d28d9; border-color: #c4b5fd; background: #f5f3ff; }
+.science-chip.fail { color: #b91c1c; border-color: #fecaca; background: #fef2f2; }
+.output-details {
+  margin-top: 10px; border-top: 1px solid var(--border); color: var(--text2);
+}
+.output-details summary {
+  display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 8px 2px;
+  color: var(--text2); font-size: 11px; font-weight: 650; cursor: pointer;
+  list-style: none; user-select: none;
+}
+.output-details summary::-webkit-details-marker { display: none; }
+.output-details summary::before { content: "+"; width: 15px; color: var(--text3); font-size: 14px; }
+.output-details[open] summary::before { content: "−"; }
+.parameter-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 1px; overflow: hidden; margin: 0 0 10px; border: 1px solid var(--border);
+  border-radius: 7px; background: var(--border);
+}
+.parameter-item { min-width: 0; padding: 8px 10px; background: #fff; }
+.parameter-name { color: var(--text3); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; }
+.parameter-value { margin-top: 3px; color: var(--text); font-family: var(--mono); font-size: 10px; line-height: 1.45; overflow-wrap: anywhere; }
+.result-explainer { padding: 2px 2px 10px; color: var(--text2); font-size: 11px; line-height: 1.6; }
+.output-caption { display: flex; align-items: center; gap: 4px; margin: 0 0 5px; color: var(--text2); font-size: 11px; }
+.cert-result-shell { margin-top: 10px; }
+@media (max-width: 900px) {
+  .science-summary { flex-direction: column; }
+  .parameter-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 760px) {
+  :root { --sidebar-w: 54px; }
+  .sidebar { padding-top: 10px; }
+  .nav-btn { width: 42px; }
+  .page-header { height: auto; min-height: 54px; padding: 10px 14px; flex-wrap: wrap; }
+  .page-header .sub { width: 100%; }
+  .scroll { padding: 14px 12px; }
+  .card { padding: 14px 12px; }
+  .row2, .row3 { grid-template-columns: 1fr; }
+  .metrics-row.c3, .metrics-row.c4 { grid-template-columns: 1fr 1fr; }
+  .run-area { padding: 0 12px 14px; }
+  .lm-stage { height: 260px; }
+  #spatial-cert-work.lm-fullscreen { padding: 10px; }
+  #spatial-cert-work.lm-fullscreen .lm-stage { height: 38vh; }
+}
+@media (max-width: 460px) {
+  .metrics-row.c2, .metrics-row.c3, .metrics-row.c4 { grid-template-columns: 1fr; }
+  .btn { white-space: normal; text-align: left; }
+  .science-chip, .window-chip { white-space: normal; }
+}
 </style>
 </head>
 <body>
@@ -858,6 +931,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           </tbody>
         </table>
       </div>
+      <div class="card" id="quant-parameters" style="padding-top:8px"></div>
       <div class="action-row" id="quant-actions"></div>
     </div>
   </div>
@@ -1041,8 +1115,9 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span>2 · Landmark certification</span>
           <span class="badge gray" id="spatial-cert-badge">NOT STARTED</span>
         </div>
-        <div class="info-box amber" style="margin-bottom:12px">
-          Required before segmentation. Place matching anatomical landmarks on vessels, lumen centres, bifurcations, or sharp tissue boundaries—never individual nuclei. Blind grayscale is the default to reduce stain-colour bias; colour may be enabled for inspection. Six points is the minimum; 12 well-spread points is preferred.
+        <div class="science-summary" style="margin-bottom:12px">
+          <div class="science-summary-copy"><strong>Guided certification</strong><br>Place one reliable pair. OASIS then ranks every useful correspondence, tries global certification after each accepted point, and automatically proposes a locally certifiable ROI before declaring deformation.</div>
+          <span class="science-chip" title="Certification uses anatomical structures, never individual nuclei. Grayscale reduces stain-colour bias. At least 6 landmark pairs are required; well-spread landmarks improve coverage.">6 minimum · 12 preferred</span>
         </div>
         <div id="spatial-cert-pair-row" class="field" style="display:none">
           <label>Pair to certify</label><select id="spatial-cert-pair" onchange="spatialCertSelectPair()"></select>
@@ -1051,10 +1126,19 @@ td.muted { color: var(--text3); font-size: 11px; }
         <button class="btn" id="spatial-cert-colour" onclick="spatialCertToggleColour()">Show colour</button>
         <button class="btn" id="spatial-cert-import" onclick="spatialCertImport()" title="Certify using bundled expert landmarks (CIMA/ANHIR validation cohorts only)">Import expert landmarks</button>
         <div id="spatial-cert-work" style="display:none;margin-top:12px">
+          <!-- Two certification modes. Landmark = the validated manual/guided landmark
+               workflow. LoFTR = the automatic path (fully-automatic region finder, draw
+               regions freehand/polygon, LoFTR correspondences, options). -->
+          <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
+            <span style="font-size:11px;color:var(--text3);margin-right:4px">Certification method:</span>
+            <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab" onclick="spatialCertSetMode('landmark')" title="The validated manual + guided landmark certification. Place/verify anatomical correspondences; optional single certification ROI.">Landmark · validated</button>
+            <button class="btn sm cert-mode-tab" id="cert-mode-loftr-tab" onclick="spatialCertSetMode('loftr')" title="Automatic LoFTR path: fully-automatic region finder, draw analysis regions (freehand or polygon), each certified independently with no manual landmarks.">LoFTR · automatic</button>
+          </div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-            <button class="btn sm" id="spatial-cert-fs-btn" onclick="spatialCertToggleFullscreen()">⛶ Fullscreen</button>
-            <button class="btn sm" onclick="spatialCertZoomFit()">Reset zoom</button>
-            <span style="font-size:11px;color:var(--text3)">wheel = zoom · drag = pan · click reference then moving to place a matching pair</span>
+            <button class="btn sm" id="spatial-cert-fs-btn" onclick="spatialCertToggleFullscreen()" title="Expand both serial-section images to the full application window">⛶ Fullscreen</button>
+            <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both tissue images to their viewing panes">Reset zoom</button>
+            <span class="cert-only-landmark" style="font-size:11px;color:var(--text2)"><b>Click the fixed section, then the matching structure on the moving section.</b> OASIS never places the matching point for you. Press <b>Guide next</b> if you want ranked C# suggestions — accept only those you can verify.</span>
+            <span class="cert-only-loftr" style="font-size:11px;color:var(--text2)"><b>No landmarks needed.</b> Use <b>Auto-find regions</b> for a fully-automatic sweep, or draw your own analysis regions (polygon or freehand) on the fixed section — each is certified independently by LoFTR.</span>
           </div>
           <div class="row2">
             <div><div class="section-label">Reference — click first</div>
@@ -1065,26 +1149,60 @@ td.muted { color: var(--text3); font-size: 11px; }
           <!-- Certification ROI: draw the trusted registration sub-field on the fixed
                (reference) image. Landmark proposal + certification are restricted to it,
                and it becomes the certified analysis window (burnt into the results). -->
-          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;padding:8px;border:1px dashed var(--border);border-radius:8px">
+          <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;padding:8px;border:1px dashed var(--border);border-radius:8px">
             <span class="section-label" style="margin:0">Certification ROI</span>
             <span id="spatial-cert-roi-badge" class="badge gray">none</span>
             <button class="btn sm" id="spatial-cert-roi-draw" onclick="spatialCertRoiToggle()" title="Click vertices on the REFERENCE image to outline the sub-field where the sections truly correspond. Proposal + certification are restricted here.">Draw certification ROI</button>
-            <button class="btn sm" onclick="spatialCertRoiFinish()">Finish ROI</button>
-            <button class="btn sm" onclick="spatialCertRoiClear()">Clear ROI</button>
+            <button class="btn sm" onclick="spatialCertRoiFinish()" title="Close the polygon and burn this fixed-tissue window into certification and spatial analysis">Finish ROI</button>
+            <button class="btn sm" onclick="spatialCertRoiClear()" title="Remove the current certification ROI and return to the full landmark-supported window">Clear ROI</button>
             <span style="font-size:11px;color:var(--text3)">Restricts proposal + certification to the region you trust; becomes the certified analysis window.</span>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
+          <!-- LoFTR automatic certification: fully-automatic region finder + draw-your-own
+               analysis regions (polygon or freehand). Each region is certified INDEPENDENTLY
+               by a local rigid fit from LoFTR correspondences inside it (no manual landmarks),
+               and each becomes its own analysis window. Certified regions feed the per-ROI
+               pipeline fan-out in run_spatial_association. -->
+          <div class="cert-only-loftr" style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2, transparent)">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+              <span class="section-label" style="margin:0">Analysis regions · LoFTR</span>
+              <span id="spatial-loftr-count" class="badge gray">0 regions</span>
+            </div>
+            <!-- Fully automatic -->
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+              <button class="btn sm cyan" id="spatial-loftr-auto" onclick="loftrAutoFind()" title="Fully automatic: tile the tissue and keep every region that certifies — no drawing, no landmarks.">✦ Auto-find regions</button>
+              <label style="font-size:11px;color:var(--text3)">region size
+                <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:64px" title="Approximate region radius in µm. Leave blank to auto-select the largest size that certifies."> µm</label>
+              <span style="font-size:11px;color:var(--text3)">— blank = auto-pick best size; sweeps the section automatically.</span>
+            </div>
+            <!-- Draw your own (polygon or freehand) -->
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+              <button class="btn sm" id="spatial-loftr-draw" onclick="loftrRoiToggle()" title="Click vertices on the REFERENCE image to outline a region, then Finish. Draw as many as you like.">Draw region (polygon)</button>
+              <button class="btn sm" id="spatial-loftr-freehand" onclick="loftrFreehandToggle()" title="Hold and drag on the REFERENCE image to sketch a freehand region; release to finish it.">Freehand</button>
+              <button class="btn sm" onclick="loftrRoiFinish()" title="Close the current polygon region and keep it; you can then draw another">Finish region</button>
+              <button class="btn sm cyan" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()" title="Certify every drawn region independently via LoFTR-in-ROI. The gate is not relaxed — you choose where, it decides whether.">Certify all regions</button>
+              <button class="btn sm" onclick="loftrRoiClearAll()" title="Remove all analysis regions">Clear regions</button>
+            </div>
+            <!-- Options -->
+            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:4px;font-size:11px;color:var(--text3)">
+              <label title="Correspondence agreement tolerance (cycle/scale consistency), in µm. Tighter = stricter matches.">tolerance
+                <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:52px"> µm</label>
+              <label title="Overlay the LoFTR correspondence points used for each region's fit."><input id="spatial-loftr-showcorr" type="checkbox" onchange="spatialCertRender()"> show LoFTR correspondences</label>
+            </div>
+            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Auto-find sweeps the section, or draw regions yourself — each region is certified on its own and becomes a separate analysis window. Deformed regions are shown in red and excluded from analysis.</div>
+            <div id="spatial-loftr-list" style="margin-top:4px;display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+          <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
             <button class="btn sm" id="spatial-cert-propose" onclick="spatialCertPropose()" title="Auto-detect matching lumen/structural landmarks for you to verify — machine proposes, you confirm before certifying">Auto-propose landmarks</button>
             <button class="btn sm" id="spatial-cert-guide-next" onclick="spatialCertGuideRequestNext(true)" title="Ask OASIS for the next best landmark pair to verify">Guide next</button>
-            <button class="btn sm" id="spatial-cert-guide-accept" onclick="spatialCertAcceptGuide()" style="display:none">Accept suggested pair</button>
-            <button class="btn sm" id="spatial-cert-guide-reject" onclick="spatialCertRejectGuide()" style="display:none">Reject</button>
-            <button class="btn sm" onclick="spatialCertUndo()">Undo</button>
-            <button class="btn sm" onclick="spatialCertClear()">Clear</button>
-            <button class="btn amber" onclick="spatialCertRun()">Fit transform & certify</button>
+            <button class="btn sm" id="spatial-cert-guide-accept" onclick="spatialCertAcceptGuide()" style="display:none" title="Accept the highlighted C1 correspondence and immediately re-test certification">Accept C1</button>
+            <button class="btn sm" id="spatial-cert-guide-reject" onclick="spatialCertRejectGuide()" style="display:none" title="Reject the highlighted correspondence and advance to the next ranked candidate">Reject C1</button>
+            <button class="btn sm" onclick="spatialCertUndo()" title="Remove the most recently accepted landmark pair">Undo</button>
+            <button class="btn sm" onclick="spatialCertClear()" title="Remove all landmarks and restart guided certification for this pair">Clear</button>
+            <button class="btn amber" onclick="spatialCertRun()" title="Fit the landmark transform, calculate TRE and coverage, and issue the strongest defensible certificate">Fit transform & certify</button>
           </div>
-          <div id="spatial-cert-propose-note" style="font-size:11px;color:var(--text3);margin-top:6px">After the first pair, guided mode suggests the next anatomical correspondence one at a time. Accept only if both dots mark the same structure; OASIS keeps trying certification/local certification before making a final failed call.</div>
-          <div id="spatial-cert-result" style="font-size:12px;line-height:1.55;margin-top:10px"></div>
+          <div id="spatial-cert-propose-note" class="cert-only-landmark" style="font-size:11px;color:var(--text3);margin-top:6px">Two ways to add a pair. <b>By hand:</b> click the fixed section, then the same structure on the moving section — OASIS never guesses the match for you, and the verdict is re-measured after every pair. <b>Guided:</b> press Guide next for ranked C# suggestions; accept only if both dots mark the same structure, reject otherwise and place it yourself. Guided mode always pursues a field-wide CERTIFIED result first, falling back to a locally certified ROI only once no further landmark can be proposed.</div>
+          <div id="spatial-cert-result" class="cert-result-shell" style="font-size:12px;line-height:1.55"></div>
         </div>
       </div>
 
@@ -1094,8 +1212,9 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span>3 · Bandwidth (75 µm) validity — within certified analysis window</span>
           <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
         </div>
-        <div class="info-box amber" style="margin-bottom:12px">
-          The intensity-reweighted primary null uses a 75 µm bandwidth and is size-controlled only where the tissue architecture is <b>coarser</b> than it (ℓ̂ ≳ 150 µm). This validates that assumption per image on the real positive cells <b>inside each certified analysis window</b> (it depends on the ROI/intersection — not a universal image property). Works in <b>single and batch</b> mode; in batch it validates every matched pair in one pass. Runs only after <b>every</b> pair is CERTIFIED or LOCALLY_CERTIFIED — never on DEFORMED / uncertified pairs. Segments each pair once; a following run reuses that segmentation. Each pair is labelled with the null a full run will use: the 75 µm reweighted <b>primary null</b>, the <b>dense-tissue morphological null</b> when dense/fine architecture is detected and gates pass, or <b>fail-closed</b> when the field is underpowered or no valid primary null is available.
+        <div class="science-summary" style="margin-bottom:12px">
+          <div class="science-summary-copy"><strong>Is 75 µm scientifically valid in this window?</strong><br>The check measures tissue architecture only inside the certified analysis window. Fine architecture is reported as <b>dense tissue</b>; missing estimates show the exact reason. OASIS names the null model it will use or fails closed.</div>
+          <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. This check does not change registration certification.">Window-specific check</span>
         </div>
         <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
         <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
@@ -1104,34 +1223,34 @@ td.muted { color: var(--text3); font-size: 11px; }
       <!-- Matching parameters -->
       <div class="card">
         <div class="card-title">Analysis parameters</div>
-        <div class="field"><label>Proximity highlight distance (µm)</label>
+        <div class="field"><label>Proximity highlight distance (µm)<span class="help-tip" title="Illustrative overlay radius: an opposite-type cell within this physical distance is highlighted. It does not define the Ripley cross-K hypothesis test.">?</span></label>
           <input type="number" id="spatial-max-dist" value="10.0" step="0.5" min="1" max="200">
           <div style="font-size:11px;color:var(--text3);margin-top:4px">Cells within this distance of an opposite-type cell are outlined in the cell map (illustrative only — the statistic is the Ripley's K curve, not a cell count).</div>
         </div>
         <div class="row2">
-          <div class="field"><label>DAB threshold — Image A (OD)</label>
+          <div class="field"><label>DAB threshold — Image A (OD)<span class="help-tip" title="Minimum brown DAB optical density used to classify a cell as marker-positive in Image A when adaptive thresholding is off. Higher values are more stringent.">?</span></label>
             <input type="number" id="spatial-thresh-a" value="0.20" step="0.01" min="0.01" max="1.0">
             <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.20 for CD8</div>
           </div>
-          <div class="field"><label>DAB threshold — Image B (OD)</label>
+          <div class="field"><label>DAB threshold — Image B (OD)<span class="help-tip" title="Minimum brown DAB optical density used to classify a cell as marker-positive in Image B when adaptive thresholding is off. Higher values are more stringent.">?</span></label>
             <input type="number" id="spatial-thresh-b" value="0.10" step="0.01" min="0.01" max="1.0">
             <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.10 for TIM-3</div>
           </div>
         </div>
         <div class="toggle-row" style="margin-top:6px">
-          <span>Adaptive threshold <span style="color:var(--text3);font-size:11px">— per-image Otsu on each image's own DAB distribution (ignores the OD fields above)</span></span>
+          <span>Adaptive threshold<span class="help-tip" title="Computes an Otsu cutoff separately from each image's DAB optical-density distribution. When enabled, the two manual OD thresholds are ignored.">?</span> <span style="color:var(--text3);font-size:11px">— per-image Otsu</span></span>
           <div class="toggle" id="spatial-adaptive-toggle" onclick="toggleEl('spatial-adaptive-toggle')"></div>
         </div>
         <div class="toggle-row" style="margin-top:6px">
-          <span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input to its own white point (recommended for faint / variable stains)</span></span>
+          <span>Per-image stain normalization<span class="help-tip" title="White-balances each image to its own estimated background before DAB measurement. This reduces slide-to-slide stain variation but does not alter spatial coordinates.">?</span> <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
           <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div>
         </div>
         <div class="toggle-row" style="margin-top:6px">
-          <span>Enable image registration (recommended for serial sections)</span>
+          <span>Enable image registration<span class="help-tip" title="Maps moving-section cell coordinates into the fixed-section coordinate system. Landmark certification remains the required quality gate for serial-section claims.">?</span></span>
           <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div>
         </div>
         <div class="toggle-row" style="margin-top:6px">
-          <span>Membranous quantification (cytoplasmic-ring, for CD8 / TIM-3)</span>
+          <span>Membranous quantification<span class="help-tip" title="Measures DAB in a Voronoi-clipped cytoplasmic ring instead of the nucleus and applies the selected marker's calibrated membrane-completeness cutoffs.">?</span></span>
           <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div>
         </div>
         <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
@@ -1157,7 +1276,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       <!-- Output options -->
       <div class="card">
         <div class="card-title">Output options</div>
-        <div class="field"><label>Output folder</label>
+        <div class="field"><label>Output folder<span class="help-tip" title="Directory receiving per-pair JSON, segmentation overlays, consolidated density maps, association plots, and reproducibility metadata.">?</span></label>
           <div class="input-with-btn"><input type="text" id="spatial-output" placeholder="~/Desktop/ihc_spatial_results"><button class="btn sm" onclick="pickInto('spatial-output', null)">Browse</button></div>
         </div>
         <div class="toggle-row">
@@ -1407,6 +1526,9 @@ let quantScaleImage = { path: '', px: null };
 let quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
 let activeMode     = 'quant';
 let resultsData    = { quant: null, spatial: null };
+let lastQuantRunConfig = null;
+let lastSpatialRunConfig = null;
+let lastSpatialBandwidthConfig = null;
 
 // ── Spatial Association state ──────────────────────────────
 let spatialMode          = 'single';        // 'single' | 'batch'
@@ -1418,7 +1540,12 @@ let spatialImage         = { a: '', b: '' };
 let spatialOverride      = { a: null, b: null };  // {mode, px?, scalePath?, scalePx?}
 let spatialPairs         = [];
 let spatialCertifications = {};
-let spatialCertWork = { pair: null, ref: null, mov: null, refPoints: [], movPoints: [], pending: null };
+let spatialCertMode = 'loftr';   // 'landmark' (validated) | 'loftr' (automatic) — default
+let spatialCertWork = { pair: null, ref: null, mov: null, refPoints: [], movPoints: [], pending: null, loftrRois: [], loftrDraft: [], loftrMode: false, freehand: false };
+// Mirrors serial_registration.CERTIFICATION_GATES; refreshed from every backend
+// certification response so the UI and the reported parameters cannot drift apart.
+let spatialCertGates = { min_n: 6, target_n: 12, loo_max_um: 5.0, fit_max_um: 5.0,
+                         deformed_loo_um: 15.0, min_roi_frac: 0.10 };
 let spatialCertColour = false;
 
 // ── Navigation ────────────────────────────────────────────
@@ -1514,6 +1641,145 @@ function toggleTechnicalLog(id, btn) {
 // ── Utilities ─────────────────────────────────────────────
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+const parameterHelp = {
+  pixel_size_um: 'Physical micrometres represented by one image pixel; all distances and areas depend on this calibration.',
+  pixel_size_ref_um: 'Reference-section pixel calibration actually used to convert coordinates and residuals into micrometres.',
+  pixel_size_source: 'Where the active pixel calibration came from: metadata, manual entry, scale-bar extraction, or fallback.',
+  dab_threshold_a: 'Minimum DAB optical density for marker-positive classification in Image A when adaptive thresholding is off.',
+  dab_threshold_b: 'Minimum DAB optical density for marker-positive classification in Image B when adaptive thresholding is off.',
+  dab_threshold: 'Minimum DAB optical density for marker-positive classification when adaptive thresholding is off.',
+  adaptive_threshold: 'Whether a separate Otsu threshold was estimated from each image instead of using the manual DAB cutoff.',
+  preprocess_normalize: 'Whether each image was white-balanced to its own estimated background before DAB measurement.',
+  enable_registration: 'Whether moving-section coordinates were transformed into the fixed-section coordinate system.',
+  registration_method: 'Transform method actually used to align the serial sections.',
+  certification_status: 'Anatomical-landmark verdict: CERTIFIED globally, LOCALLY_CERTIFIED inside an ROI, or not certified.',
+  landmark_count: 'Number of accepted fixed-to-moving anatomical landmark pairs used for certification.',
+  tre_median_um: 'Median target registration error across accepted landmarks, in micrometres; lower is better.',
+  tre_p90_um: '90th-percentile target registration error; 90% of landmark residuals are at or below this value.',
+  tre_max_um: 'Largest single-landmark held-out registration error observed.',
+  fit_residual_um: 'Median distance between each landmark and its position under the fitted transform.',
+  estimated_scale: 'Uniform scale factor recovered by the similarity fit; far from 1.0 indicates a section-size mismatch.',
+  held_out_error_method: 'How registration error was estimated on points excluded from the transform that predicts them.',
+  landmarks_used_in_fit: 'Landmarks that actually drove the transform; smaller than the accepted count when a Certification ROI excluded some.',
+  landmarks_passing_gate: 'Number of accepted landmarks whose individual held-out error is within the TRE gate.',
+  landmark_source: 'How the accepted landmark correspondences were produced and confirmed.',
+  transform_model: 'Transform family fitted to the landmarks; distance-preserving so cross-K distances stay valid.',
+  gate_min_landmarks: 'Minimum accepted landmarks required before any certification verdict can be issued.',
+  gate_preferred_landmarks: 'Landmark count preferred for a paper-grade verdict; fewer is reported as provisional.',
+  gate_tre_max_um: 'Held-out TRE median must be at or below this to certify.',
+  gate_fit_residual_max_um: 'Fit residual must be at or below this to certify.',
+  gate_deformed_tre_um: 'Held-out TRE above the certification gate but within this bound is reported as DEFORMED rather than uncertifiable.',
+  gate_min_roi_frac: 'A locally certified ROI must cover at least this fraction of the field; smaller windows fail closed.',
+  min_interpretable_radius_um: 'Smallest inter-cell distance this pair\'s registration error leaves readable (~3× the TRE). Values below it are attenuated toward the null and are not reported.',
+  interpretable_radius_band_um: 'Range of inter-cell distances over which this pair\'s association curve can be trusted. Below ~20 µm is cell-cell contact; 25–50 µm is neighbourhood co-localisation.',
+  contact_scale_resolved: 'Whether this pair\'s registration accuracy resolves direct cell-cell contact (~10–20 µm). If not, only neighbourhood co-localisation can be claimed.',
+  dclf_band_clipped: 'Always disabled: registration error leaves the test correctly sized, so narrowing the DCLF band would only cost power. The radius floor bounds what is reported, not what is tested.',
+  coverage_frac: 'Fraction of the fixed tissue field spatially supported by the landmark layout.',
+  analysis_window: 'Exact spatial domain used for segmentation, null simulation, statistics, and overlays.',
+  roi_vertices: 'Number of fixed-section polygon vertices burned into a local certification analysis window.',
+  max_distance_um: 'Illustrative opposite-cell highlight radius; it does not define the cross-K hypothesis test.',
+  max_radius_um: 'Largest inter-cell distance evaluated on the cross-K curve.',
+  radius_step_um: 'Distance spacing between consecutive cross-K curve evaluations.',
+  n_perm: 'Number of Monte Carlo null simulations used to form envelopes and the global DCLF p-value.',
+  null_seed: 'Fixed pseudorandom seed used to make the null simulations reproducible.',
+  reweight_bandwidth_um: 'Kernel bandwidth used by the intensity-reweighted primary null to model broad tissue preference.',
+  architecture_scale_um: 'Estimated characteristic tissue-architecture length inside the current certified analysis window.',
+  architecture_status: 'Whether the architecture scale supports the 75 µm null, needs caution, indicates dense tissue, or is unknown.',
+  dclf_band_um: 'Distance interval over which the global deviation-from-null DCLF statistic is evaluated.',
+  primary_null: 'Calibrated null model that controls the strong population-level spatial claim.',
+  dense_null_jitter_um: 'Small coordinate perturbation used by the dense morphology-conditioned null.',
+  dense_null_support_n: 'Number of all-cell support points available to condition the dense-tissue null.',
+  use_cytoplasm_a: 'Whether marker A was measured in a cytoplasmic membrane ring rather than the nucleus.',
+  use_cytoplasm_b: 'Whether marker B was measured in a cytoplasmic membrane ring rather than the nucleus.',
+  cleanup_intermediates: 'Whether temporary segmentation/intermediate files were removed after output generation.',
+  analysis_mode: 'Whether this run processed one selected image/pair or a matched batch.',
+  stain_name: 'Biomarker label assigned to the image and used to resolve marker-specific settings.',
+  measurement_compartment: 'Cellular compartment from which DAB was quantified: nucleus or calibrated cytoplasmic membrane ring.',
+  membrane_classifier: 'Calibrated rule used to convert membrane-ring DAB measurements into positive and negative calls.',
+  total_cells: 'Number of segmented cells included in this image output.',
+  positive_cells: 'Number of included cells meeting the active DAB classification rule.',
+  cells_per_mm2: 'Included segmented-cell density after conversion with the active pixel calibration.',
+  confidence: 'Output quality flag based on count, positivity, pixel calibration, and membrane-quality checks.',
+  output_image: 'Source image represented by this parameter record.',
+  output_marker: 'Marker channel represented by this overlay.',
+  generate_overlays: 'Whether cell-boundary visual verification overlays were generated for this run.',
+  calibration_profile: 'Named membrane-completeness calibration used for cytoplasmic-ring classification.',
+};
+
+function parameterValue(v) {
+  if (v === null || v === undefined || v === '') return 'not set';
+  if (typeof v === 'boolean') return v ? 'enabled' : 'disabled';
+  if (Array.isArray(v)) return v.join(' – ');
+  if (typeof v === 'object') return JSON.stringify(v);
+  return String(v);
+}
+
+function parameterLabel(key) {
+  return String(key || '').replace(/^config_snapshot\./, '').replace(/_/g, ' ');
+}
+
+function renderParameterDetails(params, title = 'Parameters used') {
+  const rows = Object.entries(params || {}).filter(([, value]) => value !== undefined);
+  if (!rows.length) return '';
+  return `<details class="output-details">
+    <summary>${esc(title)} <span class="help-tip" title="Exact values recorded for this output. Open this section when reviewing, reproducing, or reporting the result.">?</span></summary>
+    <div class="parameter-grid">${rows.map(([key, value]) => {
+      const help = parameterHelp[key] || 'Exact value used to generate this output; retained here for reproducibility.';
+      return `<div class="parameter-item" title="${esc(help)}"><div class="parameter-name">${esc(parameterLabel(key))}<span class="help-tip" title="${esc(help)}">?</span></div><div class="parameter-value">${esc(parameterValue(value))}</div></div>`;
+    }).join('')}</div>
+  </details>`;
+}
+
+// Every value a certification verdict depends on: the measurements, the fixed gates
+// they were compared against, and how held-out error was estimated. Reported verbatim
+// on each certification output so a reviewer never has to infer a threshold.
+function certificationParams(c, pixelSizeUm) {
+  const g = { ...spatialCertGates, ...(c.gates || {}) };
+  return {
+    certification_status: c.status,
+    landmark_count: c.n ?? c.n_landmarks,
+    landmarks_used_in_fit: c.n,
+    landmarks_passing_gate: c.n_good,
+    pixel_size_um: pixelSizeUm,
+    transform_model: c.transform_model || 'similarity (rotation + translation + uniform scale)',
+    held_out_error_method: c.validation,
+    tre_median_um: c.tre_median_um,
+    tre_p90_um: c.tre_p90_um,
+    tre_max_um: c.tre_max_um,
+    fit_residual_um: c.fit_residual_um,
+    estimated_scale: c.est_scale,
+    coverage_frac: c.coverage_frac,
+    analysis_window: certificationWindow(c).label,
+    min_interpretable_radius_um: c.min_interpretable_radius_um,
+    interpretable_radius_band_um: (c.min_interpretable_radius_um != null)
+      ? [c.min_interpretable_radius_um, c.max_radius_um || 100] : undefined,
+    gate_min_landmarks: g.min_n,
+    gate_preferred_landmarks: g.target_n,
+    gate_tre_max_um: g.loo_max_um,
+    gate_fit_residual_max_um: g.fit_max_um,
+    gate_deformed_tre_um: g.deformed_loo_um,
+    gate_min_roi_frac: g.min_roi_frac,
+  };
+}
+
+function certificationWindow(c) {
+  if (!c) return { label:'Full field', source:'full_field' };
+  const source = c.certified_window_source || (c.roi_polygon ? 'landmark_roi' : 'full_field');
+  if (source === 'user_roi') return { label:'Certification ROI', source };
+  if (source === 'auto_local_roi') return { label:'Auto local ROI', source };
+  if (source !== 'full_field') return { label:'ROI ∩ landmark-supported area', source };
+  return { label:'Full field', source };
+}
+
+function renderWindowChip(c) {
+  const w = certificationWindow(c);
+  return `<span class="window-chip" title="Spatial statistics, null simulations, overlays, and included cell counts are restricted to this certified analysis window.">${esc(w.label)}</span>`;
+}
+
+function renderMeaningDetails(text) {
+  return `<details class="output-details"><summary>What this result means <span class="help-tip" title="Plain-language scientific interpretation and the claim this output does or does not support.">?</span></summary><div class="result-explainer">${text}</div></details>`;
 }
 
 function showToast(msg) {
@@ -2292,6 +2558,7 @@ async function runQuantAnalysis() {
     settings.stain_thresholds      = Object.fromEntries(quantBiomarkers.map(b => [b.name, b.threshold]));
   }
   if (image_whitelist) settings.image_whitelist = image_whitelist;
+  lastQuantRunConfig = { ...settings };
 
   const preflight = await window.pywebview.api.preflight_check('quant');
   if (!preflight.ok) {
@@ -2404,6 +2671,37 @@ function showQuantResults(r) {
         <td><span class="badge ${low?'amber':'green'}">${low?'Low confidence':'Complete'}</span></td>
       </tr>`;
     }).join('');
+
+  const quantParams = lastQuantRunConfig ? {
+    analysis_mode: lastQuantRunConfig.analysis_mode,
+    stain_name: lastQuantRunConfig.stain_name,
+    pixel_size_um: lastQuantRunConfig.default_pixel_size,
+    pixel_size_source: lastQuantRunConfig.pixel_size_mode,
+    dab_threshold: lastQuantRunConfig.dab_threshold,
+    adaptive_threshold: lastQuantRunConfig.adaptive_threshold,
+    preprocess_normalize: lastQuantRunConfig.preprocess_normalize,
+    membrane_measurement: lastQuantRunConfig.use_cytoplasm_measurement,
+    calibration_profile: lastQuantRunConfig.calibration_name,
+    generate_overlays: lastQuantRunConfig.generate_overlays,
+    cleanup_intermediates: lastQuantRunConfig.cleanup_intermediates,
+    pixel_overrides: lastQuantRunConfig.pixel_overrides,
+    stain_thresholds: lastQuantRunConfig.stain_thresholds,
+  } : {};
+  document.getElementById('quant-parameters').innerHTML =
+    `<div class="science-summary"><div class="science-summary-copy"><strong>What this output means</strong><br>Positivity is the fraction of segmented cells meeting the active DAB classification rule. It is an image-level marker measurement, not a spatial association or same-cell co-expression claim.</div></div>
+     ${renderParameterDetails(quantParams)}
+     ${metrics.map(m => renderParameterDetails({
+       output_image:m.name,
+       dab_threshold:m.threshold,
+       pixel_size_um:m.pixel_size,
+       pixel_size_source:m.pixel_size_source,
+       measurement_compartment:m.measurement_compartment,
+       membrane_classifier:m.membrane_classifier,
+       total_cells:m.total_cells,
+       positive_cells:m.positive,
+       cells_per_mm2:m.cells_per_mm2,
+       confidence:m.confidence,
+     }, `Parameters used · ${m.name}`)).join('')}`;
 
   document.getElementById('quant-actions').innerHTML = [
     r.dashboard_path ? `<button class="btn primary" onclick="window.pywebview.api.open_file('${esc(r.dashboard_path)}')">Open Dashboard</button>` : '',
@@ -2665,8 +2963,9 @@ function spatialCertCurrentPair() {
 }
 
 function spatialCertResetView() {
-  spatialCertWork = { pair:null, ref:null, mov:null, refPoints:[], movPoints:[], conf:[], pending:null, guiding:false,
-                      guideCandidate:null, guideCandidates:[], guideRejected:[], guideExhausted:false, certifying:false };
+  spatialCertWork = { pair:null, ref:null, mov:null, refPoints:[], movPoints:[], pending:null, guiding:false,
+                      guideCandidate:null, guideCandidates:[], guideRejected:[], guideExhausted:false, certifying:false,
+                      loftrRois:[], loftrDraft:[], loftrMode:false, freehand:false };
   const work = document.getElementById('spatial-cert-work'); if (work) work.style.display = 'none';
   const badge = document.getElementById('spatial-cert-badge');
   if (badge) { badge.textContent = 'NOT STARTED'; badge.className = 'badge gray'; }
@@ -2703,10 +3002,11 @@ async function spatialCertLoad() {
   const r = await window.pywebview.api.prepare_landmark_pair(pair.path_a, pair.path_b);
   btn.disabled = false; btn.textContent = 'Load images for landmarking';
   if (r.status !== 'ok') { showToast(r.error || 'Could not load images'); return; }
-  spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], conf:[], pending:null,
+  spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], pending:null,
                       guiding:false, guideCandidate:null, guideCandidates:[], guideRejected:[], guideExhausted:false,
-                      certifying:false, roiPoints:[], movRoi:null, roiMode:false };
-  spatialCertRoiUpdateBadge();
+                      certifying:false, roiPoints:[], movRoi:null, roiMode:false,
+                      loftrRois:[], loftrDraft:[], loftrMode:false, freehand:false };
+  spatialCertRoiUpdateBadge(); loftrRoiSync(); spatialCertSetMode(spatialCertMode);
   const imgR = document.getElementById('spatial-cert-ref'), imgM = document.getElementById('spatial-cert-mov');
   imgR.onload = () => { lmFit('ref'); spatialCertRender(); };
   imgM.onload = () => { lmFit('mov'); spatialCertRender(); };
@@ -2733,15 +3033,9 @@ function spatialCertPoint(ev, image, meta) {
 }
 
 // Confidence → dot colour: high=green, mid=amber, low=red; manual (null)=cyan.
-function spatialCertConfColour(c) {
-  if (c == null) return '#06b6d4';
-  if (c >= 0.7) return '#16a34a';
-  if (c >= 0.4) return '#f59e0b';
-  return '#ef4444';
-}
 function spatialCertRender() {
   const w = spatialCertWork;
-  const dots = (pts, meta, side, pending, conf) => {
+  const dots = (pts, meta, side, pending) => {
     // Keep dots ~constant on screen regardless of zoom by dividing by the pane scale.
     const sc = (lmPanes[side] && lmPanes[side].scale) || 1;
     const iw = document.getElementById('spatial-cert-'+side).naturalWidth || meta.width;
@@ -2750,7 +3044,7 @@ function spatialCertRender() {
     const all = pending ? [...pts, pending] : pts;
     return all.map((p,i) => {
       const isPending = pending && i === all.length - 1;
-      const fill = isPending ? '#f59e0b' : spatialCertConfColour(conf ? conf[i] : null);
+      const fill = isPending ? '#f59e0b' : '#06b6d4';
       return `<g><circle cx="${p[0]}" cy="${p[1]}" r="${r}" fill="${fill}" fill-opacity="0.85" stroke="white" stroke-width="${sw}"/><text x="${p[0]}" y="${p[1]}" text-anchor="middle" dominant-baseline="central" fill="white" font-size="${fs}" font-weight="700">${i+1}</text></g>`;
     }).join('');
   };
@@ -2790,15 +3084,13 @@ function spatialCertRender() {
     const showingCandidateSet = (w.guideCandidates || []).length > 0;
     const gRef = (w.guideCandidate && !showingCandidateSet) ? w.guideCandidate.ref_point : w.pending;
     const gMov = (w.guideCandidate && !showingCandidateSet) ? w.guideCandidate.mov_point : null;
-    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', roiClosed) + dots(w.refPoints, w.ref, 'ref', gRef, w.conf) + candidateDots(w.guideCandidates, 'ref');
-    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3) + dots(w.movPoints, w.mov, 'mov', gMov, w.conf) + candidateDots(w.guideCandidates, 'mov');
+    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', roiClosed) + loftrRoiLayerSvg('ref') + dots(w.refPoints, w.ref, 'ref', gRef) + candidateDots(w.guideCandidates, 'ref');
+    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3) + loftrRoiLayerSvg('mov') + dots(w.movPoints, w.mov, 'mov', gMov) + candidateDots(w.guideCandidates, 'mov');
   }
-  const anyConf = (w.conf || []).some(c => c != null);
   const guideTxt = (w.guideCandidates || []).length ? ` · ${w.guideCandidates.length} candidate spots` : (w.guideCandidate ? ' · suggested pair pending' : '');
   document.getElementById('spatial-cert-count').textContent =
     (w.roiMode ? `ROI draw mode · ${(w.roiPoints||[]).length} vertices · click reference to add`
-     : `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${guideTxt}${w.certifying?' · certifying…':(w.guiding?' · finding next match…':(w.pending?' · click moving image':''))}`)
-    + (anyConf && !w.roiMode ? ' · dot colour = match confidence' : '');
+     : `${w.refPoints.length} landmark${w.refPoints.length===1?'':'s'}${guideTxt}${w.certifying?' · certifying…':(w.guiding?' · finding next match…':(w.pending?' · click moving image':''))}`);
   const a = document.getElementById('spatial-cert-guide-accept');
   const r = document.getElementById('spatial-cert-guide-reject');
   if (a && r) {
@@ -2836,6 +3128,257 @@ function spatialCertRoiClear() {
   spatialCertRoiUpdateBadge(); spatialCertRender();
 }
 
+// ── Multi-ROI LoFTR analysis regions ─────────────────────────────────────────
+// Draw one or more regions on the fixed section; each is certified INDEPENDENTLY by a
+// local rigid fit from LoFTR correspondences inside it (no manual landmarks). Certified
+// regions are stored as roi_certifications so the per-ROI pipeline fan-out analyses each
+// with its OWN local transform + window. The gate is not relaxed — you choose where, it
+// decides whether. w.loftrRois = [{points:[[x,y]…], cert:{…}|null}]; w.loftrDraft = active.
+function loftrRoiColor(c) {
+  if (!c) return '#94a3b8';                                        // uncertified — gray
+  if (c.verdict === 'CERTIFIED') return '#06b6d4';                 // cyan
+  if (c.verdict === 'LOCALLY_CERTIFIED' || c.verdict === 'RADIUS_LIMITED') return '#f59e0b';
+  return '#ef4444';                                                // deformed / refused — red
+}
+function loftrRoiToggle() {
+  const w = spatialCertWork;
+  if (!w.ref) { showToast('Load images for landmarking first'); return; }
+  w.loftrMode = !w.loftrMode;
+  if (w.loftrMode) { w.loftrDraft = []; w.pending = null; w.roiMode = false; }
+  const b = document.getElementById('spatial-loftr-draw');
+  if (b) b.textContent = w.loftrMode ? 'Drawing… click reference' : 'Draw region';
+  loftrRoiSync();
+}
+function loftrRoiFinish() {
+  const w = spatialCertWork;
+  if (!w.loftrMode) { showToast('Press “Draw region” first'); return; }
+  if ((w.loftrDraft || []).length < 3) { showToast('Click at least 3 points on the reference to close the region'); return; }
+  w.loftrRois.push({ points: w.loftrDraft.slice(), cert: null });
+  w.loftrDraft = []; w.loftrMode = false;
+  const b = document.getElementById('spatial-loftr-draw'); if (b) b.textContent = 'Draw region';
+  loftrRoiSync();
+  showToast(`Region ${w.loftrRois.length} added — draw another or Certify all regions`);
+}
+function loftrRoiClearAll() {
+  const w = spatialCertWork;
+  w.loftrRois = []; w.loftrDraft = []; w.loftrMode = false;
+  const b = document.getElementById('spatial-loftr-draw'); if (b) b.textContent = 'Draw region';
+  const prev = w.pair && spatialCertifications[w.pair.sample_id];
+  if (prev && prev.method === 'user_roi_loftr_local') spatialCertForgetCurrentCertification();
+  loftrRoiSync();
+}
+function loftrRoiRemove(i) {
+  const w = spatialCertWork;
+  w.loftrRois.splice(i, 1);
+  loftrRoiCommitCertifications();
+  loftrRoiSync();
+}
+async function loftrRoiCertifyAll() {
+  const w = spatialCertWork;
+  if (!w.pair || !w.ref) { showToast('Load images for landmarking first'); return; }
+  if (w.loftrMode) { showToast('Finish the current region first (Finish region)'); return; }
+  const todo = (w.loftrRois || []).map((r, i) => ({ i, r }))
+    .filter(x => (x.r.points || []).length >= 3);
+  if (!todo.length) { showToast('Draw at least one region (≥3 vertices) first'); return; }
+  const px = spatialCertPixelSize();
+  if (!(px > 0)) { showToast('Set a valid pixel size first'); return; }
+  const btn = document.getElementById('spatial-loftr-certify');
+  btn.disabled = true; btn.textContent = 'Certifying regions…';
+  const prev = spatialCertifications[w.pair.sample_id];
+  // Reuse a prior LANDMARK transform as the patch locator, but never a LoFTR-local one.
+  const provisional = (prev && prev.matrix && prev.method !== 'user_roi_loftr_local')
+    ? prev.matrix : null;
+  let resp;
+  try {
+    resp = await window.pywebview.api.certify_local_roi_multi({
+      ref_path: w.pair.path_a, mov_path: w.pair.path_b, pixel_size_um: px,
+      rois: todo.map(x => x.r.points), provisional_matrix: provisional,
+      tol_um: loftrTolUm(), return_correspondences: loftrShowCorr(),
+      partition: true });   // split any overlaps: each intersection becomes its own region
+  } catch (e) {
+    btn.disabled = false; btn.textContent = 'Certify all regions';
+    showToast('LoFTR region certification failed: ' + e); return;
+  }
+  btn.disabled = false; btn.textContent = 'Certify all regions';
+  if (resp.status !== 'ok') { showToast(resp.error || 'Region certification failed'); return; }
+  // Partitioning may split overlapping regions into new faces, so REBUILD the region list
+  // from the response (each face carries its own verdict + is_intersection flag).
+  w.loftrRois = (resp.rois || []).map(rr => ({ points: rr.roi_polygon, cert: rr }));
+  loftrRoiCommitCertifications();
+  loftrRoiSync();
+  const nOk = (resp.rois || []).filter(rr => rr.is_certified).length;
+  const nX = (resp.rois || []).filter(rr => rr.is_intersection).length;
+  showToast(`${nOk} of ${resp.rois.length} region(s) certified`
+    + (nX ? ` · ${nX} intersection region(s) split out` : ''));
+}
+// Fold the per-region certs into a single pair-level certification carrying the
+// roi_certifications list the pipeline fan-out consumes. A pair is certified if ANY
+// region certified; deformed regions are excluded from analysis (kept for display).
+function loftrRoiCommitCertifications() {
+  const w = spatialCertWork;
+  if (!w.pair) return;
+  const certs = (w.loftrRois || []).map(r => r.cert)
+    .filter(c => c && c.is_certified)
+    .map((c, i) => ({ ...c, index: i, label: `ROI ${i + 1}` }));
+  const badge = document.getElementById('spatial-cert-badge');
+  if (!certs.length) {
+    const prev = spatialCertifications[w.pair.sample_id];
+    if (prev && prev.method === 'user_roi_loftr_local') spatialCertForgetCurrentCertification();
+    return;
+  }
+  spatialCertifications[w.pair.sample_id] = {
+    is_certified: true,
+    status: certs.length > 1 ? `${certs.length} ROIs certified` : certs[0].verdict,
+    verdict: certs[0].verdict,
+    matrix: certs[0].local_matrix, roi_polygon: certs[0].roi_polygon,
+    cell_error_um: certs[0].cell_error_um, tre_median_um: certs[0].cell_error_um,
+    n: certs[0].n_correspondences, method: 'user_roi_loftr_local',
+    landmark_source: 'LoFTR-in-ROI (no landmarks)',
+    roi_certifications: certs,
+  };
+  if (badge) {
+    badge.textContent = certs.length > 1 ? `${certs.length} ROIs CERTIFIED` : certs[0].verdict;
+    badge.className = 'badge ' + (certs.every(c => c.verdict === 'CERTIFIED') ? 'cyan' : 'amber');
+  }
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<div class="science-summary"><div class="science-summary-copy"><strong>`
+    + `${esc(certs.length > 1 ? certs.length + ' regions certified' : certs[0].verdict)}</strong>`
+    + ` · LoFTR-in-ROI (no landmarks)<br>Each certified region is analysed separately with its `
+    + `own local rigid transform. Deformed regions are excluded from analysis.</div></div>`;
+  spatialAssocUpdateRunBtn();
+}
+function loftrRoiRenderList() {
+  const w = spatialCertWork;
+  const el = document.getElementById('spatial-loftr-list');
+  if (!el) return;
+  const rows = (w.loftrRois || []).map((r, i) => {
+    const c = r.cert;
+    const status = c ? c.verdict : 'not certified';
+    const col = loftrRoiColor(c);
+    const cell = (c && c.cell_error_um != null) ? ` · ${Number(c.cell_error_um).toFixed(1)} µm` : '';
+    const nc = (c && c.n_correspondences != null) ? ` · ${c.n_correspondences} matches` : '';
+    const xflag = (c && c.is_intersection) ? ` <span style="color:#a855f7">∩ intersection</span>` : '';
+    return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">`
+      + `<span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block;flex:0 0 auto"></span>`
+      + `<b>Region ${i + 1}</b><span style="color:var(--text2)">${esc(status)}${cell}${nc}</span>${xflag}`
+      + `<button class="btn sm" style="margin-left:auto;padding:2px 8px" onclick="loftrRoiRemove(${i})">Remove</button></div>`;
+  }).join('');
+  el.innerHTML = rows || `<span style="font-size:11px;color:var(--text3)">No regions drawn yet.</span>`;
+}
+// SVG layer for the LoFTR regions on one pane (zoom-invariant, coloured by verdict).
+function loftrRoiLayerSvg(side) {
+  const w = spatialCertWork;
+  const meta = side === 'ref' ? w.ref : w.mov;
+  if (!meta) return '';
+  const sc = (lmPanes[side] && lmPanes[side].scale) || 1;
+  const iw = document.getElementById('spatial-cert-' + side).naturalWidth || meta.width;
+  const u = meta.width / iw, sw = 2.4 * u / sc, vr = 3.5 * u / sc, fs = 13 * u / sc;
+  let out = '';
+  const showCorr = (typeof loftrShowCorr === 'function') && loftrShowCorr();
+  (w.loftrRois || []).forEach((r, i) => {
+    const poly = side === 'ref' ? r.points : (r.cert && r.cert.mov_roi_polygon);
+    if (!poly || poly.length < 3) return;
+    const col = loftrRoiColor(r.cert);
+    const pstr = poly.map(p => `${p[0]},${p[1]}`).join(' ');
+    const cx = poly.reduce((s, p) => s + p[0], 0) / poly.length;
+    const cy = poly.reduce((s, p) => s + p[1], 0) / poly.length;
+    out += `<polygon points="${pstr}" fill="${col}" fill-opacity="0.10" stroke="${col}" stroke-width="${sw}"/>`
+      + `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" fill="${col}" `
+      + `font-size="${fs}" font-weight="800" stroke="white" stroke-width="${sw * 0.4}" paint-order="stroke">${i + 1}</text>`;
+    if (showCorr && r.cert) {                      // LoFTR correspondence points used for the fit
+      const cp = side === 'ref' ? r.cert.corr_ref : r.cert.corr_mov;
+      if (cp && cp.length) {
+        out += cp.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${vr * 0.8}" fill="#22d3ee" fill-opacity="0.7"/>`).join('');
+      }
+    }
+  });
+  if (side === 'ref' && w.loftrMode && (w.loftrDraft || []).length) {
+    const pstr = w.loftrDraft.map(p => `${p[0]},${p[1]}`).join(' ');
+    out += `<polyline points="${pstr}" fill="none" stroke="#22d3ee" stroke-width="${sw}" stroke-dasharray="${6 * u / sc} ${6 * u / sc}"/>`
+      + w.loftrDraft.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${vr}" fill="#22d3ee" stroke="white" stroke-width="${sw * 0.4}"/>`).join('');
+  }
+  return out;
+}
+function loftrRoiSync() {
+  loftrRoiRenderList();
+  const w = spatialCertWork;
+  const cnt = document.getElementById('spatial-loftr-count');
+  if (cnt) {
+    const n = (w.loftrRois || []).length;
+    cnt.textContent = `${n} region${n === 1 ? '' : 's'}`;
+    cnt.className = 'badge ' + (n ? 'cyan' : 'gray');
+  }
+  spatialCertRender();
+}
+
+// ── Certification mode switch (Landmark validated  ·  LoFTR automatic) ────────
+function spatialCertSetMode(mode) {
+  spatialCertMode = (mode === 'loftr') ? 'loftr' : 'landmark';
+  document.querySelectorAll('.cert-only-landmark').forEach(el =>
+    el.classList.toggle('cert-hidden', spatialCertMode !== 'landmark'));
+  document.querySelectorAll('.cert-only-loftr').forEach(el =>
+    el.classList.toggle('cert-hidden', spatialCertMode !== 'loftr'));
+  const lt = document.getElementById('cert-mode-landmark-tab');
+  const ft = document.getElementById('cert-mode-loftr-tab');
+  if (lt) lt.classList.toggle('active', spatialCertMode === 'landmark');
+  if (ft) ft.classList.toggle('active', spatialCertMode === 'loftr');
+  // leaving a mode cancels any in-progress drawing in the other
+  const w = spatialCertWork;
+  if (spatialCertMode !== 'landmark') { w.roiMode = false; }
+  if (spatialCertMode !== 'loftr') { w.loftrMode = false; w.freehand = false; w.loftrDraft = []; }
+  if (typeof spatialCertRoiUpdateBadge === 'function') spatialCertRoiUpdateBadge();
+  loftrRoiSync();
+}
+
+function loftrTolUm() {
+  const v = parseFloat(document.getElementById('spatial-loftr-tol')?.value);
+  return (v > 0) ? v : 4.0;
+}
+function loftrRegionUm() {
+  const v = parseFloat(document.getElementById('spatial-loftr-regionum')?.value);
+  return (v > 0) ? v : null;   // null => backend auto-selects the largest size that certifies
+}
+function loftrShowCorr() {
+  return !!document.getElementById('spatial-loftr-showcorr')?.checked;
+}
+
+// Fully automatic: tile the tissue, keep every region that certifies. No drawing.
+async function loftrAutoFind() {
+  const w = spatialCertWork;
+  if (!w.pair || !w.ref) { showToast('Load images for landmarking first'); return; }
+  const px = spatialCertPixelSize();
+  if (!(px > 0)) { showToast('Set a valid pixel size first'); return; }
+  const btn = document.getElementById('spatial-loftr-auto');
+  btn.disabled = true; btn.textContent = 'Auto-finding regions…';
+  let r;
+  try {
+    r = await window.pywebview.api.auto_certify_regions({
+      ref_path: w.pair.path_a, mov_path: w.pair.path_b, pixel_size_um: px,
+      region_um: loftrRegionUm(), max_regions: 9 });
+  } catch (e) {
+    btn.disabled = false; btn.textContent = '✦ Auto-find regions';
+    showToast('Auto-find failed: ' + e); return;
+  }
+  btn.disabled = false; btn.textContent = '✦ Auto-find regions';
+  if (r.status !== 'ok') { showToast(r.error || 'Auto-find failed'); return; }
+  (r.regions || []).forEach(reg => w.loftrRois.push({ points: reg.roi_polygon, cert: reg }));
+  loftrRoiCommitCertifications();
+  loftrRoiSync();
+  const sz = r.region_um ? `${r.region_um}µm${r.auto_size ? ' (auto-selected)' : ''} ` : '';
+  showToast(`Auto-find: ${r.n} certifiable region(s) ${sz}from ${r.candidates} candidate(s)`);
+}
+
+// Freehand region drawing: hold + drag on the reference to sketch, release to finish.
+function loftrFreehandToggle() {
+  const w = spatialCertWork;
+  if (!w.ref) { showToast('Load images for landmarking first'); return; }
+  w.freehand = !w.freehand;
+  if (w.freehand) { w.loftrMode = false; w.loftrDraft = []; w.pending = null; w.roiMode = false; }
+  const b = document.getElementById('spatial-loftr-freehand');
+  if (b) b.textContent = w.freehand ? 'Freehand… drag on reference' : 'Freehand';
+  loftrRoiSync();
+}
+
 document.getElementById('spatial-cert-ref').addEventListener('click', e => {
   spatialCertHandleRefClick(e);
 });
@@ -2844,10 +3387,15 @@ async function spatialCertHandleRefClick(e) {
   const w = spatialCertWork;
   if (!w.ref) return;
   if ((lmPanes.ref.moved || 0) > 4) return;            // it was a pan, not a click
+  if (w.loftrMode) {                                    // add a vertex to the active LoFTR region
+    w.loftrDraft.push(spatialCertPoint(e, e.currentTarget, w.ref));
+    loftrRoiSync(); return;
+  }
   if (w.roiMode) {                                     // add an ROI vertex (full-res ref)
     w.roiPoints.push(spatialCertPoint(e, e.currentTarget, w.ref));
     spatialCertRoiUpdateBadge(); spatialCertRender(); return;
   }
+  if (spatialCertMode === 'loftr') return;             // LoFTR mode: no manual landmark placement
   const clickPt = spatialCertPoint(e, e.currentTarget, w.ref);
   if ((w.guideCandidates || []).length) {
     const picked = spatialCertCandidateAt(clickPt);
@@ -2857,50 +3405,28 @@ async function spatialCertHandleRefClick(e) {
   }
   if (w.guideCandidate) { showToast('Accept or reject the suggested pair first'); return; }
   if (w.pending || w.guiding) return;
-  const refPt = clickPt;
-  w.pending = refPt;
-  w.guiding = true;
+  // MANUAL placement. OASIS does NOT guess the matching point on the moving section:
+  // an auto-placed match the operator never confirmed is an unverified correspondence,
+  // and in featureless tissue the NCC snap lands arbitrarily, corrupting the transform
+  // and every landmark suggested after it. You mark the fixed point; you mark the match.
+  w.pending = clickPt;
   spatialCertRender();
-  const roi = (w.roiPoints||[]).length >= 3 ? w.roiPoints : null;
-  let r = null;
-  try {
-    r = await window.pywebview.api.suggest_moving_landmark(
-      w.pair.path_a, w.pair.path_b, spatialCertPixelSize(), refPt,
-      w.refPoints, w.movPoints, roi);
-  } catch (err) {
-    r = { status:'error', error:String(err) };
-  }
-  w.guiding = false;
-  if (!w.pending || w.pending !== refPt) { spatialCertRender(); return; }
-  if (r && r.status === 'ok' && r.mov_point) {
-    w.refPoints.push(refPt);
-    w.movPoints.push(r.mov_point);
-    w.conf.push(typeof r.confidence === 'number' ? r.confidence : null);
-    w.pending = null;
-    w.guideCandidate = null;
-    w.guideCandidates = [];
-    spatialCertForgetCurrentCertification();
-    const confTxt = typeof r.confidence === 'number' ? ` · confidence ${r.confidence.toFixed(2)}` : '';
-    document.getElementById('spatial-cert-result').innerHTML =
-      `<span style="color:#0e7490">Guided landmark added by ${esc(r.method || 'RANSAC')}${confTxt}. OASIS will keep guiding landmarks until the pair certifies or the candidate search is exhausted.</span>`;
-    spatialCertRender();
-    await spatialCertGuideContinue('guided landmarking');
-    return;
-  }
-  showToast((r && r.error) ? `Guided match unavailable: ${r.error}` : 'Guided match unavailable — click moving image manually');
-  spatialCertRender();
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#0e7490">Fixed point ${w.refPoints.length + 1} placed. Now click the <b>same anatomical structure</b> on the moving section. Undo cancels it.</span>`;
 }
 document.getElementById('spatial-cert-mov').addEventListener('click', e => {
-  if (!spatialCertWork.mov || !spatialCertWork.pending) return;
-  if (spatialCertWork.guiding) return;
+  const w = spatialCertWork;
+  if (!w.mov || !w.pending) return;
+  if (w.guiding) return;
   if ((lmPanes.mov.moved || 0) > 4) return;
-  spatialCertWork.refPoints.push(spatialCertWork.pending);
-  spatialCertWork.movPoints.push(spatialCertPoint(e, e.currentTarget, spatialCertWork.mov));
-  spatialCertWork.conf.push(null);                     // hand-placed → no confidence
-  spatialCertWork.pending = null;
+  w.refPoints.push(w.pending);
+  w.movPoints.push(spatialCertPoint(e, e.currentTarget, w.mov));
+  w.pending = null;
   spatialCertForgetCurrentCertification();
   spatialCertRender();
-  spatialCertGuideContinue('manual fallback landmarking');
+  // Recompute the verdict, but do NOT start a guided search — the operator is placing
+  // landmarks by hand and asked not to be interrupted. Certification is only measured.
+  spatialCertLiveCertify('manual landmarks');
 });
 
 // ── Landmark pan/zoom stages (independent per pane) ──────────────────────────
@@ -2926,18 +3452,35 @@ function lmWheel(side,e){ e.preventDefault(); const p=lmPanes[side];
   const mx=e.clientX-r.left, my=e.clientY-r.top;
   let f=e.deltaY<0?1.15:0.87; const ns=Math.min(Math.max(p.scale*f,0.05),40); f=ns/p.scale;
   p.tx=mx-(mx-p.tx)*f; p.ty=my-(my-p.ty)*f; p.scale=ns; lmApply(side); spatialCertRender(); }
-function lmDown(side,e){ const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
-function lmMove(side,e){ const p=lmPanes[side]; if(!p.drag) return;
+function lmDown(side,e){ if(side==='ref' && spatialCertWork.freehand){ loftrFreehandDown(e); return; }
+  const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
+function lmMove(side,e){ if(side==='ref' && spatialCertWork.freehand){ loftrFreehandMove(e); return; }
+  const p=lmPanes[side]; if(!p.drag) return;
   const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
   p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY; lmApply(side); }
 function lmUp(side){ lmPanes[side].drag=false; }
+// Freehand region sketching on the reference (active only when w.freehand is on; pan is
+// suppressed above). Hold + drag samples points ~every 6 full-res px; release finishes.
+let _loftrFhDrawing = false;
+function loftrFreehandDown(e){ const w=spatialCertWork; if(!w.ref) return;
+  _loftrFhDrawing=true; w.loftrDraft=[ spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref) ]; loftrRoiSync(); }
+function loftrFreehandMove(e){ const w=spatialCertWork; if(!_loftrFhDrawing) return;
+  const pt=spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref);
+  const last=w.loftrDraft[w.loftrDraft.length-1];
+  if(!last || Math.hypot(pt[0]-last[0], pt[1]-last[1]) > 6){ w.loftrDraft.push(pt); loftrRoiSync(); } }
+function loftrFreehandUp(){ const w=spatialCertWork; if(!_loftrFhDrawing) return; _loftrFhDrawing=false;
+  if((w.loftrDraft||[]).length >= 3){ w.loftrRois.push({points:w.loftrDraft.slice(), cert:null});
+    showToast(`Region ${w.loftrRois.length} sketched — Certify all regions when ready`); }
+  w.loftrDraft=[]; w.freehand=false;
+  const b=document.getElementById('spatial-loftr-freehand'); if(b) b.textContent='Freehand';
+  loftrRoiSync(); }
 ['ref','mov'].forEach(side=>{
   const st=document.getElementById('lm-stage-'+side); if(!st) return;
   st.addEventListener('wheel', e=>lmWheel(side,e), {passive:false});
   st.addEventListener('pointerdown', e=>lmDown(side,e));
   st.addEventListener('pointermove', e=>lmMove(side,e));
 });
-addEventListener('pointerup', ()=>{ lmUp('ref'); lmUp('mov'); });
+addEventListener('pointerup', ()=>{ loftrFreehandUp(); lmUp('ref'); lmUp('mov'); });
 function spatialCertToggleFullscreen(){
   const work=document.getElementById('spatial-cert-work');
   const on=work.classList.toggle('lm-fullscreen');
@@ -2961,7 +3504,6 @@ async function spatialCertPropose() {
   if (r.status !== 'ok') { showToast(r.error || 'Could not propose landmarks — place them manually'); return; }
   spatialCertWork.refPoints = r.ref_points || [];
   spatialCertWork.movPoints = r.mov_points || [];
-  spatialCertWork.conf = r.confidences || (r.ref_points || []).map(() => null);
   spatialCertWork.movRoi = r.mov_roi_polygon || spatialCertWork.movRoi;
   spatialCertWork.pending = null;
   spatialCertWork.guideCandidate = null;
@@ -2984,12 +3526,13 @@ function spatialCertUndo() {
     spatialCertWork.guideCandidates = [];
   }
   else if (spatialCertWork.pending) spatialCertWork.pending = null;
-  else { spatialCertWork.refPoints.pop(); spatialCertWork.movPoints.pop(); spatialCertWork.conf.pop(); }
+  else { spatialCertWork.refPoints.pop(); spatialCertWork.movPoints.pop(); }
   spatialCertForgetCurrentCertification();
   spatialCertRender();
+  spatialCertLiveCertify('manual landmarks');       // removing a bad pair re-measures too
 }
 function spatialCertClear() {
-  spatialCertWork.refPoints=[]; spatialCertWork.movPoints=[]; spatialCertWork.conf=[];
+  spatialCertWork.refPoints=[]; spatialCertWork.movPoints=[];
   spatialCertWork.pending=null; spatialCertWork.guideCandidate=null;
   spatialCertWork.guideCandidates=[]; spatialCertWork.guideRejected=[]; spatialCertWork.guideExhausted=false;
   spatialCertForgetCurrentCertification(); spatialCertRender();
@@ -3024,13 +3567,26 @@ function spatialCertApplyCertification(c, source) {
   if (c.roi_polygon) w.roiPoints = c.roi_polygon;
   spatialCertRoiUpdateBadge(); spatialCertRender();
   const badge = document.getElementById('spatial-cert-badge');
-  badge.textContent = c.status; badge.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber');
-  const winTxt = c.certified_window_source
-    ? ` · window: ${c.certified_window_source === 'user_roi' ? 'your Certification ROI' : 'ROI ∩ landmark hull'} (burnt into the result overlay)`
-    : '';
+  badge.textContent = c.status;
+  badge.className = 'badge ' + (c.status === 'CERTIFIED' ? 'cyan'
+                              : c.is_certified ? 'amber' : 'gray');
   const sourceTxt = source ? ` · ${esc(source)}` : '';
+  const rMin = c.min_interpretable_radius_um;
+  const meaning = c.status === 'CERTIFIED'
+    ? 'The landmark transform passes the global error and coverage gates. Spatial analysis may proceed in the displayed certified window.'
+    : c.status === 'LOCALLY_CERTIFIED'
+    ? 'The sections are defensibly aligned only inside the displayed ROI. That ROI is burned into cell inclusion, null simulations, statistics, and overlays.'
+    : c.status === 'RADIUS_LIMITED'
+    ? `The sections are aligned across the whole field, but only to within ${c.tre_median_um} µm. This pair therefore cannot resolve inter-cell distances below ${rMin} µm${rMin > 20 ? ' — including direct cell-cell contact (~10–20 µm)' : ''}; the association curve below that is unmeasurable, not evidence of absence. Analysis runs on the whole field and is reported from ${rMin} µm to ${c.max_radius_um || 100} µm. Registration error of this kind weakens a true association rather than inventing one (validation: radius_floor), so a significant result here is trustworthy; a null result may simply be under-powered.`
+    : 'The current landmarks do not support a defensible transform. OASIS exhausted field-wide, local, and radius-limited certification before returning this result.';
+  const params = { ...certificationParams(c, spatialCertPixelSize()),
+    landmark_count: (w.refPoints || []).length || c.n,
+    roi_vertices: (c.roi_polygon || w.roiPoints || []).length,
+    landmark_source: source || c.landmark_source || 'guided/manual',
+  };
   document.getElementById('spatial-cert-result').innerHTML =
-    `<b>${esc(c.status)}</b>${sourceTxt} · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'}${winTxt}<br>${esc(c.reason || '')}`;
+    `<div class="science-summary"><div class="science-summary-copy"><strong>${esc(c.status)}</strong>${sourceTxt}<br>${esc(meaning)}${c.reason ? `<div style="margin-top:4px">${esc(c.reason)}</div>` : ''}</div>${renderWindowChip(c)}</div>
+     ${renderParameterDetails(params)}`;
   spatialAssocUpdateRunBtn();
 }
 
@@ -3093,6 +3649,7 @@ async function spatialCertGuideRequestNext(userRequested) {
     spatialCertRender();
     return false;
   }
+  if (r.certification_gates) spatialCertGates = { ...spatialCertGates, ...r.certification_gates };
   const rejected = new Set(w.guideRejected || []);
   const candidates = (r.candidates || []).filter(c => !rejected.has(spatialCertCandidateKey(c)));
   if (!candidates.length) {
@@ -3105,12 +3662,11 @@ async function spatialCertGuideRequestNext(userRequested) {
   w.guideCandidates = candidates;
   w.guideCandidate = candidates[0];
   w.guideExhausted = false;
-  const conf = typeof candidates[0].confidence === 'number' ? ` · top confidence ${candidates[0].confidence.toFixed(2)}` : '';
   const certMsg = r.certification_ready
-    ? ' Every shown C# spot is predicted to certify or locally certify if accepted; C1 is the best-ranked option.'
-    : ' These spots build toward certification; choose the best anatomical correspondence.';
+    ? ' Every shown C# spot is predicted to reach a field-wide <b>CERTIFIED</b> verdict if accepted; C1 is the best-ranked option.'
+    : ' No single spot certifies the whole field yet — these are ranked by how far each one moves the global fit toward CERTIFIED.';
   document.getElementById('spatial-cert-result').innerHTML =
-    `<span style="color:#0e7490">Showing ${candidates.length} candidate spots${conf}.${certMsg} Click the best C# anatomical correspondence in the reference pane; the matching C# is shown on moving tissue.</span>`;
+    `<span style="color:#0e7490">Showing ${candidates.length} candidate spots.${certMsg} Click the best C# anatomical correspondence in the reference pane; the matching C# is shown on moving tissue.</span>`;
   spatialCertRender();
   return true;
 }
@@ -3120,7 +3676,6 @@ async function spatialCertAcceptCandidate(c) {
   if (!c) return;
   w.refPoints.push(c.ref_point);
   w.movPoints.push(c.mov_point);
-  w.conf.push(typeof c.confidence === 'number' ? c.confidence : null);
   w.guideCandidate = null;
   w.guideCandidates = [];
   spatialCertForgetCurrentCertification();
@@ -3141,34 +3696,46 @@ async function spatialCertRejectGuide() {
     spatialCertCandidateKey(c) !== spatialCertCandidateKey(w.guideCandidate));
   w.guideCandidate = w.guideCandidates[0] || null;
   spatialCertRender();
-  if (!w.guideCandidate) await spatialCertGuideRequestNext(false);
+  // Rejecting a suggestion hands control back to the operator. OASIS does not
+  // immediately push another one — place the pair by hand, or press "Guide next".
+  if (!w.guideCandidate) {
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#64748b">Suggestion rejected. Click the fixed section, then the matching structure on the moving section to place the pair yourself — or press <b>Guide next</b> for another suggestion.</span>`;
+    await spatialCertLiveCertify('manual landmarks');
+  }
 }
 
 async function spatialCertGuideContinue(source) {
   const w = spatialCertWork;
   if (!w.pair || w.roiMode || (w.guideCandidates || []).length || w.guideCandidate || w.pending) return;
-  if (w.refPoints.length >= 6) {
+  // A field-wide CERTIFIED verdict is the only outcome that ends the guided search
+  // early. LOCALLY_CERTIFIED is strictly a fallback: it is accepted only in the final
+  // attempt below, once no further landmark can be proposed and a global
+  // certification has therefore been shown to be unreachable.
+  if (w.refPoints.length >= spatialCertGates.min_n) {
     const cert = await spatialCertTryAutoCertify(source, false, { provisional: true });
-    if (cert && cert.is_certified) return;
+    if (cert && cert.status === 'CERTIFIED') return;
   }
   const hasNext = await spatialCertGuideRequestNext(false);
-  if (!hasNext && w.refPoints.length >= 6) {
+  if (!hasNext && w.refPoints.length >= spatialCertGates.min_n) {
     await spatialCertTryAutoCertify('final guided attempt', true, { provisional: false });
   }
 }
 
 async function spatialCertTryLocalRoiRecovery(cert, source, userRequested) {
   const w = spatialCertWork;
-  if (!w.pair || !cert || cert.is_certified || cert.status !== 'DEFORMED') return false;
+  if (!w.pair || !cert || cert.status === 'CERTIFIED' || cert.status === 'LOCALLY_CERTIFIED') return false;
+  if (cert.status !== 'DEFORMED' && cert.status !== 'NOT_CERTIFIABLE' && cert.status !== 'RADIUS_LIMITED') return false;
+  if (w.refPoints.length < spatialCertGates.min_n) return false;
   document.getElementById('spatial-cert-result').innerHTML =
-    `<span style="color:#64748b">Global fit looks deformed. Searching for a local ROI that can certify before making a final failed call…</span>`;
+    `<span style="color:#64748b">A field-wide certification is not reachable from these landmarks. Searching for a local ROI that can certify before making a final failed call…</span>`;
   let r = null;
   try {
     r = await window.pywebview.api.suggest_local_certification_roi({
       ref_points:w.refPoints, mov_points:w.movPoints,
       pixel_size_um:spatialCertPixelSize(),
       image_wh:[w.ref.width,w.ref.height],
-      min_n:6
+      min_n:spatialCertGates.min_n
     });
   } catch (err) {
     r = { status:'error', error:String(err) };
@@ -3185,6 +3752,47 @@ async function spatialCertTryLocalRoiRecovery(cert, source, userRequested) {
   return true;
 }
 
+// Live certification for MANUAL landmarking: recompute the verdict after every pair the
+// operator places, update the badge, and otherwise stay out of the way. No candidate
+// search, no auto-placement, no expensive local-ROI recovery — that stays on the explicit
+// "Fit transform & certify" button, so the software measures and never steers.
+async function spatialCertLiveCertify(source) {
+  const w = spatialCertWork;
+  if (!w.pair || w.roiMode || w.pending) return;
+  const badge = document.getElementById('spatial-cert-badge');
+  const n = w.refPoints.length;
+  if (n < spatialCertGates.min_n) {
+    if (badge) { badge.textContent = `${n}/${spatialCertGates.min_n} LANDMARKS`; badge.className = 'badge gray'; }
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#64748b">${n} landmark${n === 1 ? '' : 's'} placed — ${spatialCertGates.min_n - n} more before a verdict can be measured.</span>`;
+    spatialCertRender();
+    return;
+  }
+  const roi = (w.roiPoints || []).length >= 3 ? w.roiPoints : null;
+  let r = null;
+  try {
+    r = await window.pywebview.api.certify_landmarks({
+      ref_points: w.refPoints, mov_points: w.movPoints,
+      pixel_size_um: spatialCertPixelSize(),
+      image_wh: [w.ref.width, w.ref.height], roi_polygon: roi
+    });
+  } catch (err) { r = { status: 'error', error: String(err) }; }
+  if (!r || r.status !== 'ok') { spatialCertRender(); return; }
+
+  const c = r.certification;
+  if (c.gates) spatialCertGates = { ...spatialCertGates, ...c.gates };
+  if (c.is_certified) { spatialCertApplyCertification(c, source); return; }
+
+  // Not certified yet — report it and stop. The operator decides what to do next.
+  spatialCertForgetCurrentCertification();
+  if (badge) { badge.textContent = c.status || 'NOT CERTIFIED'; badge.className = 'badge amber'; }
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<span style="color:#b45309"><b>${esc(c.status || 'not certified')}</b> with ${n} landmarks — ${esc(c.reason || '')}</span>
+     <div style="font-size:11px;color:var(--text3);margin-top:4px">Add more landmarks, remove a mismatched pair with Undo, or press <b>Fit transform & certify</b> to also search for a certifiable local ROI.</div>
+     ${renderParameterDetails(certificationParams(c, spatialCertPixelSize()))}`;
+  spatialCertRender();
+}
+
 async function spatialCertTryAutoCertify(source, userRequested, opts = {}) {
   const w = spatialCertWork;
   if (!w.pair) return false;
@@ -3192,8 +3800,8 @@ async function spatialCertTryAutoCertify(source, userRequested, opts = {}) {
     if (userRequested) showToast('Finish the certification ROI first (Finish ROI)');
     return false;
   }
-  if (w.refPoints.length < 6) {
-    if (userRequested) showToast('Place at least 6 matching landmarks');
+  if (w.refPoints.length < spatialCertGates.min_n) {
+    if (userRequested) showToast(`Place at least ${spatialCertGates.min_n} matching landmarks`);
     return false;
   }
   if (w.certifying) return false;
@@ -3220,19 +3828,33 @@ async function spatialCertTryAutoCertify(source, userRequested, opts = {}) {
     return false;
   }
   const c = r.certification;
-  if (!c.is_certified && c.status === 'DEFORMED') {
+  if (c.gates) spatialCertGates = { ...spatialCertGates, ...c.gates };
+
+  // Provisional (mid-guide) attempt: only a field-wide CERTIFIED verdict is accepted.
+  // Anything less keeps the search running, so the workflow can never settle for a
+  // local ROI while a landmark that would certify the whole field is still on offer.
+  if (opts.provisional && !userRequested && c.status !== 'CERTIFIED') {
+    const badge = document.getElementById('spatial-cert-badge');
+    if (badge) { badge.textContent = 'GUIDING'; badge.className = 'badge amber'; }
+    const localNote = c.status === 'LOCALLY_CERTIFIED'
+      ? ' A local ROI already passes, but OASIS keeps looking for a landmark that certifies the whole field first.'
+      : '';
+    document.getElementById('spatial-cert-result').innerHTML =
+      `<span style="color:#64748b">Not certified field-wide after ${w.refPoints.length} landmarks (${esc(c.status || 'not certified')}: ${esc(c.reason || 'needs more spatial support')}).${localNote} Searching for another landmark before making a final call.</span>`;
+    spatialCertRender();
+    return c;
+  }
+
+  // Terminal attempt: a field-wide CERTIFIED verdict is no longer reachable, so fall
+  // back. A local ROI is tried FIRST even against a RADIUS_LIMITED whole-field result,
+  // because a smaller window that still resolves cell-cell contact says more than the
+  // whole field with the contact radii removed. Recovery re-runs the SAME gates inside
+  // the window — a narrower claim, never a relaxed one.
+  if (c.status === 'DEFORMED' || c.status === 'NOT_CERTIFIABLE' || c.status === 'RADIUS_LIMITED') {
     const recovered = await spatialCertTryLocalRoiRecovery(c, source, userRequested);
     if (recovered) return { ...c, is_certified:true, status:'LOCALLY_CERTIFIED' };
   }
-  if (c.is_certified || !opts.provisional || userRequested) {
-    spatialCertApplyCertification(c, source || 'current landmarks');
-  } else {
-    const badge = document.getElementById('spatial-cert-badge');
-    if (badge) { badge.textContent = 'GUIDING'; badge.className = 'badge amber'; }
-    document.getElementById('spatial-cert-result').innerHTML =
-      `<span style="color:#64748b">Not certified yet after ${w.refPoints.length} landmarks (${esc(c.status || 'not certified')}: ${esc(c.reason || 'needs more spatial support')}). Searching for another landmark before making a final call.</span>`;
-    spatialCertRender();
-  }
+  spatialCertApplyCertification(c, source || 'current landmarks');
   if (c.is_certified) showToast(`${c.status} from ${source || 'current landmarks'}`);
   return c;
 }
@@ -3253,7 +3875,10 @@ async function spatialCertImport() {
   const badge = document.getElementById('spatial-cert-badge');
   if (badge) { badge.textContent = c.status; badge.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber'); }
   document.getElementById('spatial-cert-work').style.display = 'block';
-  document.getElementById('spatial-cert-result').innerHTML = `<b>${esc(c.status)}</b> · TRE ${c.tre_median_um ?? '—'} µm · p90 ${c.tre_p90_um ?? '—'} µm · coverage ${c.coverage_frac != null ? (c.coverage_frac*100).toFixed(0)+'%' : '—'} · <span style="color:#64748b">expert landmarks (${esc((c.landmark_source||'').split('/').pop())})</span><br>${esc(c.reason || '')}`;
+  document.getElementById('spatial-cert-result').innerHTML =
+    `<div class="science-summary"><div class="science-summary-copy"><strong>${esc(c.status)}</strong><br>Imported expert anatomical landmarks pass the displayed certification gates.${c.reason ? ` ${esc(c.reason)}` : ''}</div>${renderWindowChip(c)}</div>
+     ${renderParameterDetails({ ...certificationParams(c, spatialCertPixelSize()),
+        landmark_source:(c.landmark_source||'').split('/').pop() })}`;
   spatialAssocUpdateRunBtn();
 }
 
@@ -3329,6 +3954,7 @@ async function spatialAssocRun() {
   if (!config) return;
   // Reuse the segmentation the bandwidth pre-flight already produced for this pair.
   config.reuse_existing_geojson = true;
+  lastSpatialRunConfig = { ...config };
 
   const preflight = await window.pywebview.api.preflight_check('spatial');
   if (!preflight.ok) {
@@ -3357,10 +3983,11 @@ function spatialBwChip(marker, e) {
   const map = { ok:['#16a34a','ok'], caution:['#f59e0b','caution'],
                 dense_tissue:['#7c3aed','dense tissue'],
                 unreliable:['#7c3aed','dense tissue'], unknown:['#94a3b8','unknown'] };
-  const [col, lbl] = map[e && e.status] || ['#94a3b8', e && e.status || '—'];
+  let [col, lbl] = map[e && e.status] || ['#94a3b8', e && e.status || '—'];
   const ell = (e && e.scale_um != null) ? `ℓ̂ ${e.scale_um} µm` : 'ℓ̂ —';
-  const why = (e && e.reason) ? ` ${e.reason}` : '';
-  return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:12px;background:${col}22;border:1px solid ${col};color:${col};font-weight:600" title="Architecture scale measured inside the current analysis window (ROI/intersection), not a universal image property. n=${(e&&e.n)||0} cells.${esc(why)}">${esc(marker)}: ${lbl} · ${ell}</span>`;
+  const why = (e && (e.reason || e.status_reason)) || '';
+  if (e && e.status === 'unknown') lbl = `unknown: ${why || 'reason not reported by analysis'}`;
+  return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:5px;background:${col}14;border:1px solid ${col};color:${col};font-weight:600" title="Architecture scale measured inside the current certified analysis window. Positive cells: ${(e&&e.n)||0}. Required reweight bandwidth: 75 µm.${why ? ` Reason: ${esc(why)}` : ''}">${esc(marker)}: ${esc(lbl)} · ${ell}</span>`;
 }
 
 // Pairs that still need certification before the bandwidth pre-flight may run.
@@ -3386,7 +4013,8 @@ function spatialNullTag(plan) {
     none: ['#b91c1c', '#ef4444', 'Fail-closed · no valid primary null'],
   };
   const [col, bd, lbl] = map[key] || ['#64748b', '#94a3b8', 'Null plan unavailable'];
-  return `<span style="display:inline-block;margin-top:4px;padding:3px 10px;border-radius:12px;background:${bd}18;border:1px solid ${bd};color:${col};font-weight:700;font-size:11px">${esc(lbl)}</span>`;
+  const cls = key === 'dense_morphology' ? 'science-chip dense' : (key === 'none' ? 'science-chip fail' : 'science-chip');
+  return `<span class="${cls}" style="margin-top:4px" title="This is the primary null model that will control the strong spatial-association claim for this certified analysis window.">${esc(lbl)}</span>`;
 }
 
 function spatialBandwidthStatusLabel(status) {
@@ -3402,8 +4030,35 @@ function spatialBandwidthStatusLabel(status) {
   })[status] || String(status || 'unknown');
 }
 
+function spatialBandwidthParams(entry, config) {
+  const pc = (entry && entry.precheck) || {};
+  const plan = (entry && entry.null_plan) || {};
+  const dense = plan.dense_null || pc.dense_null || {};
+  const params = {
+    certification_status: entry && entry.certification_status,
+    analysis_window: pc.window_scope || 'certified analysis window',
+    reweight_bandwidth_um: pc.bandwidth_um || 75,
+    primary_null: plan.primary_null,
+    dab_threshold_a: config && config.dab_threshold_a,
+    dab_threshold_b: config && config.dab_threshold_b,
+    adaptive_threshold: config && config.adaptive_threshold,
+    preprocess_normalize: config && config.preprocess_normalize,
+    pixel_size_um: config && config.session_pixel_size,
+    dense_null_jitter_um: dense.jitter_um,
+    dense_null_support_n: (dense.gates || {}).n_support,
+    dclf_band_um: dense.dclf_band_um,
+  };
+  Object.entries(pc.per_image || {}).forEach(([marker, e]) => {
+    params[`${marker} positive cells`] = e.n;
+    params[`${marker} architecture scale µm`] = e.scale_um;
+    params[`${marker} architecture status`] = e.status === 'unreliable' ? 'dense tissue' : e.status;
+    if (e.reason || e.status_reason) params[`${marker} exact reason`] = e.reason || e.status_reason;
+  });
+  return params;
+}
+
 // Render one pair's bandwidth verdict + null plan into an HTML block.
-function spatialBwPairBlock(sid, entry) {
+function spatialBwPairBlock(sid, entry, config) {
   const pc = (entry && entry.precheck) || {};
   const plan = (entry && entry.null_plan) || {};
   const chips = Object.entries(pc.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
@@ -3413,6 +4068,7 @@ function spatialBwPairBlock(sid, entry) {
     <div style="margin-bottom:4px">${chips || '<span style="color:var(--text3)">no markers</span>'}</div>
     <div>${spatialNullTag(plan)}</div>
     <div style="font-size:11px;color:var(--text2);margin-top:5px">${esc(plan.reason || pc.reason || '')}</div>
+    ${renderParameterDetails(spatialBandwidthParams(entry, config))}
   </div>`;
 }
 
@@ -3436,6 +4092,7 @@ async function spatialBandwidthCheck() {
 
   const config = spatialBuildConfig();
   if (!config) return;
+  lastSpatialBandwidthConfig = { ...config };
   btn.disabled = true; btn.textContent = 'Segmenting & measuring…';
   badge.textContent = 'CHECKING'; badge.className = 'badge gray';
   out.innerHTML = `<span style="color:var(--text3)">Segmenting ${spatialMode === 'batch' ? pairs.length + ' pair(s)' : 'the pair'} and measuring tissue architecture within each certified analysis window… (first run segments; a following analysis reuses it)</span>`;
@@ -3446,7 +4103,13 @@ async function spatialBandwidthCheck() {
   if (!r || r.status !== 'ok') {
     badge.textContent = 'ERROR'; badge.className = 'badge amber';
     out.innerHTML = `<span style="color:#b91c1c">${esc((r && r.error) || 'Pre-flight failed')}</span>`
-      + (r && r.log_tail ? `<pre style="font-size:10px;color:var(--text3);white-space:pre-wrap;margin-top:6px">${esc(r.log_tail)}</pre>` : '');
+      + (r && r.log_tail ? `<pre style="font-size:10px;color:var(--text3);white-space:pre-wrap;margin-top:6px">${esc(r.log_tail)}</pre>` : '')
+      + renderParameterDetails({
+          analysis_window:'certified analysis window', reweight_bandwidth_um:75,
+          dab_threshold_a:config.dab_threshold_a, dab_threshold_b:config.dab_threshold_b,
+          adaptive_threshold:config.adaptive_threshold, preprocess_normalize:config.preprocess_normalize,
+          pixel_size_um:config.session_pixel_size,
+        });
     return;
   }
   const byPair = r.precheck_by_pair || {};
@@ -3469,9 +4132,51 @@ async function spatialBandwidthCheck() {
   const legend = spatialMode === 'batch'
     ? `<div style="font-size:11px;color:var(--text2);margin-bottom:2px">${nPrimary} pair(s) → 75 µm reweighted primary null · ${nDense} → dense-tissue morphological null · ${nFail} → fail-closed. Each pair's null is named below.</div>`
     : '';
-  const blocks = order.map(sid => spatialBwPairBlock(sid, byPair[sid])).join('');
+  const blocks = order.map(sid => spatialBwPairBlock(sid, byPair[sid], config)).join('');
   out.innerHTML = legend + blocks
     + `<div style="font-size:11px;color:var(--text3);margin-top:8px;border-top:1px solid var(--border);padding-top:8px">Measured inside each pair's certified analysis window (A∩B intersection ∩ any Certification ROI), using the landmark-certified transform. Segmentation is cached — Run analysis reuses it. <b>Registration certification is unaffected by the bandwidth verdict.</b></div>`;
+}
+
+function spatialResultParameterSets(p, a, cert, sv) {
+  const provenance = p.provenance || {};
+  const ap = provenance.analysis_params || {};
+  const cfg = provenance.config_snapshot || lastSpatialRunConfig || {};
+  const dense = sv.dense_null || {};
+  const window = certificationWindow(cert).label;
+  const common = {
+    pixel_size_ref_um: p.pixel_size_ref_um ?? provenance.pixel_size_ref_um,
+    pixel_size_source: p.pixel_size_source ?? provenance.pixel_size_source,
+    registration_method: p.registration_method ?? provenance.registration_method,
+    certification_status: cert.status,
+    analysis_window: window,
+    dab_threshold_a: cfg.dab_threshold_a,
+    dab_threshold_b: cfg.dab_threshold_b,
+    adaptive_threshold: cfg.adaptive_threshold,
+    preprocess_normalize: cfg.preprocess_normalize,
+    use_cytoplasm_a: cfg.use_cytoplasm_a,
+    use_cytoplasm_b: cfg.use_cytoplasm_b,
+  };
+  return {
+    segmentation: common,
+    spatial: {
+      ...common,
+      primary_null: a.primary_null || ap.primary_null,
+      n_perm: a.n_perm ?? ap.n_perm,
+      null_seed: ap.null_seed,
+      reweight_bandwidth_um: ap.reweight_bandwidth_um ?? sv.bandwidth_um,
+      dclf_band_um: ap.dclf_band_um || [(a.global || {}).dclf_rmin_um, (a.global || {}).dclf_rmax_um],
+      min_interpretable_radius_um: (a.radius_floor || {}).floor_um,
+      contact_scale_resolved: (a.radius_floor || {}).contact_scale_resolved,
+      dclf_band_clipped: (a.radius_floor || {}).band_clipped,
+      max_radius_um: ap.max_radius_um,
+      radius_step_um: ap.radius_step_um,
+      architecture_scale_um: ap.architecture_scale_um,
+      architecture_status: ap.architecture_scale_status || sv.worst_status,
+      dense_null_jitter_um: ap.dense_null_jitter_um ?? dense.jitter_um,
+      dense_null_support_n: ap.dense_null_support_n ?? (dense.gates || {}).n_support,
+      max_distance_um: cfg.max_distance_um,
+    },
+  };
 }
 
 function spatialAssocShowResults(data) {
@@ -3588,7 +4293,7 @@ function spatialAssocShowResults(data) {
       const certBanner = (cert.is_certified === true) ? `
         <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid #16a34a;background:#f0fdf4;color:#166534">
-          <strong>✓ ${esc(cert.status || 'CERTIFIED')} by anatomical landmarks</strong> ·
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong>✓ ${esc(cert.status || 'CERTIFIED')} by anatomical landmarks</strong>${renderWindowChip(cert)}</div>
           TRE ${cert.tre_median_um ?? '—'} µm · p90 ${cert.tre_p90_um ?? '—'} µm ·
           coverage ${cert.coverage_frac != null ? (cert.coverage_frac*100).toFixed(0)+'%' : '—'}
         </div>` : `
@@ -3640,6 +4345,7 @@ function spatialAssocShowResults(data) {
       const nullsObj = a.nulls || {};
       const primaryNull = a.primary_null || (rob.primary_null) || 'reweighted';
       const densePrimary = primaryNull === 'dense_morphology';
+      const outputParams = spatialResultParameterSets(p, a, cert, sv || {});
       const robDirEarly = (rob.direction && rob.direction !== 'none') ? rob.direction
         : ((a.global || {}).direction || 'none');
       const robMeta = ({
@@ -3737,13 +4443,13 @@ function spatialAssocShowResults(data) {
       const cap = (t) => `<div class="muted" style="font-size:11px;margin:0 0 4px">${t}</div>`;
       // 1+2: segmentation overlays side by side
       const segRow = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px">
-          <div>${cap(`${sA} segmentation — positive = red`)}${img(a.seg_a, 'CD8 segmentation')}</div>
-          <div>${cap(`${sB} segmentation — positive = blue`)}${img(a.seg_b, 'TIM-3 segmentation')}</div>
+          <div>${cap(`${sA} segmentation — positive = red`)}${img(a.seg_a, 'CD8 segmentation')}${renderParameterDetails({...outputParams.segmentation, output_marker:sA}, 'Parameters used for this overlay')}</div>
+          <div>${cap(`${sB} segmentation — positive = blue`)}${img(a.seg_b, 'TIM-3 segmentation')}${renderParameterDetails({...outputParams.segmentation, output_marker:sB}, 'Parameters used for this overlay')}</div>
         </div>`;
       // 3: consolidated density heatmap
-      const consBlock = `<div style="margin-top:10px">${cap(`Consolidated density — green = ${sA}+, blue = ${sB}+, cyan = overlap`)}${img(a.consolidated, 'Consolidated density')}</div>`;
+      const consBlock = `<div style="margin-top:10px">${cap(`Consolidated density — green = ${sA}+, blue = ${sB}+, cyan = overlap`)}${img(a.consolidated, 'Consolidated density')}${renderParameterDetails(outputParams.segmentation, 'Parameters used for this map')}</div>`;
       // 4: association plot
-      const plotBlock = `<div style="margin-top:10px">${cap(`${densePrimary ? 'Dense morphology-conditioned' : 'Reweighted inhomogeneous'} cross-K association (L−r vs distance) with the 95% envelope of the calibrated primary null`)}${img(a.association_plot, 'Association plot')}</div>`;
+      const plotBlock = `<div style="margin-top:10px">${cap(`${densePrimary ? 'Dense morphology-conditioned' : 'Reweighted inhomogeneous'} cross-K association (L−r vs distance) with the 95% envelope of the calibrated primary null`)}${img(a.association_plot, 'Association plot')}${renderParameterDetails(outputParams.spatial, 'Parameters used for this plot')}</div>`;
       const labels = (Object.keys(sa.association || {})[0] || '').replace('__', ' ↔ ');
       // Headline badge reflects the cross-null ROBUSTNESS verdict, never a single
       // null's global.significant — so a CSR-only / mixed result can never show a
@@ -3777,8 +4483,8 @@ function spatialAssocShowResults(data) {
           <div class="metrics-row c4" style="margin:14px 0 10px">
             <div class="metric"><div class="metric-label">${sA}+ cells</div><div class="metric-value">${(typeof na==='number'?na:0).toLocaleString()}</div><div class="metric-sub">positive</div></div>
             <div class="metric"><div class="metric-label">${sB}+ cells</div><div class="metric-value">${(typeof nb==='number'?nb:0).toLocaleString()}</div><div class="metric-sub">registered</div></div>
-            <div class="metric" style="${statsDim}"><div class="metric-label">Peak r</div><div class="metric-value">${fmtR(peakR)}</div><div class="metric-sub">max deviation</div></div>
-            <div class="metric" style="${statsDim}"><div class="metric-label">Global p</div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub">DCLF, whole curve</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Peak r<span class="help-tip" title="Distance where the observed L−r curve departs most strongly from the selected null envelope; descriptive, not a separate hypothesis test.">?</span></div><div class="metric-value">${fmtR(peakR)}</div><div class="metric-sub">max deviation</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Global p<span class="help-tip" title="Monte Carlo global DCLF p-value for the whole L−r curve over the declared distance band, using the selected primary null.">?</span></div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub">DCLF, whole curve</div></div>
           </div>
           <div style="font-size:12px;color:var(--text2);display:flex;gap:14px;flex-wrap:wrap;align-items:center">
             <span>Window: <strong>${fmtArea(area)}</strong>${mask ? ` <span class="badge gray">${esc(mask)}</span>` : ''}</span>
@@ -3788,7 +4494,8 @@ function spatialAssocShowResults(data) {
             <span>Residual: <strong>${typeof qResUm === 'number' ? qResUm.toFixed(1) + ' µm' : '—'}</strong></span>
             <span>QC: ${qcPill(esc(qStatus), qcColor)}</span>
           </div>
-          <div class="info-box ${qInvalid ? '' : (['robust','csr_only','mixed'].includes(verdict) ? 'amber' : (verdict === 'none' ? '' : (sig ? 'amber' : '')))}" style="margin-top:10px;font-weight:600;${statsDim}">${interp}</div>
+          ${renderMeaningDetails(`<strong>${esc(interp)}</strong><br><span>This is a population-level serial-section result. It does not establish same-cell co-expression; that requires multiplex imaging on the same section.</span>`)}
+          ${renderParameterDetails(outputParams.spatial)}
         </div>`;
     }).join('');
   }
