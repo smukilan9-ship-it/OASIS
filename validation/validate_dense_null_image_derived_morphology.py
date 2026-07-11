@@ -31,8 +31,8 @@ from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import spatial_stats as ss  # noqa: E402
-from registration import extract_hematoxylin  # noqa: E402
+from oasis.spatial import spatial_stats as ss  # noqa: E402
+from oasis.common.registration import extract_hematoxylin  # noqa: E402
 from validation.validate_public_codex_dense_null import (  # noqa: E402
     BANDS,
     PIXEL_SIZE_UM,

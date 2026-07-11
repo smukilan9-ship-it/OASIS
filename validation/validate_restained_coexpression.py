@@ -10,7 +10,7 @@ from PIL import Image, ImageDraw
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from restained_coexpression import (discover_bundles, preprocess_hematoxylin,
+from oasis.restained.restained_coexpression import (discover_bundles, preprocess_hematoxylin,
                                     run_bundle, run_config, stain_channels,
                                     summarize_coexpression,
                                     validate_bundle_dimensions)

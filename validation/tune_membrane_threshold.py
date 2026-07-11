@@ -60,7 +60,7 @@ import argparse
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from cell_expansion import measure_cytoplasm_dab
+from oasis.quant.cell_expansion import measure_cytoplasm_dab
 
 
 def _classification_name(props):

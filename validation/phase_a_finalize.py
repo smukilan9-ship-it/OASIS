@@ -21,7 +21,7 @@ import os, sys, json
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from serial_registration import landmark_register_and_verify  # noqa
+from oasis.spatial.serial_registration import landmark_register_and_verify  # noqa
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "phase_a_qc")
 IMAGE_WH = (1920, 1440)

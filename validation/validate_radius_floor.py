@@ -48,7 +48,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from spatial_stats import (cross_k_all_nulls, registration_radius_floor,
+from oasis.spatial.spatial_stats import (cross_k_all_nulls, registration_radius_floor,
                            _RADIUS_FLOOR_FACTOR)
 
 SIDE_PX = 2000.0

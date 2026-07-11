@@ -16,8 +16,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import serial_registration as sr        # noqa: E402
-import loftr_matcher as lm              # noqa: E402
+from oasis.spatial import serial_registration as sr        # noqa: E402
+from oasis.spatial import loftr_matcher as lm              # noqa: E402
 
 REF = "/Users/mukilan/Downloads/052526/Tumor/LL477_CD8_x10_3.tif"
 MOV = "/Users/mukilan/Downloads/052526/Tumor/LL477_Tim3_10X_3.tif"

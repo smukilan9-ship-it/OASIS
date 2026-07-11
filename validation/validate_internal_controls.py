@@ -43,7 +43,7 @@ import sys
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from spatial_stats import cross_k_all_nulls   # noqa: E402
+from oasis.spatial.spatial_stats import cross_k_all_nulls   # noqa: E402
 
 PIX   = 1.0                      # 1 µm/px → DCLF band 10–50 µm == 10–50 px
 RADII = np.arange(0.0, 100.0, 4.0)
@@ -136,7 +136,7 @@ def control_2_stability():
     try:
         import cv2, tempfile, shutil
         from PIL import Image
-        from registration import compute_registration
+        from oasis.common.registration import compute_registration
 
         def _tissue(rng, shift=(0, 0), size=420):
             dx, dy = shift

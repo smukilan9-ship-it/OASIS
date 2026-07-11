@@ -17,7 +17,7 @@ import os
 import re
 from pathlib import Path
 
-from pixel_size_util import is_scaled_image
+from oasis.common.pixel_size_util import is_scaled_image
 
 # Recognized stain identifiers sorted longest-first to prevent partial matches
 # (e.g. "tim-3" must be checked before "tim")

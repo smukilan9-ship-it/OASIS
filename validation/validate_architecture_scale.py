@@ -36,7 +36,7 @@ import numpy as np
 from scipy.ndimage import gaussian_filter
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import spatial_stats as ss
+from oasis.spatial import spatial_stats as ss
 
 BANDWIDTH_UM = ss._REWEIGHT_BANDWIDTH_UM      # 75
 BAND_MAX_UM = ss._DCLF_RMAX_UM               # 50

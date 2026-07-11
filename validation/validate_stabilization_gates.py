@@ -51,7 +51,7 @@ def test_provenance():
 
 def test_cohort_fdr():
     print("\nA8 — cohort BH/FDR across per-pair DCLF p")
-    from spatial_stats import cohort_multiple_comparison_correction
+    from oasis.spatial.spatial_stats import cohort_multiple_comparison_correction
     out = cohort_multiple_comparison_correction([0.001, 0.04, 0.5, None, 0.2], method="bh")
     check("n_tested drops the None", out["n_tested"] == 4)
     check("adjusted p available", len(out["adjusted_pvalues"]) == 4)
@@ -66,7 +66,7 @@ def _png(path, arr):
 
 def test_restained_gate():
     print("\nB4 — Restained correspondence gate (fail-closed) + diagnostic")
-    import restained_coexpression as rc          # also proves import (no Shapely error)
+    from oasis.restained import restained_coexpression as rc          # also proves import (no Shapely error)
     check("restained module imports cleanly", True)
     tmp = tempfile.mkdtemp(prefix="restgate_")
     try:

@@ -275,7 +275,7 @@ def generate_qc_overlay(
         print("  QC overlay: opencv-python not installed")
         return ""
 
-    from registration import _load_rgb_thumbnail
+    from oasis.common.registration import _load_rgb_thumbnail
 
     def _panel(path, cents):
         rgb, scale = _load_rgb_thumbnail(path, max_side)
@@ -397,7 +397,7 @@ def run_coloc(
     Adding a third marker later is just appending it to layer_order and
     providing its geojson + reg_result — no other code changes needed.
     """
-    from registration import transform_centroids
+    from oasis.common.registration import transform_centroids
 
     ref_marker = layer_order[0]
     per_marker = {}
@@ -469,7 +469,7 @@ def _build_analysis_window(layer_order, registered, reg_results, pixel_size_um,
 
     Returns (window|None, mask_method, area_px, overlap_iou, overlap_frac_a).
     """
-    from spatial_stats import (estimate_tissue_polygon, transform_polygon,
+    from oasis.spatial.spatial_stats import (estimate_tissue_polygon, transform_polygon,
                                intersection_window, bounding_box_area)
     mov_marker = layer_order[1] if len(layer_order) > 1 else None
 
@@ -551,7 +551,7 @@ def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, win
 
     Registration certification is a SEPARATE concern and is never affected by this check.
     """
-    from spatial_stats import (estimate_architecture_scale, architecture_scale_verdict,
+    from oasis.spatial.spatial_stats import (estimate_architecture_scale, architecture_scale_verdict,
                                filter_points_in_polygon, _REWEIGHT_BANDWIDTH_UM)
     bw = float(bandwidth_um if bandwidth_um is not None else _REWEIGHT_BANDWIDTH_UM)
     per_image = {}
@@ -681,7 +681,7 @@ def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, windo
       • none (fail-closed)— sparse/underpowered, not-estimable, or dense fallback gates
                            fail; no robust primary null → run withheld.
     """
-    from spatial_stats import filter_points_in_polygon
+    from oasis.spatial.spatial_stats import filter_points_in_polygon
     valid = bool(bandwidth_precheck.get("valid"))
     worst = bandwidth_precheck.get("worst_status")
     plan = {"primary_null": None, "primary_null_key": None,
@@ -848,8 +848,8 @@ def run_spatial_association(
           "_registered": {marker: Nx2 array},       # for overlays; stripped from JSON
         }
     """
-    from registration import transform_centroids
-    from spatial_stats import (
+    from oasis.common.registration import transform_centroids
+    from oasis.spatial.spatial_stats import (
         cross_k_all_nulls, estimate_tissue_polygon, transform_polygon,
         intersection_window, filter_points_in_polygon, bounding_box_area,
         _DENSE_DCLF_RMIN_UM, _DENSE_DCLF_RMAX_UM, _DENSE_MORPHOLOGY_JITTER_UM,
@@ -878,7 +878,7 @@ def run_spatial_association(
     # manufacture association" result (validate_radius_floor.py) holds only for a
     # low-DOF, cell-blind transform. A shear or non-rigid warp would silently violate
     # both, so this fails closed rather than trusting the caller.
-    from serial_registration import assert_distance_preserving
+    from oasis.spatial.serial_registration import assert_distance_preserving
     registered = {ref_marker: centroids[ref_marker]}
     for marker in layer_order[1:]:
         raw = centroids[marker]
@@ -1109,7 +1109,7 @@ def run_spatial_association(
             # disclosed assumption into a measured guard. Calibrated by
             # validation/validate_architecture_scale.py.
             try:
-                from spatial_stats import (estimate_architecture_scale,
+                from oasis.spatial.spatial_stats import (estimate_architecture_scale,
                                             architecture_scale_verdict)
                 ell_a = estimate_architecture_scale(p_a, pixel_size_um, tissue_polygon=window)
                 ell_b = estimate_architecture_scale(p_b, pixel_size_um, tissue_polygon=window)

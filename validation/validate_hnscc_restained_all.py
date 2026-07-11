@@ -32,7 +32,7 @@ from scipy import ndimage, stats
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from restained_coexpression import (  # noqa: E402
+from oasis.restained.restained_coexpression import (  # noqa: E402
     _bh_adjust,
     _geometry_compartments,
     _load_geojson,

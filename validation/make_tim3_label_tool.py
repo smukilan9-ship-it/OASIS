@@ -32,7 +32,7 @@ def build(image_path, geojson_path, out_path):
     from PIL import Image
     import numpy as np, io
     sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    from cell_expansion import (_estimate_background, _estimate_stain_vectors,
+    from oasis.quant.cell_expansion import (_estimate_background, _estimate_stain_vectors,
                                 _od_channels, _QUPATH_STAINS, _DEFAULT_BACKGROUND)
 
     rgb = np.asarray(Image.open(image_path).convert("RGB"))

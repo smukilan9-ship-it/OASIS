@@ -7,8 +7,8 @@ are attached; they need heavy compute + the data.)
 """
 import numpy as np
 import pytest
-import serial_registration as sr
-from webui import calibration as C
+from oasis.spatial import serial_registration as sr
+from oasis.webui import calibration as C
 from test_registration import _synthetic_pair, _similarity, _apply
 from test_calibration import _synth_cells
 

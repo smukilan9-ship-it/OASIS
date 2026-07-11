@@ -64,7 +64,7 @@ def _save(path, arr):
 
 
 def main():
-    from registration import compute_registration, compute_registration_qc
+    from oasis.common.registration import compute_registration, compute_registration_qc
     from run_pipeline import evaluate_registration_qc
 
     tmp = tempfile.mkdtemp(prefix="regqc_")

@@ -8,8 +8,8 @@ opt-in slow rate calibration (`pytest -m slow`).
 """
 import numpy as np
 import pytest
-import spatial_stats as ss
-import spatial
+from oasis.spatial import spatial_stats as ss
+from oasis.spatial import spatial
 
 R = np.arange(0, 101, 4.0)
 

@@ -3,7 +3,7 @@ Tier 1 — membrane cutoff calibration: leave-one-cell-out honesty
 (webui.calibration). Synthetic ring measurements; no images needed.
 """
 import numpy as np
-from webui import calibration as C
+from oasis.webui import calibration as C
 
 
 def _synth_cells(seed=0, n_pos=30, n_neg=30):

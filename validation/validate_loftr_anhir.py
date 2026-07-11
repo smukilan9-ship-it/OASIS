@@ -44,8 +44,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import serial_registration as sr          # noqa: E402
-import loftr_matcher as lm                # noqa: E402
+from oasis.spatial import serial_registration as sr          # noqa: E402
+from oasis.spatial import loftr_matcher as lm                # noqa: E402
 
 # native um/px at full resolution (ANHIR Table I); scale-50pc images are 2x this.
 NATIVE_PX = {"lung-lesion": 0.174, "lung-lobes": 1.274, "mammary-gland": 2.294}

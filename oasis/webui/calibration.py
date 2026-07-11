@@ -23,7 +23,7 @@ def _b64(arr):
 
 def _views(image_path):
     from PIL import Image
-    from cell_expansion import (_estimate_background, _estimate_stain_vectors,
+    from oasis.quant.cell_expansion import (_estimate_background, _estimate_stain_vectors,
                                 _od_channels, _QUPATH_STAINS, _DEFAULT_BACKGROUND)
     rgb = np.asarray(Image.open(image_path).convert("RGB"))
     H, W = rgb.shape[:2]
@@ -120,7 +120,7 @@ def _best_f1_cut(s, y):
 def _measure_labeled(image_path, geojson_path, pixel_size, pos_idx, neg_idx):
     """Ring measurement for the labelled cells of ONE image → list of (label, rv, rh),
     where rv/rh are the calibrated ring DAB / hematoxylin OD pixel arrays."""
-    from cell_expansion import measure_cytoplasm_dab
+    from oasis.quant.cell_expansion import measure_cytoplasm_dab
     pos_idx = set(int(i) for i in pos_idx); neg_idx = set(int(i) for i in neg_idx)
     res = measure_cytoplasm_dab(image_path, geojson_path, float(pixel_size),
                                 keep_ring_values=True)

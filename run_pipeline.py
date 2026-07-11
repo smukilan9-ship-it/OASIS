@@ -434,7 +434,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
     p90_thr  = mo.get("membrane_p90_thr",  cfg.get("membrane_p90_thr"))
     use_completeness = pix_thr is not None and frac_min is not None
 
-    from cell_expansion import measure_cytoplasm_dab
+    from oasis.quant.cell_expansion import measure_cytoplasm_dab
     results = measure_cytoplasm_dab(
         img_path, geojson, pixel_size,
         expansion_um=expansion, dab_threshold=threshold,
@@ -603,7 +603,7 @@ def run_single_image(img_path, cfg, groovy_script):
     pixel_size_mode = cfg.get("pixel_size_mode", "global")
 
     try:
-        from pixel_size_util import get_pixel_size_with_source
+        from oasis.common.pixel_size_util import get_pixel_size_with_source
         pixel_size, pixel_size_source = get_pixel_size_with_source(
             img_path, cfg, interactive=(cfg.get("mode") == "expert"))
     except ImportError:
@@ -818,7 +818,7 @@ def run_pipeline(config_path="config.yaml"):
     if cfg.get("generate_overlays", True) and cfg.get("export_geojson", True):
         print("\nGenerating overlays...")
         try:
-            from overlay import generate_overlays_for_batch
+            from oasis.reporting.overlay import generate_overlays_for_batch
             overlay_paths = generate_overlays_for_batch(
                 batch_metrics=batch_metrics,
                 input_dir=cfg["input_dir"],
@@ -832,7 +832,7 @@ def run_pipeline(config_path="config.yaml"):
     # ── Stage 3: Dashboard + Excel ─────────────────────────
     print(f"\nGenerating dashboard for {len(batch_metrics)} images...")
     try:
-        from dashboard import generate_all_outputs
+        from oasis.reporting.dashboard import generate_all_outputs
         html_path, excel_path = generate_all_outputs(
             batch_metrics, cfg["dashboard_dir"], cfg
         )
@@ -976,7 +976,7 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
             break
     reweight_bw = None
     try:  # fall back to library defaults when no association was produced
-        from spatial_stats import (_DCLF_RMIN_UM, _DCLF_RMAX_UM, _KDE_BANDWIDTH_UM,
+        from oasis.spatial.spatial_stats import (_DCLF_RMIN_UM, _DCLF_RMAX_UM, _KDE_BANDWIDTH_UM,
                                     _REWEIGHT_BANDWIDTH_UM)
         dclf_rmin = dclf_rmin if dclf_rmin is not None else _DCLF_RMIN_UM
         dclf_rmax = dclf_rmax if dclf_rmax is not None else _DCLF_RMAX_UM
@@ -1056,7 +1056,7 @@ def resolve_pixel_size(session_pixel_size, image_path, scale_image_path, manual_
 
     Logs which source won.
     """
-    from pixel_size_util import extract_pixel_size_from_scale_bar
+    from oasis.common.pixel_size_util import extract_pixel_size_from_scale_bar
 
     name = os.path.basename(image_path) if image_path else "(session)"
 
@@ -1324,7 +1324,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         elif cfg.get("enable_registration", True):
             print(f"\nRegistering {stain_b} → {stain_a}...")
             try:
-                from registration import compute_registration
+                from oasis.common.registration import compute_registration
                 reg_result = compute_registration(path_a, path_b)
             except Exception as e:
                 print(f"  Registration error: {e} — proceeding without registration")
@@ -1344,7 +1344,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
               f"(Ripley's K, ref {ref_px} µm/px, source={ref_px_source})...")
         assoc_result = None
         try:
-            from spatial import run_spatial_association
+            from oasis.spatial.spatial import run_spatial_association
             reg_map = {stain_b: reg_result} if reg_result else {}
             assoc_result = run_spatial_association(
                 layer_geojsons={stain_a: geojson_a, stain_b: geojson_b},
@@ -1401,7 +1401,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
             # Colors (RGB): CD8 positive=red, TIM-3 positive=blue, negatives=green
             RED, GREEN, BLUE = (255, 50, 50), (50, 205, 50), (40, 90, 255)
             try:
-                from overlay import (generate_segmentation_overlay,
+                from oasis.reporting.overlay import (generate_segmentation_overlay,
                                      generate_consolidated_density,
                                      generate_association_plot)
                 for key, data in assoc_result["association"].items():
@@ -1473,7 +1473,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         else:
             reg_qc_metrics = {}
             try:
-                from registration import compute_registration_qc
+                from oasis.common.registration import compute_registration_qc
                 if reg_result is not None:
                     reg_qc_metrics = compute_registration_qc(
                         path_a, path_b, reg_result, ref_px,
@@ -1637,7 +1637,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
     # apply Benjamini-Hochberg across the cohort (the function already exists). Pairs
     # whose statistics are not valid contribute None and are dropped from the tally.
     try:
-        from spatial_stats import cohort_multiple_comparison_correction
+        from oasis.spatial.spatial_stats import cohort_multiple_comparison_correction
         cohort_ps, cohort_labels = [], []
         for r in spatial_results:
             assoc = (r.get("spatial_association") or {}).get("association") or {}

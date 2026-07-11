@@ -20,8 +20,8 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import serial_registration as sr          # noqa: E402
-import loftr_matcher as lm                # noqa: E402
+from oasis.spatial import serial_registration as sr          # noqa: E402
+from oasis.spatial import loftr_matcher as lm                # noqa: E402
 
 NATIVE_PX_100 = {"lung-lesion": 0.174, "lung-lobes": 1.274, "mammary-gland": 2.294}
 LANDMARK_SCALE_PC = {"lung-lesion": 50, "lung-lobes": 100, "mammary-gland": 100}

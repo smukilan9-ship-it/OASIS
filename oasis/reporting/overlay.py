@@ -340,7 +340,7 @@ def generate_segmentation_overlay(
     try:
         img = np.array(Image.open(image_path).convert("RGB"))
     except Exception:
-        from registration import _load_rgb_thumbnail
+        from oasis.common.registration import _load_rgb_thumbnail
         thumb, _ = _load_rgb_thumbnail(image_path, max_side)
         if thumb is None:
             print(f"  Segmentation overlay: could not load {stain_name} image")
@@ -427,7 +427,7 @@ def generate_consolidated_density(
     except ImportError:
         print("  Consolidated density: opencv-python not installed")
         return ""
-    from registration import _load_rgb_thumbnail
+    from oasis.common.registration import _load_rgb_thumbnail
     try:
         from scipy.ndimage import gaussian_filter
     except ImportError:

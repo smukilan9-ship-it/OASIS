@@ -20,7 +20,7 @@ def attach_restained_api(api_class):
                                   reference_mask_folder=None):
         try:
             sys.path.insert(0, str(project_dir))
-            from restained_coexpression import discover_bundles
+            from oasis.restained.restained_coexpression import discover_bundles
             complete, incomplete = discover_bundles(
                 os.path.expanduser(folder), hematoxylin_token, marker_a_token,
                 marker_b_token,

@@ -30,9 +30,9 @@ from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from registration import transform_centroids  # noqa: E402
-from spatial import load_positive_centroids  # noqa: E402
-from spatial_stats import (  # noqa: E402
+from oasis.common.registration import transform_centroids  # noqa: E402
+from oasis.spatial.spatial import load_positive_centroids  # noqa: E402
+from oasis.spatial.spatial_stats import (  # noqa: E402
     _k_from_counts,
     _null_summary_from_k,
     _pair_counts,
