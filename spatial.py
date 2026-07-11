@@ -538,45 +538,253 @@ def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, win
 
         ok        ℓ̂ ≥ 2·bw   — size-controlled; primary reweighted null trustworthy
         caution   bw ≤ ℓ̂ < 2·bw
-        unreliable ℓ̂ < bw     — architecture near/inside the interaction band
-        unknown   too few cells in the window to estimate ℓ̂
+        dense_tissue ℓ̂ < bw   — architecture near/inside the interaction band
+        unknown      exact reason recorded per marker; ℓ̂ cannot be estimated
 
-    `valid` is False when the worst status is `unreliable` OR `unknown` — neither can
-    support a size-controlled "robust" claim (fail closed). Registration certification is
-    a SEPARATE concern and is never affected by this check.
+    Top-level `worst_status` intentionally separates two failure modes reviewers care
+    about:
+      • dense_tissue_bandwidth_invalid      → enough cells, but architecture is too fine;
+                                             try the dense morphology-conditioned null.
+      • underpowered_insufficient_positives → too few positives to estimate ℓ̂ or test;
+                                             fail closed as underpowered, not "dense".
+      • architecture_not_estimable          → enough cells but degenerate geometry; fail closed.
+
+    Registration certification is a SEPARATE concern and is never affected by this check.
     """
     from spatial_stats import (estimate_architecture_scale, architecture_scale_verdict,
                                filter_points_in_polygon, _REWEIGHT_BANDWIDTH_UM)
     bw = float(bandwidth_um if bandwidth_um is not None else _REWEIGHT_BANDWIDTH_UM)
-    rank = {"ok": 0, "caution": 1, "unreliable": 2, "unknown": 2}
     per_image = {}
-    worst = "ok"
     for marker in layer_order:
         pts = np.asarray(registered.get(marker, np.empty((0, 2))), float).reshape(-1, 2)
         if window is not None and len(pts):
             pts, _excl = filter_points_in_polygon(pts, window)
         ell = estimate_architecture_scale(pts, pixel_size_um, tissue_polygon=window)
         v = architecture_scale_verdict(ell, bandwidth_um=bw)
-        per_image[marker] = {"scale_um": v.get("scale_um"), "status": v.get("status"),
-                             "ok": v.get("ok"), "n": int(len(pts)),
-                             "min_ok_scale_um": v.get("min_ok_scale_um")}
-        if rank.get(v.get("status"), 2) > rank.get(worst, 0):
-            worst = v.get("status")
+        status = v.get("status")
+        n_pts = int(len(pts))
+        if status == "unknown":
+            if n_pts < 30:
+                status_reason = f"fewer than 30 positive cells inside the certified analysis window (n={n_pts})"
+            else:
+                status_reason = "architecture scale was not estimable from the positive-cell geometry inside the certified analysis window"
+        elif status == "dense_tissue":
+            status_reason = (
+                f"tissue architecture scale is below the {bw:.0f} µm bandwidth "
+                f"(ℓ̂={v.get('scale_um')} µm), so this is dense/fine tissue rather than a valid 75 µm-null field"
+            )
+        elif status == "caution":
+            status_reason = (
+                f"architecture scale is between {bw:.0f} µm and {2*bw:.0f} µm; "
+                "the 75 µm null is usable but near its boundary"
+            )
+        else:
+            status_reason = (
+                f"architecture scale is at least {2*bw:.0f} µm; the 75 µm null is size-controlled here"
+            )
+        per_image[marker] = {"scale_um": v.get("scale_um"), "status": status,
+                             "ok": v.get("ok"), "n": n_pts,
+                             "min_ok_scale_um": v.get("min_ok_scale_um"),
+                             "reason": status_reason}
+
+    statuses = {e.get("status") for e in per_image.values()}
+    unknown_markers = [m for m, e in per_image.items() if e.get("status") == "unknown"]
+    underpowered_markers = [
+        m for m, e in per_image.items()
+        if e.get("status") == "unknown" and int(e.get("n") or 0) < 30
+    ]
+    dense_markers = [
+        m for m, e in per_image.items()
+        if e.get("status") in ("dense_tissue", "unreliable")
+    ]
+    caution_markers = [m for m, e in per_image.items() if e.get("status") == "caution"]
+
+    if underpowered_markers:
+        worst = "underpowered_insufficient_positives"
+    elif unknown_markers:
+        worst = "architecture_not_estimable"
+    elif dense_markers:
+        worst = "dense_tissue_bandwidth_invalid"
+    elif caution_markers:
+        worst = "caution"
+    else:
+        worst = "ok"
     valid = worst in ("ok", "caution")
     reason = {
         "ok": f"tissue architecture is coarser than {bw:.0f} µm in every image — the "
               f"reweighted primary null is size-controlled within this window.",
         "caution": f"architecture is only marginally coarser than {bw:.0f} µm — treat a "
                    f"'robust' verdict with care.",
-        "unreliable": f"architecture is at/inside the {bw:.0f} µm interaction band in at "
-                      f"least one image — the reweighted test is anti-conservative here; "
-                      f"do not report 'robust'.",
-        "unknown": "too few positive cells inside the window to measure the architecture "
-                   "scale — cannot validate the bandwidth assumption (insufficient data).",
+        "dense_tissue_bandwidth_invalid": (
+            f"fine/dense tissue architecture is at/inside the {bw:.0f} µm interaction "
+            f"band in at least one image — the 75 µm reweighted null is not the right "
+            f"primary here; OASIS will attempt the dense morphology-conditioned null "
+            f"if its gates pass."
+        ),
+        "underpowered_insufficient_positives": (
+            "too few positive cells inside the certified analysis window to estimate "
+            "the architecture scale or support a spatial association test — this is "
+            "an underpowered field, not evidence of dense tissue."
+        ),
+        "architecture_not_estimable": (
+            "the architecture scale could not be estimated from the positive-cell "
+            "pattern inside the certified analysis window — fail closed rather than "
+            "guessing a null model."
+        ),
     }[worst]
     return {"bandwidth_um": bw, "window_scope": "certified_analysis_window",
             "per_image": per_image, "worst_status": worst, "valid": bool(valid),
-            "reason": reason}
+            "reason": reason,
+            "issue_type": worst,
+            "underpowered_markers": underpowered_markers,
+            "dense_markers": dense_markers,
+            "unknown_markers": unknown_markers}
+
+
+def load_detection_centroids_csv(csv_path: str, pixel_size_um: float) -> np.ndarray:
+    """
+    Load all-cell detection centroids from QuPath's tab-delimited detection export.
+    QuPath writes centroids in microns; convert them back to reference-image pixels
+    for the spatial statistic.
+    """
+    import csv
+    pts = []
+    if not csv_path:
+        return np.empty((0, 2), dtype=np.float64)
+    with open(csv_path, newline="") as f:
+        reader = csv.DictReader(f, delimiter="\t")
+        for row in reader:
+            try:
+                x = float(row.get("Centroid X µm", ""))
+                y = float(row.get("Centroid Y µm", ""))
+                pts.append((x / pixel_size_um, y / pixel_size_um))
+            except Exception:
+                continue
+    return np.asarray(pts, dtype=np.float64).reshape(-1, 2)
+
+
+def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, window,
+                              pixel_size_um, morphology_support_csv,
+                              dense_auto_null, landmark_certified,
+                              dense_min_positive, dense_min_support):
+    """Decide, at pre-flight time, WHICH primary null a full run would use for this
+    pair and expose it so the UI can name the null per pair BEFORE the expensive run.
+
+    Three outcomes, matching the full run's selection logic (mirrors the association
+    loop's dense_info gating):
+      • reweighted_75um  — the 75 µm bandwidth is size-controlled in this window;
+                           the calibrated intensity-reweighted primary null is used.
+      • dense_morphology — the 75 µm check fails specifically because architecture is
+                           dense/fine, and the dense fallback gates pass;
+                           the dense morphology-conditioned null (all-cell support +
+                           2 µm jitter, 10–30 µm) is used.
+      • none (fail-closed)— sparse/underpowered, not-estimable, or dense fallback gates
+                           fail; no robust primary null → run withheld.
+    """
+    from spatial_stats import filter_points_in_polygon
+    valid = bool(bandwidth_precheck.get("valid"))
+    worst = bandwidth_precheck.get("worst_status")
+    plan = {"primary_null": None, "primary_null_key": None,
+            "primary_null_label": None, "fail_closed": False,
+            "reason": "", "dense": {}}
+
+    if valid:
+        plan.update({
+            "primary_null": "reweighted_75um",
+            "primary_null_key": "reweighted",
+            "primary_null_label": "Primary null — 75 µm intensity-reweighted "
+                                  "inhomogeneous cross-K",
+            "reason": "Tissue architecture is coarser than the 75 µm bandwidth "
+                      "within the analysis window, so the calibrated primary null "
+                      "is size-controlled here.",
+        })
+        return plan
+
+    if worst == "underpowered_insufficient_positives":
+        plan.update({
+            "primary_null": "none",
+            "fail_closed": True,
+            "primary_null_label": "Fail-closed — insufficient positive cells",
+            "reason": "Not tested: too few positive cells inside the certified analysis "
+                      "window to estimate the 75 µm architecture assumption or run the "
+                      "dense morphology-conditioned null. This is an underpowered field, "
+                      "not a dense-tissue switch.",
+        })
+        return plan
+
+    if worst == "architecture_not_estimable":
+        plan.update({
+            "primary_null": "none",
+            "fail_closed": True,
+            "primary_null_label": "Fail-closed — architecture not estimable",
+            "reason": "Not tested: the positive-cell architecture scale could not be "
+                      "estimated inside the certified analysis window, so OASIS will "
+                      "not guess a primary null.",
+        })
+        return plan
+
+    if not dense_auto_null:
+        plan.update({
+            "primary_null": "none", "fail_closed": True,
+            "reason": "Dense/fine tissue invalidates the 75 µm primary here and the "
+                      "dense fallback is disabled — the run is fail-closed for this pair.",
+        })
+        return plan
+
+    ref_m = layer_order[0]
+    mov_m = layer_order[1] if len(layer_order) > 1 else None
+    p_a = registered.get(ref_m, np.empty((0, 2), dtype=np.float64))
+    p_b = (registered.get(mov_m, np.empty((0, 2), dtype=np.float64))
+           if mov_m else np.empty((0, 2), dtype=np.float64))
+    if window is not None:
+        p_a, _ = filter_points_in_polygon(p_a, window)
+        p_b, _ = filter_points_in_polygon(p_b, window)
+    support = np.empty((0, 2), dtype=np.float64)
+    if morphology_support_csv:
+        try:
+            support = load_detection_centroids_csv(morphology_support_csv, pixel_size_um)
+            if window is not None and len(support):
+                support, _ = filter_points_in_polygon(support, window)
+        except Exception:
+            support = np.empty((0, 2), dtype=np.float64)
+
+    gates = {
+        "landmark_certified": bool(landmark_certified),
+        "analysis_window": window is not None,
+        "support_csv": bool(morphology_support_csv),
+        "min_positive_a": int(len(p_a)) >= int(dense_min_positive),
+        "min_positive_b": int(len(p_b)) >= int(dense_min_positive),
+        "min_support": int(len(support)) >= int(dense_min_support),
+    }
+    failed = [k for k, ok in gates.items() if not ok]
+    plan["dense"] = {
+        **gates,
+        "n_positive_a": int(len(p_a)), "n_positive_b": int(len(p_b)),
+        "n_support": int(len(support)),
+        "min_positive_required": int(dense_min_positive),
+        "min_support_required": int(dense_min_support),
+        "failed_gates": failed,
+    }
+    if not failed:
+        plan.update({
+            "primary_null": "dense_morphology",
+            "primary_null_key": "dense_morphology",
+            "primary_null_label": "Dense-tissue morphological null — dense "
+                                  "morphology-conditioned cross-K (all-cell support "
+                                  "+ 2 µm jitter, 10–30 µm band)",
+            "reason": "The 75 µm bandwidth is not size-controlled here (dense/fine "
+                      "architecture), but the dense-fallback gates pass, so the full "
+                      "run will use the dense morphology-conditioned primary null.",
+        })
+    else:
+        plan.update({
+            "primary_null": "none", "fail_closed": True,
+            "primary_null_label": "Fail-closed — dense fallback unavailable",
+            "reason": "Dense/fine tissue invalidates the 75 µm primary here, but the "
+                      "dense fallback is unavailable (gate(s) failed: "
+                      + ", ".join(failed) + ") — the run is fail-closed for this pair.",
+        })
+    return plan
 
 
 def run_spatial_association(
@@ -591,6 +799,12 @@ def run_spatial_association(
     layer_images: dict = None,
     certified_roi_polygon=None,
     precheck_only: bool = False,
+    morphology_support_csv: str = None,
+    dense_auto_null: bool = True,
+    landmark_certified: bool = False,
+    dense_min_positive: int = 30,
+    dense_min_support: int = 500,
+    registration_radius_floor_um: float = None,
 ) -> dict:
     """
     Population-level cross-type spatial association for N markers.
@@ -638,6 +852,7 @@ def run_spatial_association(
     from spatial_stats import (
         cross_k_all_nulls, estimate_tissue_polygon, transform_polygon,
         intersection_window, filter_points_in_polygon, bounding_box_area,
+        _DENSE_DCLF_RMIN_UM, _DENSE_DCLF_RMAX_UM, _DENSE_MORPHOLOGY_JITTER_UM,
     )
 
     layer_images = layer_images or {}
@@ -656,11 +871,20 @@ def run_spatial_association(
         centroids[marker]  = cents
         print(f"  {marker}: {len(cents)} positive cells loaded")
 
-    # Register non-reference layers into reference space
+    # Register non-reference layers into reference space.
+    # Every transform is checked to be a SIMILARITY before any cell is moved. Cross-K
+    # reads a radius r as a physical distance, which only holds if the transform
+    # preserves distances up to one global scale; and the "registration error cannot
+    # manufacture association" result (validate_radius_floor.py) holds only for a
+    # low-DOF, cell-blind transform. A shear or non-rigid warp would silently violate
+    # both, so this fails closed rather than trusting the caller.
+    from serial_registration import assert_distance_preserving
     registered = {ref_marker: centroids[ref_marker]}
     for marker in layer_order[1:]:
         raw = centroids[marker]
         if reg_results.get(marker) and len(raw) > 0:
+            assert_distance_preserving(reg_results[marker]["matrix"],
+                                       name=f"{marker}→{ref_marker} registration")
             registered[marker] = transform_centroids(raw, reg_results[marker])
             print(f"  {marker}: {len(raw)} centroids registered onto {ref_marker} space")
         else:
@@ -690,6 +914,12 @@ def run_spatial_association(
     # bandwidth verdict without the expensive Monte-Carlo cross-K loop. Segmentation
     # already ran, so a subsequent full run can reuse the GeoJSONs.
     if precheck_only:
+        null_plan = _build_precheck_null_plan(
+            bandwidth_precheck, registered, layer_order, window, pixel_size_um,
+            morphology_support_csv, dense_auto_null, landmark_certified,
+            dense_min_positive, dense_min_support)
+        print(f"  Null plan (pre-flight): primary_null={null_plan.get('primary_null')} "
+              f"fail_closed={null_plan.get('fail_closed')}")
         return {
             "per_marker":               per_marker,
             "association":              {},
@@ -699,8 +929,24 @@ def run_spatial_association(
             "intersection_overlap_iou": overlap_iou,
             "intersection_overlap_frac_a": overlap_frac_a,
             "bandwidth_precheck":       bandwidth_precheck,
+            "null_plan":                null_plan,
             "_registered":              registered,
         }
+
+    morphology_support_full = np.empty((0, 2), dtype=np.float64)
+    morphology_support_source = None
+    if morphology_support_csv:
+        try:
+            morphology_support_full = load_detection_centroids_csv(
+                morphology_support_csv, pixel_size_um)
+            morphology_support_source = morphology_support_csv
+            print(f"  Dense-null morphology support: "
+                  f"{len(morphology_support_full)} all reference-section cells "
+                  f"loaded from {morphology_support_csv}")
+        except Exception as e:
+            morphology_support_full = np.empty((0, 2), dtype=np.float64)
+            morphology_support_source = morphology_support_csv
+            print(f"  Dense-null morphology support unavailable: {e}")
 
     # Evaluation radii: 0 → max_radius_um in radius_step_um steps (µm → px)
     radii_um = np.arange(0.0, max_radius_um + radius_step_um, radius_step_um)
@@ -726,10 +972,122 @@ def run_spatial_association(
             else:
                 p_a, p_b, n_a_excl, n_b_excl = p_a_full, p_b_full, 0, 0
 
+            dense_info = {
+                "requested": bool(
+                    dense_auto_null
+                    and bandwidth_precheck.get("worst_status") == "dense_tissue_bandwidth_invalid"
+                ),
+                "selected": False,
+                "status": ("not_needed" if bandwidth_precheck.get("valid")
+                           else "not_requested"),
+                "reason": "",
+                "gates": {},
+                "method": "image_derived_all_reference_nuclei_support_jitter",
+                "support_source": morphology_support_source,
+                "jitter_um": _DENSE_MORPHOLOGY_JITTER_UM,
+                "dclf_band_um": [_DENSE_DCLF_RMIN_UM, _DENSE_DCLF_RMAX_UM],
+                "validation_ids": [
+                    "public_codex_dense_null",
+                    "dense_null_image_morphology",
+                    "dense_null_real_ll477",
+                ],
+            }
+            if (not bandwidth_precheck.get("valid")
+                    and not dense_info["requested"]):
+                dense_info["reason"] = bandwidth_precheck.get("reason") or (
+                    "75 µm bandwidth was not validated, but this is not a dense-tissue "
+                    "case eligible for the dense morphology-conditioned fallback.")
+            dense_support = np.empty((0, 2), dtype=np.float64)
+            nulls = ("reweighted", "homogeneous")
+            dclf_rmin_um, dclf_rmax_um = 10.0, 50.0
+            if dense_info["requested"]:
+                gates = {
+                    "landmark_certified": bool(landmark_certified),
+                    "analysis_window": window is not None,
+                    "support_csv": bool(morphology_support_csv),
+                    "min_positive_a": int(len(p_a)) >= int(dense_min_positive),
+                    "min_positive_b": int(len(p_b)) >= int(dense_min_positive),
+                }
+                if window is not None and len(morphology_support_full):
+                    dense_support, _support_excl = filter_points_in_polygon(
+                        morphology_support_full, window)
+                elif len(morphology_support_full):
+                    dense_support = morphology_support_full
+                gates["min_support"] = int(len(dense_support)) >= int(dense_min_support)
+                dense_info["gates"] = {
+                    **gates,
+                    "n_positive_a": int(len(p_a)),
+                    "n_positive_b": int(len(p_b)),
+                    "n_support": int(len(dense_support)),
+                    "min_positive_required": int(dense_min_positive),
+                    "min_support_required": int(dense_min_support),
+                }
+                failed = [k for k, ok in gates.items() if not ok]
+                if not failed:
+                    dense_info["selected"] = True
+                    dense_info["status"] = "selected"
+                    dense_info["reason"] = (
+                        "75 µm bandwidth pre-flight failed, so OASIS switched to "
+                        "the dense morphology-conditioned primary null "
+                        "(all-cell support + 2 µm jitter, 10–30 µm DCLF band).")
+                    nulls = ("dense_morphology", "homogeneous")
+                    dclf_rmin_um, dclf_rmax_um = _DENSE_DCLF_RMIN_UM, _DENSE_DCLF_RMAX_UM
+                    print(f"  {key}: 75 µm pre-flight failed → switching primary null "
+                          f"to dense morphology-conditioned "
+                          f"(support={len(dense_support)}, band=10–30 µm)")
+                else:
+                    dense_info["status"] = "unavailable"
+                    dense_info["reason"] = (
+                        "75 µm bandwidth pre-flight failed, but dense fallback could "
+                        "not be used because gate(s) failed: " + ", ".join(failed))
+                    print(f"  {key}: dense fallback unavailable — {dense_info['reason']}")
+
+            # Smallest inter-cell distance this pair's registration error can resolve.
+            # This is a REPORTING boundary, not a gate on the test: validation shows the
+            # DCLF test stays correctly sized under registration error, and narrowing the
+            # band to [floor, rmax] only costs power (validate_radius_floor.py). So the
+            # band is left alone and the floor is recorded, so the UI can mark the curve
+            # below it as unmeasurable rather than as evidence of no association.
+            floor = registration_radius_floor_um
+            radius_floor = {
+                "floor_um": floor,
+                "dclf_rmin_um": dclf_rmin_um,
+                "dclf_rmax_um": dclf_rmax_um,
+                "band_clipped": False,      # deliberately: clipping costs power, adds nothing
+                "curve_interpretable_from_um": max(float(floor or 0.0), 0.0) or None,
+                "contact_scale_resolved": bool(floor is not None and floor <= 20.0),
+            }
+            if floor is not None and floor >= max_radius_um:
+                # The error exceeds every radius evaluated: nothing on the curve can be
+                # read, so there is no result to report. Fail closed for this pair.
+                radius_floor["reason"] = (
+                    f"registration error leaves no interpretable radius below the "
+                    f"{max_radius_um:.0f} µm maximum evaluated (floor {floor:.1f} µm)")
+                print(f"  {key}: BLOCKED — radius floor {floor:.1f} µm ≥ max radius "
+                      f"{max_radius_um:.0f} µm; no interpretable radii remain")
+                association[key] = {
+                    "error": "no_interpretable_radius_band",
+                    "radius_floor": radius_floor,
+                    "n_a": int(len(p_a)), "n_b": int(len(p_b)),
+                }
+                continue
+            if floor is not None and floor > dclf_rmin_um:
+                radius_floor["reason"] = (
+                    f"registration error resolves distances only above {floor:.1f} µm; "
+                    f"the curve below that is unmeasurable, not null. The DCLF test still "
+                    f"runs over its usual {dclf_rmin_um:.0f}–{dclf_rmax_um:.0f} µm band "
+                    f"(correctly sized under this error; narrowing it would only lose power).")
+                print(f"  {key}: curve interpretable from {floor:.1f} µm "
+                      f"(cell-cell contact scale NOT resolved); DCLF band unchanged at "
+                      f"{dclf_rmin_um:.0f}–{dclf_rmax_um:.0f} µm")
+
             res = cross_k_all_nulls(
                 p_a, p_b, radii_px, area_px, pixel_size_um,
                 n_perm=n_perm, seed=_NULL_SEED, tissue_polygon=window,
+                dclf_rmin_um=dclf_rmin_um, dclf_rmax_um=dclf_rmax_um,
+                nulls=nulls, morphology_support=dense_support,
             )
+            res["radius_floor"] = radius_floor
             res["n_a"] = int(len(p_a))
             res["n_b"] = int(len(p_b))
             res["n_a_excluded"] = int(n_a_excl)
@@ -737,6 +1095,12 @@ def run_spatial_association(
             res["tissue_mask_method"] = mask_method
             res["intersection_overlap_iou"] = overlap_iou
             res["intersection_overlap_frac_a"] = overlap_frac_a
+            res["primary_null_selection"] = {
+                "primary_null": res.get("primary_null"),
+                "bandwidth_75um_valid": bool(bandwidth_precheck.get("valid")),
+                "auto_switch_enabled": bool(dense_auto_null),
+                "dense_fallback": dense_info,
+            }
 
             # Architecture-scale guard (audit A6 / ihc.md §15.5): the reweighted
             # primary is size-controlled only when tissue architecture is coarser than
@@ -756,7 +1120,9 @@ def run_spatial_association(
                     m_b: (round(ell_b, 1) if ell_b is not None else None)}
                 res["architecture_scale"] = arch
                 rob = res.get("robustness") or {}
-                if rob.get("verdict") == "robust" and arch.get("ok") is False:
+                if (res.get("primary_null") == "reweighted"
+                        and rob.get("verdict") == "robust"
+                        and arch.get("ok") is False):
                     rob["architecture_caution"] = True
                     rob["architecture_note"] = (
                         f"Architecture scale ℓ̂≈{arch['scale_um']}µm is below the "
