@@ -9,7 +9,10 @@ import os, io, json, base64, glob, subprocess, sys, tempfile
 import numpy as np
 from pathlib import Path
 
-PROJECT_DIR = Path(__file__).parent.parent
+# Repo root: <root>/oasis/webui/calibration.py → climb three levels (webui → oasis →
+# root). run_pipeline.py lives at the root; the old .parent.parent pointed at <root>/oasis
+# after the restructure and broke the Calibrate tab's segmentation subprocess.
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(PROJECT_DIR))
 
 
