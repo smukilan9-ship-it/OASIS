@@ -94,18 +94,118 @@ shared architecture dominates.
   + NGF translation refinement — MI selection aliases on quasi-periodic tissue. SITK has no
   NGF/MIND optimiser metric, so NGF is applied at selection, not in the optimiser.
 - **Auto-propose landmarks** (`propose_landmarks`): lumen centroids + structural corners →
-  grid-seed → RANSAC similarity → consistent matches → local-NCC snap + per-point
-  confidence; coverage-first → ROI fallback. Pre-fills the canvas; operator verifies.
-  Proposals are consistent *by construction* — human confirmation makes them valid; they
-  never certify alone.
-- **Production `landmark_register_and_verify`**: operator landmarks define a least-squares
-  similarity; accuracy on **held-out** points (independent-annotator set if given, else
-  leave-one-out). Four verdicts:
+  grid-seed → RANSAC similarity → consistent matches → local-NCC snap; coverage-first → ROI
+  fallback. Pre-fills the canvas; operator verifies. Proposals are consistent *by
+  construction* — human confirmation makes them valid; they never certify alone. No
+  confidence score is shown: the operator adjudicates every pair, and a machine confidence
+  derived from the same RANSAC that selected the point would only launder that circularity.
+  Rejecting a proposal places **neither** point — the operator sets both, unaided.
+- **Production `landmark_register_and_verify`**: operator landmarks define a **Huber-IRLS
+  robust** similarity (a landmark on a fold bends the fit instead of breaking it; breakdown
+  is ~2/12 gross outliers, above which the pair degrades to a weaker verdict but never
+  certifies on a corrupted transform). Accuracy on **held-out** points
+  (independent-annotator set if given, else leave-one-out). Five verdicts:
   - `CERTIFIED` — n ≥ 6, held-out TRE median ≤ 5 µm, fit-residual ≤ 5 µm
   - `LOCALLY_CERTIFIED` — only a subset passes; analyse that ROI (hull ≥ 10 %)
-  - `DEFORMED` — landmarks exist but no similarity fits within tolerance
+  - `RADIUS_LIMITED` — the landmarks **do** agree on one similarity, but only to within
+    TRE > 5 µm. Serial sections deform; this is expected. Such error blurs cross-K toward
+    the null — the test stays correctly sized and loses only power — so the pair is
+    analysable over `r ≥ 3·TRE` and cannot be read below it. Accepted while ≥ 50 % of the
+    0–100 µm range survives that floor.
+  - `DEFORMED` — error leaves no interpretable radius band
   - `NOT_CERTIFIABLE` — too few correspondences (NOT evidence sections are unrelated)
-  A failed pair is reported, never warped. LOO is fit-unbiased but **single-annotator**.
+
+  Precedence is deliberate: field-wide `CERTIFIED` > `LOCALLY_CERTIFIED` > `RADIUS_LIMITED`.
+  A smaller window that keeps the contact scale (~10–20 µm) says more than the whole field
+  with the contact scale removed. Guided certification therefore pursues `CERTIFIED` first
+  and falls back only when it cannot be reached. A failed pair is reported, never warped.
+  Every transform is asserted **distance-preserving** (`assert_distance_preserving`) before
+  cells move, so cross-K radii keep their meaning. LOO is fit-unbiased but
+  **single-annotator**, and floors at the landmark localisation noise σ (≈ 4 µm on real
+  H-DAB sections) — it over-states a cell's true registration error. `landmark_noise_um`
+  and `prediction_error_um` are reported so an operator can see why a well-aligned pair
+  reads a large TRE, but they **do not gate** (see § 6). **This LOO gate is the shipped
+  path but is now known-flawed — see § 3.5, which supersedes it.**
+
+### 3.5 Fitzpatrick–West certification (validated 2026-07; wired via the LoFTR-in-ROI local path)
+
+The LOO gate above measures the **self-consistency of a landmark set, not the accuracy of
+a registration** — and the two are provably uncorrelated (Fitzpatrick, West & Maurer, IEEE
+TMI 17(5):694, 1998; Fitzpatrick 2009). Measured consequences (`validation/
+validate_fw_certification.py`): on a **perfect** transform with hand-click noise σ = 3 µm,
+LOO rejects at ~70 % and does **not** improve with n; on RANSAC-selected proposals LOO
+stays ~5 µm as true deformation goes 0 → 55 µm, so `DEFORMED` never fires and a
+31 µm-deformed pair certified. Both symptoms are one bug: LOO fails good hand-clicked work
+and passes bad model-selected work.
+
+The replacement, in `serial_registration.py` (`landmark_register_and_verify(..., fle_um=)`):
+- **FLE** (fiducial localisation error) is **measured, not inferred from residuals** —
+  `fle_from_repeat` (two annotation passes; robust median, drops discordant landmarks) or
+  `fle_by_relocalization` / `loftr_matcher.loftr_fle` (re-localise under image noise; a
+  conservative lower bound). Residual-derived σ confounds FLE with deformation.
+- **Cell-error budget** = `sqrt(TRE_pred² + deformation²)`, gated at ≤ 5 µm on the **p90
+  over the analysis window (landmark hull)**. `TRE_pred = σ·√(fᵀ(XᵀX)⁻¹f)` falls like
+  1/√n, so **more/better landmarks now genuinely buy certification** (the old gate could
+  not be satisfied by working harder).
+- **Deformation** is recovered by variance decomposition against the measured FLE
+  (`deformation_from_landmarks`): `σ_fit² = 2·FLE² + model²`. **Robust by default** (median
+  + bootstrap, breakdown-resistant — SSR read 34 µm from a handful of bad matches where the
+  robust scale read 5 µm) and reported as a **field p90 quantile**, not an RMS (a smooth
+  field's magnitudes are not Rayleigh; RMS under-states the p90 by ~1.6×). The gate takes
+  `max()` of the quantile and RMS bounds — they fail in opposite n-regimes.
+- **Circularity guards.** `landmarks_are_model_selected=True` fails closed on any RANSAC-
+  selected set (its residuals cannot test the model they were selected under). An
+  **FLE-consistency audit** (lower χ²/bootstrap tail) rejects a declared FLE that is larger
+  than the residuals can support — closing the "overstate FLE → shrink deformation → buy a
+  cert" loophole.
+
+**Correspondence source (`loftr_matcher.py`, needs torch + kornia).** Lumen centroids
+**cannot be matched by appearance** across CD8/TIM-3 (no patch descriptor separates
+correct from wrong pairings, AUC 0.48–0.64; SIFT mutual-NN returns 0 matches) — so
+`propose_landmarks`' RANSAC is not a filter, it is what *establishes* the match, which is
+why it can't then test the transform. **LoFTR** (detector-free, whole-image attention) is
+model-free and yields ~750 raw matches where lumens gave 8. Selected on **cycle + scale
+consistency** (no residuals, no tuned threshold), audited by **`residual_field_assay`**
+(Moran's I on residual vectors: smooth field ⇒ real deformation; random ⇒ bad matches —
+the only test here that separates the two without ground truth). Caveat: LoFTR `indoor`
+weights give confidently-wrong-but-smooth matches the assay mislabels — weight choice is
+external and unvalidated beyond `outdoor` on one pair.
+
+**Calibration (the only external check).** `validation/validate_fw_anhir_calibration.py`
+fits on annotator PS, predicts, and measures realized error at annotator JB (held out).
+After the quantile fix: predicted/realized p90 ratio **0.96 / 1.03 / 1.10** across three
+ANHIR pairs, 95 %-bound coverage **89–93 %**. The bound is calibrated on lung + mammary;
+**not yet on H-DAB / CD8-TIM-3**.
+
+**Status.** The FW gate is now reachable from the app through the **LoFTR-in-ROI local
+certification** path — the operator (or auto-finder) picks *where*, the unrelaxed gate
+decides *whether*:
+- `webui/api.certify_local_roi_multi` (draw one or many regions of any shape — polygon /
+  freehand / rectangle) and `auto_certify_regions` (tissue-masked auto-find with an
+  auto-selected region size). Each region: crop both sections → **LoFTR correspondences
+  inside the ROI** (its coarse-whole-slide weakness vanishes in a small patch) → **local
+  robust similarity fit** → **ordinary FW gate windowed to that ROI**, with FLE from
+  `loftr_fle` (or a conservative fixed sub-pixel value in the fast auto sweep — charges
+  more residual to deformation, never over-certifies).
+- **Division of labour:** LoFTR *only* supplies correspondences; the § 3.5 gate alone
+  assigns the verdict. The threshold is identical to the landmark path — a drawn region is
+  never given an easier gate. `landmarks_are_model_selected=False` here because LoFTR
+  matches are not RANSAC-selected against the fitted similarity.
+- **Overlapping drawn regions** are split by a shapely planar partition
+  (`webui/api._planar_partition`) so an intersection becomes its **own separate region** —
+  no cell is counted under two different transforms.
+- **Fan-out:** each certified region becomes one analysable pair in
+  `run_spatial_association` (Phase-2), with its own local transform + analysis window,
+  analysed **separately**; `DEFORMED` / `NOT_CERTIFIABLE` regions are dropped.
+- The § 3.4 LOO landmark path is kept **separate and intact** as a second mode; `fle_um`
+  still defaults to `None` there (→ LOO fallback).
+
+**LL477 CD8↔TIM-3 under the new gate = `LOCALLY_CERTIFIED`** (67 % of field, cell-error
+p90 2.85 µm; a drawn central ROI re-certifies at 1.8–3.5 µm). Honest caveats: the LoFTR
+confidence threshold is not yet a-priori-calibrated on H-DAB, a local ROI is itself a
+residual-based selection, and the current **pywebview desktop shell is not an HTTP server,
+so an automated browser agent cannot drive/validate the UI** (motivates the browser-served
+rebuild).
 
 ---
 
@@ -130,26 +230,38 @@ architecture). Emits `global_p_dclf`, direction, significance. KDE bandwidth 50 
 (Scott's/Silverman's rejected — over-smooths multimodal intensity); 0.5×/1×/2× sweep
 reported.
 
-**Dense-tissue status**: the shipped primary remains the 75 µm reweighted null, and
-it is trusted only when the per-image architecture pre-flight says the tissue field is
-coarser than the bandwidth. Dense fields (ℓ̂ around 35–45 µm in LL477) are fail-closed:
-they may report CSR/co-infiltration, but not a robust cell-scale engagement claim. A
-separate dense candidate was calibrated in `validation/validate_public_codex_dense_null.py`
+**Dense-tissue status**: the shipped primary remains the 75 µm reweighted null when
+the per-image architecture pre-flight says the tissue field is coarser than the
+bandwidth. If that pre-flight fails specifically because the tissue is fine/dense,
+OASIS now automatically attempts the dense morphology-conditioned primary null: B*
+is sampled from marker-independent reference-section all-cell detections inside the
+certified analysis window, plus **2 µm** jitter, with a **10–30 µm** DCLF band. It
+is fail-closed unless landmark certification, a real analysis window, ≥30 positives
+per marker, and ≥500 support cells pass. Sparse/underpowered fields are not eligible
+for this switch; they are recorded as not tested. The fallback was calibrated in
+`validation/validate_public_codex_dense_null.py`
 on public Schürch CRC CODEX architecture templates: homogeneous CSR over-rejected true
-nulls (≈10–25%); a total-cell morphology-conditioned candidate with a **10–30 µm**
-DCLF band and **2 µm** support jitter controlled H0 at 3.7–6.7% with planted-positive
-power 1.0. A rendered-pixel bridge (`validate_dense_null_image_derived_morphology.py`)
-then recovered morphology from synthetic H-DAB-like hematoxylin pixels (median field
-correlation 0.939) and kept H0 at 3.7–6.3% with power 1.0 for the same **10–30 µm /
-2 µm** candidate. A real LL477 demonstration then ran the candidate on completed
+nulls (≈10–25%); the total-cell morphology-conditioned candidate controlled H0 at
+3.7–6.7% with planted-positive power 1.0. A rendered-pixel bridge
+(`validate_dense_null_image_derived_morphology.py`) then recovered morphology from
+synthetic H-DAB-like hematoxylin pixels (median field correlation 0.939) and kept H0
+at 3.7–6.3% with power 1.0. A real LL477 demonstration then ran the candidate on completed
 certified H-DAB bundles using all reference-section OASIS detections as morphology
 support: x10_1 p=0.007, x10_3 p=0.024, and sparse x10_2 was skipped (10 TIM-3 positives
-inside the window). This is **not shipped** until the candidate is wired into production
-with provenance, ROI handling, sparsity gates, and reviewer-facing wording.
+inside the window). A Keren TNBC dense-scaffold pilot then stress-tested the circularity
+risk on three pseudo-IHC CD8/PanCK fields: replacing OASIS's all-cell support with the
+independent Keren mask-derived scaffold preserved the dense verdict in all three fields
+(p13/p16/p32), but perturbations showed an important boundary condition. Strong fields
+p13 and p16 stayed stable under all 33 scaffold perturbations; borderline p32 was stable
+in only 21/33 variants and became non-significant or fail-closed under some scaffold
+damage. The Spatial tab/CLI now ships this as an automatic fallback only when the 75 µm
+gate fails specifically because architecture is fine/dense and the dense
+gates/provenance/ROI requirements pass. Borderline dense results must be interpreted with
+scaffold-sensitivity evidence, not treated as universally invariant.
 
 **Robustness verdict** (never a single null's significance):
-`robust` (reweighted-significant → cell-scale engagement) · `csr_only` (CSR-only →
-co-infiltration) · `none` · `mixed`.
+`robust` (selected primary-null significant → cell-scale engagement) · `csr_only`
+(CSR-only → co-infiltration) · `none` · `mixed`.
 
 **Cohort**: Benjamini–Hochberg FDR across per-pair p; only certified pairs contribute;
 never quote the bare minimum p.
@@ -181,6 +293,48 @@ n=8 provisional, single-annotator.
 - Scott's/Silverman's bandwidth → **fixed 75 µm** (adaptive over-smooths).
 - Analytic edge correction → **none** (bias cancels in the null; validated).
 - Ring mean → **ring completeness fraction** (mean dilutes faint arcs).
+- Withholding analysis from every pair with TRE > 5 µm → **`RADIUS_LIMITED`**. Registration
+  error cannot manufacture a cross-K association; it only attenuates one. Size stays ≈ α at
+  every ε tested, so a significant result under error stands and a null one may simply be
+  under-powered. The error bounds what may be *claimed* (contact vs neighbourhood scale),
+  not whether the pair runs. Clipping the DCLF band up to the floor was tried and **costs**
+  power, so the floor is a **reporting boundary, not a gate on the statistic**
+  (`validation/validate_radius_floor.py`). Holds only for landmark-driven, cell-blind
+  transforms — an intensity-driven non-rigid warp optimises on a signal correlated with cell
+  density and *could* manufacture association.
+- Certifying on a **cell-level** registration error → **rejected; gate stays leave-one-out
+  TRE.** The motivation was real: LOO TRE floors at the landmark picking noise σ, so a
+  well-registered pair reads ≈ 6.5 µm when σ ≈ 4 µm, and cells are never clicked. The
+  proposed statistic was `sqrt(estimation² + model²)` — prediction SE of the fit at the
+  cells, ⊕ image-measured tissue deformation. Its **model term has no working measurement**.
+  `measure_deformation` (Hann-windowed phase-correlation patch flow) is **blind**: on a real
+  LL477 pair it reports 0.14 µm for the certified transform and 0.22 µm for an *identity*
+  transform leaving the sections ~106 µm apart, and 0.18 µm for a known 48.8 µm translation.
+  The cause is `structural_channel`'s σ ≈ 12 µm blur — added to suppress non-corresponding
+  nuclei, it removes the high-frequency content a displacement estimator needs, so any two
+  patches of blurred parenchyma correlate at zero offset. NCC template matching (27 µm
+  median on a *correct* transform), gradient-magnitude phase correlation (no admissible
+  patches) and `lumen_tre` (censored by its 12 µm inlier tolerance) all fail on the same
+  images. With the model term stuck at ≈ 0 the statistic collapses to prediction SE, which
+  shrinks like 1/√n — an operator could certify **any** pair, however deformed, by clicking
+  more landmarks. That is fail-open, so it was not adopted. σ and prediction SE are reported
+  as diagnostics; a supplied `deformation` dict is recorded and ignored, pinned by
+  `validation/validate_deformation_estimator.py` and two regression tests. Consequently the
+  legacy fully-automatic `certify_pair` (which gates on the same patch flow) is **superseded
+  and unreachable from production**. **⚠ Partially overturned 2026-07 (§ 3.5):** the model
+  term is not unmeasurable, only unmeasurable *from image patches*. It is recoverable from
+  **landmark residuals against an independently-measured FLE** (`deformation_from_landmarks`).
+  The 1/√n fail-open worry is answered: the deformation term does **not** shrink with n, and
+  a robust + quantile estimator + FLE-consistency audit keep it honest. The cell-error gate
+  is now the validated (not-yet-wired) path, calibrated against a second annotator on ANHIR.
+- LOO / fiducial-residual gate → **Fitzpatrick–West cell-error budget** (§ 3.5). Fiducial
+  registration error and target registration error are uncorrelated; the residual gate both
+  false-rejects good hand-clicked pairs and false-accepts model-selected deformed ones.
+- RANSAC/lumen-appearance correspondences for **certification** → **LoFTR + cycle/scale
+  consistency** (§ 3.5). A set selected for agreeing with a similarity cannot test that
+  similarity; lumens are not matchable by appearance across stains.
+- Confidence-threshold tuning on the residual tail → **cycle + scale consistency** (a
+  residual-free selection); the residual tail is a function of the transform under test.
 
 ---
 
@@ -209,17 +363,36 @@ runner, same reports):
 - **Reweighted null** — 3-regime proof. *Caveat*: mildly **anti-conservative** (~10 %
   type-I vs 5 % on synthetic CSR; homogeneous CSR conservative at 0 %) → p near 0.05 needs
   caution.
-- **Dense-tissue null exploration** — smaller 35–45 µm reweighted bandwidths and
+- **Dense-tissue null fallback** — smaller 35–45 µm reweighted bandwidths and
   square-tile conditioning were rejected. Public Schürch CRC CODEX calibration on real
   dense cell-coordinate architecture promoted one morphology-conditioned candidate
   (`10–30 µm`, total-cell field jitter `2 µm`). Rendered CODEX H-DAB-like pixels then
   showed image-derived nuclei morphology can recover the field and preserve calibration.
-  A real LL477 demonstration ran on two usable certified CD8/TIM-3 pairs and skipped the
-  sparse third pair. It is still not production because the candidate has not been wired
-  into the app with gates/provenance/ROI handling.
+  Keren TNBC pseudo-IHC fields add an external-scaffold and perturbation stress test:
+  p13/p16 are stable strong calls, while p32 is correctly flagged as scaffold-sensitive.
+  The Spatial tab/CLI now uses this candidate automatically only when the 75 µm gate
+  fails because architecture is fine/dense and dense gates/provenance/ROI handling pass;
+  otherwise it remains fail-closed.
 - **Registration** — TRE vs **ANHIR/CIMA expert landmarks**; best certified real pair
   (lung-lesion Cc10↔proSPC) LOCALLY_CERTIFIED at 3.66 µm ROI. HyReCo blocked (233 GB+login).
   No public two-marker same-section DAB set exists.
+- **Radius floor** (`radius_floor`) — registration error costs the cross-K test power,
+  never validity; size ≈ α at every ε. Evidence behind `RADIUS_LIMITED`.
+- **Deformation estimator** (`deformation_estimator`) — *negative result*. Proves the
+  patch-flow deformation measurement is blind (reads ≈ 0 for an unregistered pair) and
+  guards against it ever gating a verdict again.
+- **Fitzpatrick–West gate** (`validate_fw_certification.py`, 2026-07) — three falsification
+  experiments on the real LL477 pair with injected ground truth: **E1** the LOO gate
+  false-rejects a perfect transform and does not improve with n while the FW gate does; **E2**
+  LOO false-accepts model-selected sets across 0→55 µm deformation while FW fails closed; **E3**
+  the robust variance decomposition recovers injected deformation (36.3 µm → 35.9 µm) and its
+  95 % bound covers truth every run. All PASS.
+- **FW calibration vs a second annotator** (`validate_fw_anhir_calibration.py`, 2026-07) — the
+  *only external* check. Fit on ANHIR annotator PS, measure realized error at held-out
+  annotator JB. Predicted/realized p90 ratio **0.96 / 1.03 / 1.10**, coverage **89–93 %** on
+  three lung+mammary pairs. Forced two fixes: robust FLE (drop discordant landmarks) and a
+  **quantile** deformation bound (RMS under-states a smooth field's p90 by ~1.6×). Not yet run
+  on H-DAB. LoFTR correspondence path (`loftr_matcher.py`) validated on LL477 only.
 - **Detection/membrane** — DeepLIIF IF truth (class F1 ≈ 0.81); membranous CD8 on HNSCC
   mIF (held-out F1 ≈ 0.76, AUC 0.89). IF **proxies** — no same-section DAB+IF truth
   possible (DAB unstrippable).

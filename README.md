@@ -98,14 +98,19 @@ population statistic and does **not** assert single-cell co-expression — seria
 sections cannot establish co-expression (different Z-planes, TIM-3 is not
 CD8-restricted, membrane-vs-nuclear compartments).
 
-Dense tissue is fail-closed: when the per-image architecture check says the
-75 µm primary null is not trustworthy, OASIS does not report a robust cell-scale
-engagement claim. A public CODEX calibration currently promotes a
-morphology-conditioned dense-null candidate, and rendered H-DAB-like CODEX images
-show that nuclei-derived morphology can preserve its calibration. That mode is
-still not shipped; the LL477 real-pair demonstration passed on two usable certified
-pairs and skipped one sparse pair, but production needs provenance, ROI handling,
-and sparsity gates before this becomes a UI/CLI option.
+Dense tissue is gated explicitly. When the per-image architecture check fails
+because the tissue is genuinely fine/dense, OASIS automatically attempts the dense
+morphology-conditioned primary null: B* is sampled from marker-independent
+reference-section all-cell detections inside the certified analysis window, plus
+2 µm jitter, and tested over the 10–30 µm DCLF band. This fallback runs only when
+registration is landmark-certified, a real analysis window exists, and minimum
+positive/support counts pass. Sparse/underpowered fields are not called "dense";
+they remain fail-closed as not tested, with the reason recorded in JSON/UI. This is
+still population-level spatial association, not same-cell co-expression. The dense
+fallback is scaffold-sensitivity checked: Keren TNBC pseudo-IHC pilot validations
+show p13/p16 remain stable under external-scaffold substitution and 33 perturbations,
+while borderline p32 is correctly flagged as scaffold-sensitive. Dense calls near the
+decision boundary should be reported with that sensitivity context.
 
 ## Validation & Reproducibility
 

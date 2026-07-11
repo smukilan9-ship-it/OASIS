@@ -6,8 +6,11 @@ Decisive checks for the two reviewer-facing controls added to the spatial-associ
 pipeline:
 
   1. Per-image 75 µm BANDWIDTH pre-flight (spatial.precheck_bandwidth_within_window):
-       coarse architecture → ok/caution (valid);  fine → unreliable (invalid);
-       too-few cells → unknown (invalid). unknown AND unreliable both fail closed.
+       coarse architecture → ok/caution (valid);
+       fine/dense architecture → dense_tissue_bandwidth_invalid (invalid);
+       too-few cells → underpowered_insufficient_positives (invalid).
+       Dense/fine and underpowered both fail closed, but they are different failure
+       modes: only dense/fine is eligible for the dense morphology-conditioned null.
 
   2. CERTIFICATION ROI (serial_registration.landmark_register_and_verify with
        user_roi_polygon):
@@ -57,21 +60,25 @@ def test_bandwidth():
     fc = rng.uniform(0, 3000 / px, size=(200, 2))
     fine = np.vstack([c + rng.normal(0, 15 / px, size=(6, 2)) for c in fc])
 
-    few = rng.uniform(0, 3000 / px, size=(10, 2))               # < 30 → unknown
+    few = rng.uniform(0, 3000 / px, size=(10, 2))               # < 30 → underpowered
 
     rc = precheck_bandwidth_within_window({"A": coarse, "B": coarse}, ["A", "B"], px, None)
     rf = precheck_bandwidth_within_window({"A": fine, "B": fine}, ["A", "B"], px, None)
     ru = precheck_bandwidth_within_window({"A": few, "B": few}, ["A", "B"], px, None)
+    rm = precheck_bandwidth_within_window({"A": fine, "B": few}, ["A", "B"], px, None)
 
     check("coarse architecture is valid (ok/caution)",
           rc["valid"] and rc["worst_status"] in ("ok", "caution"),
           f"worst={rc['worst_status']} ℓ̂={rc['per_image']['A']['scale_um']}")
-    check("fine architecture is unreliable + fails closed",
-          rf["worst_status"] == "unreliable" and rf["valid"] is False,
+    check("fine/dense architecture is labelled dense_tissue_bandwidth_invalid + fails closed",
+          rf["worst_status"] == "dense_tissue_bandwidth_invalid" and rf["valid"] is False,
           f"worst={rf['worst_status']} ℓ̂={rf['per_image']['A']['scale_um']}")
-    check("too-few cells → unknown + fails closed",
-          ru["worst_status"] == "unknown" and ru["valid"] is False,
+    check("too-few cells → underpowered_insufficient_positives + fails closed",
+          ru["worst_status"] == "underpowered_insufficient_positives" and ru["valid"] is False,
           f"worst={ru['worst_status']} n={ru['per_image']['A']['n']}")
+    check("underpowered beats dense when one marker has too few positives",
+          rm["worst_status"] == "underpowered_insufficient_positives" and rm["valid"] is False,
+          f"worst={rm['worst_status']} A={rm['per_image']['A']['status']} B={rm['per_image']['B']['status']}")
     check("window_scope names the window (not per-image)",
           rc["window_scope"] == "certified_analysis_window")
 

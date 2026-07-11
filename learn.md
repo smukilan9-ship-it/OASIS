@@ -706,11 +706,31 @@ The PPT's working criterion is:
 |---|---|---|
 | CERTIFIED | Global landmark set passes. | The supported field can be analyzed. |
 | LOCALLY_CERTIFIED | A coherent region passes, not the whole field. | Analysis is restricted to that ROI. |
-| DEFORMED | Landmarks correspond, but one similarity transform cannot fit them. | Do not warp; stop the spatial test. |
+| RADIUS_LIMITED | The landmarks agree on one transform, but only to within more than 5 µm. | The whole field is analyzed, but distances below ~3× that error cannot be read. |
+| DEFORMED | The error leaves no readable stretch of the radius range. | Do not warp; stop the spatial test. |
 | NOT_CERTIFIABLE | Too few landmarks or errors too large. | No distance-based association result is produced. |
 
 This is a **fail-closed** design. If the software cannot prove alignment quality,
 it refuses to produce a confident biological result.
+
+`RADIUS_LIMITED` is not a loosening of that. Every serial section deforms a little, and a
+registration error that is random with respect to the stained cells *blurs* a real
+association toward the null — it cannot invent one. So a pair with 8 µm of error still
+gives a trustworthy answer at 25 µm and above; what it can no longer say is whether two
+cells were *touching*. The verdict records that boundary instead of throwing the pair away.
+Precedence still prefers a smaller certified window that keeps the contact scale over the
+whole field with the contact scale removed.
+
+**Why the reported error looks worse than the registration is.** Leave-one-out TRE asks
+"how far off is the next *landmark*?", so it carries the imprecision of clicking that
+landmark — roughly 4 µm, because a lumen's outline genuinely differs between two sections.
+That is annotation noise, not misalignment, and it sets a floor the number can never fall
+below. Cells are not clicked, so a cell's true registration error is smaller than the TRE
+you see. The honest fix would be to measure the tissue's own departure from the transform
+directly on the images; we tried, and every estimator available on the blurred structural
+channel turned out to be blind (`ihc.md` § 6). Certifying on the remaining term would have
+let anyone certify any pair just by clicking more landmarks, so the tool keeps the
+pessimistic measurement and reports the floor it implies.
 
 ### 9.11 Why automatic registration QC was not enough
 
@@ -1108,16 +1128,28 @@ LL477 x10_2 was skipped because only 10 TIM-3 positives were inside the certifie
 analysis window. That is the right behavior: sparse data should be called
 insufficient, not negative.
 
+The dense-scaffold circularity question was then tested on three Keren TNBC MIBI
+fields rendered into pseudo-IHC CD8/PanCK inputs and run through the Spatial backend
+used by the UI. Replacing the OASIS all-cell scaffold with an independent Keren
+mask-derived scaffold preserved the dense segregation verdict for all three fields:
+p13, p16, and p32. The perturbation harness gave the more honest answer: p13 and p16
+were stable under all 33 scaffold perturbations, but p32 was borderline and
+scaffold-sensitive (21/33 stable, 22/33 significant, 1 fail-closed support case).
+
 Plain meaning:
 
-> The dense-null idea is statistically promising on public real tissue
-> architecture and survives rendered H-DAB-like morphology extraction, but it is
-> not a shipped OASIS mode yet.
+> The dense-null idea is now a shipped OASIS fallback, but only behind explicit
+> gates. It is not a universal replacement for the 75 µm primary, and borderline
+> dense calls need scaffold-sensitivity reporting.
 
-The missing step is productionization. OASIS must wire this into the actual Spatial
-tab with provenance, ROI handling, sparsity gates, and reviewer-facing wording.
-Until then, dense tissues should be flagged as not trustworthy for a shipped robust
-cell-scale engagement claim.
+Production behavior: OASIS first runs the 75 µm architecture pre-flight. If that
+passes, the calibrated reweighted null remains primary. If it fails because the
+tissue architecture is fine/dense, OASIS tries the dense morphology-conditioned
+primary using all reference-section detections inside the certified analysis window,
+2 µm jitter, and the 10-30 µm DCLF band. It only switches when landmark certification,
+a real analysis window, at least 30 positives per marker, and at least 500 support
+cells pass. If the field is sparse/underpowered instead, it is not treated as dense;
+the result remains fail-closed as not tested and the UI/JSON records why.
 
 ---
 
@@ -1589,6 +1621,8 @@ successful validation does not validate every part of the project.
 | DCLF calibration | Synthetic null / clustered / separated patterns | p-values behave correctly under known truth. |
 | Old-null stress test | 500 shared-preference realizations | Old nulls were unsuitable for shared architecture. |
 | Reweighted calibration | Shared preference, uniform, attraction | Production 75 µm leave-one-out design is calibrated. |
+| Dense morphology null | Schürch CRC CODEX + rendered H-DAB-like bridge | Dense fallback controls known simulated nulls and keeps planted-positive power. |
+| Dense scaffold sensitivity | Keren TNBC pseudo-IHC CD8/PanCK | Strong dense calls are stable; borderline dense calls can be scaffold-sensitive. |
 | R cross-validation | Synthetic + real CODEX spot | Python estimator matches spatstat. |
 | Real-data controls | Schürch CRC CODEX | Shows how shared-architecture adjustment changes real conclusions. |
 
@@ -1623,6 +1657,7 @@ The PPT's dataset map separates purposes:
 | 052526 CD8/TIM-3 | Target serial-section feasibility; no certified pair. |
 | ANHIR/CIMA | Public expert-landmark registration certification. |
 | Schürch CRC CODEX | Real point-pattern statistics validation, not serial registration. |
+| Keren TNBC MIBI | Dense-scaffold circularity / perturbation pilot; not serial registration. |
 | Synthetic null regimes | Calibration, power, known truth. |
 | R spatstat | Reference estimator equivalence. |
 | Lung-lesion Ki67/proSPC | Locally certified spatial demonstration. |

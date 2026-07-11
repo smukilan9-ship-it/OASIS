@@ -61,6 +61,65 @@ _KDE_BANDWIDTH_UM = 50.0
 # / validate_reweighted_null.py), not assumed — see ihc.md §15.
 _REWEIGHT_BANDWIDTH_UM = 75.0
 
+# Dense-tissue fallback null. This is deliberately NOT a smaller KDE bandwidth
+# on the marker positives: validation rejected that as anti-conservative. The
+# accepted candidate conditions B* on marker-independent total-cell morphology
+# support (all detected nuclei in the reference section), with a very small
+# jitter so the null preserves dense tissue packing while randomizing marker
+# identity/location relative to A.
+_DENSE_MORPHOLOGY_JITTER_UM = 2.0
+_DENSE_DCLF_RMIN_UM = 10.0
+_DENSE_DCLF_RMAX_UM = 30.0
+
+# ──────────────────────────────────────────────────────────────────────────────
+# Registration error → smallest interpretable radius
+# ──────────────────────────────────────────────────────────────────────────────
+# Residual registration error ε displaces each B point by ~ε in a direction
+# uncorrelated with the biology, blurring the observed cross-K toward the null.
+# validation/validate_radius_floor.py measures what that does to the pipeline's OWN
+# DCLF test, and the result is not what the historical ≤5 µm gate assumes:
+#
+#   1. SIZE IS PRESERVED. On independent A/B, the false-positive rate stays at the
+#      nominal ~5% for every ε up to 20 µm, using the ordinary 10 µm band. Registration
+#      error does NOT invalidate the test. (Points displaced out of the analysis window
+#      must be dropped, which run_spatial_association already does; without that the
+#      density bookkeeping breaks and size inflates — an artefact, not a real effect.)
+#   2. POWER DEGRADES GRACEFULLY. On a weak true association, detection falls ~0.44 →
+#      0.34 as ε goes 0 → 20 µm. Error costs sensitivity, never validity.
+#   3. RAISING THE BAND FLOOR DOES NOT HELP. Power at ε = 12 µm is 0.42 from a 10 µm
+#      band and 0.38 from a 3ε band. Clipping the DCLF band discards radii that still
+#      carry signal and buys nothing, so THE BAND IS NOT CLIPPED.
+#
+# Both (1) and (2) hold because the transform is LANDMARK-driven and therefore blind to
+# the stained cells: the error field is uncorrelated with where the cells are. An
+# INTENSITY-driven non-rigid warp would not have this property — it optimises on a
+# signal correlated with cell density and could pull A-rich tissue onto B-rich tissue,
+# manufacturing the association under test. Do not use one here.
+#
+# What the floor below IS for: an INTERPRETATION boundary, not a gate. A pair aligned to
+# within ε cannot resolve inter-cell distances of order ε, so reporting "no enrichment at
+# 10 µm" for a pair with ε = 12 µm would be misleading — that is an unmeasurable radius,
+# not a biological absence. The floor marks where the curve stops being readable. The
+# historical ≤5 µm certification gate is this same rule frozen at the default 10 µm band
+# start (10 ≈ 2 × 5), mis-encoded as permission to run at all.
+_RADIUS_FLOOR_FACTOR = 3.0
+
+
+def registration_radius_floor(tre_um, factor: float = _RADIUS_FLOOR_FACTOR):
+    """Smallest inter-cell distance (µm) that a pair registered to within `tre_um` can
+    resolve. Radii below it are reported as not interpretable rather than as null.
+
+    This is a reporting boundary, NOT a validity gate: the DCLF test remains correctly
+    sized below it (see module notes). Returns None when TRE is unknown, so callers must
+    fail closed rather than assume any radius is readable.
+    """
+    if tre_um is None:
+        return None
+    tre = float(tre_um)
+    if not np.isfinite(tre) or tre < 0:
+        return None
+    return round(float(factor) * tre, 3)
+
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Cross-type Ripley's K / g(r) / L(r)
@@ -842,6 +901,131 @@ def cross_k_inhom_reweighted_test(
     }
 
 
+def _draw_n_from_support_jitter(support_points, n, rng, sigma_px, tissue_polygon=None):
+    """
+    Draw n points from marker-independent morphology support by choosing support
+    nuclei with replacement and adding isotropic Gaussian jitter. If a tissue
+    polygon/window is provided, reject jittered points outside it.
+    """
+    pts = np.asarray(support_points, dtype=np.float64).reshape(-1, 2)
+    n = int(n)
+    if n <= 0 or len(pts) == 0:
+        return np.empty((0, 2), dtype=np.float64)
+    if tissue_polygon is None:
+        anchors = pts[rng.integers(0, len(pts), size=n)]
+        return anchors + rng.normal(0.0, float(sigma_px), size=anchors.shape)
+
+    import shapely
+    out = []
+    batch = max(n * 4, 512)
+    for _ in range(128):
+        if len(out) >= n:
+            break
+        anchors = pts[rng.integers(0, len(pts), size=batch)]
+        cand = anchors + rng.normal(0.0, float(sigma_px), size=anchors.shape)
+        keep = shapely.contains_xy(tissue_polygon, cand[:, 0], cand[:, 1])
+        if np.any(keep):
+            out.extend(cand[keep].tolist())
+    if len(out) < n:
+        # Extremely thin/fragmented windows can reject most jittered draws. Fall
+        # back to unjittered support points already inside the window so the null
+        # remains conditioned on morphology rather than bbox-uniform noise.
+        extra = pts[rng.integers(0, len(pts), size=n - len(out))]
+        out.extend(extra.tolist())
+    return np.asarray(out[:n], dtype=np.float64)
+
+
+def cross_k_dense_morphology_test(
+    points_a: np.ndarray,
+    points_b: np.ndarray,
+    morphology_support: np.ndarray,
+    radii: np.ndarray,
+    area: float,
+    pixel_size_um: float,
+    n_perm: int = 1000,
+    seed: int = 0,
+    tissue_polygon=None,
+    jitter_um: float = _DENSE_MORPHOLOGY_JITTER_UM,
+    dclf_rmin_um: float = _DENSE_DCLF_RMIN_UM,
+    dclf_rmax_um: float = _DENSE_DCLF_RMAX_UM,
+) -> dict:
+    """
+    Dense-tissue primary candidate for fields where the 75 µm reweighted null is
+    not size-controlled.
+
+    Null hypothesis:
+        B is independently assigned over the marker-independent all-cell
+        morphology field in the certified analysis window.
+
+    Implementation:
+        Hold A fixed. Draw each B* from all detected reference-section nuclei
+        inside the analysis window, plus 2 µm Gaussian jitter, then recompute the
+        same unweighted cross-K and DCLF statistic. This preserves dense tissue
+        architecture without using the A/B marker positives to define the null.
+    """
+    from scipy.spatial import cKDTree
+
+    radii_px = np.asarray(radii, dtype=np.float64)
+    s = float(pixel_size_um)
+    A = np.asarray(points_a, dtype=np.float64).reshape(-1, 2)
+    B = np.asarray(points_b, dtype=np.float64).reshape(-1, 2)
+    if morphology_support is None:
+        support = np.empty((0, 2), dtype=np.float64)
+    else:
+        support = np.asarray(morphology_support, dtype=np.float64).reshape(-1, 2)
+    n_a, n_b, n_r = len(A), len(B), len(radii_px)
+
+    meta = {
+        "jitter_um": round(float(jitter_um), 3),
+        "dclf_band_um": [float(dclf_rmin_um), float(dclf_rmax_um)],
+        "support_n": int(len(support)),
+        "label": "Dense morphology-conditioned cross-K",
+        "description": "Dense-tissue null: B* sampled from marker-independent "
+                       "all-cell morphology support in the certified analysis "
+                       "window plus 2 µm jitter; validated as the dense fallback "
+                       "candidate on public CODEX architecture and rendered "
+                       "image-derived morphology.",
+        "method": "dense_morphology_support_jitter",
+        "validation_ids": [
+            "public_codex_dense_null",
+            "dense_null_image_morphology",
+            "dense_null_real_ll477",
+        ],
+    }
+    observed = cross_k_function(A, B, radii_px, area, pixel_size_um)
+    if n_a == 0 or n_b == 0 or n_r == 0 or len(support) == 0:
+        zeros = np.zeros(n_r)
+        return {
+            "radii_um": (radii_px * s).tolist(),
+            "K_observed": zeros.tolist(), "g_observed": [None] * n_r,
+            "L_minus_r": zeros.tolist(),
+            "null_mean_K": zeros.tolist(), "null_lower_K": zeros.tolist(),
+            "null_upper_K": zeros.tolist(), "null_lower_L": zeros.tolist(),
+            "null_upper_L": zeros.tolist(), "p_values": np.ones(n_r).tolist(),
+            "global": _empty_global(dclf_rmin_um, dclf_rmax_um),
+            "n_perm": int(n_perm), **meta,
+        }
+
+    obs_counts = _pair_counts(A, B, radii_px)
+    obs_k_px = _k_from_counts(obs_counts, float(area), n_a, n_b)
+    obs_lmr_px = np.sqrt(np.clip(obs_k_px, 0.0, None) / np.pi) - radii_px
+
+    rng = np.random.default_rng(int(seed))
+    tree_a = cKDTree(A)
+    norm = float(area) / (n_a * n_b)
+    sigma_px = float(jitter_um) / max(s, 1e-9)
+    null_k = np.empty((n_perm, n_r), dtype=np.float64)
+    for k in range(n_perm):
+        b_star = _draw_n_from_support_jitter(
+            support, n_b, rng, sigma_px, tissue_polygon=tissue_polygon)
+        null_counts = tree_a.count_neighbors(cKDTree(b_star), radii_px)
+        null_k[k] = norm * np.asarray(null_counts, dtype=np.float64)
+
+    summ = _null_summary_from_k(radii_px, obs_k_px, obs_lmr_px, null_k, s,
+                                n_perm, dclf_rmin_um, dclf_rmax_um)
+    return {**observed, **summ, **meta}
+
+
 # Human-readable descriptions of each null (surfaced in JSON / UI / docs).
 _NULL_META = {
     "homogeneous": {
@@ -863,6 +1047,14 @@ _NULL_META = {
                        "(wrap-around), preserving its exact clustering and only "
                        "randomizing its position relative to A. Robust to KDE "
                        "bandwidth choice; assumes stationarity over the window.",
+    },
+    "dense_morphology": {
+        "label": "Dense morphology-conditioned cross-K",
+        "description": "Dense-tissue primary: B* sampled from marker-independent "
+                       "all-cell morphology support in the certified analysis "
+                       "window plus 2 µm jitter. Used only when the 75 µm "
+                       "reweighted primary is not size-controlled and dense-mode "
+                       "support/count gates pass.",
     },
 }
 
@@ -887,6 +1079,7 @@ def _assess_robustness(summaries: dict, primary: str = None) -> dict:
 
     if primary is None:
         primary = ("reweighted" if "reweighted" in summaries
+                   else "dense_morphology" if "dense_morphology" in summaries
                    else "inhomogeneous" if "inhomogeneous" in summaries
                    else "homogeneous" if "homogeneous" in summaries
                    else None)
@@ -898,10 +1091,16 @@ def _assess_robustness(summaries: dict, primary: str = None) -> dict:
     if prim_sig:
         direction = prim_dir
         verdict = "robust"
-        summary = (f"Significant {direction} under the calibrated reweighted "
-                   f"inhomogeneous cross-K (the production primary, size-controlled "
-                   f"under shared tissue preference) — association beyond the shared "
-                   f"architectural response.")
+        if primary == "dense_morphology":
+            summary = (f"Significant {direction} under the dense morphology-"
+                       f"conditioned cross-K (all-cell support + 2 µm jitter, "
+                       f"10–30 µm DCLF band) — association beyond dense tissue "
+                       f"morphology.")
+        else:
+            summary = (f"Significant {direction} under the calibrated reweighted "
+                       f"inhomogeneous cross-K (the production primary, size-"
+                       f"controlled under shared tissue preference) — association "
+                       f"beyond the shared architectural response.")
     elif homog_sig:
         direction = homog_dir
         verdict = "csr_only"
@@ -911,7 +1110,10 @@ def _assess_robustness(summaries: dict, primary: str = None) -> dict:
     else:
         direction = "none"
         verdict = "none"
-        summary = "No significant cross-type association under the calibrated primary."
+        if primary == "dense_morphology":
+            summary = "No significant cross-type association under the dense morphology-conditioned primary."
+        else:
+            summary = "No significant cross-type association under the calibrated primary."
 
     return {
         "verdict": verdict,
@@ -939,6 +1141,8 @@ def cross_k_all_nulls(
     bandwidth_multipliers=(0.5, 1.0, 2.0),
     reweight_bandwidth_um: float = _REWEIGHT_BANDWIDTH_UM,
     nulls=("reweighted", "homogeneous"),
+    morphology_support=None,
+    dense_jitter_um: float = _DENSE_MORPHOLOGY_JITTER_UM,
 ) -> dict:
     """
     Cross-type spatial association under the CALIBRATED PRIMARY null + a baseline.
@@ -1007,6 +1211,13 @@ def cross_k_all_nulls(
             bandwidth_um=reweight_bandwidth_um,
             dclf_rmin_um=dclf_rmin_um, dclf_rmax_um=dclf_rmax_um)
 
+    if "dense_morphology" in nulls:
+        out_nulls["dense_morphology"] = cross_k_dense_morphology_test(
+            points_a, points_b, morphology_support, radii_px, area, pixel_size_um,
+            n_perm=n_perm, seed=int(seed), tissue_polygon=tissue_polygon,
+            jitter_um=dense_jitter_um,
+            dclf_rmin_um=dclf_rmin_um, dclf_rmax_um=dclf_rmax_um)
+
     if "homogeneous" in nulls:
         nk = _null_k_homogeneous(tree_a, radii_px, norm, n_b,
                                  tissue_polygon, bbox, n_perm, rng)
@@ -1048,6 +1259,7 @@ def cross_k_all_nulls(
     # Primary = the calibrated reweighted test if present, else (for diagnostic
     # callers that request only the old nulls) inhomogeneous, else homogeneous.
     primary_name = ("reweighted" if "reweighted" in out_nulls
+                    else "dense_morphology" if "dense_morphology" in out_nulls
                     else "inhomogeneous" if "inhomogeneous" in out_nulls
                     else "homogeneous" if "homogeneous" in out_nulls
                     else next(iter(out_nulls), None))
@@ -1058,7 +1270,7 @@ def cross_k_all_nulls(
     # are the INHOMOGENEOUS (reweighted) K / L−r, so the plotted curve and its
     # envelope are on the same scale; for a diagnostic-only call they fall back to
     # the unweighted observed.
-    if primary_name == "reweighted" and primary:
+    if primary_name in ("reweighted", "dense_morphology") and primary:
         top_obs = {k: primary[k] for k in
                    ("radii_um", "K_observed", "g_observed", "L_minus_r")}
     else:
@@ -1522,10 +1734,10 @@ def architecture_scale_verdict(scale_um, bandwidth_um=_REWEIGHT_BANDWIDTH_UM):
     control only once ℓ̂ ≳ _ARCH_MIN_SCALE_FACTOR × bandwidth):
       ok         ℓ̂ ≥ 2·bandwidth     — size-controlled regime; 'robust' is trustworthy
       caution    bandwidth ≤ ℓ̂ < 2·bandwidth — boundary; treat 'robust' with care
-      unreliable ℓ̂ < bandwidth       — architecture near/inside the interaction band;
-                                        test anti-conservative, do NOT report 'robust'
+      dense_tissue ℓ̂ < bandwidth     — architecture near/inside the interaction band;
+                                        use dense-mode handling or fail closed
     Returns {"scale_um", "status", "ok", "bandwidth_um", "min_ok_scale_um"};
-    status="unknown" if scale_um is None (too few cells to estimate).
+    status="unknown" only when the caller cannot estimate the scale.
     """
     min_ok = _ARCH_MIN_SCALE_FACTOR * bandwidth_um
     if scale_um is None:
@@ -1536,7 +1748,7 @@ def architecture_scale_verdict(scale_um, bandwidth_um=_REWEIGHT_BANDWIDTH_UM):
     elif scale_um >= bandwidth_um:
         status = "caution"
     else:
-        status = "unreliable"
+        status = "dense_tissue"
     return {"scale_um": round(float(scale_um), 1), "status": status,
             "ok": status == "ok", "bandwidth_um": bandwidth_um,
             "min_ok_scale_um": min_ok}
