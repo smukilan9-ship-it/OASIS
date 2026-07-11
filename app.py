@@ -40,7 +40,7 @@ from oasis.webui.api import API           # noqa: E402
 
 def main():
     api = API()
-    html_path = str(Path(__file__).parent / "oasis" / "oasis" / "webui" / "index.html")
+    html_path = str(Path(__file__).parent / "oasis" / "webui" / "index.html")
     window = webview.create_window(
         title="OASIS",
         url=f"file://{html_path}",
