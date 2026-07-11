@@ -9,6 +9,7 @@ opt-in slow rate calibration (`pytest -m slow`).
 import numpy as np
 import pytest
 import spatial_stats as ss
+import spatial
 
 R = np.arange(0, 101, 4.0)
 
@@ -58,6 +59,23 @@ def test_reweighted_corrects_shared_preference():
         "CSR baseline should exhibit the shared-preference association bias"
     assert not (rw["significant"] and rw["direction"] == "association"), \
         "reweighted null must not inherit the CSR false association"
+
+
+def test_architecture_verdict_names_dense_tissue_not_unreliable():
+    v = ss.architecture_scale_verdict(35.0, bandwidth_um=75.0)
+    assert v["status"] == "dense_tissue"
+    assert v["ok"] is False
+
+
+def test_bandwidth_unknown_includes_exact_underpowered_reason():
+    pts = np.array([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]])
+    r = spatial.precheck_bandwidth_within_window(
+        {"A": pts, "B": pts.copy()}, ["A", "B"], pixel_size_um=1.0,
+        window=None, bandwidth_um=75.0)
+
+    assert r["worst_status"] == "underpowered_insufficient_positives"
+    assert r["per_image"]["A"]["status"] == "unknown"
+    assert "fewer than 30 positive cells" in r["per_image"]["A"]["reason"]
 
 
 # ── Opt-in slow rate calibration (pytest -m slow) ────────────────────────────

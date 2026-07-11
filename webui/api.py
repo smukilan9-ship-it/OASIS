@@ -48,10 +48,57 @@ BUILTIN_CALIBRATIONS = [
 ]
 
 
+def _planar_partition(polygons, min_area=1.0):
+    """Split a set of (possibly overlapping, any-shape) polygons into a PLANAR PARTITION:
+    non-overlapping pieces where every intersection becomes its own separate piece. This is
+    what makes per-region analysis honest — overlapping windows would double-count cells, and
+    each piece must carry a single local transform.
+
+    Returns a list of dicts: {polygon: [[x,y]…], origins: [input indices covering it],
+    is_intersection: bool}. Pieces outside every input polygon are dropped. Any-shape safe:
+    invalid/self-intersecting freehand loops are repaired with buffer(0).
+    """
+    from shapely.geometry import Polygon
+    from shapely.ops import unary_union, polygonize
+    shp = []
+    for r in polygons:
+        r = [(float(x), float(y)) for x, y in r]
+        if len(r) < 3:
+            continue
+        p = Polygon(r)
+        if not p.is_valid:
+            p = p.buffer(0)
+        if p.is_empty or p.area <= 0:
+            continue
+        shp.append(p)
+    if not shp:
+        return []
+    if len(shp) == 1:
+        return [{"polygon": [[x, y] for x, y in shp[0].exterior.coords[:-1]],
+                 "origins": [0], "is_intersection": False}]
+    # Faces of the arrangement formed by ALL polygon boundaries.
+    boundaries = unary_union([p.boundary for p in shp])
+    out = []
+    for face in polygonize(boundaries):
+        if face.area < min_area:
+            continue
+        rp = face.representative_point()
+        origins = [i for i, p in enumerate(shp) if p.contains(rp)]
+        if not origins:
+            continue                       # a hole between polygons — not inside any region
+        geom = face
+        if geom.geom_type != "Polygon":
+            geom = max(getattr(geom, "geoms", [geom]), key=lambda g: g.area)
+        out.append({"polygon": [[x, y] for x, y in geom.exterior.coords[:-1]],
+                    "origins": origins, "is_intersection": len(origins) > 1})
+    return out
+
+
 class API:
     def __init__(self):
         self._window  = None
         self._process = None
+        self._prov_cache = {}     # (ref_path, mov_path, px) -> provisional thumbnail transform
 
     def set_window(self, window):
         self._window = window
@@ -623,15 +670,15 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             # it constrains the fit to the trusted region AND becomes the certified window.
             user_roi = payload.get("roi_polygon") or None
             result = landmark_register_and_verify(
-                ref, mov, px, image_wh=image_wh,
-                min_n=6, target_n=12, loo_max_um=5.0, fit_max_um=5.0,
-                deformed_loo_um=15.0, min_roi_frac=0.10,
-                user_roi_polygon=user_roi,
+                ref, mov, px, image_wh=image_wh, user_roi_polygon=user_roi,
             )
             matrix = result.get("matrix")
             result["matrix"] = (matrix.tolist() if hasattr(matrix, "tolist") else matrix)
+            # RADIUS_LIMITED is analysable: the transform is distance-preserving and its
+            # error only attenuates cross-K, so the pair proceeds with a raised radius
+            # floor rather than being withheld. See serial_registration for precedence.
             result["is_certified"] = result.get("verdict") in (
-                "CERTIFIED", "LOCALLY_CERTIFIED")
+                "CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED")
             result["status"] = result.get("verdict")
             result["method"] = "manual_landmark_similarity"
             result["ref_points"] = ref.tolist()
@@ -653,7 +700,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             import numpy as np
             from shapely.geometry import MultiPoint, box
             sys.path.insert(0, str(PROJECT_DIR))
-            from serial_registration import landmark_register_and_verify
+            from serial_registration import (landmark_register_and_verify,
+                                             CERTIFICATION_GATES)
 
             ref = np.asarray(payload.get("ref_points") or [], dtype=float).reshape(-1, 2)
             mov = np.asarray(payload.get("mov_points") or [], dtype=float).reshape(-1, 2)
@@ -665,14 +713,14 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             if image_wh is None:
                 return {"status": "error", "error": "Image dimensions are required"}
             n = min(len(ref), len(mov))
-            min_n = int(payload.get("min_n") or 6)
+            min_n = int(payload.get("min_n") or CERTIFICATION_GATES["min_n"])
             if n < min_n:
                 return {"status": "error",
                         "error": f"Need at least {min_n} landmarks to test local ROIs"}
             ref, mov = ref[:n], mov[:n]
 
             field = box(0, 0, float(image_wh[0]), float(image_wh[1]))
-            min_roi_frac = 0.10
+            min_roi_frac = CERTIFICATION_GATES["min_roi_frac"]
             margin_px = max(60.0 / px, 24.0)
             candidates = set()
 
@@ -705,8 +753,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     continue
                 roi = [[float(x), float(y)] for x, y in geom.exterior.coords[:-1]]
                 cert = landmark_register_and_verify(
-                    ref, mov, px, image_wh=image_wh, min_n=min_n, target_n=12,
-                    loo_max_um=5.0, fit_max_um=5.0, deformed_loo_um=15.0,
+                    ref, mov, px, image_wh=image_wh, min_n=min_n,
                     min_roi_frac=min_roi_frac, user_roi_polygon=roi)
                 if cert.get("verdict") not in ("CERTIFIED", "LOCALLY_CERTIFIED"):
                     continue
@@ -745,6 +792,276 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     "msg": "Auto-suggested local ROI certifies; analysis will be restricted to this window."}
         except Exception as e:
             return {"status": "error", "error": str(e)}
+
+    def certify_local_roi_multi(self, payload: dict) -> dict:
+        """Certify one or more USER-DRAWN ROIs by a LOCAL rigid fit from LoFTR
+        correspondences inside each region (landmark fallback if LoFTR cannot match).
+
+        This is the draw-your-own-ROI path. The user draws a shape on the FIXED image; it is
+        mirrored onto the moving image via a provisional transform and the fit is recomputed
+        LOCALLY inside the ROI, where serial-section deformation is near-affine. Each ROI is
+        certified INDEPENDENTLY through the ordinary Fitzpatrick-West gate — the standard is
+        not relaxed: the user chooses WHERE, the gate still decides WHETHER.
+
+        payload:
+          ref_path, mov_path      : image paths (fixed = reference, moving)
+          pixel_size_um           : full-resolution um/px
+          rois                    : list of polygons, each Nx2 in FULL-RES reference pixels
+          provisional_matrix      : optional 2x3 or 3x3 moving->reference similarity (full-res).
+                                    If absent, one is computed automatically (register_similarity).
+        Returns per-ROI: verdict, is_certified, cell-error, source, n_correspondences,
+        local_matrix (full-res moving->reference) and mov_roi_polygon (full-res moving px).
+        """
+        try:
+            import numpy as np
+            sys.path.insert(0, str(PROJECT_DIR))
+            from registration import _load_rgb_thumbnail
+            import serial_registration as sr
+            import loftr_matcher as lm
+
+            px = float(payload.get("pixel_size_um") or 0)
+            rois = payload.get("rois") or []
+            if px <= 0:
+                return {"status": "error", "error": "A valid pixel size is required"}
+            if not rois:
+                return {"status": "error", "error": "No ROIs supplied"}
+
+            ref_rgb, ref_scale = _load_rgb_thumbnail(
+                os.path.expanduser(payload["ref_path"]), max_side=1920)
+            mov_rgb, mov_scale = _load_rgb_thumbnail(
+                os.path.expanduser(payload["mov_path"]), max_side=1920)
+            if ref_rgb is None or mov_rgb is None:
+                return {"status": "error", "error": "Could not load one or both images"}
+            px_t = px / max(ref_scale, 1e-9)          # thumbnail pixel size
+
+            # provisional moving->reference transform, in thumbnail coords
+            def _full_to_thumb(M):
+                M = np.asarray(M, float)
+                A = M[:2, :2].copy(); t = M[:2, 2].copy()
+                return np.hstack([A, (t * ref_scale).reshape(2, 1)])  # translation scales
+
+            prov = payload.get("provisional_matrix")
+            if prov is not None:
+                M_t = _full_to_thumb(prov)
+            else:
+                ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
+                if ck not in self._prov_cache:
+                    self._prov_cache[ck] = np.asarray(
+                        sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
+                M_t = self._prov_cache[ck]
+
+            def _thumb_to_full(M):
+                A = M[:2, :2].copy(); t = M[:2, 2].copy()
+                return np.hstack([A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
+
+            def _map_roi_to_mov(roi_t, M):
+                A = M[:2, :2]; t = M[:2, 2]
+                return (np.asarray(roi_t, float) - t) @ np.linalg.inv(A).T
+
+            tol_um = float(payload.get("tol_um") or 4.0)
+            want_corr = bool(payload.get("return_correspondences"))
+            # Overlap handling: split any-shape overlapping regions into a planar partition
+            # so each intersection becomes its OWN separate region (no double-counted cells).
+            if bool(payload.get("partition")) and len(rois) > 1:
+                min_area = (40.0 / max(px, 1e-9)) ** 2      # drop slivers < ~40 µm across
+                work_regions = _planar_partition(rois, min_area=min_area)
+                if not work_regions:
+                    work_regions = [{"polygon": r, "is_intersection": False, "origins": [i]}
+                                    for i, r in enumerate(rois)]
+            else:
+                work_regions = [{"polygon": r, "is_intersection": False, "origins": [i]}
+                                for i, r in enumerate(rois)]
+            out = []
+            for i, wr in enumerate(work_regions):
+                roi = np.asarray(wr["polygon"], float).reshape(-1, 2)
+                if len(roi) < 3:
+                    out.append({"index": i, "verdict": "INVALID_ROI",
+                                "error": "need >=3 vertices"})
+                    continue
+                roi_t = roi * ref_scale
+                cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
+                                            provisional_matrix=M_t, tol_um=tol_um,
+                                            return_correspondences=want_corr)
+                v = cert.get("verdict")
+                local_t = cert.get("local_matrix")
+                mov_roi_full = None
+                local_full = None
+                if local_t is not None:
+                    local_full = _thumb_to_full(np.asarray(local_t, float))
+                    mov_roi_t = _map_roi_to_mov(roi_t, np.asarray(local_t, float))
+                    mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
+                cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
+                        or cert.get("tre_median_um"))
+                entry = {
+                    "index": i,
+                    "verdict": v,
+                    "is_certified": v in ("CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED"),
+                    "source": cert.get("source"),
+                    "n_correspondences": cert.get("n_correspondences"),
+                    "cell_error_um": cell,
+                    "fle_um": cert.get("fle_um_loftr"),
+                    "reason": cert.get("reason"),
+                    "roi_polygon": roi.tolist(),
+                    "mov_roi_polygon": mov_roi_full,
+                    "local_matrix": local_full,
+                    "is_intersection": bool(wr.get("is_intersection")),
+                    "origins": wr.get("origins", [i]),
+                }
+                if want_corr and cert.get("corr_ref") is not None:
+                    cr = np.asarray(cert["corr_ref"], float) / max(ref_scale, 1e-9)
+                    cm = np.asarray(cert["corr_mov"], float) / max(mov_scale, 1e-9)
+                    entry["corr_ref"] = cr.tolist()
+                    entry["corr_mov"] = cm.tolist()
+                out.append(entry)
+            n_ok = sum(1 for r in out if r.get("is_certified"))
+            return {"status": "ok", "rois": out, "n_certified": n_ok, "n_total": len(out),
+                    "provisional_method": (None if prov is not None else "register_similarity")}
+        except Exception as e:
+            import traceback
+            return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
+
+    def auto_certify_regions(self, payload: dict) -> dict:
+        """Fully automatic: tile the tissue into candidate regions and certify each via
+        LoFTR-in-ROI, returning only the regions that PASS. No landmarks, no drawing. The
+        provisional transform is computed automatically (register_similarity). Bounded by
+        max_regions / attempts so it stays responsive."""
+        try:
+            import numpy as np
+            import cv2
+            sys.path.insert(0, str(PROJECT_DIR))
+            from registration import _load_rgb_thumbnail
+            import serial_registration as sr
+            import loftr_matcher as lm
+
+            px = float(payload.get("pixel_size_um") or 0)
+            if px <= 0:
+                return {"status": "error", "error": "A valid pixel size is required"}
+            ref_rgb, ref_scale = _load_rgb_thumbnail(
+                os.path.expanduser(payload["ref_path"]), max_side=1920)
+            mov_rgb, mov_scale = _load_rgb_thumbnail(
+                os.path.expanduser(payload["mov_path"]), max_side=1920)
+            if ref_rgb is None or mov_rgb is None:
+                return {"status": "error", "error": "Could not load one or both images"}
+            px_t = px / max(ref_scale, 1e-9)
+            ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
+            if ck not in self._prov_cache:
+                self._prov_cache[ck] = np.asarray(
+                    sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
+            M_t = self._prov_cache[ck]
+            H, W = ref_rgb.shape[:2]
+            max_regions = int(payload.get("max_regions") or 9)
+
+            # Tissue mask — lenient (pale H-DAB is bright); close small gaps.
+            g = cv2.cvtColor(ref_rgb, cv2.COLOR_RGB2GRAY)
+            mask = (g < 235).astype(np.uint8)
+            mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((15, 15), np.uint8))
+            ys, xs = np.where(mask > 0)
+            if len(xs) < 100:
+                x0, y0, x1, y1 = 0, 0, W, H
+                mask = np.ones((H, W), np.uint8)
+                cxc, cyc = W / 2.0, H / 2.0
+            else:
+                x0, x1 = int(xs.min()), int(xs.max())
+                y0, y1 = int(ys.min()), int(ys.max())
+                cxc, cyc = float(xs.mean()), float(ys.mean())     # tissue centroid
+
+            def _circle(cx, cy, r, k=40):
+                th = np.linspace(0, 2 * np.pi, k, endpoint=False)
+                return np.c_[cx + r * np.cos(th), cy + r * np.sin(th)]
+
+            # Region size: use the requested value, else AUTO-SELECT the largest size that
+            # certifies at the tissue centroid (largest window = most cells for statistics,
+            # while still certifiable). Probe is fast (fast-FLE, small working res).
+            requested = payload.get("region_um")
+            auto_size = not (requested and float(requested) > 0)
+            if not auto_size:
+                region_um = float(requested)
+            else:
+                region_um = 260.0
+                for s in (600.0, 450.0, 350.0, 260.0):
+                    rr = s / px_t
+                    if cxc - rr < 0 or cyc - rr < 0 or cxc + rr > W or cyc + rr > H:
+                        continue
+                    probe = lm.certify_local_roi(
+                        ref_rgb, mov_rgb, _circle(cxc, cyc, rr), px_t,
+                        provisional_matrix=M_t, fle_fast=True, work_max_dim=800)
+                    if probe.get("ok"):
+                        region_um = s
+                        break
+            R = region_um / px_t
+            # Non-overlapping grid of SQUARE tiles CLIPPED to the tissue outline — so the
+            # regions follow tissue shape (arbitrary polygons), not circles, and a
+            # non-overlapping grid means no intersections to resolve within the auto set.
+            from shapely.geometry import Polygon as _Poly, box as _box
+            tissue_poly = None
+            cnts, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_EXTERNAL,
+                                       cv2.CHAIN_APPROX_SIMPLE)
+            if cnts:
+                c = max(cnts, key=cv2.contourArea)
+                c = cv2.approxPolyDP(c, 0.004 * cv2.arcLength(c, True), True).reshape(-1, 2)
+                if len(c) >= 3:
+                    tp = _Poly([(float(x), float(y)) for x, y in c])
+                    if not tp.is_valid:
+                        tp = tp.buffer(0)
+                    if not tp.is_empty and tp.area > 0:
+                        tissue_poly = tp.simplify(2.0)
+            import math
+            step = max(2.0 * R, 8.0)      # non-overlapping tiles → no auto intersections
+
+            def _centers(c, lo, hi):        # cell centres, aligned so (cxc,cyc) IS a centre
+                n0 = int(math.ceil((lo + R - c) / step))
+                n1 = int(math.floor((hi - R - c) / step))
+                return [c + n * step for n in range(n0, n1 + 1)] or [c]
+            tiles = []
+            for cy in _centers(cyc, y0, y1):
+                for cx in _centers(cxc, x0, x1):
+                    sq = _box(cx - R, cy - R, cx + R, cy + R)
+                    piece = sq.intersection(tissue_poly) if tissue_poly is not None else sq
+                    if (not piece.is_empty) and piece.area >= 0.25 * sq.area:
+                        if piece.geom_type != "Polygon":
+                            piece = max(piece.geoms, key=lambda g: g.area)
+                        # certify the centroid tile first (probe already showed it certifies)
+                        pts = [[float(x), float(y)] for x, y in piece.exterior.coords[:-1]]
+                        if abs(cx - cxc) < 1 and abs(cy - cyc) < 1:
+                            tiles.insert(0, pts)
+                        else:
+                            tiles.append(pts)
+
+            regions, attempts = [], 0
+            attempt_cap = max(max_regions * 3, 18)
+            for poly_t in tiles:
+                if len(regions) >= max_regions or attempts >= attempt_cap:
+                    break
+                attempts += 1
+                roi_t = np.asarray(poly_t, float)
+                cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
+                                            provisional_matrix=M_t, fle_fast=True,
+                                            work_max_dim=800)
+                if not cert.get("ok"):
+                    continue
+                local_t = cert.get("local_matrix")
+                local_full = mov_roi_full = None
+                if local_t is not None:
+                    A = np.asarray(local_t, float)[:2, :2]
+                    t = np.asarray(local_t, float)[:2, 2]
+                    local_full = np.hstack([A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
+                    mov_roi_t = (roi_t - t) @ np.linalg.inv(A).T
+                    mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
+                cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
+                        or cert.get("tre_median_um"))
+                regions.append({
+                    "index": len(regions), "verdict": cert.get("verdict"), "is_certified": True,
+                    "source": cert.get("source"), "n_correspondences": cert.get("n_correspondences"),
+                    "cell_error_um": cell,
+                    "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
+                    "mov_roi_polygon": mov_roi_full, "local_matrix": local_full,
+                })
+            return {"status": "ok", "regions": regions, "n": len(regions),
+                    "attempted": attempts, "candidates": len(tiles),
+                    "region_um": round(region_um, 1), "auto_size": auto_size}
+        except Exception as e:
+            import traceback
+            return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
 
     def propose_landmarks(self, ref_path: str, mov_path: str,
                           pixel_size_um: float, max_points: int = 8,
@@ -799,8 +1116,9 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             mov_roi = prop.get("mov_roi_polygon")
             mov_roi_full = ([[x / mov_scale, y / mov_scale] for x, y in mov_roi]
                             if mov_roi else None)
+            # No per-point match score is surfaced: the operator verifies every
+            # proposed correspondence against the images before it can be certified.
             return {"status": "ok", "ref_points": ref_pts, "mov_points": mov_pts,
-                    "confidences": prop.get("confidences") or [],
                     "n": prop["n"], "msg": prop["msg"],
                     "mode": prop.get("mode"), "coverage_frac": prop.get("coverage_frac"),
                     "fit_residual_um": prop.get("fit_residual_um"),
@@ -865,7 +1183,6 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             return {
                 "status": "ok",
                 "mov_point": [mx / mov_scale, my / mov_scale],
-                "confidence": prop.get("confidence"),
                 "method": prop.get("method"),
                 "n_inliers": prop.get("n_inliers"),
                 "msg": prop.get("msg"),
@@ -880,10 +1197,16 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                                   image_wh=None) -> dict:
         """Return next candidate correspondences for the guided landmark workflow.
 
-        The UI presents these one at a time for researcher acceptance/rejection.
+        The UI presents these for researcher acceptance/rejection, so no automated
+        match score is reported: the operator is the arbiter of every correspondence.
         Candidates are full-resolution coordinates and are filtered away from
-        already accepted landmarks so the workflow keeps expanding spatial support
-        toward CERTIFIED or LOCALLY_CERTIFIED instead of re-suggesting the same area.
+        already accepted landmarks so the workflow keeps expanding spatial support.
+
+        CERTIFIED is always the target. Candidates are scored ONLY against the
+        field-wide verdict, and a candidate that would certify globally always
+        outranks one that would not. Local certification is never offered here — it
+        is a terminal recovery step the UI takes once the candidate pool is exhausted
+        and a global certification has been shown to be unreachable.
         """
         try:
             import numpy as np
@@ -891,7 +1214,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             from registration import _load_rgb_thumbnail
             from serial_registration import (propose_landmarks as _propose,
                                              _fit_similarity_ls,
-                                             landmark_register_and_verify)
+                                             landmark_register_and_verify,
+                                             CERTIFICATION_GATES)
 
             px = float(pixel_size_um or 0)
             if px <= 0:
@@ -938,49 +1262,26 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             mov_full = np.asarray(
                 [[x / mov_scale, y / mov_scale] for x, y in prop["mov_points"]],
                 dtype=float).reshape(-1, 2)
-            conf = prop.get("confidences") or [None] * len(ref_full)
             image_wh = tuple(image_wh) if image_wh and len(image_wh) == 2 else None
+            min_n = CERTIFICATION_GATES["min_n"]
 
             def score_candidate(rp, mp):
-                """Return certification outcome after accepting this candidate."""
+                """Field-wide certification outcome if this candidate were accepted."""
                 if image_wh is None:
                     return None
                 next_ref = np.vstack([existing_ref, np.asarray(rp, dtype=float).reshape(1, 2)])
                 next_mov = np.vstack([existing_mov, np.asarray(mp, dtype=float).reshape(1, 2)])
-                if len(next_ref) < 6:
+                if len(next_ref) < min_n:
                     return None
                 user_roi = roi_polygon if roi_polygon and len(roi_polygon) >= 3 else None
-                cert = landmark_register_and_verify(
+                return landmark_register_and_verify(
                     next_ref, next_mov, px, image_wh=image_wh,
-                    min_n=6, target_n=12, loo_max_um=5.0, fit_max_um=5.0,
-                    deformed_loo_um=15.0, min_roi_frac=0.10,
                     user_roi_polygon=user_roi,
                 )
-                if cert.get("verdict") in ("CERTIFIED", "LOCALLY_CERTIFIED"):
-                    return {"status": cert.get("verdict"), "certification": cert,
-                            "source": "global_or_user_roi"}
-
-                # If the whole field still fails, ask whether this accepted set has a
-                # certifiable local window. Only count it if that ordinary ROI-gated
-                # certification passes.
-                local = self.suggest_local_certification_roi({
-                    "ref_points": next_ref.tolist(),
-                    "mov_points": next_mov.tolist(),
-                    "pixel_size_um": px,
-                    "image_wh": list(image_wh),
-                    "min_n": 6,
-                })
-                if local.get("status") == "ok" and local.get("certification"):
-                    return {"status": "LOCALLY_CERTIFIED",
-                            "certification": local.get("certification"),
-                            "roi_polygon": local.get("roi_polygon"),
-                            "source": "auto_local_roi"}
-                return {"status": cert.get("verdict") or "NOT_CERTIFIABLE",
-                        "certification": cert, "source": "failed"}
 
             min_sep_px = max(30.0 / px, 20.0)
             candidates = []
-            for i, (rp, mp) in enumerate(zip(ref_full, mov_full)):
+            for rp, mp in zip(ref_full, mov_full):
                 if len(existing_ref):
                     d = np.linalg.norm(existing_ref - rp, axis=1)
                     if float(d.min()) < min_sep_px:
@@ -988,45 +1289,40 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     spread = float(d.min())
                 else:
                     spread = 1e9
-                outcome = score_candidate(rp, mp)
+                cert = score_candidate(rp, mp) or {}
                 candidates.append({
                     "ref_point": [float(rp[0]), float(rp[1])],
                     "mov_point": [float(mp[0]), float(mp[1])],
-                    "confidence": conf[i] if i < len(conf) else None,
                     "spread_px": spread,
-                    "certification_status": (outcome or {}).get("status"),
-                    "certification_source": (outcome or {}).get("source"),
-                    "roi_polygon": (outcome or {}).get("roi_polygon"),
-                    "tre_median_um": (((outcome or {}).get("certification") or {})
-                                      .get("tre_median_um")),
-                    "coverage_frac": (((outcome or {}).get("certification") or {})
-                                      .get("coverage_frac")),
+                    "certification_status": cert.get("verdict"),
+                    "tre_median_um": cert.get("tre_median_um"),
+                    "coverage_frac": cert.get("coverage_frac"),
                 })
 
-            certifying = [
-                c for c in candidates
-                if c.get("certification_status") in ("CERTIFIED", "LOCALLY_CERTIFIED")
-            ]
+            # Prefer a route to a field-wide CERTIFIED verdict whenever one exists.
+            certifying = [c for c in candidates
+                          if c.get("certification_status") == "CERTIFIED"]
             if certifying:
                 candidates = certifying
 
-            def cert_rank(c):
-                status_rank = 0 if c.get("certification_status") == "CERTIFIED" else 1
+            def progress_rank(c):
+                """Rank by how close accepting this candidate leaves the GLOBAL fit to
+                certification: lower held-out TRE first, then wider spatial support."""
                 tre = c.get("tre_median_um")
                 tre = float(tre) if tre is not None else 1e9
                 coverage = float(c.get("coverage_frac") or 0.0)
-                conf_v = float(c.get("confidence") or 0.0)
-                return (status_rank, tre, -coverage, -conf_v, -float(c.get("spread_px") or 0))
+                return (tre, -coverage, -float(c.get("spread_px") or 0))
 
             if certifying:
-                candidates.sort(key=cert_rank)
+                candidates.sort(key=progress_rank)
+            elif any(c.get("tre_median_um") is not None for c in candidates):
+                candidates.sort(key=progress_rank)
             else:
-                candidates.sort(key=lambda c: (
-                    c["spread_px"],
-                    -1.0 if c.get("confidence") is None else float(c.get("confidence") or 0),
-                ), reverse=True)
+                # Below min_n there is no measurable fit yet — spread out to build one.
+                candidates.sort(key=lambda c: c["spread_px"], reverse=True)
             return {"status": "ok", "candidates": candidates,
-                    "n": len(candidates), "proposal": prop,
+                    "n": len(candidates),
+                    "certification_gates": dict(CERTIFICATION_GATES),
                     "certification_ready": bool(certifying)}
         except Exception as e:
             return {"status": "error", "error": str(e)}
@@ -1109,8 +1405,11 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             )
             matrix = result.get("matrix")
             result["matrix"] = (matrix.tolist() if hasattr(matrix, "tolist") else matrix)
+            # RADIUS_LIMITED is analysable: the transform is distance-preserving and its
+            # error only attenuates cross-K, so the pair proceeds with a raised radius
+            # floor rather than being withheld. See serial_registration for precedence.
             result["is_certified"] = result.get("verdict") in (
-                "CERTIFIED", "LOCALLY_CERTIFIED")
+                "CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED")
             result["status"] = result.get("verdict")
             result["method"] = "cima_expert_landmark_import"
             result["landmark_source"] = os.path.relpath(found["a"], str(PROJECT_DIR))
@@ -1364,6 +1663,44 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                                   p.get("stain_a"), use_cyto_a)
                 _membrane_cutoffs(p["path_b"], config.get("calib_profile_b"),
                                   p.get("stain_b"), use_cyto_b)
+
+        # ── Phase 2: per-ROI fan-out ──────────────────────────────────────────────
+        # A pair whose certification carries multiple user-drawn ROIs (from
+        # certify_local_roi_multi) is expanded into ONE analyzable pair per CERTIFIED
+        # ROI. Each ROI carries its OWN local transform + window and is analysed
+        # SEPARATELY — never pooled, because the transforms differ. Deformed ROIs are
+        # dropped here (honestly not analysed), not silently downgraded.
+        expanded = []
+        for p in pairs:
+            cert = p.get("certification") or {}
+            roi_list = cert.get("roi_certifications")
+            if not roi_list:
+                expanded.append(p)
+                continue
+            kept = 0
+            for r in roi_list:
+                if not r.get("is_certified"):
+                    self._emit("log", {"msg": f"{p.get('sample_id')} ROI "
+                                       f"{r.get('index')}: {r.get('verdict')} — not "
+                                       f"analysed (deformed).", "level": "warn"})
+                    continue
+                q = dict(p)
+                q["sample_id"] = f"{p['sample_id']}__roi{r.get('index', kept)}"
+                q["roi_label"] = r.get("label") or f"ROI {r.get('index')}"
+                q["certification"] = {
+                    "is_certified": True,
+                    "status": r.get("verdict"), "verdict": r.get("verdict"),
+                    "matrix": r.get("local_matrix"),
+                    "roi_polygon": r.get("roi_polygon"),
+                    "cell_error_um": r.get("cell_error_um"),
+                    "method": "user_roi_loftr_local",
+                }
+                expanded.append(q)
+                kept += 1
+            if kept == 0:
+                self._emit("log", {"msg": f"{p.get('sample_id')}: no ROI certified — "
+                                   f"pair not analysed.", "level": "warn"})
+        pairs = expanded
 
         if not pairs:
             self._emit("done", {"ok": False, "msg": "No pairs to analyze"})

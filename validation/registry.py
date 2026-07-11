@@ -50,6 +50,74 @@ VALIDATIONS = [
         "runtime_tier": "instant", "external_deps": [],
     },
     {
+        "id": "radius_floor",
+        "title": "Registration error — size, power, and the radius floor",
+        "category": "statistical",
+        "claim": "Residual registration error costs the cross-K test power, never validity, "
+                 "so a deformed serial-section pair may be analysed; its error sets the "
+                 "smallest resolvable inter-cell distance, not permission to run.",
+        "purpose": "Displace B by Gaussian error ε (clipped to the analysis window, as the "
+                   "pipeline does) and measure (A) the false-positive rate under "
+                   "independence, (B) detection of a weak true association, and (C) whether "
+                   "raising the DCLF band floor to k·ε improves power.",
+        "why": "The ≤5 µm landmark-certification gate withholds the whole spatial analysis "
+               "from a pair with ~2 µm RMS of pervasive elastic deformation — which every "
+               "serial section has. If error cannot manufacture a finding, that gate "
+               "withholds a valid conservative result rather than preventing a wrong one. "
+               "This is the evidence behind the RADIUS_LIMITED verdict.",
+        "datasets": [],
+        "assumptions": "Landmark-driven (cell-blind) transform; Gaussian isotropic error; "
+                       "points displaced outside the analysis window are dropped, as "
+                       "run_spatial_association does. Homogeneous-CSR null, rectangular window.",
+        "limitations": "Synthetic patterns, homogeneous null only. Says nothing about "
+                       "INTENSITY-driven non-rigid warps, which optimise on a signal "
+                       "correlated with cell density and COULD manufacture association.",
+        "interpretation": "PASS = size stays ≈α at every ε (error cannot invent a finding); "
+                          "power declines gracefully; band clipping does not help, so the "
+                          "radius floor is a reporting boundary, not a gate on the statistic.",
+        "expected": "Size ≈0.00–0.05 for ε up to 20 µm; power ~0.5 → ~0.3; clipping never "
+                    "raises power.",
+        "runner": {"kind": "script", "script": "validate_radius_floor.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
+        "id": "deformation_estimator",
+        "title": "Patch-flow deformation estimator — negative result, and its containment",
+        "category": "registration",
+        "claim": "serial_registration.measure_deformation cannot measure tissue deformation "
+                 "and must never gate a certification verdict.",
+        "purpose": "Run measure_deformation on a real LL477 CD8/TIM-3 pair under (a) the "
+                   "certified landmark similarity, (b) an identity transform leaving the "
+                   "sections ~106 µm apart, and (c) a known uniform translation. Then "
+                   "inject a fabricated deformation dict into landmark_register_and_verify "
+                   "and confirm the verdict does not move.",
+        "why": "A cell-level certification statistic, cell_registration_error = "
+               "sqrt(estimation² + model²), was proposed to escape the σ floor of "
+               "leave-one-out landmark TRE. Its model term needs an independent, "
+               "image-based deformation measurement. This is the evidence that the one we "
+               "had does not work, so the statistic was NOT adopted.",
+        # Resolved by the script itself from ~/Desktop/assets; it prints SKIP when absent.
+        "datasets": [],
+        "assumptions": "Real H-DAB liver serial sections (LL477 CD8 / TIM-3, 0.7519 µm/px); "
+                       "structural_channel blurred at "
+                       "σ≈12 µm; 128 px patches, Hann-windowed cv2.phaseCorrelate.",
+        "limitations": "Demonstrates blindness on one real pair and by mechanism (the blur "
+                       "removes the high-frequency content a displacement estimator needs). "
+                       "It does not prove NO image-based deformation estimator can work — "
+                       "only that phase-correlation patch flow, NCC template matching and "
+                       "gradient-magnitude phase correlation on this channel all fail, as "
+                       "does the tol-censored lumen_tre.",
+        "interpretation": "PASS = the estimator still reads ≈0 for an unregistered pair "
+                          "(i.e. it is still blind, as documented) AND no supplied "
+                          "deformation dict changes the verdict or the accuracy basis. "
+                          "FAIL means someone re-wired it into certification, or replaced "
+                          "it with something that works — either way, re-derive before use.",
+        "expected": "certified ≈0.14 µm, identity ≈0.22 µm, 48.8 µm shift ≈0.18 µm; verdict "
+                    "RADIUS_LIMITED with basis leave_one_out_landmark_tre in both arms.",
+        "runner": {"kind": "script", "script": "validate_deformation_estimator.py"},
+        "runtime_tier": "short", "external_deps": [],
+    },
+    {
         "id": "dclf",
         "title": "DCLF global test — calibration & power",
         "category": "statistical",
@@ -177,12 +245,13 @@ VALIDATIONS = [
         "assumptions": "CODEX coordinates approximate total-cell architecture; simulated "
                        "A/B populations are known-truth null/positive controls; this is "
                        "coordinate-level calibration, not image segmentation validation.",
-        "limitations": "Does not validate H-DAB/hematoxylin morphology extraction and does "
-                       "not ship a production dense null. Passing promotes a candidate "
-                       "only to real-image morphology validation.",
+        "limitations": "Does not validate H-DAB/hematoxylin morphology extraction by "
+                       "itself; production dense fallback also requires the rendered-"
+                       "image bridge, real serial-section demonstration, and runtime "
+                       "gates.",
         "interpretation": "PASS-like result = candidate worth pursuing; any H0 over-rejection "
-                          "means do not ship. Current focused result promotes 10-30 µm, "
-                          "2 µm total-cell support jitter, but production remains fail-closed.",
+                          "means do not use. Current focused result supports the shipped "
+                          "gated fallback: 10-30 µm, 2 µm total-cell support jitter.",
         "expected": "Homogeneous CSR over-rejects; the candidate controls H0 near 5% and "
                     "retains planted-positive power.",
         "runner": {"kind": "script", "script": "validate_public_codex_dense_null.py"},
@@ -199,15 +268,16 @@ VALIDATIONS = [
                    "morphology extraction by rendering real cell architectures, detecting "
                    "nuclei from hematoxylin pixels, and re-running known-null/planted "
                    "dense-null calibration.",
-        "why": "The public CODEX coordinate null is not enough to ship; production needs "
+        "why": "The public CODEX coordinate null is not enough by itself; production needs "
                "lambda_M(x) from images. This checks that the image-derived morphology "
-               "field is not the failure point before real LL477 validation.",
+               "field is not the failure point before real LL477 validation/runtime gates.",
         "datasets": ["codex_crc"],
         "assumptions": "Rendered H-DAB-like nuclei are a controlled bridge, not real DAB "
                        "serial-section images. Marker truth is simulated over real CODEX "
                        "architecture.",
-        "limitations": "Does not validate real LL477 H-DAB staining, section artifacts, "
-                       "or certification ROI behavior. Passing still does not ship dense mode.",
+        "limitations": "Does not validate real LL477 H-DAB staining or section artifacts "
+                       "by itself; those are covered by the real LL477 demonstration and "
+                       "runtime certification/ROI gates.",
         "interpretation": "Current focused result: 10-30 µm / 2 µm image-derived nuclei "
                           "morphology passes screen (worst H0 0.063, power 1.0, median "
                           "field correlation 0.939). Real serial-section validation remains.",
@@ -234,9 +304,68 @@ VALIDATIONS = [
                        "are real-use demonstrations, not publication-grade biological proof.",
         "interpretation": "Current result: x10_1 p=0.007, x10_3 p=0.024 under the 10-30 µm "
                           "dense candidate; x10_2 skipped for only 10 TIM-3 positives.",
-        "expected": "Usable certified pairs run; sparse pair is skipped; no dense mode is "
-                    "shipped solely from this demonstration.",
+        "expected": "Usable certified pairs run; sparse pair is skipped; dense mode remains "
+                    "gated by certification, support count, ROI/window, and provenance.",
         "runner": {"kind": "script", "script": "validate_dense_null_real_ll477.py"},
+        "runtime_tier": "short", "external_deps": [],
+    },
+    {
+        "id": "dense_scaffold_keren_external",
+        "title": "Dense scaffold — Keren external-support check",
+        "category": "spatial_association",
+        "claim": "For three dense Keren TNBC pseudo-IHC fields, the dense "
+                 "morphology-conditioned verdict is not driven merely by using "
+                 "OASIS's own all-cell scaffold.",
+        "purpose": "Compare the UI-path dense-null result using OASIS all-cell "
+                   "support against the same positives/window using an external "
+                   "Keren mask-derived support scaffold.",
+        "why": "This directly attacks the dense-scaffold circularity objection: "
+               "if the null support is extracted by OASIS itself, a reviewer can "
+               "ask whether the support scaffold manufactured the dense verdict.",
+        "datasets": [],
+        "assumptions": "Requires the local Keren pilot artifact folder "
+                       "`~/Desktop/OASIS_keren_tnbc_validation` or "
+                       "`OASIS_KEREN_TNBC_VALIDATION_DIR`; same-section MIBI was "
+                       "rendered into pseudo-IHC fields and run through the same "
+                       "Spatial backend used by the UI.",
+        "limitations": "Only three FOVs; same-section multiplex-derived pseudo-IHC, "
+                       "not serial-section registration; checks a completed pilot "
+                       "artifact rather than re-downloading/re-rendering the raw "
+                       "4+ GB dataset.",
+        "interpretation": "PASS = OASIS-scaffold and external-scaffold dense-null "
+                          "calls agree in significance, direction, and robust verdict "
+                          "for p13/p16/p32.",
+        "expected": "All three fields remain robust segregation under the external "
+                    "Keren scaffold (p13 p=0.001, p16 p=0.001, p32 p≈0.028).",
+        "runner": {"kind": "script", "script": "validate_dense_scaffold_keren_external.py"},
+        "runtime_tier": "short", "external_deps": [],
+    },
+    {
+        "id": "dense_scaffold_perturbation",
+        "title": "Dense scaffold — perturbation sensitivity harness",
+        "category": "spatial_association",
+        "claim": "The dense-null scaffold sensitivity harness can distinguish strong "
+                 "dense verdicts from borderline scaffold-dependent ones.",
+        "purpose": "Keep the same Keren CD8/PanCK positives and replace only the "
+                   "dense-null all-cell support scaffold using thinning, "
+                   "density-biased deletion, local dropout, and centroid jitter.",
+        "why": "A dense-null paper cannot just show one scaffold works; it must show "
+               "whether the verdict survives plausible support-scaffold errors and "
+               "must flag calls that do not survive.",
+        "datasets": [],
+        "assumptions": "Requires the local Keren pilot artifact folder "
+                       "`~/Desktop/OASIS_keren_tnbc_validation` or "
+                       "`OASIS_KEREN_TNBC_VALIDATION_DIR`; perturbations test the "
+                       "null scaffold only, not marker segmentation or registration.",
+        "limitations": "Still a three-field pilot. p32 is intentionally not a clean "
+                       "success: it is a cautionary borderline field showing why "
+                       "scaffold-sensitivity reporting is mandatory.",
+        "interpretation": "PASS = p13/p16 remain stable under all 33 perturbations, "
+                          "and p32 is explicitly exposed as scaffold-sensitive rather "
+                          "than silently overclaimed.",
+        "expected": "p13 and p16: 33/33 stable and significant. p32: 21/33 stable, "
+                    "22/33 significant, 1 fail-closed support-gate case.",
+        "runner": {"kind": "script", "script": "validate_dense_scaffold_perturbation.py"},
         "runtime_tier": "short", "external_deps": [],
     },
     {
