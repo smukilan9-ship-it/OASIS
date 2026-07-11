@@ -1169,10 +1169,10 @@ td.muted { color: var(--text3); font-size: 11px; }
             </div>
             <!-- Fully automatic -->
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-              <button class="btn sm cyan" id="spatial-loftr-auto" onclick="loftrAutoFind()" title="Fully automatic: tile the tissue and keep every region that certifies — no drawing, no landmarks.">✦ Auto-find regions</button>
-              <label style="font-size:11px;color:var(--text3)">region size
-                <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:64px" title="Approximate region radius in µm. Leave blank to auto-select the largest size that certifies."> µm</label>
-              <span style="font-size:11px;color:var(--text3)">— blank = auto-pick best size; sweeps the section automatically.</span>
+              <button class="btn sm cyan" id="spatial-loftr-auto" onclick="loftrAutoFind()" title="LoFTR-default certification: first try to certify the WHOLE field; if that fails, keep every sub-region that certifies (disjoint allowed). No drawing, no landmarks.">✦ Certify (auto: whole field → regions)</button>
+                <label style="font-size:11px;color:var(--text3)">region size
+                <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:64px" title="Approximate region radius in µm, used only for the local fallback. Leave blank to auto-select the largest size that certifies."> µm</label>
+              <span style="font-size:11px;color:var(--text3)">— tries the whole field first, then disjoint local regions. Blank size = auto-pick.</span>
             </div>
             <!-- Draw your own (polygon or freehand) -->
             <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
@@ -3349,23 +3349,32 @@ async function loftrAutoFind() {
   const px = spatialCertPixelSize();
   if (!(px > 0)) { showToast('Set a valid pixel size first'); return; }
   const btn = document.getElementById('spatial-loftr-auto');
-  btn.disabled = true; btn.textContent = 'Auto-finding regions…';
+  const label = '✦ Certify (auto: whole field → regions)';
+  btn.disabled = true; btn.textContent = 'Certifying…';
   let r;
   try {
-    r = await window.pywebview.api.auto_certify_regions({
+    // Global-FIRST: try to certify the whole field; else fall back to disjoint local regions.
+    r = await window.pywebview.api.certify_spatial_auto({
       ref_path: w.pair.path_a, mov_path: w.pair.path_b, pixel_size_um: px,
       region_um: loftrRegionUm(), max_regions: 9 });
   } catch (e) {
-    btn.disabled = false; btn.textContent = '✦ Auto-find regions';
-    showToast('Auto-find failed: ' + e); return;
+    btn.disabled = false; btn.textContent = label;
+    showToast('Certification failed: ' + e); return;
   }
-  btn.disabled = false; btn.textContent = '✦ Auto-find regions';
-  if (r.status !== 'ok') { showToast(r.error || 'Auto-find failed'); return; }
+  btn.disabled = false; btn.textContent = label;
+  if (r.status !== 'ok') { showToast(r.error || 'Certification failed'); return; }
+  if (r.mode === 'none') {
+    showToast(r.reason || 'Could not certify — the sections are too deformed for cell-scale analysis.');
+    return;
+  }
   (r.regions || []).forEach(reg => w.loftrRois.push({ points: reg.roi_polygon, cert: reg }));
   loftrRoiCommitCertifications();
   loftrRoiSync();
-  const sz = r.region_um ? `${r.region_um}µm${r.auto_size ? ' (auto-selected)' : ''} ` : '';
-  showToast(`Auto-find: ${r.n} certifiable region(s) ${sz}from ${r.candidates} candidate(s)`);
+  if (r.mode === 'global') {
+    showToast('✓ Whole field CERTIFIED' + (r.cell_error_um ? ` (cell error ${r.cell_error_um} µm)` : '') + ' — analysable as one field.');
+  } else {
+    showToast(`${r.n} disjoint region(s) certified locally` + (r.global_verdict ? ` — whole field was ${r.global_verdict}` : ''));
+  }
 }
 
 // Freehand region drawing: hold + drag on the reference to sketch, release to finish.
