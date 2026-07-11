@@ -895,6 +895,13 @@ def _find_geojson(img_path: str, output_dir: str):
     return matches[0] if matches else None
 
 
+def _find_detection_csv(img_path: str, output_dir: str):
+    """Find the tab-delimited QuPath all-detections export for an image."""
+    stem = os.path.splitext(os.path.basename(img_path))[0]
+    matches = glob.glob(os.path.join(output_dir, f"{stem}*_detections.csv"))
+    return matches[0] if matches else None
+
+
 def cytoplasm_overrides_for_pair(cfg, path_a, path_b):
     """
     Resolve per-image cytoplasm (membrane) measurement flags for a spatial pair.
@@ -953,6 +960,7 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
     import datetime as _dt
     n_perm = kde_bw = dclf_rmin = dclf_rmax = primary_null = None
     arch_scale = None
+    dense_fallback = None
     if assoc_result:
         for v in (assoc_result.get("association") or {}).values():
             n_perm       = v.get("n_perm", n_perm)
@@ -963,6 +971,8 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
             inh = (v.get("nulls") or {}).get("inhomogeneous") or {}
             kde_bw = inh.get("bandwidth_um", kde_bw)
             arch_scale = v.get("architecture_scale", arch_scale)
+            dense_fallback = ((v.get("primary_null_selection") or {})
+                              .get("dense_fallback", dense_fallback))
             break
     reweight_bw = None
     try:  # fall back to library defaults when no association was produced
@@ -1007,6 +1017,13 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
             "null_seed":       0,
             "dclf_band_um":    [dclf_rmin, dclf_rmax],
             "primary_null":    primary_null,
+            "dense_auto_null_enabled": bool(cfg.get("dense_auto_null", True)),
+            "dense_null_selected": bool(dense_fallback and dense_fallback.get("selected")),
+            "dense_null_status": (dense_fallback or {}).get("status"),
+            "dense_null_method": (dense_fallback or {}).get("method"),
+            "dense_null_jitter_um": (dense_fallback or {}).get("jitter_um"),
+            "dense_null_support_n": ((dense_fallback or {}).get("gates") or {}).get("n_support"),
+            "dense_null_validation_ids": (dense_fallback or {}).get("validation_ids"),
             "max_radius_um":   cfg.get("max_radius_um", 100.0),
             "radius_step_um":  cfg.get("radius_step_um", 2.0),
             # A6: the reweighted-primary test ASSUMES tissue architecture is coarser
@@ -1081,10 +1098,13 @@ def _spatial_result_for_json(spatial):
     if not spatial:
         return spatial
     out = {
-        "per_marker":         spatial.get("per_marker", {}),
-        "tissue_area_um2":    spatial.get("tissue_area_um2"),
-        "tissue_mask_method": spatial.get("tissue_mask_method"),
-        "association":        {},
+        "per_marker":                  spatial.get("per_marker", {}),
+        "tissue_area_um2":             spatial.get("tissue_area_um2"),
+        "tissue_mask_method":          spatial.get("tissue_mask_method"),
+        "intersection_overlap_iou":    spatial.get("intersection_overlap_iou"),
+        "intersection_overlap_frac_a": spatial.get("intersection_overlap_frac_a"),
+        "bandwidth_precheck":          spatial.get("bandwidth_precheck"),
+        "association":                 {},
     }
     for key, v in spatial.get("association", {}).items():
         out["association"][key] = {kk: vv for kk, vv in v.items()
@@ -1251,6 +1271,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         print(f"\nProcessing {stain_a}...")
         json_a = run_single_image(path_a, pair_cfg, groovy_path)
         geojson_a = _find_geojson(path_a, pair_out)
+        csv_a = _find_detection_csv(path_a, pair_out)
         # Capture the REFERENCE (image-A) pixel size exactly as A's segmentation
         # resolved it (same get_pixel_size chain), BEFORE the image-B run below
         # overwrites _resolved_pixel_size. This is the µm/px the Ripley's K / DCLF
@@ -1336,6 +1357,15 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                 radius_step_um=cfg.get("radius_step_um", 2.0),
                 certified_roi_polygon=landmark_cert.get("roi_polygon"),
                 precheck_only=bool(cfg.get("precheck_bandwidth_only")),
+                morphology_support_csv=csv_a,
+                dense_auto_null=bool(cfg.get("dense_auto_null", True)),
+                landmark_certified=bool(landmark_cert.get("is_certified")),
+                dense_min_positive=int(cfg.get("dense_min_positive", 30)),
+                dense_min_support=int(cfg.get("dense_min_support", 500)),
+                # Radii below ~3×TRE are destroyed by this pair's registration error;
+                # the certification measured that floor, the statistic enforces it.
+                registration_radius_floor_um=landmark_cert.get(
+                    "min_interpretable_radius_um"),
             )
         except Exception as e:
             print(f"  Spatial association error: {e}")
@@ -1351,6 +1381,9 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
             print("BANDWIDTH_PRECHECK_JSON:" + _json.dumps({
                 "sample_id": sample_id, "stain_a": stain_a, "stain_b": stain_b,
                 "precheck": _pc,
+                "null_plan": (assoc_result or {}).get("null_plan"),
+                "certification_status": landmark_cert.get("status"),
+                "is_certified": bool(landmark_cert.get("is_certified")),
                 "tissue_area_um2": (assoc_result or {}).get("tissue_area_um2"),
                 "tissue_mask_method": (assoc_result or {}).get("tissue_mask_method"),
             }))
@@ -1488,26 +1521,63 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         # is coarser than the 75 µm bandwidth. This is a SPATIAL-STATISTIC assumption,
         # NOT registration: a bandwidth failure must never change certification.status
         # (registration passed). It only flags whether the numbers can be trusted. Fail
-        # closed: worst_status ∈ {unreliable, unknown} → statistics not valid.
+        # closed: dense/fine architecture may switch to the dense null if gates pass;
+        # too-few positives / not-estimable fields remain not tested.
         bw_precheck = (assoc_result or {}).get("bandwidth_precheck") or {}
         bw_valid = bool(bw_precheck.get("valid", True))  # absent (no assoc) → don't block
+        dense_fallbacks = []
+        if assoc_result and assoc_result.get("association"):
+            for _data in assoc_result["association"].values():
+                sel = (_data.get("primary_null_selection") or {}).get("dense_fallback") or {}
+                if sel:
+                    dense_fallbacks.append(sel)
+        dense_selected = any(bool(d.get("selected")) for d in dense_fallbacks)
+        dense_unavailable = any(d.get("status") == "unavailable" for d in dense_fallbacks)
+        primary_null_valid = bool(bw_valid or dense_selected)
         spatial_validity = {
             "bandwidth_75um_valid": bw_valid,
             "worst_status":         bw_precheck.get("worst_status"),
             "window_scope":         bw_precheck.get("window_scope"),
             "per_image":            bw_precheck.get("per_image"),
             "reason":               bw_precheck.get("reason"),
+            "dense_auto_null_enabled": bool(cfg.get("dense_auto_null", True)),
+            "dense_null_selected":   bool(dense_selected),
+            "dense_null_available":  bool(dense_selected),
+            "dense_null_status":     ("selected" if dense_selected
+                                      else "unavailable" if dense_unavailable
+                                      else "not_needed" if bw_valid
+                                      else "not_evaluated"),
+            "dense_null":            dense_fallbacks[0] if dense_fallbacks else None,
+            "statistics_primary_valid": primary_null_valid,
         }
-        statistics_valid = bool(registration_qc["valid"] and bw_valid)
+        statistics_valid = bool(registration_qc["valid"] and primary_null_valid)
         if bw_precheck:
             print(f"\n  BANDWIDTH 75 µm VALIDITY (within analysis window): "
                   f"{str(bw_precheck.get('worst_status')).upper()} "
                   f"(valid={bw_valid})")
             print(f"    {bw_precheck.get('reason')}")
-            if not bw_valid:
-                print(f"  ⚠ Spatial statistics for {sample_id} are flagged NOT "
-                      f"TRUSTWORTHY at 75 µm — registration is still CERTIFIED; the "
-                      f"reweighted 'robust' claim is withheld (see spatial_validity).")
+            if not bw_valid and dense_selected:
+                dense = spatial_validity.get("dense_null") or {}
+                print(f"  ✓ Fine/dense tissue detected: the 75 µm reweighted null "
+                      f"was bypassed and OASIS automatically switched to the DENSE "
+                      f"morphology-conditioned primary null "
+                      f"(support={dense.get('gates', {}).get('n_support')}, "
+                      f"jitter={dense.get('jitter_um')} µm, band=10–30 µm).")
+            elif not bw_valid:
+                status = bw_precheck.get("worst_status")
+                if status == "underpowered_insufficient_positives":
+                    print(f"  ⚠ Spatial association for {sample_id} is NOT TESTED: "
+                          f"too few positive cells inside the certified analysis window. "
+                          f"This is underpowered, not a dense-tissue null switch.")
+                elif status == "architecture_not_estimable":
+                    print(f"  ⚠ Spatial association for {sample_id} is NOT TESTED: "
+                          f"architecture scale could not be estimated inside the certified "
+                          f"analysis window.")
+                else:
+                    print(f"  ⚠ Fine/dense tissue detected: the 75 µm reweighted null "
+                          f"was bypassed, but dense fallback was not available. "
+                          f"Registration is still CERTIFIED; the primary robust claim is "
+                          f"withheld (see spatial_validity).")
 
         # Stamp every association entry with the validity flags + certification status
         # so any consumer of the per-pair association knows the statistics are gated.

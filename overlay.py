@@ -585,16 +585,24 @@ def generate_association_plot(
 
     fig, ax = plt.subplots(figsize=(7.4, 4.8), dpi=140)
 
-    # Envelope of the CALIBRATED PRIMARY (reweighted inhomogeneous cross-K). Only
-    # the primary is overlaid: the observed curve here is the reweighted L−r, so the
-    # homogeneous-CSR diagnostic (a DIFFERENT, unweighted estimator) is reported in
-    # the result table, not drawn on this axis (different scale). See ihc.md §15.
+    # Envelope of the calibrated PRIMARY. Only the primary is overlaid; the
+    # homogeneous-CSR diagnostic is reported in the result table, not drawn on this
+    # axis when it is not the primary.
     null_styles = {
         "reweighted":  ("#2563eb", "Reweighted inhomogeneous cross-K (calibrated)"),
+        "dense_morphology": ("#7c3aed", "Dense morphology-conditioned cross-K"),
     }
+    primary_name = assoc.get("primary_null") or "reweighted"
     drew_envelope = False
     if nulls:
-        for nm, (col, lab) in null_styles.items():
+        nd = nulls.get(primary_name)
+        styles = [(primary_name, *null_styles.get(
+            primary_name, ("#2563eb", str(primary_name))))]
+        if nd:
+            iter_styles = styles
+        else:
+            iter_styles = [(nm, col, lab) for nm, (col, lab) in null_styles.items()]
+        for nm, col, lab in iter_styles:
             nd = nulls.get(nm)
             if not nd:
                 continue
@@ -634,9 +642,12 @@ def generate_association_plot(
                 bbox=dict(boxstyle="round,pad=0.35", fc="white", ec=vcol, alpha=0.92))
 
     ax.set_xlabel("Distance r (µm)")
-    ax.set_ylabel("L$_{ab}$(r) − r   (µm, intensity-reweighted)")
+    dense_primary = primary_name == "dense_morphology"
+    ax.set_ylabel("L$_{ab}$(r) − r   (µm%s)" %
+                  (", dense morphology-conditioned" if dense_primary else ", intensity-reweighted"))
     ax.set_title(f"Cross-type spatial association: {label_a} ↔ {label_b}\n"
-                 f"reweighted inhomogeneous cross-K vs calibrated null", fontsize=10.5)
+                 f"{'dense morphology-conditioned' if dense_primary else 'reweighted inhomogeneous'} "
+                 f"cross-K vs calibrated null", fontsize=10.5)
     ax.legend(loc="upper left", fontsize=7.5, framealpha=0.9)
     ax.grid(True, alpha=0.15)
     fig.tight_layout()

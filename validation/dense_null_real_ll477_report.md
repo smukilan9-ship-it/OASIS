@@ -20,4 +20,4 @@ This is a real-use test of the dense candidate on completed OASIS serial-section
 
 - A skipped sparse pair is not evidence against association; it is an insufficient-events QC result.
 - A significant result here is a real-use demonstration of the candidate, not a calibrated biological claim.
-- Dense mode should still remain fail-closed until this candidate is wired into production with provenance, ROI, sparsity, and architecture gates.
+- Production dense mode remains gated: 75 µm must fail, landmark certification/window/support/sparsity gates must pass, and provenance must record the switch.
