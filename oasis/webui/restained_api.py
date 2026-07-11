@@ -12,7 +12,10 @@ import yaml
 
 def attach_restained_api(api_class):
     """Attach new methods without changing any existing API implementation."""
-    project_dir = Path(__file__).parent.parent
+    # Repo root: <root>/oasis/webui/restained_api.py → climb three levels
+    # (webui → oasis → root). The old .parent.parent pointed at <root>/oasis after the
+    # restructure, breaking the subprocess below.
+    project_dir = Path(__file__).resolve().parent.parent.parent
     config_dir = Path.home() / ".ihc_analyzer"
 
     def preview_restained_bundles(self, folder, hematoxylin_token="_Hematoxylin",
@@ -50,8 +53,11 @@ def attach_restained_api(api_class):
         def run():
             result_path = None
             try:
+                # restained_coexpression.py now lives at oasis/restained/ and imports
+                # `from oasis.quant...`, so it must run as a module with the repo root
+                # (project_dir) as cwd — a bare script path would not put oasis/ on sys.path.
                 self._process = subprocess.Popen(
-                    [sys.executable, str(project_dir / "restained_coexpression.py"),
+                    [sys.executable, "-m", "oasis.restained.restained_coexpression",
                      "--config", str(config_path)],
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                     start_new_session=True, cwd=str(project_dir),

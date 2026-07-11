@@ -39,7 +39,12 @@ STANDARD_PIXEL_SIZE = {
     "4x": 2.50, "10x": 1.00, "20x": 0.50, "40x": 0.25, "60x": 0.165, "100x": 0.10
 }
 
-PROJECT_DIR = Path(__file__).parent.parent
+# Repo root. This file is <root>/oasis/webui/api.py, so climb THREE levels
+# (webui → oasis → root). The restructure moved api.py one level deeper; the old
+# .parent.parent pointed at <root>/oasis, so PROJECT_DIR/"run_pipeline.py" and
+# PROJECT_DIR/"validation" no longer existed and every spatial/calibrate subprocess
+# silently failed (empty stdout → misleading "segmentation may have failed").
+PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Preloaded calibration presets (data-backed defaults; user calibrations add to these).
 BUILTIN_CALIBRATIONS = [
@@ -1892,11 +1897,18 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     except Exception:
                         pass
             if not by_pair:
-                tail = "\n".join((proc.stdout or "").splitlines()[-15:])
+                # Surface the REAL cause. The subprocess may have exited non-zero with
+                # its traceback on STDERR (bad interpreter/path, import error), or every
+                # pair was blocked as uncertified — reading stdout alone hides both and
+                # mislabels them "segmentation failed". Prefer stderr in the tail.
+                err_tail = "\n".join((proc.stderr or "").splitlines()[-15:])
+                out_tail = "\n".join((proc.stdout or "").splitlines()[-15:])
                 return {"status": "error",
-                        "error": "Could not compute the bandwidth pre-flight "
-                                 "(segmentation may have failed).",
-                        "log_tail": tail}
+                        "error": ("Bandwidth pre-flight produced no verdict "
+                                  f"(run_pipeline exited {proc.returncode}). Either "
+                                  "segmentation failed or no pair was certified."),
+                        "returncode": proc.returncode,
+                        "log_tail": err_tail or out_tail}
             return {"status": "ok", "precheck_by_pair": by_pair}
 
         def run():
