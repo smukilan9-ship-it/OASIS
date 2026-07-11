@@ -36,9 +36,9 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 ROOT = Path(__file__).parent
-WEBUI = ROOT / "webui"
+WEBUI = ROOT / "oasis" / "webui"
 sys.path.insert(0, str(ROOT))
-from webui.api import API                                            # noqa: E402
+from oasis.webui.api import API                                            # noqa: E402
 
 HOST = "127.0.0.1"
 PORT = 8765

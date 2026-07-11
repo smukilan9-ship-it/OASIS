@@ -39,7 +39,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from serial_registration import landmark_register_and_verify  # noqa
+from oasis.spatial.serial_registration import landmark_register_and_verify  # noqa
 
 LM = os.path.join(HERE, "public_landmarks", "annotations")
 

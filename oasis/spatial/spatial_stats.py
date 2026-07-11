@@ -1319,7 +1319,7 @@ def estimate_tissue_mask(image_path: str, pixel_size_um: float):
     """
     try:
         import cv2
-        from registration import _load_thumbnail
+        from oasis.common.registration import _load_thumbnail
         from shapely.geometry import Polygon, MultiPolygon
         from shapely.ops import unary_union
 
@@ -1414,7 +1414,7 @@ def estimate_tissue_polygon(image_path: str, pixel_size_um: float,
     """
     try:
         import cv2
-        from registration import _load_thumbnail
+        from oasis.common.registration import _load_thumbnail
         from shapely.geometry import Polygon
         from shapely.ops import unary_union
 
@@ -1481,7 +1481,7 @@ def transform_polygon(polygon, reg_result):
     reference space), applying it to the exterior and every interior ring so holes
     survive. Uses the same transform_centroids path the cell points use."""
     from shapely.geometry import Polygon, MultiPolygon
-    from registration import transform_centroids
+    from oasis.common.registration import transform_centroids
 
     def _tx(coords):
         arr = np.asarray(coords, dtype=np.float64)[:, :2]

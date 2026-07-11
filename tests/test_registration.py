@@ -5,7 +5,7 @@ Tier 1 — landmark registration + certification + auto-proposal + NGF selection
 import math
 import numpy as np
 import pytest
-import serial_registration as sr
+from oasis.spatial import serial_registration as sr
 
 
 def _similarity(theta_deg, s, tx, ty):
@@ -119,7 +119,7 @@ def test_guided_landmark_suggests_moving_correspondence_from_existing_pairs():
 
 
 def test_auto_local_roi_recovers_deformed_global_landmarks():
-    from webui.api import API
+    from oasis.webui.api import API
 
     clean_mov = np.array([
         [180, 180], [760, 180], [180, 760], [760, 760],
@@ -255,7 +255,7 @@ def test_similarity_invariant_rejects_shear_and_accepts_similarity():
 
 
 def test_radius_floor_scales_with_tre_and_fails_closed_when_unknown():
-    from spatial_stats import registration_radius_floor as floor, _RADIUS_FLOOR_FACTOR
+    from oasis.spatial.spatial_stats import registration_radius_floor as floor, _RADIUS_FLOOR_FACTOR
     assert floor(None) is None                       # unknown TRE -> caller must fail closed
     assert floor(float("nan")) is None
     assert floor(-1.0) is None

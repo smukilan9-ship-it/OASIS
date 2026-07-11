@@ -17,7 +17,7 @@ Run:  .venv/bin/python validation/validate_dclf.py
 import os, sys, numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from spatial_stats import cross_k_null   # noqa: E402
+from oasis.spatial.spatial_stats import cross_k_null   # noqa: E402
 
 W = H = 1000.0
 AREA = W * H

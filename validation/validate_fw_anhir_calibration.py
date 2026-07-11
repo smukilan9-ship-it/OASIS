@@ -44,7 +44,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-import serial_registration as sr  # noqa: E402
+from oasis.spatial import serial_registration as sr  # noqa: E402
 
 # native um/px (ANHIR Table I) and the scale the landmark CSVs are stored at
 TISSUE_PX = {"lung-lesion": (0.174, 0.50), "lung-lobes": (1.274, 1.00),

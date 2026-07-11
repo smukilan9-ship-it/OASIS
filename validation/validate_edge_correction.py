@@ -27,7 +27,7 @@ from shapely.geometry import box
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from spatial_stats import (_loo_kernel_intensity, _build_intensity_grid,      # noqa: E402
+from oasis.spatial.spatial_stats import (_loo_kernel_intensity, _build_intensity_grid,      # noqa: E402
                            _draw_n_from_grid, _null_summary_from_k,
                            _cross_k_inhom_weighted, _DCLF_RMIN_UM, _DCLF_RMAX_UM)
 

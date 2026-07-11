@@ -126,7 +126,7 @@ class API:
     def calibration_prepare(self, image_path, pixel_size):
         """Segment an image and return views + clickable cells for labeling."""
         try:
-            from webui import calibration
+            from oasis.webui import calibration
             return calibration.prepare(os.path.expanduser(image_path),
                                        float(pixel_size), self.get_setup())
         except Exception as e:
@@ -135,7 +135,7 @@ class API:
     def calibration_fit(self, image_path, geojson_path, pixel_size, pos_idx, neg_idx):
         """Fit membrane cutoffs from hand-labelled positive/negative cell indices."""
         try:
-            from webui import calibration
+            from oasis.webui import calibration
             return calibration.fit(os.path.expanduser(image_path), geojson_path,
                                    float(pixel_size), pos_idx, neg_idx)
         except Exception as e:
@@ -148,7 +148,7 @@ class API:
         (one per labelled image). Returns pooled cutoffs + leave-one-cell-out F1/AUC.
         """
         try:
-            from webui import calibration
+            from oasis.webui import calibration
             norm = [{"image_path": os.path.expanduser(it.get("image_path", "")),
                      "geojson_path": it.get("geojson_path"),
                      "pixel_size": float(it.get("pixel_size") or 0.5),
@@ -603,7 +603,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         """Extract pixel size (µm/px) from a burned-in 100 µm scale bar."""
         try:
             sys.path.insert(0, str(PROJECT_DIR))
-            from pixel_size_util import _detect_scale_bar
+            from oasis.common.pixel_size_util import _detect_scale_bar
             px, bar = _detect_scale_bar(os.path.expanduser(image_path))
             if px is None:
                 return {"status": "error", "error": "could not detect scale bar"}
@@ -639,7 +639,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         """Catch obvious cross-sample selections before landmarking or segmentation."""
         try:
             sys.path.insert(0, str(PROJECT_DIR))
-            from file_matcher import normalize_name
+            from oasis.common.file_matcher import normalize_name
             a = Path(ref_path).stem
             b = Path(mov_path).stem
             key_a, stain_a = normalize_name(a)
@@ -657,7 +657,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         try:
             import numpy as np
             sys.path.insert(0, str(PROJECT_DIR))
-            from serial_registration import landmark_register_and_verify
+            from oasis.spatial.serial_registration import landmark_register_and_verify
 
             ref = np.asarray(payload.get("ref_points") or [], dtype=float)
             mov = np.asarray(payload.get("mov_points") or [], dtype=float)
@@ -700,7 +700,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             import numpy as np
             from shapely.geometry import MultiPoint, box
             sys.path.insert(0, str(PROJECT_DIR))
-            from serial_registration import (landmark_register_and_verify,
+            from oasis.spatial.serial_registration import (landmark_register_and_verify,
                                              CERTIFICATION_GATES)
 
             ref = np.asarray(payload.get("ref_points") or [], dtype=float).reshape(-1, 2)
@@ -815,9 +815,9 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         try:
             import numpy as np
             sys.path.insert(0, str(PROJECT_DIR))
-            from registration import _load_rgb_thumbnail
-            import serial_registration as sr
-            import loftr_matcher as lm
+            from oasis.common.registration import _load_rgb_thumbnail
+            from oasis.spatial import serial_registration as sr
+            from oasis.spatial import loftr_matcher as lm
 
             px = float(payload.get("pixel_size_um") or 0)
             rois = payload.get("rois") or []
@@ -929,9 +929,9 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             import numpy as np
             import cv2
             sys.path.insert(0, str(PROJECT_DIR))
-            from registration import _load_rgb_thumbnail
-            import serial_registration as sr
-            import loftr_matcher as lm
+            from oasis.common.registration import _load_rgb_thumbnail
+            from oasis.spatial import serial_registration as sr
+            from oasis.spatial import loftr_matcher as lm
 
             px = float(payload.get("pixel_size_um") or 0)
             if px <= 0:
@@ -1082,8 +1082,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         """
         try:
             sys.path.insert(0, str(PROJECT_DIR))
-            from registration import _load_rgb_thumbnail
-            from serial_registration import propose_landmarks as _propose
+            from oasis.common.registration import _load_rgb_thumbnail
+            from oasis.spatial.serial_registration import propose_landmarks as _propose
 
             px = float(pixel_size_um or 0)
             if px <= 0:
@@ -1139,8 +1139,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         """
         try:
             sys.path.insert(0, str(PROJECT_DIR))
-            from registration import _load_rgb_thumbnail
-            from serial_registration import suggest_moving_landmark as _suggest
+            from oasis.common.registration import _load_rgb_thumbnail
+            from oasis.spatial.serial_registration import suggest_moving_landmark as _suggest
 
             px = float(pixel_size_um or 0)
             if px <= 0:
@@ -1211,8 +1211,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         try:
             import numpy as np
             sys.path.insert(0, str(PROJECT_DIR))
-            from registration import _load_rgb_thumbnail
-            from serial_registration import (propose_landmarks as _propose,
+            from oasis.common.registration import _load_rgb_thumbnail
+            from oasis.spatial.serial_registration import (propose_landmarks as _propose,
                                              _fit_similarity_ls,
                                              landmark_register_and_verify,
                                              CERTIFICATION_GATES)
@@ -1344,8 +1344,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             import re, glob
             import numpy as np
             sys.path.insert(0, str(PROJECT_DIR))
-            from file_matcher import normalize_name
-            from serial_registration import landmark_register_and_verify
+            from oasis.common.file_matcher import normalize_name
+            from oasis.spatial.serial_registration import landmark_register_and_verify
 
             px = float(pixel_size_um or 0)
             if px <= 0:
@@ -1425,7 +1425,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         """Match images for a batch run (no analysis) — pairs + unmatched + scaled."""
         try:
             sys.path.insert(0, str(PROJECT_DIR))
-            from file_matcher import match_two_folders, match_single_folder
+            from oasis.common.file_matcher import match_two_folders, match_single_folder
             if mode == "two_folder":
                 if not folder_a or not folder_b:
                     return {"status": "error", "error": "Both folders required"}
@@ -1514,7 +1514,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         try:
             sys.path.insert(0, str(PROJECT_DIR))
             from run_pipeline import resolve_pixel_size
-            from pixel_size_util import extract_pixel_size_from_scale_bar
+            from oasis.common.pixel_size_util import extract_pixel_size_from_scale_bar
         except Exception as e:
             self._emit("done", {"ok": False, "msg": f"import failed: {e}"})
             return {"ok": False}
@@ -1870,7 +1870,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     # multiplicity trap; any cohort claim must use the FDR result.
                     cohort_fdr = None
                     try:
-                        from spatial_stats import cohort_multiple_comparison_correction
+                        from oasis.spatial.spatial_stats import cohort_multiple_comparison_correction
                         cohort_fdr = cohort_multiple_comparison_correction(
                             global_ps, method="bh")
                     except Exception as e:
@@ -2013,5 +2013,5 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
 
 
 # Isolated additive extension: same-section restained co-expression workflow.
-from webui.restained_api import attach_restained_api
+from oasis.webui.restained_api import attach_restained_api
 attach_restained_api(API)

@@ -34,7 +34,7 @@ import os, sys, csv, argparse
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from serial_registration import landmark_register_and_verify  # noqa
+from oasis.spatial.serial_registration import landmark_register_and_verify  # noqa
 
 
 def load_landmarks(path):

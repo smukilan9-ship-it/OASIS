@@ -26,7 +26,7 @@ from PIL import Image
 from scipy import ndimage
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from cell_expansion import _estimate_background, _norm_vec, _REF_H
+from oasis.quant.cell_expansion import _estimate_background, _norm_vec, _REF_H
 
 ROOT = os.path.expanduser("~/PKG - HNSCC-mIF-mIHC-comparison_v2")
 RING_PX = 4            # ~2 µm ring at ~0.5 µm/px

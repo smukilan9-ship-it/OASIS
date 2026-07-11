@@ -31,8 +31,8 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from spatial import precheck_bandwidth_within_window          # noqa: E402
-from serial_registration import (landmark_register_and_verify,  # noqa: E402
+from oasis.spatial.spatial import precheck_bandwidth_within_window          # noqa: E402
+from oasis.spatial.serial_registration import (landmark_register_and_verify,  # noqa: E402
                                  _fit_similarity_ls, _apply_affine)
 
 _FAILS = []

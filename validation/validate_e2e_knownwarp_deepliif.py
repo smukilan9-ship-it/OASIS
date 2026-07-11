@@ -38,7 +38,7 @@ import tempfile
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import spatial_stats as ss
+from oasis.spatial import spatial_stats as ss
 from validation.datasets import resolve as R
 
 PIXEL_SIZE_UM = 0.25                       # DeepLIIF is 40× (~0.25 µm/px)
@@ -126,7 +126,7 @@ def _verdict(a, b, n_perm):
 
 
 def run(n_tiles, n_perm):
-    import serial_registration as sr
+    from oasis.spatial import serial_registration as sr
     setup = _setup()
     tiles = sorted(glob.glob(os.path.join(
         R.resolve("deepliif"), "DeepLIIF_Testing_Set", "*.png")))[:n_tiles]

@@ -8,7 +8,7 @@ import os, sys, json
 import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from serial_registration import (detect_scale_bar_px, register_similarity,    # noqa
+from oasis.spatial.serial_registration import (detect_scale_bar_px, register_similarity,    # noqa
                                  _load_rgb_thumbnail, save_qc_overlays, lumen_tre,
                                  tissue_mask)
 

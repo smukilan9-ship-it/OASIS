@@ -24,7 +24,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from serial_registration import (_fit_similarity_ls, _apply_affine, loo_tre,  # noqa
+from oasis.spatial.serial_registration import (_fit_similarity_ls, _apply_affine, loo_tre,  # noqa
                                  landmark_register_and_verify)
 from run_pipeline import evaluate_registration_qc  # noqa
 

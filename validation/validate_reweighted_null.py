@@ -26,7 +26,7 @@ import numpy as np
 from shapely.geometry import box
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from spatial_stats import cross_k_inhom_reweighted_test   # noqa: E402
+from oasis.spatial.spatial_stats import cross_k_inhom_reweighted_test   # noqa: E402
 
 NREAL = int(os.environ.get("NREAL", "300"))
 NPERM = int(os.environ.get("NPERM", "199"))

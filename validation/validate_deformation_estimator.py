@@ -70,7 +70,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import serial_registration as sr  # noqa: E402
+from oasis.spatial import serial_registration as sr  # noqa: E402
 
 PIXEL_SIZE_UM = 0.7519
 REF = os.path.expanduser("~/Desktop/assets/cd8_input/LL477_CD8_x10_1.tif")

@@ -24,7 +24,7 @@ import numpy as np
 import yaml
 from PIL import Image, ImageDraw
 
-from cell_expansion import (_feature_polygon, _halfplane_clip, _load_rgb_full,
+from oasis.quant.cell_expansion import (_feature_polygon, _halfplane_clip, _load_rgb_full,
                             _mask_stats)
 
 

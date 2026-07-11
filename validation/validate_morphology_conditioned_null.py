@@ -40,7 +40,7 @@ from scipy.ndimage import gaussian_filter
 from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-import spatial_stats as ss  # noqa: E402
+from oasis.spatial import spatial_stats as ss  # noqa: E402
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))

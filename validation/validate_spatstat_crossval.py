@@ -41,7 +41,7 @@ import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(HERE))
-from spatial_stats import _loo_kernel_intensity, _cross_k_inhom_weighted  # noqa: E402
+from oasis.spatial.spatial_stats import _loo_kernel_intensity, _cross_k_inhom_weighted  # noqa: E402
 
 R_SCRIPT = os.path.join(HERE, "spatstat_crossval.R")
 OUT = os.path.join(HERE, "spatstat_crossval_output.txt")

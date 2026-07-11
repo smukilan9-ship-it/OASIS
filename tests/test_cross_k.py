@@ -3,7 +3,7 @@ Tier 1 — cross-type Ripley's K correctness (spatial_stats.cross_k_function).
 Pure, fast, deterministic; no Monte-Carlo, no data. Known-answer geometry.
 """
 import numpy as np
-import spatial_stats as ss
+from oasis.spatial import spatial_stats as ss
 
 R = np.arange(0, 101, 2.0)
 W = 1200.0

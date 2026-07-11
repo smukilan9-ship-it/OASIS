@@ -72,7 +72,7 @@ def _get(weights):
 def _prep(rgb, scale, pixel_size_um, noise=0.0, rng=None):
     """Hematoxylin — the one channel both stains share — CLAHE-equalised, for LoFTR."""
     import cv2, torch
-    from registration import extract_hematoxylin
+    from oasis.common.registration import extract_hematoxylin
     h = extract_hematoxylin(rgb).astype(np.float32)
     if noise:
         h = h + rng.normal(0, noise * 255.0, h.shape)
@@ -215,7 +215,7 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     """
     import cv2
     from matplotlib.path import Path as _MplPath
-    import serial_registration as sr
+    from oasis.spatial import serial_registration as sr
 
     roi = np.asarray(roi_polygon_ref, float).reshape(-1, 2)
     Hr, Wr = ref_rgb.shape[:2]

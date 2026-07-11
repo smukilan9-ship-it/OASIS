@@ -39,7 +39,7 @@ from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-import spatial_stats as ss  # noqa: E402
+from oasis.spatial import spatial_stats as ss  # noqa: E402
 from validation.datasets import resolve as dataset_resolve  # noqa: E402
 
 

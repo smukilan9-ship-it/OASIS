@@ -36,7 +36,7 @@ import os
 import math
 import numpy as np
 
-from registration import (
+from oasis.common.registration import (
     extract_hematoxylin,
     _rgb_to_gray,
     _load_rgb_thumbnail,
@@ -1389,7 +1389,7 @@ def _certify_fitzpatrick_west(out, ref, mov, M, pixel_size_um, fle_um, image_wh,
                          error is random w.r.t. the cells, so surrender small radii.
     """
     import cv2
-    from spatial_stats import registration_radius_floor
+    from oasis.spatial.spatial_stats import registration_radius_floor
     out["gate"] = "fitzpatrick_west"
     out["fle_um"] = round(float(fle_um), 4)
     out["landmarks_are_model_selected"] = bool(model_selected)
@@ -1716,7 +1716,7 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
                           f"sections are unrelated)")
         return out
     med, fr = out["tre_median_um"], out["fit_residual_um"]
-    from spatial_stats import registration_radius_floor
+    from oasis.spatial.spatial_stats import registration_radius_floor
 
     # The verdict is decided on held-out landmark TRE. This over-states a cell's true
     # registration error (it carries the landmarks' own picking noise σ), and we accept

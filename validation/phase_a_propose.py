@@ -21,9 +21,9 @@ import numpy as np
 import cv2
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from serial_registration import (structural_channel, tissue_mask, lumen_centroids,  # noqa
+from oasis.spatial.serial_registration import (structural_channel, tissue_mask, lumen_centroids,  # noqa
                                   _load_rgb_thumbnail)
-from registration import _rgb_to_gray
+from oasis.common.registration import _rgb_to_gray
 
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "phase_a_qc")
 PX = 0.7519

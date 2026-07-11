@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from spatial_stats import cross_k_all_nulls   # noqa: E402
+from oasis.spatial.spatial_stats import cross_k_all_nulls   # noqa: E402
 
 CSV = os.path.join(os.path.dirname(__file__), "CRC_clusters_neighborhoods_markers.csv")
 OUT = os.path.join(os.path.dirname(__file__), "real_data_production_output.txt")

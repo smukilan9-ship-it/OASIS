@@ -14,7 +14,7 @@ Runs on the in-repo CODEX table (Schürch et al. 2020 CRC); skips if absent. IMC
 import csv
 import numpy as np
 import pytest
-import spatial_stats as ss
+from oasis.spatial import spatial_stats as ss
 from conftest import require_dataset
 
 R = np.arange(0, 101, 4.0)

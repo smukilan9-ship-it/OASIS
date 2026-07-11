@@ -16,7 +16,7 @@ import json
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from serial_registration import detect_scale_bar_px, certify_pair  # noqa: E402
+from oasis.spatial.serial_registration import detect_scale_bar_px, certify_pair  # noqa: E402
 
 DATA = "/Users/mukilan/Desktop/052526"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "phase_a_qc")

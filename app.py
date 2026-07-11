@@ -36,11 +36,11 @@ def _check_dependencies():
 
 _check_dependencies()
 import webview                       # noqa: E402  (after the actionable dep check)
-from webui.api import API           # noqa: E402
+from oasis.webui.api import API           # noqa: E402
 
 def main():
     api = API()
-    html_path = str(Path(__file__).parent / "webui" / "index.html")
+    html_path = str(Path(__file__).parent / "oasis" / "oasis" / "webui" / "index.html")
     window = webview.create_window(
         title="OASIS",
         url=f"file://{html_path}",

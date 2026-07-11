@@ -32,7 +32,7 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from run_pipeline import cytoplasm_overrides_for_pair        # noqa: E402
-from pixel_size_util import get_pixel_size, get_pixel_size_with_source  # noqa: E402
+from oasis.common.pixel_size_util import get_pixel_size, get_pixel_size_with_source  # noqa: E402
 
 failures = []
 
@@ -146,7 +146,7 @@ def test_registration_parity():
     print("\n" + "=" * 72)
     print("3. REGISTRATION METHOD — entry-point independent + deterministic")
     print("=" * 72)
-    from registration import compute_registration
+    from oasis.common.registration import compute_registration
     from PIL import Image
 
     tmp = tempfile.mkdtemp(prefix="parity_")
