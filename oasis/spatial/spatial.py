@@ -170,6 +170,15 @@ def match_layers(
 N_PERMUTATIONS = 1000
 _NULL_SEED     = 0       # fixed seed → reproducible significance numbers
 
+# Smallest positive-cell count that can support ANY spatial claim for a marker.
+# Below this a marker is treated as effectively absent for the spatial test (its
+# arrangement is not estimable); a segregation/association finding needs at least
+# this many cells to be meaningful. Between this and dense_min_positive (30) the
+# marker is SPARSE: the test still runs on the marker-independent all-cell support
+# null (which does not need the sparse marker's own intensity), but the result
+# carries an explicit underpowered flag. See ihc.md §15.7 and Q3.
+_SPARSE_MIN_POSITIVE = 5
+
 
 def spatial_permutation_null(
     centroids_a: np.ndarray,
@@ -529,78 +538,108 @@ def _build_analysis_window(layer_order, registered, reg_results, pixel_size_um,
 
 
 def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, window,
-                                     bandwidth_um=None):
+                                     bandwidth_um=None, support=None):
     """Per-image validity of the 75 µm reweight bandwidth, measured WITHIN the analysis
     window (NOT a universal image property — the same image under a different ROI can
-    give a different verdict). For each marker, restrict its registered positive centroids
-    to `window` and measure the tissue architecture scale ℓ̂; classify it against the
-    bandwidth with the calibrated envelope (spatial_stats.architecture_scale_verdict):
+    give a different verdict).
 
-        ok        ℓ̂ ≥ 2·bw   — size-controlled; primary reweighted null trustworthy
-        caution   bw ≤ ℓ̂ < 2·bw
-        dense_tissue ℓ̂ < bw   — architecture near/inside the interaction band
-        unknown      exact reason recorded per marker; ℓ̂ cannot be estimated
+    ARCHITECTURE is a property of the TISSUE, not the marker (Q3 / ihc.md §15.7): the
+    75 µm reweight is size-controlled when the tissue's characteristic length ℓ̂ is
+    coarser than the band. So ℓ̂ is estimated from the marker-independent ALL-CELL
+    support field (`support`) when available — which is always dense — instead of
+    requiring each sparse marker to self-estimate it. (Falls back to the per-marker
+    positives only when no support is supplied, preserving the older behaviour.)
 
-    Top-level `worst_status` intentionally separates two failure modes reviewers care
-    about:
-      • dense_tissue_bandwidth_invalid      → enough cells, but architecture is too fine;
-                                             try the dense morphology-conditioned null.
-      • underpowered_insufficient_positives → too few positives to estimate ℓ̂ or test;
-                                             fail closed as underpowered, not "dense".
-      • architecture_not_estimable          → enough cells but degenerate geometry; fail closed.
+    POWER (whether a marker has enough positives to support a claim) is a SEPARATE
+    axis from architecture, so an asymmetric field — one marker rich, the other
+    sparse — is no longer force-failed. Per-marker power:
+        adequate  n ≥ 30            — full test
+        sparse    5 ≤ n < 30        — test still runs on the all-cell support null
+                                       (does not need the sparse marker's own
+                                       intensity); result carries an underpowered flag
+        absent    n < 5             — no spatial arrangement to test → abundance/absence
+                                       finding, NOT a failed test
+
+    `worst_status`:
+      • ok / caution                       → reweighted 75 µm primary
+      • dense_tissue_bandwidth_invalid      → dense morphology-conditioned null
+      • underpowered_sparse_marker          → sparse marker present → support null + flag
+      • marker_absent                       → a marker has <5 positives → absence finding
+      • architecture_not_estimable          → tissue scale not estimable → fail closed
 
     Registration certification is a SEPARATE concern and is never affected by this check.
     """
     from oasis.spatial.spatial_stats import (estimate_architecture_scale, architecture_scale_verdict,
                                filter_points_in_polygon, _REWEIGHT_BANDWIDTH_UM)
     bw = float(bandwidth_um if bandwidth_um is not None else _REWEIGHT_BANDWIDTH_UM)
+
+    # Tissue architecture from the marker-independent all-cell support (preferred).
+    ell_tissue = None
+    n_support = 0
+    if support is not None and len(support):
+        sup = np.asarray(support, float).reshape(-1, 2)
+        if window is not None:
+            sup, _ = filter_points_in_polygon(sup, window)
+        n_support = int(len(sup))
+        ell_tissue = estimate_architecture_scale(sup, pixel_size_um, tissue_polygon=window)
+
     per_image = {}
     for marker in layer_order:
         pts = np.asarray(registered.get(marker, np.empty((0, 2))), float).reshape(-1, 2)
         if window is not None and len(pts):
             pts, _excl = filter_points_in_polygon(pts, window)
-        ell = estimate_architecture_scale(pts, pixel_size_um, tissue_polygon=window)
+        n_pts = int(len(pts))
+        # Architecture: prefer the tissue (support) estimate; else the marker's own.
+        ell = ell_tissue if ell_tissue is not None else estimate_architecture_scale(
+            pts, pixel_size_um, tissue_polygon=window)
         v = architecture_scale_verdict(ell, bandwidth_um=bw)
         status = v.get("status")
-        n_pts = int(len(pts))
-        if status == "unknown":
-            if n_pts < 30:
-                status_reason = f"fewer than 30 positive cells inside the certified analysis window (n={n_pts})"
-            else:
-                status_reason = "architecture scale was not estimable from the positive-cell geometry inside the certified analysis window"
+        power = ("adequate" if n_pts >= 30
+                 else "sparse" if n_pts >= _SPARSE_MIN_POSITIVE else "absent")
+        arch_src = "all_cell_support" if ell_tissue is not None else "marker_positives"
+        if power == "absent":
+            status_reason = (f"only {n_pts} positive cell(s) inside the certified analysis "
+                             f"window — too few to test this marker's spatial arrangement")
+        elif power == "sparse":
+            status_reason = (f"sparse marker (n={n_pts}, <30) — tested on the all-cell "
+                             f"support null with reduced power; architecture ℓ̂ from "
+                             f"{arch_src}")
         elif status == "dense_tissue":
             status_reason = (
                 f"tissue architecture scale is below the {bw:.0f} µm bandwidth "
-                f"(ℓ̂={v.get('scale_um')} µm), so this is dense/fine tissue rather than a valid 75 µm-null field"
-            )
+                f"(ℓ̂={v.get('scale_um')} µm, from {arch_src}), so this is dense/fine "
+                f"tissue rather than a valid 75 µm-null field")
         elif status == "caution":
             status_reason = (
-                f"architecture scale is between {bw:.0f} µm and {2*bw:.0f} µm; "
-                "the 75 µm null is usable but near its boundary"
-            )
+                f"architecture scale is between {bw:.0f} µm and {2*bw:.0f} µm "
+                f"(from {arch_src}); the 75 µm null is usable but near its boundary")
+        elif status == "unknown":
+            status_reason = (f"architecture scale was not estimable from the "
+                             f"{arch_src} inside the certified analysis window")
         else:
-            status_reason = (
-                f"architecture scale is at least {2*bw:.0f} µm; the 75 µm null is size-controlled here"
-            )
+            status_reason = (f"architecture scale is at least {2*bw:.0f} µm "
+                             f"(from {arch_src}); the 75 µm null is size-controlled here")
         per_image[marker] = {"scale_um": v.get("scale_um"), "status": status,
-                             "ok": v.get("ok"), "n": n_pts,
+                             "ok": v.get("ok"), "n": n_pts, "power": power,
+                             "arch_source": arch_src,
                              "min_ok_scale_um": v.get("min_ok_scale_um"),
                              "reason": status_reason}
 
-    statuses = {e.get("status") for e in per_image.values()}
-    unknown_markers = [m for m, e in per_image.items() if e.get("status") == "unknown"]
-    underpowered_markers = [
+    absent_markers = [m for m, e in per_image.items() if e.get("power") == "absent"]
+    sparse_markers = [m for m, e in per_image.items() if e.get("power") == "sparse"]
+    unknown_markers = [
         m for m, e in per_image.items()
-        if e.get("status") == "unknown" and int(e.get("n") or 0) < 30
-    ]
+        if e.get("status") == "unknown" and e.get("power") != "absent"]
     dense_markers = [
         m for m, e in per_image.items()
-        if e.get("status") in ("dense_tissue", "unreliable")
-    ]
-    caution_markers = [m for m, e in per_image.items() if e.get("status") == "caution"]
+        if e.get("status") in ("dense_tissue", "unreliable") and e.get("power") == "adequate"]
+    caution_markers = [m for m, e in per_image.items()
+                       if e.get("status") == "caution" and e.get("power") == "adequate"]
 
-    if underpowered_markers:
-        worst = "underpowered_insufficient_positives"
+    if absent_markers:
+        worst = "marker_absent"
+    elif sparse_markers:
+        worst = "underpowered_sparse_marker"
     elif unknown_markers:
         worst = "architecture_not_estimable"
     elif dense_markers:
@@ -611,32 +650,38 @@ def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, win
         worst = "ok"
     valid = worst in ("ok", "caution")
     reason = {
-        "ok": f"tissue architecture is coarser than {bw:.0f} µm in every image — the "
-              f"reweighted primary null is size-controlled within this window.",
-        "caution": f"architecture is only marginally coarser than {bw:.0f} µm — treat a "
-                   f"'robust' verdict with care.",
+        "ok": f"tissue architecture is coarser than {bw:.0f} µm — the reweighted "
+              f"primary null is size-controlled within this window.",
+        "caution": f"architecture is only marginally coarser than {bw:.0f} µm — treat "
+                   f"the co-infiltration verdict with care.",
         "dense_tissue_bandwidth_invalid": (
             f"fine/dense tissue architecture is at/inside the {bw:.0f} µm interaction "
-            f"band in at least one image — the 75 µm reweighted null is not the right "
-            f"primary here; OASIS will attempt the dense morphology-conditioned null "
-            f"if its gates pass."
-        ),
-        "underpowered_insufficient_positives": (
-            "too few positive cells inside the certified analysis window to estimate "
-            "the architecture scale or support a spatial association test — this is "
-            "an underpowered field, not evidence of dense tissue."
-        ),
+            f"band — the 75 µm reweighted null is not the right primary here; OASIS "
+            f"will use the dense morphology-conditioned null if its gates pass."),
+        "underpowered_sparse_marker": (
+            f"one marker is sparse ({', '.join(sparse_markers)}: <30 positives) while the "
+            f"other is well-populated — the cross-type test runs on the marker-independent "
+            f"all-cell support null (which does not need the sparse marker's own "
+            f"intensity), so segregation/association is still reported, but the result is "
+            f"UNDERPOWERED and flagged as such."),
+        "marker_absent": (
+            f"a marker has <{_SPARSE_MIN_POSITIVE} positive cells in this window "
+            f"({', '.join(absent_markers)}) — there is no spatial arrangement to test. "
+            f"This is an ABUNDANCE/absence finding (report the count), not a failed test."),
         "architecture_not_estimable": (
-            "the architecture scale could not be estimated from the positive-cell "
-            "pattern inside the certified analysis window — fail closed rather than "
-            "guessing a null model."
-        ),
+            "the tissue architecture scale could not be estimated inside the certified "
+            "analysis window — fail closed rather than guessing a null model."),
     }[worst]
     return {"bandwidth_um": bw, "window_scope": "certified_analysis_window",
             "per_image": per_image, "worst_status": worst, "valid": bool(valid),
-            "reason": reason,
-            "issue_type": worst,
-            "underpowered_markers": underpowered_markers,
+            "reason": reason, "issue_type": worst,
+            "tissue_scale_um": (round(float(ell_tissue), 1) if ell_tissue is not None else None),
+            "tissue_scale_source": ("all_cell_support" if ell_tissue is not None
+                                    else "marker_positives"),
+            "n_support": n_support,
+            "absent_markers": absent_markers,
+            "sparse_markers": sparse_markers,
+            "underpowered_markers": sparse_markers,   # back-compat alias
             "dense_markers": dense_markers,
             "unknown_markers": unknown_markers}
 
@@ -700,15 +745,17 @@ def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, windo
         })
         return plan
 
-    if worst == "underpowered_insufficient_positives":
+    if worst == "marker_absent":
         plan.update({
             "primary_null": "none",
             "fail_closed": True,
-            "primary_null_label": "Fail-closed — insufficient positive cells",
-            "reason": "Not tested: too few positive cells inside the certified analysis "
-                      "window to estimate the 75 µm architecture assumption or run the "
-                      "dense morphology-conditioned null. This is an underpowered field, "
-                      "not a dense-tissue switch.",
+            "absence": True,
+            "primary_null_label": "Absence finding — a marker is (near-)absent",
+            "reason": "Not a spatial test: a marker has fewer than "
+                      f"{_SPARSE_MIN_POSITIVE} positive cells in this window "
+                      + "(" + ", ".join(bandwidth_precheck.get("absent_markers", [])) + "). "
+                      "There is no spatial arrangement to test — report this as an "
+                      "abundance/absence result, not as 'no association'.",
         })
         return plan
 
@@ -748,12 +795,18 @@ def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, windo
         except Exception:
             support = np.empty((0, 2), dtype=np.float64)
 
+    # The dense/support null is the vehicle for BOTH dense tissue AND a sparse marker.
+    # For the sparse case the marker-count floor is relaxed to _SPARSE_MIN_POSITIVE
+    # (the support null does not need the sparse marker's own intensity), and the plan
+    # is flagged underpowered. For dense tissue the strict ≥dense_min_positive holds.
+    is_sparse = worst == "underpowered_sparse_marker"
+    pos_floor = _SPARSE_MIN_POSITIVE if is_sparse else int(dense_min_positive)
     gates = {
         "landmark_certified": bool(landmark_certified),
         "analysis_window": window is not None,
         "support_csv": bool(morphology_support_csv),
-        "min_positive_a": int(len(p_a)) >= int(dense_min_positive),
-        "min_positive_b": int(len(p_b)) >= int(dense_min_positive),
+        "min_positive_a": int(len(p_a)) >= pos_floor,
+        "min_positive_b": int(len(p_b)) >= pos_floor,
         "min_support": int(len(support)) >= int(dense_min_support),
     }
     failed = [k for k, ok in gates.items() if not ok]
@@ -761,28 +814,42 @@ def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, windo
         **gates,
         "n_positive_a": int(len(p_a)), "n_positive_b": int(len(p_b)),
         "n_support": int(len(support)),
-        "min_positive_required": int(dense_min_positive),
+        "min_positive_required": pos_floor,
         "min_support_required": int(dense_min_support),
         "failed_gates": failed,
+        "underpowered": bool(is_sparse),
     }
     if not failed:
-        plan.update({
-            "primary_null": "dense_morphology",
-            "primary_null_key": "dense_morphology",
-            "primary_null_label": "Dense-tissue morphological null — dense "
-                                  "morphology-conditioned cross-K (all-cell support "
-                                  "+ 2 µm jitter, 10–30 µm band)",
-            "reason": "The 75 µm bandwidth is not size-controlled here (dense/fine "
-                      "architecture), but the dense-fallback gates pass, so the full "
-                      "run will use the dense morphology-conditioned primary null.",
-        })
+        plan["underpowered"] = bool(is_sparse)
+        if is_sparse:
+            plan.update({
+                "primary_null": "dense_morphology",
+                "primary_null_key": "dense_morphology",
+                "primary_null_label": "Underpowered — all-cell support null (sparse marker)",
+                "reason": "One marker is sparse, so the cross-type test runs on the "
+                          "marker-independent all-cell support null (which does not need "
+                          "the sparse marker's own intensity). Segregation/association is "
+                          "reported but the result is UNDERPOWERED — interpret with the "
+                          "cell counts in view.",
+            })
+        else:
+            plan.update({
+                "primary_null": "dense_morphology",
+                "primary_null_key": "dense_morphology",
+                "primary_null_label": "Dense-tissue morphological null — dense "
+                                      "morphology-conditioned cross-K (all-cell support "
+                                      "+ 2 µm jitter, 10–30 µm band)",
+                "reason": "The 75 µm bandwidth is not size-controlled here (dense/fine "
+                          "architecture), but the dense-fallback gates pass, so the full "
+                          "run will use the dense morphology-conditioned primary null.",
+            })
     else:
         plan.update({
             "primary_null": "none", "fail_closed": True,
-            "primary_null_label": "Fail-closed — dense fallback unavailable",
-            "reason": "Dense/fine tissue invalidates the 75 µm primary here, but the "
-                      "dense fallback is unavailable (gate(s) failed: "
-                      + ", ".join(failed) + ") — the run is fail-closed for this pair.",
+            "primary_null_label": "Fail-closed — support null unavailable",
+            "reason": ("A sparse marker" if is_sparse else "Dense/fine tissue")
+                      + " needs the all-cell support null here, but it is unavailable "
+                      "(gate(s) failed: " + ", ".join(failed) + ") — fail-closed for this pair.",
         })
     return plan
 
@@ -896,10 +963,18 @@ def run_spatial_association(
         ref_image_path, layer_images, certified_roi_polygon)
 
     # ── Pre-flight: is the 75 µm reweight bandwidth valid WITHIN this window? ──
-    # Measured on the real positive centroids inside the analysis window (per image);
-    # gates trust in the primary reweighted null BEFORE the statistic is reported.
+    # Architecture ℓ̂ is measured on the marker-INDEPENDENT all-cell support (Q3), so a
+    # sparse marker no longer force-fails the pair; per-marker positive counts are graded
+    # separately for power. Load the support once, up front, and reuse it downstream.
+    _support_precheck = np.empty((0, 2), dtype=np.float64)
+    if morphology_support_csv:
+        try:
+            _support_precheck = load_detection_centroids_csv(
+                morphology_support_csv, pixel_size_um)
+        except Exception:
+            _support_precheck = np.empty((0, 2), dtype=np.float64)
     bandwidth_precheck = precheck_bandwidth_within_window(
-        registered, layer_order, pixel_size_um, window)
+        registered, layer_order, pixel_size_um, window, support=_support_precheck)
     _pc = bandwidth_precheck.get("per_image", {})
     print(f"  Bandwidth 75 µm pre-flight (within analysis window): "
           f"worst={bandwidth_precheck.get('worst_status')} "
@@ -972,11 +1047,28 @@ def run_spatial_association(
             else:
                 p_a, p_b, n_a_excl, n_b_excl = p_a_full, p_b_full, 0, 0
 
+            # A (near-)absent marker has no spatial arrangement to test — report it as an
+            # abundance/absence finding, not "no association" (Q3 / ihc.md §15.7).
+            if int(len(p_a)) < _SPARSE_MIN_POSITIVE or int(len(p_b)) < _SPARSE_MIN_POSITIVE:
+                absent = [m for m, n in ((m_a, len(p_a)), (m_b, len(p_b)))
+                          if int(n) < _SPARSE_MIN_POSITIVE]
+                print(f"  {key}: ABSENCE — {', '.join(absent)} has <{_SPARSE_MIN_POSITIVE} "
+                      f"positive cells in window; no cross-type spatial test (abundance finding)")
+                association[key] = {
+                    "error": "marker_absent", "absence": True,
+                    "absent_markers": absent,
+                    "n_a": int(len(p_a)), "n_b": int(len(p_b)),
+                }
+                continue
+
+            _pf_worst = bandwidth_precheck.get("worst_status")
+            _is_sparse = _pf_worst == "underpowered_sparse_marker"
             dense_info = {
                 "requested": bool(
-                    dense_auto_null
-                    and bandwidth_precheck.get("worst_status") == "dense_tissue_bandwidth_invalid"
+                    dense_auto_null and _pf_worst in (
+                        "dense_tissue_bandwidth_invalid", "underpowered_sparse_marker")
                 ),
+                "underpowered": bool(_is_sparse),
                 "selected": False,
                 "status": ("not_needed" if bandwidth_precheck.get("valid")
                            else "not_requested"),
@@ -1001,12 +1093,16 @@ def run_spatial_association(
             nulls = ("reweighted", "homogeneous")
             dclf_rmin_um, dclf_rmax_um = 10.0, 50.0
             if dense_info["requested"]:
+                # Relax the per-marker count floor for the sparse case: the support null
+                # does not need the sparse marker's own intensity, so ≥_SPARSE_MIN_POSITIVE
+                # is enough to run it (flagged underpowered). Dense tissue keeps ≥30.
+                pos_floor = _SPARSE_MIN_POSITIVE if _is_sparse else int(dense_min_positive)
                 gates = {
                     "landmark_certified": bool(landmark_certified),
                     "analysis_window": window is not None,
                     "support_csv": bool(morphology_support_csv),
-                    "min_positive_a": int(len(p_a)) >= int(dense_min_positive),
-                    "min_positive_b": int(len(p_b)) >= int(dense_min_positive),
+                    "min_positive_a": int(len(p_a)) >= pos_floor,
+                    "min_positive_b": int(len(p_b)) >= pos_floor,
                 }
                 if window is not None and len(morphology_support_full):
                     dense_support, _support_excl = filter_points_in_polygon(
@@ -1019,28 +1115,38 @@ def run_spatial_association(
                     "n_positive_a": int(len(p_a)),
                     "n_positive_b": int(len(p_b)),
                     "n_support": int(len(dense_support)),
-                    "min_positive_required": int(dense_min_positive),
+                    "min_positive_required": pos_floor,
                     "min_support_required": int(dense_min_support),
                 }
                 failed = [k for k, ok in gates.items() if not ok]
                 if not failed:
                     dense_info["selected"] = True
                     dense_info["status"] = "selected"
-                    dense_info["reason"] = (
-                        "75 µm bandwidth pre-flight failed, so OASIS switched to "
-                        "the dense morphology-conditioned primary null "
-                        "(all-cell support + 2 µm jitter, 10–30 µm DCLF band).")
                     nulls = ("dense_morphology", "homogeneous")
                     dclf_rmin_um, dclf_rmax_um = _DENSE_DCLF_RMIN_UM, _DENSE_DCLF_RMAX_UM
-                    print(f"  {key}: 75 µm pre-flight failed → switching primary null "
-                          f"to dense morphology-conditioned "
-                          f"(support={len(dense_support)}, band=10–30 µm)")
+                    if _is_sparse:
+                        dense_info["reason"] = (
+                            "A marker is sparse, so the cross-type test runs on the "
+                            "marker-independent all-cell support null (2 µm jitter, "
+                            "10–30 µm band). Result is UNDERPOWERED and flagged as such.")
+                        print(f"  {key}: sparse marker → all-cell support null "
+                              f"(support={len(dense_support)}, UNDERPOWERED)")
+                    else:
+                        dense_info["reason"] = (
+                            "75 µm bandwidth pre-flight failed, so OASIS switched to "
+                            "the dense morphology-conditioned primary null "
+                            "(all-cell support + 2 µm jitter, 10–30 µm DCLF band).")
+                        print(f"  {key}: 75 µm pre-flight failed → switching primary null "
+                              f"to dense morphology-conditioned "
+                              f"(support={len(dense_support)}, band=10–30 µm)")
                 else:
                     dense_info["status"] = "unavailable"
                     dense_info["reason"] = (
-                        "75 µm bandwidth pre-flight failed, but dense fallback could "
-                        "not be used because gate(s) failed: " + ", ".join(failed))
-                    print(f"  {key}: dense fallback unavailable — {dense_info['reason']}")
+                        ("A sparse marker needs" if _is_sparse
+                         else "75 µm bandwidth pre-flight failed and the dense fallback needs")
+                        + " the all-cell support null, but gate(s) failed: "
+                        + ", ".join(failed))
+                    print(f"  {key}: support null unavailable — {dense_info['reason']}")
 
             # Smallest inter-cell distance this pair's registration error can resolve.
             # This is a REPORTING boundary, not a gate on the test: validation shows the
@@ -1086,6 +1192,7 @@ def run_spatial_association(
                 n_perm=n_perm, seed=_NULL_SEED, tissue_polygon=window,
                 dclf_rmin_um=dclf_rmin_um, dclf_rmax_um=dclf_rmax_um,
                 nulls=nulls, morphology_support=dense_support,
+                registration_radius_floor_um=floor,
             )
             res["radius_floor"] = radius_floor
             res["n_a"] = int(len(p_a))

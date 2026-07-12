@@ -41,6 +41,23 @@ _RELEVANT_SCALE_UM = 50.0
 _DCLF_RMIN_UM = 10.0
 _DCLF_RMAX_UM = 50.0
 
+# Two-scale decomposition of the 10–50 µm interaction band into the two DISTINCT
+# biological findings they conflate (see ihc.md §15.6). These are reported
+# SEPARATELY — a pair can co-localize at short range without regional
+# co-infiltration, or co-infiltrate a region while segregating at contact scale.
+#   • Short-range colocalization — hard-core floor to ~2 cell diameters. Cross-type
+#     spatial proximity at the immediate-neighbourhood scale. NOT single-cell
+#     contact: the two markers are on separate serial sections, so this measures
+#     short-range co-occurrence down to the registration floor, never a physical
+#     synapse. Only interpretable when the pair's registration resolves this scale
+#     (floor < _COLOC_RMAX_UM); otherwise reported as not-resolvable, never null.
+#   • Co-infiltration — 20–50 µm. Shared tissue-region occupancy beyond the
+#     immediate neighbourhood (regional co-occurrence / mutual infiltration).
+_COLOC_RMIN_UM   = _DCLF_RMIN_UM   # 10 µm — one cell diameter (hard-core floor)
+_COLOC_RMAX_UM   = 20.0            # ~2 cell diameters — matches contact_scale_resolved
+_COINFIL_RMIN_UM = 20.0
+_COINFIL_RMAX_UM = _DCLF_RMAX_UM   # 50 µm
+
 # Default KDE bandwidth (µm) for the inhomogeneous null's intensity estimate.
 # Chosen = the top of the DCLF test band (50 µm) on purpose: it PRESERVES first-
 # order intensity variation at scales ≥ the interaction scale we are testing
@@ -540,6 +557,17 @@ def _null_summary_from_k(radii_px, obs_k_px, obs_lmr_px, null_k, s, n_perm,
     global_summary = _global_dclf_summary(
         radii_px, obs_lmr_px, null_l_px, p_values, s, dclf_rmin_um, dclf_rmax_um)
 
+    # Two-scale decomposition from the SAME null envelope (no extra permutations):
+    # short-range colocalization vs regional co-infiltration (see the band constants).
+    bands = {
+        "colocalization": _global_dclf_summary(
+            radii_px, obs_lmr_px, null_l_px, p_values, s,
+            _COLOC_RMIN_UM, _COLOC_RMAX_UM),
+        "coinfiltration": _global_dclf_summary(
+            radii_px, obs_lmr_px, null_l_px, p_values, s,
+            _COINFIL_RMIN_UM, _COINFIL_RMAX_UM),
+    }
+
     return {
         "null_mean_K":  (null_mean_px * s * s).tolist(),
         "null_lower_K": (null_lo_px   * s * s).tolist(),
@@ -548,6 +576,7 @@ def _null_summary_from_k(radii_px, obs_k_px, obs_lmr_px, null_k, s, n_perm,
         "null_upper_L": (null_l_hi * s).tolist(),
         "p_values":     p_values.tolist(),
         "global":       global_summary,
+        "bands":        bands,
         "n_perm":       int(n_perm),
     }
 
@@ -1126,6 +1155,77 @@ def _assess_robustness(summaries: dict, primary: str = None) -> dict:
     }
 
 
+def _assess_interaction(summaries: dict, primary: str = None,
+                        reg_floor_um: float = None) -> dict:
+    """
+    Report the two DISTINCT cross-type findings SEPARATELY, each on the CALIBRATED
+    primary null (co-infiltration and short-range colocalization are not one thing —
+    see ihc.md §15.6). Replaces the single 'robust' label with a per-scale verdict:
+
+      • short-range colocalization  [_COLOC band]  — cross-type proximity at the
+        immediate-neighbourhood scale (down to the registration floor, NOT single-
+        cell contact). Reported `not_resolvable` when the pair's registration floor
+        exceeds the band, so a poorly-registered pair never yields a contact-scale
+        claim.
+      • co-infiltration            [_COINFIL band] — shared tissue-region occupancy.
+
+    For each band: direction is `attraction` (observed above the null → the two
+    types are closer than independence predicts) or `segregation` (below → they
+    avoid each other / are compartmentalised). A band significant under the weak
+    homogeneous-CSR baseline but NOT the calibrated primary is flagged
+    `csr_only` — shared tissue preference, not interaction (never hidden).
+    """
+    if primary is None:
+        primary = ("reweighted" if "reweighted" in summaries
+                   else "dense_morphology" if "dense_morphology" in summaries
+                   else "inhomogeneous" if "inhomogeneous" in summaries
+                   else "homogeneous" if "homogeneous" in summaries else None)
+    prim_bands = (summaries.get(primary, {}) or {}).get("bands", {}) or {}
+    homog_bands = (summaries.get("homogeneous", {}) or {}).get("bands", {}) or {}
+
+    def _dir_word(d):   # DCLF 'direction' → biological word
+        return {"association": "attraction", "segregation": "segregation"}.get(d, "none")
+
+    def _one(band_key, label, band_um, resolvable):
+        b = prim_bands.get(band_key, {}) or {}
+        hb = homog_bands.get(band_key, {}) or {}
+        prim_sig = bool(b.get("significant"))
+        direction = _dir_word(b.get("direction", "none"))
+        p = b.get("global_p_dclf")
+        if not resolvable:
+            verdict, note = "not_resolvable", (
+                f"Registration cannot resolve the {band_um[0]:.0f}–{band_um[1]:.0f} µm "
+                f"scale for this pair (floor ≥ {band_um[1]:.0f} µm) — short-range "
+                f"colocalization is not measurable here, which is NOT the same as absence.")
+        elif prim_sig:
+            verdict, note = direction, (
+                f"Significant {direction} at {band_um[0]:.0f}–{band_um[1]:.0f} µm under the "
+                f"calibrated primary null.")
+        elif bool(hb.get("significant")):
+            verdict, note = "csr_only", (
+                f"Significant only under the weak homogeneous-CSR baseline; it vanishes "
+                f"under the calibrated primary — consistent with shared tissue preference, "
+                f"not {label}.")
+        else:
+            verdict, note = "none", (
+                f"No significant cross-type {label} at {band_um[0]:.0f}–{band_um[1]:.0f} µm "
+                f"under the calibrated primary null.")
+        return {"verdict": verdict, "direction": direction, "global_p_dclf": p,
+                "significant_primary": prim_sig, "band_um": list(band_um),
+                "label": label, "resolvable": bool(resolvable), "summary": note}
+
+    coloc_resolvable = not (reg_floor_um is not None and reg_floor_um >= _COLOC_RMAX_UM)
+    return {
+        "primary_null": primary,
+        "registration_floor_um": (round(float(reg_floor_um), 2)
+                                  if reg_floor_um is not None else None),
+        "colocalization": _one("colocalization", "short-range colocalization",
+                               (_COLOC_RMIN_UM, _COLOC_RMAX_UM), coloc_resolvable),
+        "coinfiltration": _one("coinfiltration", "co-infiltration",
+                               (_COINFIL_RMIN_UM, _COINFIL_RMAX_UM), True),
+    }
+
+
 def cross_k_all_nulls(
     points_a: np.ndarray,
     points_b: np.ndarray,
@@ -1143,6 +1243,7 @@ def cross_k_all_nulls(
     nulls=("reweighted", "homogeneous"),
     morphology_support=None,
     dense_jitter_um: float = _DENSE_MORPHOLOGY_JITTER_UM,
+    registration_radius_floor_um: float = None,
 ) -> dict:
     """
     Cross-type spatial association under the CALIBRATED PRIMARY null + a baseline.
@@ -1176,6 +1277,8 @@ def cross_k_all_nulls(
         empty = {**observed, "n_perm": int(n_perm),
                  "tissue_area_um2": float(area) * s * s,
                  "nulls": {}, "robustness": _assess_robustness({}),
+                 "interaction": _assess_interaction({}, None,
+                                                    registration_radius_floor_um),
                  "null_lower_L": observed["L_minus_r"], "null_upper_L": observed["L_minus_r"],
                  "null_lower_K": observed["K_observed"], "null_upper_K": observed["K_observed"],
                  "null_mean_K": observed["K_observed"],
@@ -1265,6 +1368,8 @@ def cross_k_all_nulls(
                     else next(iter(out_nulls), None))
     primary = out_nulls.get(primary_name, {})
     robustness = _assess_robustness(out_nulls, primary=primary_name)
+    interaction = _assess_interaction(out_nulls, primary=primary_name,
+                                      reg_floor_um=registration_radius_floor_um)
 
     # Top-level OBSERVED curves mirror the primary. For the reweighted primary these
     # are the INHOMOGENEOUS (reweighted) K / L−r, so the plotted curve and its
@@ -1283,6 +1388,7 @@ def cross_k_all_nulls(
         "nulls":           out_nulls,
         "primary_null":    primary_name,
         "robustness":      robustness,
+        "interaction":     interaction,
         # ── top-level mirrors the PRIMARY (calibrated) null ──
         "null_mean_K":  primary.get("null_mean_K"),
         "null_lower_K": primary.get("null_lower_K"),

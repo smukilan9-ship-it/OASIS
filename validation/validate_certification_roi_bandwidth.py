@@ -60,11 +60,13 @@ def test_bandwidth():
     fc = rng.uniform(0, 3000 / px, size=(200, 2))
     fine = np.vstack([c + rng.normal(0, 15 / px, size=(6, 2)) for c in fc])
 
-    few = rng.uniform(0, 3000 / px, size=(10, 2))               # < 30 → underpowered
+    few = rng.uniform(0, 3000 / px, size=(10, 2))    # 5≤n<30 → sparse (Q3)
+    none3 = rng.uniform(0, 3000 / px, size=(3, 2))   # n<5 → absent (Q3)
 
     rc = precheck_bandwidth_within_window({"A": coarse, "B": coarse}, ["A", "B"], px, None)
     rf = precheck_bandwidth_within_window({"A": fine, "B": fine}, ["A", "B"], px, None)
     ru = precheck_bandwidth_within_window({"A": few, "B": few}, ["A", "B"], px, None)
+    rabs = precheck_bandwidth_within_window({"A": none3, "B": none3}, ["A", "B"], px, None)
     rm = precheck_bandwidth_within_window({"A": fine, "B": few}, ["A", "B"], px, None)
 
     check("coarse architecture is valid (ok/caution)",
@@ -73,12 +75,16 @@ def test_bandwidth():
     check("fine/dense architecture is labelled dense_tissue_bandwidth_invalid + fails closed",
           rf["worst_status"] == "dense_tissue_bandwidth_invalid" and rf["valid"] is False,
           f"worst={rf['worst_status']} ℓ̂={rf['per_image']['A']['scale_um']}")
-    check("too-few cells → underpowered_insufficient_positives + fails closed",
-          ru["worst_status"] == "underpowered_insufficient_positives" and ru["valid"] is False,
+    check("sparse marker (5≤n<30) → underpowered_sparse_marker (runs, not fail-closed)",
+          ru["worst_status"] == "underpowered_sparse_marker" and ru["valid"] is False
+          and ru["per_image"]["A"]["power"] == "sparse",
           f"worst={ru['worst_status']} n={ru['per_image']['A']['n']}")
-    check("underpowered beats dense when one marker has too few positives",
-          rm["worst_status"] == "underpowered_insufficient_positives" and rm["valid"] is False,
-          f"worst={rm['worst_status']} A={rm['per_image']['A']['status']} B={rm['per_image']['B']['status']}")
+    check("near-absent marker (n<5) → marker_absent (abundance finding)",
+          rabs["worst_status"] == "marker_absent" and "A" in rabs["absent_markers"],
+          f"worst={rabs['worst_status']} n={rabs['per_image']['A']['n']}")
+    check("sparse beats dense when one marker is sparse",
+          rm["worst_status"] == "underpowered_sparse_marker" and rm["valid"] is False,
+          f"worst={rm['worst_status']} A_power={rm['per_image']['A']['power']} B_power={rm['per_image']['B']['power']}")
     check("window_scope names the window (not per-image)",
           rc["window_scope"] == "certified_analysis_window")
 
