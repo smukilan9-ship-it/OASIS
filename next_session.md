@@ -238,6 +238,27 @@ Secondary risk: model-version parity (pin the same InstanSeg weights) and WSI fo
 BioFormats). **Not committing to it — this is the viability read you asked for.**
 
 ## 9. Changelog (append newest on top)
+- **2026-07-12 (later)** — Spatial STATS upgrade (Q3+Q4), committed `163c208` on main:
+  - **Q3** — architecture ℓ̂ now from the all-cell support field (tissue property), not
+    per-marker positives; power graded separately (adequate ≥30 / sparse 5–29 / absent <5).
+    Asymmetric fields (one rich, one sparse) run the all-cell support null flagged
+    UNDERPOWERED instead of fail-closing; <5 → absence finding. `worst_status` gained
+    `underpowered_sparse_marker` + `marker_absent`. **LL477 (TIM-3 n=15) now runs** (was
+    fail-closed). Files: `precheck_bandwidth_within_window`, `_build_precheck_null_plan`,
+    full-run `dense_info` loop in spatial.py; `_SPARSE_MIN_POSITIVE=5`.
+  - **Q4** — two-band DCLF from the same null envelope: **short-range colocalization
+    [10–20µm]** + **co-infiltration [20–50µm]**, each with attraction/segregation/none via
+    new `_assess_interaction` → `res["interaction"]`. Short band gated `not_resolvable` by
+    the registration floor (no false contact claim across serial sections). Old
+    `robustness` kept for back-compat. spatial_stats.py: band constants + `bands` in
+    `_null_summary_from_k` + `_assess_interaction` + `cross_k_all_nulls` wiring.
+  - Verified: pytest green; validate_certification_roi_bandwidth all PASS (new taxonomy);
+    LL477 end-to-end. Reweighted-null calibration re-run confirms no drift (core stat
+    byte-identical — only additive fields). **UI still shows the OLD single verdict** — the
+    Results report + wizard (tasks 4/5) surface `interaction`/sparse/absence next.
+  - **Terminology**: use "short-range colocalization" (proximal association) vs
+    "co-infiltration"; directions "attraction"/"segregation". NOT "engagement/contact"
+    (can't claim single-cell contact across two serial sections).
 - **2026-07-12** — Fixed the Spatial-tab failures (75 µm pre-flight + full spatial run): root
   cause was `PROJECT_DIR` off-by-one after the restructure (pointed at `oasis/` not repo root),
   so the `run_pipeline.py` subprocess couldn't be found. Fixed api.py/calibration.py/
