@@ -1558,17 +1558,33 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
             print(f"    {bw_precheck.get('reason')}")
             if not bw_valid and dense_selected:
                 dense = spatial_validity.get("dense_null") or {}
-                print(f"  ✓ Fine/dense tissue detected: the 75 µm reweighted null "
-                      f"was bypassed and OASIS automatically switched to the DENSE "
-                      f"morphology-conditioned primary null "
-                      f"(support={dense.get('gates', {}).get('n_support')}, "
-                      f"jitter={dense.get('jitter_um')} µm, band=10–30 µm).")
+                n_support = (dense.get('gates', {}) or {}).get('n_support')
+                # Q3: the same all-cell support null serves two distinct triggers —
+                # a SPARSE marker (too few positives to reweight, but the field is not
+                # dense) and genuinely DENSE/fine tissue. Name the real reason.
+                if bw_precheck.get("worst_status") == "underpowered_sparse_marker":
+                    print(f"  ✓ Sparse marker: the 75 µm reweighted null was bypassed "
+                          f"and the cross-type test ran on the marker-independent "
+                          f"all-cell support null (support={n_support}, "
+                          f"jitter={dense.get('jitter_um')} µm, band=10–30 µm). "
+                          f"Result is UNDERPOWERED and flagged as such.")
+                else:
+                    print(f"  ✓ Fine/dense tissue detected: the 75 µm reweighted null "
+                          f"was bypassed and OASIS automatically switched to the DENSE "
+                          f"morphology-conditioned primary null "
+                          f"(support={n_support}, "
+                          f"jitter={dense.get('jitter_um')} µm, band=10–30 µm).")
             elif not bw_valid:
                 status = bw_precheck.get("worst_status")
-                if status == "underpowered_insufficient_positives":
-                    print(f"  ⚠ Spatial association for {sample_id} is NOT TESTED: "
-                          f"too few positive cells inside the certified analysis window. "
-                          f"This is underpowered, not a dense-tissue null switch.")
+                if status == "marker_absent":
+                    print(f"  ⚠ Spatial association for {sample_id} is an ABUNDANCE/"
+                          f"ABSENCE finding, not a spatial test: "
+                          f"{bw_precheck.get('reason')}")
+                elif status == "underpowered_sparse_marker":
+                    print(f"  ⚠ Spatial association for {sample_id} is a sparse-marker "
+                          f"case, but the all-cell support null was unavailable "
+                          f"(support/count gate failed); the underpowered result is "
+                          f"withheld. Registration certification is unaffected.")
                 elif status == "architecture_not_estimable":
                     print(f"  ⚠ Spatial association for {sample_id} is NOT TESTED: "
                           f"architecture scale could not be estimated inside the certified "
