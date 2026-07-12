@@ -67,15 +67,35 @@ def test_architecture_verdict_names_dense_tissue_not_unreliable():
     assert v["ok"] is False
 
 
-def test_bandwidth_unknown_includes_exact_underpowered_reason():
+def test_bandwidth_marker_absent_below_floor():
+    # <5 positives → no spatial arrangement to test → marker_absent (Q3), not a
+    # 'dense' or generic underpowered verdict.
     pts = np.array([[10.0, 10.0], [20.0, 20.0], [30.0, 30.0]])
     r = spatial.precheck_bandwidth_within_window(
         {"A": pts, "B": pts.copy()}, ["A", "B"], pixel_size_um=1.0,
         window=None, bandwidth_um=75.0)
 
-    assert r["worst_status"] == "underpowered_insufficient_positives"
-    assert r["per_image"]["A"]["status"] == "unknown"
-    assert "fewer than 30 positive cells" in r["per_image"]["A"]["reason"]
+    assert r["worst_status"] == "marker_absent"
+    assert r["per_image"]["A"]["power"] == "absent"
+    assert "A" in r["absent_markers"]
+
+
+def test_bandwidth_sparse_marker_runs_not_failclosed():
+    # One marker adequate (≥30), the other sparse (5≤n<30): architecture comes from
+    # the all-cell support and the pair is flagged underpowered_sparse_marker — it is
+    # NOT force-failed, so segregation can still be reported (Q3).
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0, 500, (40, 2))          # adequate
+    b = rng.uniform(0, 500, (15, 2))          # sparse
+    support = rng.uniform(0, 500, (800, 2))   # dense all-cell field
+    r = spatial.precheck_bandwidth_within_window(
+        {"A": a, "B": b}, ["A", "B"], pixel_size_um=1.0,
+        window=None, bandwidth_um=75.0, support=support)
+
+    assert r["worst_status"] == "underpowered_sparse_marker"
+    assert r["per_image"]["B"]["power"] == "sparse"
+    assert r["per_image"]["A"]["power"] == "adequate"
+    assert r["tissue_scale_source"] == "all_cell_support"
 
 
 # ── Opt-in slow rate calibration (pytest -m slow) ────────────────────────────
