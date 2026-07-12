@@ -4197,6 +4197,80 @@ function spatialResultParameterSets(p, a, cert, sv) {
   };
 }
 
+// ── Two-band interaction rendering (Q4) ──────────────────────────────────────
+// Cross-type association is reported as TWO distinct findings on the same
+// calibrated primary null: short-range colocalization (10–20 µm) and
+// co-infiltration (20–50 µm). Each band verdict ∈ {attraction, segregation,
+// csr_only, none, not_resolvable}. NEVER the old single "engagement" label.
+function spatialBandVerdictMeta(v) {
+  return ({
+    attraction:     ['#16a34a', '#f0fdf4', '#166534', 'attraction',
+      'the two markers lie closer together than independence predicts'],
+    segregation:    ['#b45309', '#fffbeb', '#92400e', 'segregation',
+      'the two markers avoid each other / occupy largely separate regions'],
+    csr_only:       ['#2563eb', '#eff6ff', '#1e40af', 'shared-compartment only',
+      'significant only under the homogeneous-CSR baseline, not the calibrated primary — shared tissue preference, not interaction'],
+    none:           ['#6b7280', '#f9fafb', '#374151', 'no association',
+      'the L−r curve stays within the calibrated null envelope in this band'],
+    not_resolvable: ['#64748b', '#f1f5f9', '#475569', 'not resolvable here',
+      'this pair’s registration error is larger than this distance band, so proximity at this scale cannot be measured — this is NOT evidence of absence'],
+  })[v] || ['#6b7280', '#f9fafb', '#374151', String(v || '—'), ''];
+}
+
+// Pick the pair's headline (strongest RESOLVABLE finding) for the title badge.
+function spatialPairHeadline(inter, absence) {
+  if (absence) return ['gray', 'abundance / absence finding'];
+  if (!inter) return ['gray', '—'];
+  const c = inter.colocalization || {}, k = inter.coinfiltration || {};
+  const strong = v => v === 'attraction' || v === 'segregation';
+  if (strong(c.verdict)) return [c.verdict === 'attraction' ? 'green' : 'amber', 'colocalization: ' + c.verdict];
+  if (strong(k.verdict)) return [k.verdict === 'attraction' ? 'green' : 'amber', 'co-infiltration: ' + k.verdict];
+  if (c.verdict === 'csr_only' || k.verdict === 'csr_only') return ['cyan', 'shared-compartment only'];
+  return ['gray', 'no association'];
+}
+
+// The two-band interaction card (the core Q4 output). `dim` greys it when
+// registration QC is invalid. `underpowered` adds the sparse-marker caveat.
+function spatialInteractionBlock(inter, opts) {
+  if (!inter) return '';
+  opts = opts || {};
+  const dim = opts.dim || '';
+  const floor = inter.registration_floor_um;
+  const primaryLabel = inter.primary_null === 'dense_morphology'
+    ? 'dense morphology-conditioned null (all-cell support, 10–30 µm)'
+    : (inter.primary_null === 'reweighted'
+        ? '75 µm reweighted inhomogeneous null'
+        : (inter.primary_null || 'calibrated primary null'));
+  const rowFor = (b, fallbackName) => {
+    if (!b) return '';
+    const [bd, bg, fg, word, desc] = spatialBandVerdictMeta(b.verdict);
+    const band = (b.band_um || []).map(x => (typeof x === 'number' ? x.toFixed(0) : x)).join('–');
+    const p = (typeof b.global_p_dclf === 'number')
+      ? (b.global_p_dclf < 0.0001 ? 'p < 0.0001' : 'p = ' + b.global_p_dclf.toFixed(4))
+      : '';
+    return `<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 11px;border:1px solid ${bd};background:${bg};border-radius:8px">
+      <div style="min-width:158px">
+        <div style="font-weight:700;color:${fg};font-size:12px">${esc(b.label || fallbackName)}</div>
+        <div class="muted" style="font-size:10px">${band} µm scale</div>
+      </div>
+      <div style="flex:1">
+        <div style="color:${fg};font-weight:700;font-size:12px;text-transform:capitalize">${esc(word)}${p ? ` · <span style="font-weight:600">${p}</span>` : ''}</div>
+        <div style="color:${fg};font-size:11px;line-height:1.5;margin-top:2px">${esc(b.summary || desc)}</div>
+      </div></div>`;
+  };
+  const upNote = opts.underpowered
+    ? `<div style="margin-top:6px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #d97706;border-radius:6px;padding:7px 9px"><strong>⚠ UNDERPOWERED</strong> — a marker is sparse, so this pair ran on the marker-independent all-cell support null. Segregation/attraction is still reported, but sensitivity is reduced; a null result here is not strong evidence of no interaction.</div>`
+    : '';
+  return `<div style="margin:6px 0 12px;${dim}">
+    <div class="muted" style="font-size:11px;margin:0 0 6px">Cross-type interaction — two distinct findings, each tested on the <strong>${esc(primaryLabel)}</strong>${floor != null ? ` (registration resolves distances ≥ ${(+floor).toFixed(0)} µm)` : ''}:</div>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      ${rowFor(inter.colocalization, 'short-range colocalization')}
+      ${rowFor(inter.coinfiltration, 'co-infiltration')}
+    </div>
+    ${upNote}
+  </div>`;
+}
+
 function spatialAssocShowResults(data) {
   const results = (data && data.results) || [];
   const summary = (data && data.summary) || {};
@@ -4210,23 +4284,25 @@ function spatialAssocShowResults(data) {
   // ROBUST findings (significant under the calibrated primary null) are counted
   // separately from CSR-ONLY findings (significant only under homogeneous CSR — a
   // critical result, never hidden), regardless of the result source.
-  let nRobust = 0, nCsrOnly = 0, nExcludedQc = 0, gpsValid = [];
+  let nColoc = 0, nCoinfil = 0, nExcludedQc = 0, nNotTested = 0, gpsValid = [];
+  const strongBand = v => v === 'attraction' || v === 'segregation';
   results.forEach(p => {
     const qInvalid = ((p.registration_qc || {}).status) === 'invalid';
     if (qInvalid) { nExcludedQc++; return; }
     Object.values((p.spatial_association || {}).association || {}).forEach(v => {
+      if (v.error === 'marker_absent' || v.absence || v.error === 'no_interpretable_radius_band') { nNotTested++; return; }
+      const inter = v.interaction || {};
+      if (strongBand((inter.colocalization || {}).verdict)) nColoc++;
+      if (strongBand((inter.coinfiltration || {}).verdict)) nCoinfil++;
       const g = v.global || {};
-      const verdict = (v.robustness || {}).verdict;
-      if (verdict === 'robust') nRobust++;
-      else if (verdict === 'csr_only') nCsrOnly++;
       if (typeof g.global_p_dclf === 'number') gpsValid.push(g.global_p_dclf);
     });
   });
   document.getElementById('spatial-summary').innerHTML = `
     <div class="metric"><div class="metric-label">Pairs</div><div class="metric-value">${summary.pairs ?? results.length}</div><div class="metric-sub">processed</div></div>
-    <div class="metric"><div class="metric-label">Cell-scale engagement</div><div class="metric-value">${nRobust}</div><div class="metric-sub">primary-null significant</div></div>
-    <div class="metric"><div class="metric-label">Co-infiltration only</div><div class="metric-value">${nCsrOnly}</div><div class="metric-sub">compartment-scale</div></div>
-    <div class="metric"><div class="metric-label">Excluded (QC)</div><div class="metric-value">${nExcludedQc}</div><div class="metric-sub">failed registration QC</div></div>
+    <div class="metric"><div class="metric-label">Colocalization</div><div class="metric-value">${nColoc}</div><div class="metric-sub">short-range · 10–20 µm</div></div>
+    <div class="metric"><div class="metric-label">Co-infiltration</div><div class="metric-value">${nCoinfil}</div><div class="metric-sub">20–50 µm</div></div>
+    <div class="metric"><div class="metric-label">Not tested</div><div class="metric-value">${nExcludedQc + nNotTested}</div><div class="metric-sub">QC-excluded / absence</div></div>
   `;
 
   // ── Cohort-level multiple-comparison correction (NEVER quote the bare minimum
@@ -4269,12 +4345,13 @@ function spatialAssocShowResults(data) {
   const pill = (bg, fg, txt) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;background:${bg};color:${fg}">${txt}</span>`;
   const twoQuestionLegend = `
     <div class="info-box" style="margin:0 0 14px;font-size:12px;line-height:1.6">
-      <strong>How to read these results — primary null plus CSR baseline.</strong> Cross-type spatial analysis separates the strong cell-neighbourhood claim from the weaker shared-compartment signal:
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:flex-start">${pill('#f0fdf4','#166534','Cell-scale engagement')}
-        <span>Significant under the selected calibrated primary null. For coarse architecture this is the 75 µm reweighted null; for dense fields that fail the 75 µm check, OASIS can switch to the dense morphology-conditioned primary. This is the strong population-level claim.</span></div>
-      <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start">${pill('#eff6ff','#1e40af','Co-infiltration only')}
-        <span>Significant under homogeneous CSR but <em>not</em> the selected primary. The two populations share or avoid compartments, but do not show extra proximity after the appropriate tissue/morphology null is applied.</span></div>
-      <div style="margin-top:8px" class="muted">If the 75 µm architecture check fails, the result card states whether dense morphology-conditioned mode was selected or why it was unavailable.</div>
+      <strong>How to read these results — two spatial scales, one calibrated null.</strong>
+      Cross-type analysis reports two <em>distinct</em> findings, each tested on the calibrated primary null (the 75 µm reweighted inhomogeneous null for coarse tissue, or the dense morphology-conditioned null when the field is fine/dense). They are not one thing:
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:flex-start">${pill('#f0fdf4','#166534','Short-range colocalization')}
+        <span><strong>10–20 µm</strong> — proximity at the immediate-neighbourhood scale (down to the pair's registration floor; not single-cell contact across serial sections). Shown as <em>not resolvable</em> when registration is too coarse for this band.</span></div>
+      <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start">${pill('#eff6ff','#1e40af','Co-infiltration')}
+        <span><strong>20–50 µm</strong> — shared occupancy of the same tissue neighbourhood.</span></div>
+      <div style="margin-top:8px">Each band's <strong>direction</strong> is <span style="color:#166534;font-weight:600">attraction</span> (closer than independence), <span style="color:#92400e;font-weight:600">segregation</span> (avoidance), <span style="color:#1e40af;font-weight:600">shared-compartment only</span> (significant under the weak CSR baseline but not the calibrated primary — shared tissue preference, not interaction), or <span style="color:#374151;font-weight:600">no association</span>. This is a population-level serial-section statistic; it does not establish same-cell co-expression.</div>
     </div>`;
   if (!results.length) {
     cards.innerHTML = '<div class="card" style="text-align:center;color:var(--text3)">No results</div>';
@@ -4325,29 +4402,42 @@ function spatialAssocShowResults(data) {
       // ── 75 µm bandwidth spatial-validity (SEPARATE from registration cert) ──────
       const sv = p.spatial_validity || a.spatial_validity || null;
       const bwBanner = (sv && sv.worst_status) ? (() => {
+        const st = sv.worst_status;
         const ok = sv.bandwidth_75um_valid;
         const denseSel = !!sv.dense_null_selected;
         const dense = sv.dense_null || {};
-        const underpowered = sv.worst_status === 'underpowered_insufficient_positives';
-        const notEstimable = sv.worst_status === 'architecture_not_estimable';
-        const col = ok ? (sv.worst_status === 'caution' ? '#d97706' : '#16a34a')
-          : (denseSel ? '#7c3aed' : (underpowered || notEstimable ? '#b45309' : '#dc2626'));
-        const bg  = ok ? (sv.worst_status === 'caution' ? '#fffbeb' : '#f0fdf4')
-          : (denseSel ? '#f5f3ff' : (underpowered || notEstimable ? '#fffbeb' : '#fef2f2'));
+        const sparse = st === 'underpowered_sparse_marker';
+        const absent = st === 'marker_absent';
+        const notEstimable = st === 'architecture_not_estimable';
+        const col = ok ? (st === 'caution' ? '#d97706' : '#16a34a')
+          : denseSel ? '#7c3aed'
+          : absent ? '#6d28d9'
+          : (sparse || notEstimable) ? '#b45309'
+          : '#dc2626';
+        const bg  = ok ? (st === 'caution' ? '#fffbeb' : '#f0fdf4')
+          : denseSel ? '#f5f3ff'
+          : absent ? '#f5f3ff'
+          : (sparse || notEstimable) ? '#fffbeb'
+          : '#fef2f2';
         const chips = Object.entries(sv.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
         const denseLine = denseSel
-          ? `<div style="margin-top:6px"><strong>Dense null selected:</strong> all-cell morphology support + ${dense.jitter_um ?? 2} µm jitter; DCLF band ${(dense.dclf_band_um||[10,30]).join('–')} µm; support n=${(dense.gates||{}).n_support ?? '—'}.</div>`
-          : (!ok && dense ? `<div style="margin-top:6px"><strong>Dense fallback unavailable:</strong> ${esc(dense.reason || 'support/count gates failed')}</div>` : '');
+          ? `<div style="margin-top:6px"><strong>${sparse ? 'All-cell support null used' : 'Dense null selected'}:</strong> marker-independent all-cell support + ${dense.jitter_um ?? 2} µm jitter; DCLF band ${(dense.dclf_band_um||[10,30]).join('–')} µm; support n=${(dense.gates||{}).n_support ?? '—'}.</div>`
+          : (!ok && !absent && dense && dense.reason ? `<div style="margin-top:6px"><strong>Support/dense fallback unavailable:</strong> ${esc(dense.reason)}</div>` : '');
         const invalidMsg = denseSel
-          ? ' — 75 µm null was bypassed; switched to dense morphology-conditioned primary null.'
-          : underpowered
-          ? ' — not tested as a robust spatial association: too few positive cells inside the certified window; this is underpowered, not dense tissue.'
+          ? (sparse
+            ? ' — a marker is sparse, so the 75 µm null was bypassed and the test ran on the marker-independent all-cell support null. The result is UNDERPOWERED (still reported).'
+            : ' — 75 µm null was bypassed; switched to the dense morphology-conditioned primary null.')
+          : absent
+          ? ' — a marker has too few positive cells to test spatially: this is an abundance/absence finding (report the count), not a spatial result.'
+          : sparse
+          ? ' — a marker is sparse and the all-cell support null was unavailable (support/count gate failed); the underpowered result is withheld.'
           : notEstimable
-          ? ' — not tested as a robust spatial association: architecture scale could not be estimated.'
-          : ' — 75 µm null was bypassed, but dense fallback gates did not pass, so the primary robust claim is withheld; registration certification is unaffected.';
+          ? ' — architecture scale could not be estimated inside the certified window; the primary claim is withheld.'
+          : ' — 75 µm null was bypassed, but the dense fallback gates did not pass, so the primary claim is withheld; registration certification is unaffected.';
+        const icon = (ok || denseSel) ? '✓' : (absent || sparse ? 'ⓘ' : '⚠');
         return `<div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid ${col};background:${bg};color:${col}">
-          <strong>${ok ? '✓' : (denseSel ? '✓' : '⚠')} ${esc(spatialBandwidthStatusLabel(sv.worst_status))} within analysis window (${esc(sv.worst_status)})</strong>
+          <strong>${icon} ${esc(spatialBandwidthStatusLabel(st))} within analysis window (${esc(st)})</strong>
           ${ok ? '' : invalidMsg}
           <div style="margin-top:6px">${chips}</div>
           <div style="margin-top:4px">${esc(sv.reason || '')}</div>
@@ -4357,30 +4447,44 @@ function spatialAssocShowResults(data) {
       const qcPill = (txt, color) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid ${color};color:${color}">${txt}</span>`;
       const qcColor = qInvalid ? '#dc2626' : (qWarn ? '#d97706' : '#16a34a');
 
-      // ── Robustness verdict (calibrated reweighted primary vs CSR baseline) ──
-      const rob = a.robustness || {};
-      const verdict = rob.verdict || 'unknown';
+      // ── Absence / not-tested pairs: no spatial arrangement to test. Render an
+      //    abundance/absence card (counts + cert + QC), never a fabricated verdict.
+      if (a.error === 'marker_absent' || a.absence || a.error === 'no_interpretable_radius_band') {
+        const absMarkers = (a.absent_markers || []).map(esc).join(', ');
+        const isFloor = a.error === 'no_interpretable_radius_band';
+        const headTxt = isFloor
+          ? 'Not resolvable — registration error exceeds every evaluated radius'
+          : `Abundance / absence finding${absMarkers ? ` — ${absMarkers} (near-)absent in window` : ''}`;
+        return `
+        <div class="card">
+          <div class="card-title" style="display:flex;align-items:center;gap:8px">
+            ${esc(p.sample_id)} <span class="muted" style="font-size:12px">${esc(p.stain_a || 'A')} ↔ ${esc(p.stain_b || 'B')}</span>
+            <span class="badge gray">${isFloor ? 'not resolvable' : 'absence finding'}</span>
+          </div>
+          ${qcBanner}${certBanner}${bwBanner}
+          <div style="margin:4px 0 10px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;border:1px solid #6d28d9;background:#f5f3ff;color:#5b21b6">
+            <strong>ⓘ ${esc(headTxt)}.</strong> ${isFloor
+              ? 'No interpretable inter-cell distance remains below the maximum radius evaluated, so no cross-type statistic is reported for this pair.'
+              : 'There are too few positive cells of a marker to define a spatial arrangement. Report this as a count/abundance result — it is NOT evidence of no association.'}
+          </div>
+          <div class="metrics-row c2" style="margin:10px 0">
+            <div class="metric"><div class="metric-label">${esc(p.stain_a || 'A')}+ cells</div><div class="metric-value">${(typeof a.n_a === 'number' ? a.n_a : 0).toLocaleString()}</div><div class="metric-sub">in window</div></div>
+            <div class="metric"><div class="metric-label">${esc(p.stain_b || 'B')}+ cells</div><div class="metric-value">${(typeof a.n_b === 'number' ? a.n_b : 0).toLocaleString()}</div><div class="metric-sub">in window</div></div>
+          </div>
+        </div>`;
+      }
+
+      // ── Two-band interaction (Q4): the headline finding, replacing the old
+      //    single "engagement/robustness" verdict. ────────────────────────────
+      const inter = a.interaction || null;
       const nullsObj = a.nulls || {};
-      const primaryNull = a.primary_null || (rob.primary_null) || 'reweighted';
+      const primaryNull = a.primary_null || (inter && inter.primary_null) || 'reweighted';
       const densePrimary = primaryNull === 'dense_morphology';
       const outputParams = spatialResultParameterSets(p, a, cert, sv || {});
-      const robDirEarly = (rob.direction && rob.direction !== 'none') ? rob.direction
-        : ((a.global || {}).direction || 'none');
-      const robMeta = ({
-        robust:   ['#16a34a', '#f0fdf4', '#166534', '✓ Cell-scale engagement — significant beyond shared tissue compartments'],
-        csr_only: ['#2563eb', '#eff6ff', '#1e40af', 'ⓘ Co-infiltration only — same compartments, no cell-scale engagement'],
-        none:     ['#6b7280', '#f9fafb', '#374151', 'No significant association under the calibrated null'],
-        mixed:    ['#d97706', '#fffbeb', '#92400e', '⚠ Ambiguous — interpret with caution'],
-      })[verdict] || ['#6b7280', '#f9fafb', '#374151', '—'];
-      // Co-infiltration is an ASSOCIATION-direction statement; when the CSR-only call
-      // is segregation it means compartment-scale exclusion, not co-infiltration.
-      if (verdict === 'csr_only' && robDirEarly === 'segregation')
-        robMeta[3] = 'ⓘ Compartment-scale exclusion only — different compartments, no cell-scale relationship';
-      const robBanner = (!qInvalid && verdict !== 'unknown') ? `
-        <div style="margin:4px 0 10px;padding:10px 12px;border-radius:8px;font-size:12px;line-height:1.5;
-             border:1px solid ${robMeta[0]};background:${robMeta[1]};color:${robMeta[2]}">
-          <strong>${robMeta[3]}</strong><br>${esc(rob.summary || '')}
-        </div>` : '';
+      const svSparse = !!(sv && sv.worst_status === 'underpowered_sparse_marker');
+      const interactionCard = (!qInvalid && inter)
+        ? spatialInteractionBlock(inter, { dim: statsDim, underpowered: svSparse })
+        : '';
       const nullRow = (key, label) => {
         const nd = nullsObj[key] || {};
         const ng = nd.global || {};
@@ -4404,7 +4508,7 @@ function spatialAssocShowResults(data) {
       const primaryKey = densePrimary ? 'dense_morphology' : 'reweighted';
       const nullTable = (nullsObj && Object.keys(nullsObj).length) ? `
         <div style="margin-top:12px;${statsDim}">
-          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = ${densePrimary ? 'dense morphology-conditioned cross-K for fine/dense tissue (10–30 µm, all-cell support + 2 µm jitter)' : 'the calibrated reweighted inhomogeneous cross-K (10–50 µm, 75 µm architecture bandwidth)'}. Homogeneous CSR is the compartment-scale baseline: significant under CSR but not the primary ⇒ shared compartments/co-infiltration, not cell-scale engagement.</div>`}
+          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = ${densePrimary ? 'dense morphology-conditioned cross-K for fine/dense tissue (10–30 µm, all-cell support + 2 µm jitter)' : 'the calibrated reweighted inhomogeneous cross-K (10–50 µm, 75 µm architecture bandwidth)'}. Homogeneous CSR is the shared-compartment baseline: significant under CSR but not the primary ⇒ shared tissue preference, not a cross-type interaction. The two-band verdict above is the finding; this table is the underlying per-null evidence.</div>`}
           <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
             <thead><tr style="background:var(--bg3)">
               <th style="text-align:left;padding:5px 8px">Null model</th>
@@ -4428,32 +4532,27 @@ function spatialAssocShowResults(data) {
       const gpTxt = (typeof gp === 'number' && gp < 0.0001) ? '< 0.0001' : '= ' + fmtP(gp);
       const area = p.tissue_area_um2 ?? sa.tissue_area_um2 ?? a.tissue_area_um2;
       const mask = p.tissue_mask_method || sa.tissue_mask_method || a.tissue_mask_method;
-      // Headline direction comes from the robustness verdict (which null carried
-      // the call), falling back to the primary null's direction only for legacy
-      // results that predate the robustness block.
-      const robDir = (rob.direction && rob.direction !== 'none') ? rob.direction : dir;
-      const dirWord = robDir === 'segregation' ? 'segregation' : 'association';
-      // The headline interpretation is driven by robustness.verdict — NEVER by a
-      // single null's significance — so we never advertise a finding the
-      // cross-null robustness logic does not support.
+      // Headline interpretation is driven by the two-band interaction (Q4), NEVER
+      // by a single null's significance — so we never advertise a finding the
+      // two-band verdict does not support. Legacy results (no interaction) fall
+      // back to the primary null's whole-curve direction.
+      const cB = (inter && inter.colocalization) || {};
+      const kB = (inter && inter.coinfiltration) || {};
+      const strongB = v => v === 'attraction' || v === 'segregation';
+      const primaryName = densePrimary
+        ? 'dense morphology-conditioned primary null'
+        : 'calibrated 75 µm reweighted primary null';
       const interp = qInvalid
-        ? `Statistics not interpretable — registration did not pass QC (${esc(qMethod)}). The call below is shown for transparency only and must NOT be reported as a finding.`
-        : verdict === 'robust'
-        ? (densePrimary
-          ? `Significant spatial ${dirWord} under the dense morphology-conditioned primary null; tested r = ${band}, strongest deviation near ${fmtR(peakR)}. This mode was selected because the 75 µm architecture check found fine/dense tissue; it conditions on all reference-section nuclei inside the certified window and does not imply same-cell co-expression.`
-          : `Significant spatial ${dirWord} under the calibrated reweighted inhomogeneous cross-K (size-controlled against a shared tissue preference; homogeneous CSR shown only as a shared-preference flag); tested r = ${band}, strongest deviation near ${fmtR(peakR)}.`)
-        : verdict === 'csr_only'
-        ? (robDir === 'segregation'
-          ? `Compartment-scale exclusion only: the populations occupy largely different tissue compartments, but once that compartment structure is accounted for they show no cell-scale relationship. A distinct, weaker finding — it does NOT support a cell-scale segregation claim.`
-          : `Co-infiltration only: the populations occupy the same tissue compartments (a real but expected result for immune markers), but show no extra proximity at the 10–50 µm cell scale beyond that shared preference. A distinct, weaker finding — it does NOT support a cell-scale association claim.`)
-        : verdict === 'mixed'
-        ? `Mixed / ambiguous across null models — interpret with caution (see the per-null table below).`
-        : verdict === 'none'
-        ? `No significant spatial association under any null model (across r = ${band}).`
-        // legacy result without a robustness verdict → fall back to the primary null
-        : (sig
-        ? `Significant spatial ${dirWord} (global DCLF p ${gpTxt} across r = ${band}); strongest deviation near ${fmtR(peakR)}.`
-        : `No significant spatial association (global DCLF p ${gpTxt}; whole L−r curve within the null envelope across r = ${band}).`);
+        ? `Statistics not interpretable — registration did not pass QC (${esc(qMethod)}). The values below are shown for transparency only and must NOT be reported as a finding.`
+        : !inter
+        ? (sig
+          ? `Significant spatial ${dir === 'segregation' ? 'segregation' : 'association'} (global DCLF p ${gpTxt} across r = ${band}); strongest deviation near ${fmtR(peakR)}.`
+          : `No significant spatial association (global DCLF p ${gpTxt}; whole L−r curve within the null envelope across r = ${band}).`)
+        : (strongB(cB.verdict) || strongB(kB.verdict))
+        ? `Under the ${primaryName}: short-range colocalization (10–20 µm) is ${esc(cB.verdict || '—')}${cB.verdict === 'not_resolvable' ? ' (registration too coarse to resolve this band)' : ''}, and co-infiltration (20–50 µm) is ${esc(kB.verdict || '—')}.${svSparse ? ' UNDERPOWERED — a marker is sparse, so this ran on the marker-independent all-cell support null.' : ''} This is a population-level serial-section result; it does not establish same-cell co-expression.`
+        : (cB.verdict === 'csr_only' || kB.verdict === 'csr_only')
+        ? `Shared-compartment only: significant under the weak homogeneous-CSR baseline but not the ${primaryName}. The two populations share (or avoid) tissue compartments, but show no extra proximity once tissue structure is accounted for — a distinct, weaker finding, not cell-neighbourhood interaction.`
+        : `No significant cross-type interaction in either band (short-range colocalization or co-infiltration) under the ${primaryName} (r = ${band}).`;
       const sA = esc(p.stain_a || 'A'), sB = esc(p.stain_b || 'B');
       const img = (path, alt) => path
         ? `<img src="file://${esc(path)}?t=${Date.now()}" style="width:100%;border:1px solid var(--border);border-radius:var(--r-sm);cursor:zoom-in" alt="${alt}" title="Click to zoom" onclick="openLightbox(this.src, '${esc(alt)}')">`
@@ -4469,18 +4568,11 @@ function spatialAssocShowResults(data) {
       // 4: association plot
       const plotBlock = `<div style="margin-top:10px">${cap(`${densePrimary ? 'Dense morphology-conditioned' : 'Reweighted inhomogeneous'} cross-K association (L−r vs distance) with the 95% envelope of the calibrated primary null`)}${img(a.association_plot, 'Association plot')}${renderParameterDetails(outputParams.spatial, 'Parameters used for this plot')}</div>`;
       const labels = (Object.keys(sa.association || {})[0] || '').replace('__', ' ↔ ');
-      // Headline badge reflects the cross-null ROBUSTNESS verdict, never a single
-      // null's global.significant — so a CSR-only / mixed result can never show a
-      // "robust" badge.
-      const badgeByVerdict = {
-        robust:   ['green', robDir === 'segregation' ? 'engaged: segregated' : 'engaged: associated'],
-        csr_only: ['cyan',  robDir === 'segregation' ? 'compartment exclusion only' : 'co-infiltration only'],
-        mixed:    ['amber', 'mixed across nulls'],
-        none:     ['gray',  'n.s.'],
-      };
-      const bv = badgeByVerdict[verdict] || (
-        // legacy data with no robustness verdict → fall back to the primary null
-        sig ? ['green', dir === 'segregation' ? 'segregated (p < 0.05)' : 'associated (p < 0.05)'] : ['gray', 'n.s.']);
+      // Headline badge reflects the two-band interaction (strongest resolvable
+      // finding), never a single null's global.significant.
+      const bv = inter
+        ? spatialPairHeadline(inter, false)
+        : (sig ? ['green', dir === 'segregation' ? 'segregated (p < 0.05)' : 'associated (p < 0.05)'] : ['gray', 'n.s.']);
       const titleBadge = qInvalid
         ? qcPill('registration invalid', '#dc2626')
         : `<span class="badge ${bv[0]}">${bv[1]}</span>${qWarn ? ' ' + qcPill('QC caution', '#d97706') : ''}`;
@@ -4493,7 +4585,7 @@ function spatialAssocShowResults(data) {
           ${qcBanner}
           ${certBanner}
           ${bwBanner}
-          ${robBanner}
+          ${interactionCard}
           ${segRow}
           ${consBlock}
           <div style="${statsDim}">${plotBlock}</div>
