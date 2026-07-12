@@ -1,7 +1,35 @@
 # Next session — live handoff
 
 **Living doc. Updated after every major step.** Read top-to-bottom before touching code.
-Last updated: **2026-07-12** (full spatial-pipeline validation pass — all green — before UI wiring).
+Last updated: **2026-07-12** (validation pass + Spatial UI wired: two-band Results report + guided wizard).
+
+## ⚑ Most recent work (2026-07-12 latest) — Spatial UI WIRED (validation-gated)
+After the full validation pass came back all-green (see next section), wired the Q3/Q4 science
+into the Spatial tab. Both changes are **layout/report only — the science is untouched**. All
+browser-verified on the served build (serve.py :8765), committed with no Claude co-author trailer.
+- **Commit `452bef1`** — backend: `run_pipeline.py` console diagnostics aligned to Q3 taxonomy
+  (print-only; the removed `underpowered_insufficient_positives` branch mislabeled sparse as dense).
+- **Commit `b33e54c`** — Spatial **Results report** rewired to the two-band `interaction`:
+  per-pair short-range colocalization (10–20 µm) + co-infiltration (20–50 µm), each
+  attraction/segregation/shared-compartment-only/none, with the **not_resolvable** guardrail when
+  the registration floor exceeds the band. Sparse pairs show an **UNDERPOWERED (all-cell support
+  null)** banner and still report segregation; (near-)absent markers get a dedicated **abundance/
+  absence** card. Two-scale summary cards + rewritten legend; the `spatialBandwidthStatusLabel`
+  + results bandwidth banner no longer reference the removed status. Null table + plots + QC/cert
+  gating preserved. Verified against robust / sparse-underpowered / marker-absent / QC-invalid /
+  legacy (no-interaction) result shapes.
+- **Commit `d38bca3`** — Spatial **guided wizard**: config view is now a functional 4-step wizard
+  (Inputs → Certify registration → Bandwidth check → Settings & run) with a clickable stepper,
+  Back/Next, per-step what/why hints, resets to step 1 on entering config. Removed the stale
+  "Guided certification / automatically proposes an ROI" copy; refreshed bandwidth + analysis-param
+  copy to the two-band/Q3 language. Verified all 4 steps navigate + batch/single toggle still works.
+- Key UI contract (for future edits): per-pair association `a.interaction.{colocalization,coinfiltration}`
+  (verdict ∈ attraction/segregation/csr_only/none/not_resolvable; band_um; label; summary; resolvable);
+  `p.spatial_validity.worst_status` ∈ {ok,caution,dense_tissue_bandwidth_invalid,
+  underpowered_sparse_marker,marker_absent,architecture_not_estimable}. Wizard JS: `spatialWizardGoTo(n)`.
+- **NEXT:** (a) run one real pipeline run to see the new report on live data (needs QuPath/InstanSeg
+  segmentation + a certified pair); (b) the planned repo restructure to mirror the real codebase;
+  (c) optional: QuPath separation (assessed viable). Tutorial overlay was explicitly deferred by the user.
 
 ## ⚑ Most recent work (2026-07-12 late) — FULL VALIDATION PASS before UI wiring
 Ran the whole spatial-pipeline validation surface to gate the Q3/Q4 UI wiring. **Everything green.**
