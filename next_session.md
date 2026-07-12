@@ -1,9 +1,20 @@
 # Next session — live handoff
 
 **Living doc. Updated after every major step.** Read top-to-bottom before touching code.
-Last updated: **2026-07-12** (fixed the Spatial-tab restructure path bug + QuPath-separation assessment).
+Last updated: **2026-07-12** (full spatial-pipeline validation pass — all green — before UI wiring).
 
-## ⚑ Most recent work (2026-07-12) — Spatial tab fixed
+## ⚑ Most recent work (2026-07-12 late) — FULL VALIDATION PASS before UI wiring
+Ran the whole spatial-pipeline validation surface to gate the Q3/Q4 UI wiring. **Everything green.**
+- **Unit tests:** `pytest tests/` = 46 pass (incl. 2 slow null-calibration markers), 1 skip (missing local HNSCC data).
+- **Q3/Q4-touching harnesses:** `validate_certification_roi_bandwidth` (new sparse/absent taxonomy), `validate_radius_floor`, `validate_architecture_scale`, plus a written **interaction-contract check** (confirms `cross_k_all_nulls` now emits `interaction.colocalization` + `interaction.coinfiltration`, back-compat `robustness` intact) — all PASS.
+- **Core stats:** `validate_null_models`, `validate_cross_k`, `validate_dclf`, `validate_edge_correction` (byte-identical to baseline), `validate_registration_qc`, `validate_stabilization_gates`, `validate_internal_controls` — all PASS.
+- **Real data:** `validate_dense_null_real_ll477` (5/5 LL477 pairs tested, 0 skipped), `validate_deformation_estimator` — PASS.
+- **exit=2 harnesses are EXPECTED, not regressions:** `primary_null_calibration` (documents the KNOWN anti-conservatism of structure-preserving nulls under shared preference), `reweighted_null` ("no bandwidth passes" — the committed `.txt` baseline is STALE: it was made with `NREAL=500,bw[50,60,75]`; the current committed script runs `NREAL=300,bw[50,75,100,150]`), and the candidate-null SCREENING studies (`dense_reweighted`/`compartment_conditioned`/`morphology_conditioned`, all intentional REJECTs). **Proof of no regression:** the `.py` files are clean vs HEAD, my session's commits never touched them, overlapping-bandwidth numbers match within MC noise, and every calibration *classification* is identical. Regenerated MC artifacts were restored to HEAD.
+- **End-to-end Q3 confirmed in code:** a sparse marker (5–29 positives) routes to the all-cell support null, runs UNDERPOWERED, and sets `statistics_valid=True` (not fail-closed); a near-absent marker (<5) becomes a `marker_absent` abundance finding.
+- **One defect found & fixed (backend, print-only):** `run_pipeline.py` console diagnostics still branched on the removed `underpowered_insufficient_positives` and mislabeled a sparse case as "dense tissue" — aligned to the Q3 taxonomy (data was already correct). **Uncommitted.**
+- **NEXT (now unblocked):** wire the Q3/Q4 outputs into the Spatial UI — guided wizard (task 4) + research-grade Results report surfacing the two-band `interaction`, sparse UNDERPOWERED flag, and `marker_absent` finding (task 5). UI contract map: `a.interaction.{colocalization,coinfiltration}`, `p.spatial_validity.worst_status` ∈ {ok,caution,dense_tissue_bandwidth_invalid,underpowered_sparse_marker,marker_absent,architecture_not_estimable}. index.html:4331 still checks the REMOVED status — fix in task 5.
+
+## ⚑ Prior work (2026-07-12) — Spatial tab fixed
 - **Root cause found & fixed:** the restructure moved `webui/` → `oasis/webui/` one level
   deeper, but `PROJECT_DIR = Path(__file__).parent.parent` was NOT updated, so it resolved to
   `<root>/oasis` instead of the repo root. `PROJECT_DIR/"run_pipeline.py"` therefore didn't
