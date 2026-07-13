@@ -1,9 +1,39 @@
 # Next session — live handoff
 
 **Living doc. Updated after every major step.** Read top-to-bottom before touching code.
-Last updated: **2026-07-13** (Spatial UX round 2: drawing/zoom, calibration, LoFTR layout, tooltips).
+Last updated: **2026-07-13** (Spatial UX round 3: wizard reorder + LoFTR speed subset).
 
-## ⚑ Most recent work (2026-07-13) — Spatial UX round 2 (user feedback)
+## ⚑ Most recent work (2026-07-13) — wizard reorder + LoFTR speed (user feedback)
+Browser-verified on serve.py :8765; committed with no Claude co-author trailer.
+- **`8f8e59f`** — Spatial wizard reorder (`oasis/webui/index.html`): steps are now
+  **Inputs → Certify → Settings → Validation check & run**. Settings (analysis parameters +
+  output options) moved AHEAD of the bandwidth check, because segmentation is cached/reused and
+  the parameters that shape it must be fixed before any cells are detected. Stepper labels +
+  `SPATIAL_WIZARD_HINTS[3,4]` updated. Pure HTML/text reorder, no logic change. Note the Quant
+  tab has its own `Analysis parameters`/`Output options` cards (`q-*` IDs) — not a collision.
+- **`a092f5d`** — LoFTR speed **safe subset** (user chose this scope; region/size search left
+  exactly as-is). All byte-identical — verdicts unchanged:
+  - `oasis/spatial/loftr_matcher.py`: content-addressed caches on `_prep` and `_raw` keyed by
+    IMAGE CONTENT (`_arr_key` = shape + blake2b; NOT id(), which Python reuses for fresh crops).
+    Bypassed when `noise>0` so `loftr_fle` trials stay stochastic. `_PREP_CACHE_MAX=48` (whole
+    images, only reused within a call's fwd+reverse pass), `_RAW_CACHE_MAX=512` (tiny keypoint
+    arrays, reused across calls / re-runs). New `clear_loftr_caches()`. `_disp_agree` rewritten
+    O(N·M) argmin-loop → exact `cKDTree` query (0/300 random trials differ).
+  - `oasis/webui/api.py`: new `_cert_progress()` emits `cert_progress` events during
+    `certify_spatial_auto` / `auto_certify_regions` (whole-field, size-select, per-region);
+    best-effort via the existing `_emit` channel, cannot affect the result.
+  - `oasis/webui/index.html`: `onPipelineEvent` handles `cert_progress` → live status in
+    `#spatial-cert-result` ("Certifying regions — i/n checked") so Auto-certify no longer looks frozen.
+  - **Proof:** real offline LoFTR pass (weights cached at `~/.cache/torch/hub/checkpoints/
+    loftr_outdoor.ckpt`), cold 1.91s → cached 0.003s (**565× on re-run**), output bit-identical,
+    1156→1061 matches through the full cycle+scale+KD-tree path. Cold-run win is only the within-call
+    prep dedup (2 of 6 preps) — the **81-pass region floor is irreducible without changing region
+    count** (user's constraint); real ceiling is CPU-only inference (MPS gives no LoFTR speedup here).
+  - NOT done (offered, user declined for now): FLE-skip pre-screen (~6 passes on global-fail) and
+    batched region inference (attacks the 81-pass floor; needs byte-identity revalidation).
+- Push command: `cd "/Users/mukilan/PycharmProjects/ihc-original copy" && git push origin main`.
+
+## ⚑ Prior work (2026-07-13) — Spatial UX round 2 (user feedback)
 All browser-verified on serve.py :8765, committed with no Claude co-author trailer.
 - **`fbed110`** — association L−r plot (`oasis/reporting/overlay.py`): annotation switched from
   the old `Robustness: ROBUST` label to the two-band interaction box (colocalization 10–20 µm +
