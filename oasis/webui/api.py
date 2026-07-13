@@ -470,6 +470,12 @@ class API:
         except Exception:
             pass
 
+    def _cert_progress(self, msg, i=None, n=None):
+        """Best-effort live status during LoFTR certification (which is CPU-bound and can run
+        for minutes). Routed through the same event channel as pipeline logs; wrapped so it can
+        never affect the certification result."""
+        self._emit("cert_progress", {"msg": msg, "i": i, "n": n})
+
     def _load_results(self, cfg):
         output_dir    = cfg.get("output_dir","")
         dashboard_dir = cfg.get("dashboard_dir","")
@@ -987,6 +993,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     rr = s / px_t
                     if cxc - rr < 0 or cyc - rr < 0 or cxc + rr > W or cyc + rr > H:
                         continue
+                    self._cert_progress(f"Selecting region size — trying {int(s)} µm…")
                     probe = lm.certify_local_roi(
                         ref_rgb, mov_rgb, _circle(cxc, cyc, rr), px_t,
                         provisional_matrix=M_t, fle_fast=True, work_max_dim=800)
@@ -1034,10 +1041,15 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
 
             regions, attempts = [], 0
             attempt_cap = max(max_regions * 3, 18)
+            n_tiles = len(tiles)
             for poly_t in tiles:
                 if len(regions) >= max_regions or attempts >= attempt_cap:
                     break
                 attempts += 1
+                self._cert_progress(
+                    f"Certifying regions — {len(regions)} certified, "
+                    f"{attempts}/{min(n_tiles, attempt_cap)} checked…",
+                    i=attempts, n=min(n_tiles, attempt_cap))
                 roi_t = np.asarray(poly_t, float)
                 cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
                                             provisional_matrix=M_t, fle_fast=True,
@@ -1140,6 +1152,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                         "mov_roi_polygon": mov_roi_full, "local_matrix": local_full}
 
             # 1) GLOBAL — whole field, measured FLE (one real attempt).
+            self._cert_progress("Certifying the whole field…")
             gcert = lm.certify_local_roi(ref_rgb, mov_rgb, global_roi, px_t,
                                          provisional_matrix=M_t, fle_fast=False,
                                          work_max_dim=1000)
@@ -1150,6 +1163,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                                           or gcert.get("tre_p90_um"))}
 
             # 2) LOCAL fallback — disjoint certified regions.
+            self._cert_progress("Whole field not certifiable — searching sub-regions…")
             loc = self.auto_certify_regions(payload)
             if loc.get("status") != "ok":
                 return loc
