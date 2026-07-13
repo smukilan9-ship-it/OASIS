@@ -1,9 +1,38 @@
 # Next session — live handoff
 
 **Living doc. Updated after every major step.** Read top-to-bottom before touching code.
-Last updated: **2026-07-12** (validation pass + Spatial UI wired: two-band Results report + guided wizard).
+Last updated: **2026-07-13** (Spatial UX round 2: drawing/zoom, calibration, LoFTR layout, tooltips).
 
-## ⚑ Most recent work (2026-07-12 latest) — Spatial UI WIRED (validation-gated)
+## ⚑ Most recent work (2026-07-13) — Spatial UX round 2 (user feedback)
+All browser-verified on serve.py :8765, committed with no Claude co-author trailer.
+- **`fbed110`** — association L−r plot (`oasis/reporting/overlay.py`): annotation switched from
+  the old `Robustness: ROBUST` label to the two-band interaction box (colocalization 10–20 µm +
+  co-infiltration 20–50 µm, each verdict+p), outlined by the strongest resolvable finding; legacy
+  results (no `interaction`) fall back to the old label.
+- **`53b8747`** — Spatial tab UI (`oasis/webui/index.html`):
+  - **Drawing (priority):** `spatialCertPoint` now clamps to image bounds (edge-inclusive, QuPath-like
+    — drawing past an edge snaps to the boundary instead of being dropped). `lmDown` uses
+    `setPointerCapture` so a drag continues past the stage edge. Live freehand renders a smooth
+    Catmull-Rom `<path>` while drawing (it was gated on `w.loftrMode` and therefore INVISIBLE during
+    freehand before) via new `loftrSmoothPath()`; samples per ~3 on-screen px.
+  - **Zoom (priority):** `lmWheel` now zooms proportional to the wheel delta (`Math.exp(-dy*0.0015)`,
+    deltaMode-normalised, clamped 0.6–1.6/event) and coalesces the overlay redraw to one paint/frame
+    (`lmScheduleRender`) — fixes runaway trackpad zoom.
+  - **Pixel calibration:** reworded as an optional run default; per-image override panels always
+    expanded (collapse + `spatialAssocToggleOverride` removed); `buildOverride` reads the manual
+    input directly (blank = default); per-image scale image takes precedence. New `spatialOvManualChanged`.
+  - **Removed** the legacy `Import expert landmarks` button + `spatialCertImport()` (backend
+    `api.certify_expert_landmarks` kept for validation harnesses).
+  - **LoFTR region controls** regrouped into a two-path layout (Recommended auto-certify vs.
+    draw-your-own) with visible inline descriptions.
+  - **Removed every `?` help-tip** and the collapsible `Parameters used` / `What this result means`
+    dropdowns — `renderParameterDetails`/`renderMeaningDetails` now render always-open blocks
+    (`.output-details-title`). 0 `.help-tip` spans remain app-wide.
+- Push command: `cd "/Users/mukilan/PycharmProjects/ihc-original copy" && git push origin main`.
+- NOT yet done: a real end-to-end run to see all this on live images (needs QuPath/InstanSeg + a
+  certified pair); the interactive drag/zoom feel is logic-verified but should get a real click-test.
+
+## ⚑ Prior work (2026-07-12) — Spatial UI wired (validation-gated)
 After the full validation pass came back all-green (see next section), wired the Q3/Q4 science
 into the Spatial tab. Both changes are **layout/report only — the science is untouched**. All
 browser-verified on the served build (serve.py :8765), committed with no Claude co-author trailer.
