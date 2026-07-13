@@ -81,11 +81,6 @@ def _od_channels(rgb: np.ndarray, stain_vectors: dict, background):
     return hem, dab
 
 
-def _dab_od_channel(rgb: np.ndarray, stain_vectors: dict, background) -> np.ndarray:
-    """DAB-only optical density (kept for backward compatibility)."""
-    return _od_channels(rgb, stain_vectors, background)[1]
-
-
 # Ruifrok reference stain vectors, used only to LABEL the two estimated stains
 # (which is hematoxylin, which is DAB) — not for the deconvolution itself.
 _REF_H   = _norm_vec([0.650, 0.704, 0.286])
