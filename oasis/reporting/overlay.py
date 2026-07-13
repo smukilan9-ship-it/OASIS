@@ -628,18 +628,48 @@ def generate_association_plot(
     ax.axhline(0.0, color="#374151", lw=1.0, ls="--", label="Independence (L−r = 0)")
     ax.plot(r, obs, color="#111827", lw=2.2, label="Observed L−r")
 
-    # Annotate the robustness-across-nulls verdict (the headline).
-    rob = assoc.get("robustness") or {}
-    verdict = rob.get("verdict")
-    if verdict:
-        vcol = {"robust": "#16a34a", "csr_only": "#dc2626",
-                "none": "#6b7280", "mixed": "#d97706"}.get(verdict, "#6b7280")
-        rmin = g.get("dclf_rmin_um", 10.0)
-        rmax = g.get("dclf_rmax_um", 50.0)
-        txt = f"Robustness: {verdict.upper()}\ntested r = {rmin:.0f}–{rmax:.0f} µm"
+    # Annotate the two-band INTERACTION verdict (the headline): short-range
+    # colocalization (10–20 µm) and co-infiltration (20–50 µm), each attraction /
+    # segregation / shared-compartment-only / none / not-resolvable. This replaces the
+    # old single 'robustness' label.
+    _BAND_COL = {"attraction": "#16a34a", "segregation": "#b45309",
+                 "csr_only": "#2563eb", "none": "#6b7280", "not_resolvable": "#64748b"}
+    inter = assoc.get("interaction") or {}
+    coloc = inter.get("colocalization") or {}
+    coinf = inter.get("coinfiltration") or {}
+    if coloc or coinf:
+        def _band_line(band, name):
+            v = band.get("verdict", "none")
+            p = band.get("global_p_dclf")
+            ptxt = f"  p={p:.3f}" if isinstance(p, (int, float)) else ""
+            return f"{name}: {v}{ptxt}"
+        lines = []
+        if coloc:
+            lines.append(_band_line(coloc, "Colocalization 10–20 µm"))
+        if coinf:
+            lines.append(_band_line(coinf, "Co-infiltration 20–50 µm"))
+        txt = "\n".join(lines)
+        strong = lambda v: v in ("attraction", "segregation")
+        cv, kv = coloc.get("verdict"), coinf.get("verdict")
+        headline = cv if strong(cv) else (kv if strong(kv) else (
+            "csr_only" if "csr_only" in (cv, kv) else "none"))
+        bcol = _BAND_COL.get(headline, "#6b7280")
         ax.text(0.975, 0.04, txt, transform=ax.transAxes, ha="right", va="bottom",
-                fontsize=8.5, color=vcol, fontweight="bold",
-                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec=vcol, alpha=0.92))
+                fontsize=8.0, color="#111827", fontweight="bold",
+                bbox=dict(boxstyle="round,pad=0.35", fc="white", ec=bcol, alpha=0.94))
+    else:
+        # Legacy fallback (older results with no interaction block).
+        rob = assoc.get("robustness") or {}
+        verdict = rob.get("verdict")
+        if verdict:
+            vcol = {"robust": "#16a34a", "csr_only": "#2563eb",
+                    "none": "#6b7280", "mixed": "#d97706"}.get(verdict, "#6b7280")
+            rmin = g.get("dclf_rmin_um", 10.0)
+            rmax = g.get("dclf_rmax_um", 50.0)
+            txt = f"tested r = {rmin:.0f}–{rmax:.0f} µm\n{verdict.upper()}"
+            ax.text(0.975, 0.04, txt, transform=ax.transAxes, ha="right", va="bottom",
+                    fontsize=8.5, color=vcol, fontweight="bold",
+                    bbox=dict(boxstyle="round,pad=0.35", fc="white", ec=vcol, alpha=0.92))
 
     ax.set_xlabel("Distance r (µm)")
     dense_primary = primary_name == "dense_morphology"
