@@ -997,9 +997,9 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span class="wstep-sep">→</span>
           <button type="button" class="wstep" data-step="2" onclick="spatialWizardGoTo(2)"><span class="wstep-n">2</span> Certify registration</button>
           <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="3" onclick="spatialWizardGoTo(3)"><span class="wstep-n">3</span> Bandwidth check</button>
+          <button type="button" class="wstep" data-step="3" onclick="spatialWizardGoTo(3)"><span class="wstep-n">3</span> Settings</button>
           <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="4" onclick="spatialWizardGoTo(4)"><span class="wstep-n">4</span> Settings &amp; run</button>
+          <button type="button" class="wstep" data-step="4" onclick="spatialWizardGoTo(4)"><span class="wstep-n">4</span> Validation check &amp; run</button>
         </div>
         <div class="wstep-hint" id="spatial-wizard-hint"></div>
       </div>
@@ -1261,23 +1261,6 @@ td.muted { color: var(--text3); font-size: 11px; }
       </div><!-- /sp-step-2 -->
 
       <div class="wizard-step" id="sp-step-3" data-step="3">
-      <!-- 75 µm bandwidth validity (pre-flight) -->
-      <div class="card" id="spatial-bandwidth-card">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span>Bandwidth (75 µm) validity — within certified analysis window</span>
-          <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
-        </div>
-        <div class="science-summary" style="margin-bottom:12px">
-          <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Measures tissue architecture — from all cells, independent of either marker — only inside the certified window, and names the null OASIS will use: <b>75 µm reweighted</b> (coarse tissue), the <b>dense/all-cell support null</b> (fine tissue, or when one marker is sparse → reported UNDERPOWERED), or an <b>abundance/absence finding</b> when a marker is (near-)absent. Otherwise it fails closed. Registration certification is unaffected by this check.</div>
-          <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. Architecture is estimated from all cells, so segregation can be reported even when one marker has few positives. This check does not change registration certification.">Window-specific check</span>
-        </div>
-        <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
-        <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
-      </div>
-
-      </div><!-- /sp-step-3 -->
-
-      <div class="wizard-step" id="sp-step-4" data-step="4">
       <!-- Matching parameters -->
       <div class="card">
         <div class="card-title">Analysis parameters</div>
@@ -1346,6 +1329,23 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span>Delete intermediate files after run</span>
           <div class="toggle" id="spatial-cleanup-toggle" onclick="toggleEl('spatial-cleanup-toggle')"></div>
         </div>
+      </div>
+      </div><!-- /sp-step-3 -->
+
+      <div class="wizard-step" id="sp-step-4" data-step="4">
+      <!-- 75 µm bandwidth validity — the validation check, run AFTER settings so the
+           cached segmentation reflects the chosen parameters -->
+      <div class="card" id="spatial-bandwidth-card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Bandwidth (75 µm) validity — within certified analysis window</span>
+          <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
+        </div>
+        <div class="science-summary" style="margin-bottom:12px">
+          <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Measures tissue architecture — from all cells, independent of either marker — only inside the certified window, and names the null OASIS will use: <b>75 µm reweighted</b> (coarse tissue), the <b>dense/all-cell support null</b> (fine tissue, or when one marker is sparse → reported UNDERPOWERED), or an <b>abundance/absence finding</b> when a marker is (near-)absent. Otherwise it fails closed. Registration certification is unaffected by this check.</div>
+          <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. Architecture is estimated from all cells, so segregation can be reported even when one marker has few positives. This check does not change registration certification.">Window-specific check</span>
+        </div>
+        <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
+        <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
       </div>
       </div><!-- /sp-step-4 -->
 
@@ -2805,8 +2805,8 @@ const SPATIAL_WIZARD_STEPS = 4;
 const SPATIAL_WIZARD_HINTS = {
   1: 'Load the two serial-section images (or batch folders) and set the pixel size. These define what OASIS measures — nothing downstream is valid without them.',
   2: 'Certify that the two sections are aligned. A biological finding is only trustworthy inside a certified analysis window; uncertified pairs are flagged, never reported as findings.',
-  3: 'Check that the 75 µm architecture bandwidth is valid for this tissue. OASIS names the null model it will use (75 µm reweighted, dense/support, or sparse-underpowered) or fails closed — registration certification is unaffected either way.',
-  4: 'Set positivity thresholds and output options, then Run. Segmentation → classification → statistics run inside the certified window; results open automatically.',
+  3: 'Set positivity thresholds, compartment, and output options. Fix these before running: segmentation is cached and reused, so the parameters that shape it must be chosen before any cells are detected.',
+  4: 'Validation check, then Run. Confirm the 75 µm architecture bandwidth is valid for this tissue — OASIS names the null model (75 µm reweighted, dense/support, or sparse-underpowered) or fails closed. The segmentation this check builds is reused by the run; results open automatically.',
 };
 function spatialWizardGoTo(n) {
   n = Math.max(1, Math.min(SPATIAL_WIZARD_STEPS, Number(n) || 1));
