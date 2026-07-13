@@ -641,6 +641,11 @@ td.muted { color: var(--text3); font-size: 11px; }
 .output-details summary::-webkit-details-marker { display: none; }
 .output-details summary::before { content: "+"; width: 15px; color: var(--text3); font-size: 14px; }
 .output-details[open] summary::before { content: "−"; }
+/* Always-open variant (params/interpretation are shown inline, never hidden). */
+.output-details-title {
+  display: flex; align-items: center; gap: 7px; min-height: 30px; padding: 8px 2px 4px;
+  color: var(--text2); font-size: 11px; font-weight: 650;
+}
 .parameter-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
   gap: 1px; overflow: hidden; margin: 0 0 10px; border: 1px solid var(--border);
@@ -1011,8 +1016,8 @@ td.muted { color: var(--text3); font-size: 11px; }
 
       <!-- Session pixel size calibration -->
       <div class="card">
-        <div class="card-title">Pixel Size Calibration</div>
-        <div class="info-box amber" style="margin-bottom:12px">Set once for the entire run. Can be overridden per image.</div>
+        <div class="card-title">Pixel Size Calibration <span style="font-weight:500;color:var(--text3);font-size:12px">— optional default</span></div>
+        <div class="info-box amber" style="margin-bottom:12px">A <b>default</b> for the whole run — you can change it per image below (or per pair in batch). If an image has its own <b>scale image</b>, that scale bar is measured and used for that image instead. Leave a per-image override blank to fall back to this default.</div>
         <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
           <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
             <input type="radio" name="spatial-session-px" value="manual" checked onchange="spatialAssocSetSessionPxMode('manual')"> Enter manually
@@ -1048,19 +1053,19 @@ td.muted { color: var(--text3); font-size: 11px; }
               </div>
               <div id="spatial-image-err-a" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
             </div>
-            <button class="btn sm" style="width:100%" id="spatial-ov-toggle-a" onclick="spatialAssocToggleOverride('a')">⌄ Override pixel size for this image</button>
-            <div id="spatial-ov-a" style="display:none;margin-top:10px">
+            <div id="spatial-ov-a" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+              <div class="section-label" style="margin:0 0 6px">Pixel size for this image <span style="font-weight:500;color:var(--text3)">— optional, overrides the default</span></div>
               <div id="spatial-ov-default-a" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
               <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="manual" checked onchange="spatialAssocSetOverrideMode('a','manual')"> Enter manually</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="scale" onchange="spatialAssocSetOverrideMode('a','scale')"> Use scale image</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="scale" onchange="spatialAssocSetOverrideMode('a','scale')"> Use scale image (measure its bar)</label>
               </div>
-              <div id="spatial-ov-manual-a"><input type="number" id="spatial-ov-px-a" placeholder="µm/px" step="0.01" min="0.01" onchange="spatialCertInvalidate()"></div>
+              <div id="spatial-ov-manual-a"><input type="number" id="spatial-ov-px-a" placeholder="blank = use default" step="0.01" min="0.01" onchange="spatialOvManualChanged('a')"></div>
               <div id="spatial-ov-scale-a" style="display:none">
                 <button class="btn sm" onclick="spatialAssocPickOverrideScale('a')">Select scale image…</button>
                 <div id="spatial-ov-scale-result-a" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
               </div>
-              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('a')">× Clear override</button>
+              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('a')">× Reset to default</button>
             </div>
           </div>
           <!-- Image B -->
@@ -1076,19 +1081,19 @@ td.muted { color: var(--text3); font-size: 11px; }
               </div>
               <div id="spatial-image-err-b" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
             </div>
-            <button class="btn sm" style="width:100%" id="spatial-ov-toggle-b" onclick="spatialAssocToggleOverride('b')">⌄ Override pixel size for this image</button>
-            <div id="spatial-ov-b" style="display:none;margin-top:10px">
+            <div id="spatial-ov-b" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+              <div class="section-label" style="margin:0 0 6px">Pixel size for this image <span style="font-weight:500;color:var(--text3)">— optional, overrides the default</span></div>
               <div id="spatial-ov-default-b" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
               <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
                 <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="manual" checked onchange="spatialAssocSetOverrideMode('b','manual')"> Enter manually</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="scale" onchange="spatialAssocSetOverrideMode('b','scale')"> Use scale image</label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="scale" onchange="spatialAssocSetOverrideMode('b','scale')"> Use scale image (measure its bar)</label>
               </div>
-              <div id="spatial-ov-manual-b"><input type="number" id="spatial-ov-px-b" placeholder="µm/px" step="0.01" min="0.01" onchange="spatialCertInvalidate()"></div>
+              <div id="spatial-ov-manual-b"><input type="number" id="spatial-ov-px-b" placeholder="blank = use default" step="0.01" min="0.01" onchange="spatialOvManualChanged('b')"></div>
               <div id="spatial-ov-scale-b" style="display:none">
                 <button class="btn sm" onclick="spatialAssocPickOverrideScale('b')">Select scale image…</button>
                 <div id="spatial-ov-scale-result-b" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
               </div>
-              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('b')">× Clear override</button>
+              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('b')">× Reset to default</button>
             </div>
           </div>
         </div>
@@ -1163,7 +1168,6 @@ td.muted { color: var(--text3); font-size: 11px; }
         </div>
         <button class="btn amber" id="spatial-cert-load" onclick="spatialCertLoad()">Load images for landmarking</button>
         <button class="btn" id="spatial-cert-colour" onclick="spatialCertToggleColour()">Show colour</button>
-        <button class="btn" id="spatial-cert-import" onclick="spatialCertImport()" title="Certify using bundled expert landmarks (CIMA/ANHIR validation cohorts only)">Import expert landmarks</button>
         <div id="spatial-cert-work" style="display:none;margin-top:12px">
           <!-- Two certification modes. Landmark = the validated manual/guided landmark
                workflow. LoFTR = the automatic path (fully-automatic region finder, draw
@@ -1201,34 +1205,47 @@ td.muted { color: var(--text3); font-size: 11px; }
                by a local rigid fit from LoFTR correspondences inside it (no manual landmarks),
                and each becomes its own analysis window. Certified regions feed the per-ROI
                pipeline fan-out in run_spatial_association. -->
-          <div class="cert-only-loftr" style="margin-top:10px;padding:10px;border:1px solid var(--border);border-radius:8px;background:var(--surface2, transparent)">
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+          <div class="cert-only-loftr" style="margin-top:10px;padding:12px;border:1px solid var(--border);border-radius:8px">
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
               <span class="section-label" style="margin:0">Analysis regions · LoFTR</span>
               <span id="spatial-loftr-count" class="badge gray">0 regions</span>
             </div>
-            <!-- Fully automatic -->
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-              <button class="btn sm cyan" id="spatial-loftr-auto" onclick="loftrAutoFind()" title="LoFTR-default certification: first try to certify the WHOLE field; if that fails, keep every sub-region that certifies (disjoint allowed). No drawing, no landmarks.">✦ Certify (auto: whole field → regions)</button>
-                <label style="font-size:11px;color:var(--text3)">region size
-                <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:64px" title="Approximate region radius in µm, used only for the local fallback. Leave blank to auto-select the largest size that certifies."> µm</label>
-              <span style="font-size:11px;color:var(--text3)">— tries the whole field first, then disjoint local regions. Blank size = auto-pick.</span>
+
+            <!-- Path A — automatic (recommended) -->
+            <div style="padding:10px 12px;border:1px solid #a5f3fc;border-radius:8px;background:#ecfeff;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:#0e7490;margin-bottom:8px">Recommended · automatic</div>
+              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                <button class="btn sm cyan" id="spatial-loftr-auto" onclick="loftrAutoFind()">✦ Auto-certify</button>
+                <label style="font-size:11px;color:var(--text2)">Region size
+                  <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:64px"> µm</label>
+                <span style="font-size:11px;color:var(--text3)">Tries to certify the whole field first, then keeps every local region that certifies. Leave size blank to auto-pick the largest that works.</span>
+              </div>
             </div>
-            <!-- Draw your own (polygon or freehand) -->
-            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-              <button class="btn sm" id="spatial-loftr-draw" onclick="loftrRoiToggle()" title="Click vertices on the REFERENCE image to outline a region, then Finish. Draw as many as you like.">Draw region (polygon)</button>
-              <button class="btn sm" id="spatial-loftr-freehand" onclick="loftrFreehandToggle()" title="Hold and drag on the REFERENCE image to sketch a freehand region; release to finish it.">Freehand</button>
-              <button class="btn sm" onclick="loftrRoiFinish()" title="Close the current polygon region and keep it; you can then draw another">Finish region</button>
-              <button class="btn sm cyan" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()" title="Certify every drawn region independently via LoFTR-in-ROI. The gate is not relaxed — you choose where, it decides whether.">Certify all regions</button>
-              <button class="btn sm" onclick="loftrRoiClearAll()" title="Remove all analysis regions">Clear regions</button>
+
+            <!-- Path B — draw your own -->
+            <div style="padding:10px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:10px">
+              <div style="font-size:11px;font-weight:700;color:var(--text2);margin-bottom:8px">Or draw regions yourself</div>
+              <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+                <button class="btn sm" id="spatial-loftr-draw" onclick="loftrRoiToggle()">✎ Polygon</button>
+                <button class="btn sm" id="spatial-loftr-freehand" onclick="loftrFreehandToggle()">✐ Freehand</button>
+                <button class="btn sm" onclick="loftrRoiFinish()">Finish region</button>
+                <button class="btn sm" onclick="loftrRoiClearAll()">Clear all</button>
+              </div>
+              <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button class="btn sm cyan" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()">Certify drawn regions</button>
+                <span style="font-size:11px;color:var(--text3)"><b>Polygon:</b> click vertices, then Finish. <b>Freehand:</b> hold and drag on the reference. Each region is certified on its own — the gate is never relaxed.</span>
+              </div>
             </div>
-            <!-- Options -->
-            <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:4px;font-size:11px;color:var(--text3)">
-              <label title="Correspondence agreement tolerance (cycle/scale consistency), in µm. Tighter = stricter matches.">tolerance
-                <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:52px"> µm</label>
-              <label title="Overlay the LoFTR correspondence points used for each region's fit."><input id="spatial-loftr-showcorr" type="checkbox" onchange="spatialCertRender()"> show LoFTR correspondences</label>
+
+            <!-- Options (always visible) -->
+            <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text2)">
+              <label>Match tolerance
+                <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:52px"> µm
+                <span style="color:var(--text3)">— tighter = stricter correspondences</span></label>
+              <label style="display:inline-flex;align-items:center;gap:5px"><input id="spatial-loftr-showcorr" type="checkbox" onchange="spatialCertRender()"> show LoFTR correspondence points</label>
             </div>
-            <div style="font-size:11px;color:var(--text3);margin-bottom:6px">Auto-find sweeps the section, or draw regions yourself — each region is certified on its own and becomes a separate analysis window. Deformed regions are shown in red and excluded from analysis.</div>
-            <div id="spatial-loftr-list" style="margin-top:4px;display:flex;flex-direction:column;gap:4px"></div>
+            <div style="font-size:11px;color:var(--text3);margin-top:8px">Deformed regions are shown in red and excluded from analysis. Each certified region becomes its own analysis window.</div>
+            <div id="spatial-loftr-list" style="margin-top:8px;display:flex;flex-direction:column;gap:4px"></div>
           </div>
           <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
@@ -1264,35 +1281,39 @@ td.muted { color: var(--text3); font-size: 11px; }
       <!-- Matching parameters -->
       <div class="card">
         <div class="card-title">Analysis parameters</div>
-        <div class="field"><label>Proximity highlight distance (µm)<span class="help-tip" title="Illustrative overlay radius: an opposite-type cell within this physical distance is highlighted. It does not define the Ripley cross-K hypothesis test.">?</span></label>
+        <div class="field"><label>Proximity highlight distance (µm)</label>
           <input type="number" id="spatial-max-dist" value="10.0" step="0.5" min="1" max="200">
-          <div style="font-size:11px;color:var(--text3);margin-top:4px">Cells within this distance of an opposite-type cell are outlined in the cell map (illustrative only — the statistic is the Ripley's K curve, not a cell count).</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Illustrative only: cells within this distance of an opposite-type cell are outlined in the cell map. It does <b>not</b> define the statistic — that is the Ripley cross-K curve, not a cell count.</div>
         </div>
         <div class="row2">
-          <div class="field"><label>DAB threshold — Image A (OD)<span class="help-tip" title="Minimum brown DAB optical density used to classify a cell as marker-positive in Image A when adaptive thresholding is off. Higher values are more stringent.">?</span></label>
+          <div class="field"><label>DAB threshold — Image A (OD)</label>
             <input type="number" id="spatial-thresh-a" value="0.20" step="0.01" min="0.01" max="1.0">
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.20 for CD8</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Minimum brown-DAB optical density to call a cell positive (higher = stricter). Recommended 0.20 for CD8.</div>
           </div>
-          <div class="field"><label>DAB threshold — Image B (OD)<span class="help-tip" title="Minimum brown DAB optical density used to classify a cell as marker-positive in Image B when adaptive thresholding is off. Higher values are more stringent.">?</span></label>
+          <div class="field"><label>DAB threshold — Image B (OD)</label>
             <input type="number" id="spatial-thresh-b" value="0.10" step="0.01" min="0.01" max="1.0">
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">Recommended: 0.10 for TIM-3</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:4px">Minimum brown-DAB optical density to call a cell positive (higher = stricter). Recommended 0.10 for TIM-3.</div>
           </div>
         </div>
-        <div class="toggle-row" style="margin-top:6px">
-          <span>Adaptive threshold<span class="help-tip" title="Computes an Otsu cutoff separately from each image's DAB optical-density distribution. When enabled, the two manual OD thresholds are ignored.">?</span> <span style="color:var(--text3);font-size:11px">— per-image Otsu</span></span>
-          <div class="toggle" id="spatial-adaptive-toggle" onclick="toggleEl('spatial-adaptive-toggle')"></div>
+        <div style="margin-top:8px">
+          <div class="toggle-row"><span>Adaptive threshold <span style="color:var(--text3);font-size:11px">— per-image Otsu</span></span>
+            <div class="toggle" id="spatial-adaptive-toggle" onclick="toggleEl('spatial-adaptive-toggle')"></div></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Computes an Otsu cutoff from each image's own DAB distribution; when on, the two manual OD thresholds above are ignored.</div>
         </div>
-        <div class="toggle-row" style="margin-top:6px">
-          <span>Per-image stain normalization<span class="help-tip" title="White-balances each image to its own estimated background before DAB measurement. This reduces slide-to-slide stain variation but does not alter spatial coordinates.">?</span> <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
-          <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div>
+        <div style="margin-top:8px">
+          <div class="toggle-row"><span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
+            <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">White-balances each image to its own estimated background before measuring DAB. Reduces slide-to-slide stain variation; does not move cell coordinates.</div>
         </div>
-        <div class="toggle-row" style="margin-top:6px">
-          <span>Enable image registration<span class="help-tip" title="Maps moving-section cell coordinates into the fixed-section coordinate system. Landmark certification remains the required quality gate for serial-section claims.">?</span></span>
-          <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div>
+        <div style="margin-top:8px">
+          <div class="toggle-row"><span>Enable image registration</span>
+            <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Landmark certification is still the required quality gate for serial-section claims.</div>
         </div>
-        <div class="toggle-row" style="margin-top:6px">
-          <span>Membranous quantification<span class="help-tip" title="Measures DAB in a Voronoi-clipped cytoplasmic ring instead of the nucleus and applies the selected marker's calibrated membrane-completeness cutoffs.">?</span></span>
-          <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div>
+        <div style="margin-top:8px">
+          <div class="toggle-row"><span>Membranous quantification</span>
+            <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Measures DAB in a cytoplasmic ring (not the nucleus), using each marker's calibrated membrane-completeness cutoffs — the correct compartment for membranous markers.</div>
         </div>
         <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
           <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the cytoplasmic ring using each marker's <b>calibrated completeness cutoffs</b> (Calibrate tab) instead of nuclear DAB — the correct compartment for membranous markers. Needs a calibration per marker; without one it falls back to the weaker ring-mean rule.</div>
@@ -1317,8 +1338,9 @@ td.muted { color: var(--text3); font-size: 11px; }
       <!-- Output options -->
       <div class="card">
         <div class="card-title">Output options</div>
-        <div class="field"><label>Output folder<span class="help-tip" title="Directory receiving per-pair JSON, segmentation overlays, consolidated density maps, association plots, and reproducibility metadata.">?</span></label>
+        <div class="field"><label>Output folder</label>
           <div class="input-with-btn"><input type="text" id="spatial-output" placeholder="~/Desktop/ihc_spatial_results"><button class="btn sm" onclick="pickInto('spatial-output', null)">Browse</button></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Receives per-pair JSON, segmentation overlays, consolidated density maps, association plots, and reproducibility metadata.</div>
         </div>
         <div class="toggle-row">
           <span>Delete intermediate files after run</span>
@@ -1775,13 +1797,15 @@ function parameterLabel(key) {
 function renderParameterDetails(params, title = 'Parameters used') {
   const rows = Object.entries(params || {}).filter(([, value]) => value !== undefined);
   if (!rows.length) return '';
-  return `<details class="output-details">
-    <summary>${esc(title)} <span class="help-tip" title="Exact values recorded for this output. Open this section when reviewing, reproducing, or reporting the result.">?</span></summary>
+  // Always shown inline (no collapse, no ? icons) — every value is visible for review /
+  // reproduction. The per-parameter explanation stays available as a hover title.
+  return `<div class="output-details">
+    <div class="output-details-title">${esc(title)}</div>
     <div class="parameter-grid">${rows.map(([key, value]) => {
       const help = parameterHelp[key] || 'Exact value used to generate this output; retained here for reproducibility.';
-      return `<div class="parameter-item" title="${esc(help)}"><div class="parameter-name">${esc(parameterLabel(key))}<span class="help-tip" title="${esc(help)}">?</span></div><div class="parameter-value">${esc(parameterValue(value))}</div></div>`;
+      return `<div class="parameter-item" title="${esc(help)}"><div class="parameter-name">${esc(parameterLabel(key))}</div><div class="parameter-value">${esc(parameterValue(value))}</div></div>`;
     }).join('')}</div>
-  </details>`;
+  </div>`;
 }
 
 // Every value a certification verdict depends on: the measurements, the fixed gates
@@ -1831,7 +1855,7 @@ function renderWindowChip(c) {
 }
 
 function renderMeaningDetails(text) {
-  return `<details class="output-details"><summary>What this result means <span class="help-tip" title="Plain-language scientific interpretation and the claim this output does or does not support.">?</span></summary><div class="result-explainer">${text}</div></details>`;
+  return `<div class="output-details"><div class="output-details-title">What this result means</div><div class="result-explainer">${text}</div></div>`;
 }
 
 function showToast(msg) {
@@ -2860,7 +2884,13 @@ function spatialAssocSessionPxText() {
 function spatialAssocRefreshOverrideDefaults() {
   ['a','b'].forEach(side => {
     const el = document.getElementById('spatial-ov-default-' + side);
-    if (el && !spatialOverride[side]) el.textContent = 'Using session default: ' + spatialAssocSessionPxText();
+    if (!el) return;
+    const ov = spatialOverride[side] || {};
+    const pxEl = document.getElementById('spatial-ov-px-' + side);
+    const manV = pxEl ? parseFloat(pxEl.value) : NaN;
+    if (ov.mode === 'scale' && ov.scalePx) el.textContent = `This image: ${ov.scalePx} µm/px (measured from its scale image)`;
+    else if (manV > 0) el.textContent = `This image: ${manV} µm/px (manual, overrides the default)`;
+    else el.textContent = 'Using the run default: ' + spatialAssocSessionPxText();
   });
 }
 
@@ -2915,16 +2945,16 @@ async function spatialAssocPickImage(side) {
   spatialAssocUpdateRunBtn();
 }
 
-function spatialAssocToggleOverride(side) {
-  const box = document.getElementById('spatial-ov-' + side);
-  const open = box.style.display === 'none';
-  box.style.display = open ? 'block' : 'none';
-  document.getElementById('spatial-ov-toggle-' + side).textContent =
-    (open ? '⌃' : '⌄') + ' Override pixel size for this image';
-  if (open && !spatialOverride[side]) {
-    spatialOverride[side] = { mode: 'manual' };
-    spatialAssocRefreshOverrideDefaults();
-  }
+// The per-image override panel is now always expanded (no collapse), so a manual value
+// typed in it must take effect even if the operator never clicked the radios. Keep the
+// override state in sync with the manual input on change.
+function spatialOvManualChanged(side) {
+  const el = document.getElementById('spatial-ov-px-' + side);
+  const v = el ? parseFloat(el.value) : NaN;
+  if (v > 0) spatialOverride[side] = { mode: 'manual' };
+  else if (spatialOverride[side] && spatialOverride[side].mode === 'manual') spatialOverride[side] = null;
+  spatialAssocRefreshOverrideDefaults();
+  spatialCertInvalidate();
 }
 
 function spatialAssocSetOverrideMode(side, mode) {
@@ -2945,9 +2975,13 @@ function spatialAssocClearOverride(side) {
   spatialOverride[side] = null;
   const px = document.getElementById('spatial-ov-px-' + side); if (px) px.value = '';
   const sr = document.getElementById('spatial-ov-scale-result-' + side); if (sr) sr.textContent = '';
-  document.getElementById('spatial-ov-' + side).style.display = 'none';
-  document.getElementById('spatial-ov-toggle-' + side).textContent = '⌄ Override pixel size for this image';
+  // Reset the mode back to manual (the panel stays expanded).
+  const manRadio = document.querySelector(`input[name="spatial-ov-mode-${side}"][value="manual"]`);
+  if (manRadio) manRadio.checked = true;
+  const man = document.getElementById('spatial-ov-manual-' + side); if (man) man.style.display = 'block';
+  const sc  = document.getElementById('spatial-ov-scale-' + side);  if (sc)  sc.style.display  = 'none';
   spatialAssocRefreshOverrideDefaults();
+  spatialCertInvalidate();
 }
 
 async function spatialAssocPreview() {
@@ -3113,7 +3147,14 @@ function spatialCertToggleColour() { spatialCertColour = !spatialCertColour; spa
 
 function spatialCertPoint(ev, image, meta) {
   const r = image.getBoundingClientRect();
-  return [(ev.clientX-r.left)/r.width*meta.width, (ev.clientY-r.top)/r.height*meta.height];
+  let x = (ev.clientX - r.left) / r.width  * meta.width;
+  let y = (ev.clientY - r.top)  / r.height * meta.height;
+  // Edge-inclusive (QuPath-like): clamp to the image bounds so a click/drag past an
+  // edge snaps to the boundary and is included, instead of producing out-of-image
+  // coordinates that get dropped.
+  x = Math.max(0, Math.min(meta.width,  x));
+  y = Math.max(0, Math.min(meta.height, y));
+  return [x, y];
 }
 
 // Confidence → dot colour: high=green, mid=amber, low=red; manual (null)=cyan.
@@ -3376,12 +3417,39 @@ function loftrRoiLayerSvg(side) {
       }
     }
   });
-  if (side === 'ref' && w.loftrMode && (w.loftrDraft || []).length) {
-    const pstr = w.loftrDraft.map(p => `${p[0]},${p[1]}`).join(' ');
-    out += `<polyline points="${pstr}" fill="none" stroke="#22d3ee" stroke-width="${sw}" stroke-dasharray="${6 * u / sc} ${6 * u / sc}"/>`
-      + w.loftrDraft.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${vr}" fill="#22d3ee" stroke="white" stroke-width="${sw * 0.4}"/>`).join('');
+  // Live draft: freehand draws a smooth solid stroke (no vertex beads); polygon mode
+  // shows a dashed guide with draggable vertices.
+  if (side === 'ref' && (w.loftrMode || w.freehand) && (w.loftrDraft || []).length) {
+    const pts = w.loftrDraft;
+    if (w.freehand) {
+      out += `<path d="${loftrSmoothPath(pts, false)}" fill="#22d3ee" fill-opacity="0.10" stroke="#22d3ee" stroke-width="${sw}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    } else {
+      const pstr = pts.map(p => `${p[0]},${p[1]}`).join(' ');
+      out += `<polyline points="${pstr}" fill="none" stroke="#22d3ee" stroke-width="${sw}" stroke-dasharray="${6 * u / sc} ${6 * u / sc}"/>`
+        + pts.map(p => `<circle cx="${p[0]}" cy="${p[1]}" r="${vr}" fill="#22d3ee" stroke="white" stroke-width="${sw * 0.4}"/>`).join('');
+    }
   }
   return out;
+}
+// Catmull-Rom → cubic-bezier smoothing for a freehand point list. `closed` joins the
+// ends (used for a finished region); open otherwise (live stroke).
+function loftrSmoothPath(pts, closed) {
+  if (!pts || !pts.length) return '';
+  if (pts.length < 3) return 'M ' + pts.map(p => `${p[0]} ${p[1]}`).join(' L ');
+  const P = (i) => pts[(i + pts.length) % pts.length];
+  let d = `M ${pts[0][0]} ${pts[0][1]}`;
+  const last = closed ? pts.length : pts.length - 1;
+  for (let i = 0; i < last; i++) {
+    const p0 = closed ? P(i - 1) : (pts[i - 1] || pts[i]);
+    const p1 = pts[i];
+    const p2 = closed ? P(i + 1) : pts[i + 1];
+    const p3 = closed ? P(i + 2) : (pts[i + 2] || p2);
+    const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
+    const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
+    d += ` C ${c1x} ${c1y} ${c2x} ${c2y} ${p2[0]} ${p2[1]}`;
+  }
+  if (closed) d += ' Z';
+  return d;
 }
 function loftrRoiSync() {
   loftrRoiRenderList();
@@ -3551,12 +3619,33 @@ function lmFit(side){
   const p=lmPanes[side]; p.scale=s; p.tx=(r.width-iw*s)/2; p.ty=(r.height-ih*s)/2; lmApply(side); spatialCertRender();
 }
 function spatialCertZoomFit(){ lmFit('ref'); lmFit('mov'); }
+// Re-rendering the overlay SVG (dots/ROI strokes are counter-scaled to stay a constant
+// on-screen size) is only needed when the SCALE changes. Coalesce it to one paint per
+// frame so a stream of trackpad wheel events can't thrash the DOM.
+let _lmRenderQueued = false;
+function lmScheduleRender(){
+  if (_lmRenderQueued) return;
+  _lmRenderQueued = true;
+  requestAnimationFrame(() => { _lmRenderQueued = false; spatialCertRender(); });
+}
 function lmWheel(side,e){ e.preventDefault(); const p=lmPanes[side];
   const r=document.getElementById('lm-stage-'+side).getBoundingClientRect();
   const mx=e.clientX-r.left, my=e.clientY-r.top;
-  let f=e.deltaY<0?1.15:0.87; const ns=Math.min(Math.max(p.scale*f,0.05),40); f=ns/p.scale;
-  p.tx=mx-(mx-p.tx)*f; p.ty=my-(my-p.ty)*f; p.scale=ns; lmApply(side); spatialCertRender(); }
-function lmDown(side,e){ if(side==='ref' && spatialCertWork.freehand){ loftrFreehandDown(e); return; }
+  // Smooth zoom proportional to the actual wheel delta (normalised across line/page
+  // deltaMode), so trackpads that stream many small events zoom gently instead of
+  // jumping a fixed 15% per event. Per-event step is clamped so one big notch can't leap.
+  let dy = e.deltaY;
+  if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
+  let f = Math.exp(-dy * 0.0015);
+  f = Math.min(Math.max(f, 0.6), 1.6);
+  const ns=Math.min(Math.max(p.scale*f,0.05),40); f=ns/p.scale;
+  p.tx=mx-(mx-p.tx)*f; p.ty=my-(my-p.ty)*f; p.scale=ns; lmApply(side); lmScheduleRender(); }
+function lmDown(side,e){
+  // Capture the pointer so a drag/draw keeps sending events even after it leaves the
+  // stage — combined with the edge-clamp in spatialCertPoint, drawing continues and
+  // snaps to the image boundary instead of stopping at the edge (QuPath-like).
+  try { document.getElementById('lm-stage-'+side).setPointerCapture(e.pointerId); } catch(_){}
+  if(side==='ref' && spatialCertWork.freehand){ loftrFreehandDown(e); return; }
   const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
 function lmMove(side,e){ if(side==='ref' && spatialCertWork.freehand){ loftrFreehandMove(e); return; }
   const p=lmPanes[side]; if(!p.drag) return;
@@ -3571,7 +3660,12 @@ function loftrFreehandDown(e){ const w=spatialCertWork; if(!w.ref) return;
 function loftrFreehandMove(e){ const w=spatialCertWork; if(!_loftrFhDrawing) return;
   const pt=spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref);
   const last=w.loftrDraft[w.loftrDraft.length-1];
-  if(!last || Math.hypot(pt[0]-last[0], pt[1]-last[1]) > 6){ w.loftrDraft.push(pt); loftrRoiSync(); } }
+  // Sample ~every 3 on-screen px (converted to full-res units via the pane scale) so the
+  // stroke stays smooth and consistent at any zoom; coalesce the redraw to one per frame.
+  const sc=(lmPanes.ref&&lmPanes.ref.scale)||1;
+  const iw=document.getElementById('spatial-cert-ref').naturalWidth||w.ref.width;
+  const thresh=Math.max(1, 3*(w.ref.width/iw)/sc);
+  if(!last || Math.hypot(pt[0]-last[0], pt[1]-last[1]) > thresh){ w.loftrDraft.push(pt); lmScheduleRender(); } }
 function loftrFreehandUp(){ const w=spatialCertWork; if(!_loftrFhDrawing) return; _loftrFhDrawing=false;
   if((w.loftrDraft||[]).length >= 3){ w.loftrRois.push({points:w.loftrDraft.slice(), cert:null});
     showToast(`Region ${w.loftrRois.length} sketched — Certify all regions when ready`); }
@@ -3967,31 +4061,19 @@ async function spatialCertRun() {
   await spatialCertTryAutoCertify('manual certification', true, { provisional: false });
 }
 
-async function spatialCertImport() {
-  const pair = spatialCertCurrentPair();
-  if (!pair) { showToast('Select the analysis images or preview batch pairs first'); return; }
-  const btn = document.getElementById('spatial-cert-import');
-  btn.disabled = true; btn.textContent = 'Importing…';
-  const r = await window.pywebview.api.certify_expert_landmarks(pair.path_a, pair.path_b, spatialCertPixelSize());
-  btn.disabled = false; btn.textContent = 'Import expert landmarks';
-  if (r.status !== 'ok') { showToast(r.error || 'No bundled expert landmarks for this pair'); return; }
-  const c = r.certification; spatialCertifications[pair.sample_id] = c;
-  const badge = document.getElementById('spatial-cert-badge');
-  if (badge) { badge.textContent = c.status; badge.className = 'badge ' + (c.is_certified ? 'cyan' : 'amber'); }
-  document.getElementById('spatial-cert-work').style.display = 'block';
-  document.getElementById('spatial-cert-result').innerHTML =
-    `<div class="science-summary"><div class="science-summary-copy"><strong>${esc(c.status)}</strong><br>Imported expert anatomical landmarks pass the displayed certification gates.${c.reason ? ` ${esc(c.reason)}` : ''}</div>${renderWindowChip(c)}</div>
-     ${renderParameterDetails({ ...certificationParams(c, spatialCertPixelSize()),
-        landmark_source:(c.landmark_source||'').split('/').pop() })}`;
-  spatialAssocUpdateRunBtn();
-}
+// NOTE: spatialCertImport() (bundled CIMA/ANHIR expert-landmark import) was removed as
+// legacy — it was a validation-cohort convenience, not part of the user certification
+// workflow. The backend api.certify_expert_landmarks still exists for the validation
+// harnesses; it is simply no longer surfaced in the UI.
 
 function spatialAssocBuildOverride(side) {
-  // Returns {pixel_size, scale_image} for an image based on its override state
-  const ov = spatialOverride[side];
-  if (!ov) return { pixel_size: null, scale_image: null };
+  // Returns {pixel_size, scale_image} for an image. The panel is always expanded, so a
+  // manual value applies even if the override state was never explicitly toggled; an
+  // empty value falls back to the run default (pixel_size null).
+  const ov = spatialOverride[side] || {};
   if (ov.mode === 'scale') return { pixel_size: null, scale_image: ov.scalePath || null };
-  const v = parseFloat(document.getElementById('spatial-ov-px-' + side).value);
+  const el = document.getElementById('spatial-ov-px-' + side);
+  const v = el ? parseFloat(el.value) : NaN;
   return { pixel_size: (v > 0 ? v : null), scale_image: null };
 }
 
@@ -4681,8 +4763,8 @@ function spatialAssocShowResults(data) {
           <div class="metrics-row c4" style="margin:14px 0 10px">
             <div class="metric"><div class="metric-label">${sA}+ cells</div><div class="metric-value">${(typeof na==='number'?na:0).toLocaleString()}</div><div class="metric-sub">positive</div></div>
             <div class="metric"><div class="metric-label">${sB}+ cells</div><div class="metric-value">${(typeof nb==='number'?nb:0).toLocaleString()}</div><div class="metric-sub">registered</div></div>
-            <div class="metric" style="${statsDim}"><div class="metric-label">Peak r<span class="help-tip" title="Distance where the observed L−r curve departs most strongly from the selected null envelope; descriptive, not a separate hypothesis test.">?</span></div><div class="metric-value">${fmtR(peakR)}</div><div class="metric-sub">max deviation</div></div>
-            <div class="metric" style="${statsDim}"><div class="metric-label">Global p<span class="help-tip" title="Monte Carlo global DCLF p-value for the whole L−r curve over the declared distance band, using the selected primary null.">?</span></div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub">DCLF, whole curve</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Peak r</div><div class="metric-value">${fmtR(peakR)}</div><div class="metric-sub">where L−r deviates most</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Global p</div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub">DCLF, whole curve</div></div>
           </div>
           <div style="font-size:12px;color:var(--text2);display:flex;gap:14px;flex-wrap:wrap;align-items:center">
             <span>Window: <strong>${fmtArea(area)}</strong>${mask ? ` <span class="badge gray">${esc(mask)}</span>` : ''}</span>
