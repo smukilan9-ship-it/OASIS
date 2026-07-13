@@ -2673,6 +2673,14 @@ window.onPipelineEvent = function(event) {
     }
   } else if (type === 'progress') {
     setProgress(m, data.pct || 0);
+  } else if (type === 'cert_progress') {
+    // Live status while LoFTR certification runs (CPU-bound, can take minutes).
+    const res = document.getElementById('spatial-cert-result');
+    if (res) res.innerHTML = '<div class="science-summary"><div class="science-summary-copy">'
+      + '<strong>Certifying…</strong> ' + esc(data.msg || '')
+      + (data.i && data.n ? ' <span style="color:var(--text3)">(' + data.i + '/' + data.n + ')</span>' : '')
+      + '<br><span style="color:var(--text3);font-size:11px">LoFTR runs on CPU, so a large section can take a few minutes — this updates as each region is checked.</span>'
+      + '</div></div>';
   } else if (type === 'done') {
     setProgress(m, 100, 'Complete');
     if (data.ok) {

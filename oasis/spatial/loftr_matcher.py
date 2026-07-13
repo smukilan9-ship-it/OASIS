@@ -44,6 +44,31 @@ import numpy as np
 _MATCHER = {}
 _DEVICE = None
 
+# Content-addressed memoization of the DETERMINISTIC (noise==0) passes. Two crops with the
+# same pixels produce the same hematoxylin prep and the same LoFTR output, so a re-probed
+# region or a re-run pair costs nothing. Keyed on image CONTENT (not id(), which Python
+# reuses for freshly-allocated crops). Bypassed entirely when noise>0 so the FLE trials stay
+# stochastic. Bounded so a long batch cannot grow memory without limit.
+_PREP_CACHE = {}
+_RAW_CACHE = {}
+# Prep entries are whole downsampled images (MBs each) but are only reused WITHIN a call
+# (forward+reverse pass of the same crop), so a small bound suffices. Raw entries are tiny
+# keypoint arrays reused ACROSS calls (re-probed crop, re-run pair), so they get a big bound.
+_PREP_CACHE_MAX = 48
+_RAW_CACHE_MAX = 512
+
+
+def _arr_key(a):
+    import hashlib
+    a = np.ascontiguousarray(a)
+    return (a.shape, hashlib.blake2b(a.tobytes(), digest_size=16).hexdigest())
+
+
+def clear_loftr_caches():
+    """Drop the memoized prep/inference. Call between unrelated image pairs to cap memory."""
+    _PREP_CACHE.clear()
+    _RAW_CACHE.clear()
+
 
 def _device():
     """CPU by default. Measured: MPS gives NO speedup for LoFTR here (its attention ops
@@ -70,8 +95,18 @@ def _get(weights):
 
 
 def _prep(rgb, scale, pixel_size_um, noise=0.0, rng=None):
-    """Hematoxylin — the one channel both stains share — CLAHE-equalised, for LoFTR."""
+    """Hematoxylin — the one channel both stains share — CLAHE-equalised, for LoFTR.
+
+    Deterministic results (noise==0) are memoized: every correspondences call preps the same
+    image for BOTH its forward and reverse pass at scale 0.75, so caching removes that
+    duplicate hematoxylin+CLAHE work outright."""
     import cv2, torch
+    ck = None
+    if not noise:
+        ck = (_arr_key(rgb), round(float(scale), 6))
+        hit = _PREP_CACHE.get(ck)
+        if hit is not None:
+            return hit
     from oasis.common.registration import extract_hematoxylin
     h = extract_hematoxylin(rgb).astype(np.float32)
     if noise:
@@ -82,13 +117,28 @@ def _prep(rgb, scale, pixel_size_um, noise=0.0, rng=None):
     nh, nw = max(int(H * scale) // 8 * 8, 8), max(int(W * scale) // 8 * 8, 8)
     small = cv2.resize(h, (nw, nh), interpolation=cv2.INTER_AREA)
     t = torch.from_numpy(small).float()[None, None] / 255.0
-    return t, np.array([W / nw, H / nh])
+    out = (t, np.array([W / nw, H / nh]))
+    if ck is not None:
+        if len(_PREP_CACHE) >= _PREP_CACHE_MAX:
+            _PREP_CACHE.clear()
+        _PREP_CACHE[ck] = out
+    return out
 
 
 def _raw(a_rgb, b_rgb, scale, pixel_size_um, weights, conf_floor, noise=0.0, rng=None):
-    """One directed LoFTR pass, returned in full-resolution pixel coordinates."""
+    """One directed LoFTR pass, returned in full-resolution pixel coordinates.
+
+    Deterministic passes (noise==0) are memoized by image content, so a crop that was already
+    probed — or a whole pair re-run — returns instantly instead of re-running the transformer."""
     global _DEVICE, _MATCHER
     import torch
+    ck = None
+    if not noise:
+        ck = (_arr_key(a_rgb), _arr_key(b_rgb), round(float(scale), 6),
+              weights, round(float(conf_floor), 4))
+        hit = _RAW_CACHE.get(ck)
+        if hit is not None:
+            return hit
     ta, sa = _prep(a_rgb, scale, pixel_size_um, noise, rng)
     tb, sb = _prep(b_rgb, scale, pixel_size_um, noise, rng)
     dev = _device()
@@ -108,7 +158,12 @@ def _raw(a_rgb, b_rgb, scale, pixel_size_um, weights, conf_floor, noise=0.0, rng
         cf = o["confidence"].numpy()
     k = cf >= conf_floor
     # stride of the coarse matching grid, in full-resolution pixels
-    return k0[k], k1[k], cf[k], float(8.0 / scale)
+    out = (k0[k], k1[k], cf[k], float(8.0 / scale))
+    if ck is not None:
+        if len(_RAW_CACHE) >= _RAW_CACHE_MAX:
+            _RAW_CACHE.clear()
+        _RAW_CACHE[ck] = out
+    return out
 
 
 def _disp_agree(src_a, dst_a, src_b, dst_b, tol_px, lookup_px):
@@ -123,14 +178,16 @@ def _disp_agree(src_a, dst_a, src_b, dst_b, tol_px, lookup_px):
     """
     if not len(src_b):
         return np.zeros(len(src_a), bool)
+    from scipy.spatial import cKDTree
+    src_a = np.asarray(src_a, float); dst_a = np.asarray(dst_a, float)
+    src_b = np.asarray(src_b, float); dst_b = np.asarray(dst_b, float)
     disp_b = dst_b - src_b
-    keep = np.zeros(len(src_a), bool)
-    for i, (p, q) in enumerate(zip(src_a, dst_a)):
-        d = np.linalg.norm(src_b - p, axis=1)
-        j = int(np.argmin(d))
-        if d[j] <= lookup_px and np.linalg.norm(disp_b[j] - (q - p)) <= tol_px:
-            keep[i] = True
-    return keep
+    # exact nearest neighbour of every A point in B — same selection as the argmin loop,
+    # O((N+M)logM) via the tree instead of O(N·M) pairwise distances.
+    dist, idx = cKDTree(src_b).query(src_a, k=1)
+    disp_a = dst_a - src_a
+    agree = np.linalg.norm(disp_b[idx] - disp_a, axis=1) <= tol_px
+    return (np.asarray(dist) <= lookup_px) & agree
 
 
 def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
