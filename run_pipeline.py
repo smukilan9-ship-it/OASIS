@@ -321,6 +321,11 @@ def parse_qupath_output(json_path):
             "Negative_Cells": data["negative_cells"],
             "Positivity_Index_Pct": round(pos_pct, 2),
             "DAB_Threshold": data.get("dab_threshold", 0.2),
+            # Nuclear adaptive (GMM) provenance — present only when nuclear_adaptive ran.
+            "Nuclear_Threshold": data.get("nuclear_threshold"),
+            "Nuclear_Threshold_Method": data.get("nuclear_threshold_method"),
+            "Staining_Quality": data.get("staining_quality"),
+            "Nuclear_Abstain": bool(data.get("nuclear_abstain", False)),
             "Pixel_Size_um": data.get("pixel_size_um", 0.5),
             "Pixel_Size_Source": data.get("pixel_size_source", "unknown"),
             "Cells_Per_mm2": data.get("cells_per_mm2"),
@@ -1720,21 +1725,32 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         # directly visible rather than assumed.
         _fa, _fb = os.path.basename(path_a), os.path.basename(path_b)
 
-        def _thr_method(fname):
+        def _thr_info(metrics, fname):
+            """The threshold that ACTUALLY classified this image + how it was chosen."""
+            m = metrics or {}
             if cyto_map.get(fname):
-                return "membrane_completeness"
-            return "adaptive_otsu" if cfg.get("adaptive_threshold") else "fixed"
+                return {"value": m.get("DAB_Threshold"), "method": "membrane_completeness",
+                        "staining_quality": None, "abstain": False}
+            nm = m.get("Nuclear_Threshold_Method")
+            if nm:                                    # nuclear adaptive (GMM) ran
+                return {"value": m.get("Nuclear_Threshold"), "method": f"nuclear_{nm}",
+                        "staining_quality": m.get("Staining_Quality"),
+                        "abstain": bool(m.get("Nuclear_Abstain"))}
+            return {"value": m.get("DAB_Threshold"),
+                    "method": "adaptive_otsu" if cfg.get("adaptive_threshold") else "fixed",
+                    "staining_quality": None, "abstain": False}
 
+        ta_, tb_ = _thr_info(metrics_a, _fa), _thr_info(metrics_b, _fb)
         resolved_params = {
             "pixel_size_um":          ref_px,
             "pixel_size_source":      ref_px_source,
             "pixel_size_is_fallback": (ref_px_source == "default_fallback"),
             "pixel_size_a_um":        (metrics_a or {}).get("Pixel_Size_um"),
             "pixel_size_b_um":        (metrics_b or {}).get("Pixel_Size_um"),
-            "threshold_a":            {"value": (metrics_a or {}).get("DAB_Threshold"),
-                                       "method": _thr_method(_fa)},
-            "threshold_b":            {"value": (metrics_b or {}).get("DAB_Threshold"),
-                                       "method": _thr_method(_fb)},
+            "threshold_a":            ta_,
+            "threshold_b":            tb_,
+            "staining_quality_a":     ta_.get("staining_quality"),
+            "staining_quality_b":     tb_.get("staining_quality"),
             "compartment_a":          "membranous" if cyto_map.get(_fa) else "nuclear",
             "compartment_b":          "membranous" if cyto_map.get(_fb) else "nuclear",
             "registration_method":    reg_method,
