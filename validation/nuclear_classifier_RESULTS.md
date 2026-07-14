@@ -54,3 +54,39 @@ Operating point sweep (120-image subsample) for reference:
 | 2.0 | 0.813 | 56/120 |
 
 Reproduce: `python validation/validate_nuclear_classifier.py 598 --no-macenko --ashman 1.25`
+
+## Stain-robustness — the actual case for adaptive-as-default
+
+Harness: `validation/validate_nuclear_stain_robustness.py` (250 DeepLIIF images). Each image's
+DAB signal is perturbed (`x' = gain·x + offset`) the way real stain-batch variation does; the
+IF-derived GT labels do not move. F1 is scored for the fixed 0.20 cutoff vs the GMM at each
+perturbation.
+
+**A) Multiplicative gain (stain intensity):**
+
+| gain | F1 fixed | F1 gmm |
+|---|---|---|
+| 0.50 | 0.765 | 0.816 |
+| 1.00 | 0.818 | 0.815 |
+| 1.50 | 0.775 | 0.814 |
+| 2.00 | 0.737 | 0.813 |
+
+**B) Additive offset (counterstain / background bleed) — the harder, realistic test:**
+
+| offset | F1 fixed | F1 gmm |
+|---|---|---|
+| −0.05 | 0.827 | 0.816 |
+| 0.00 | 0.818 | 0.815 |
+| +0.10 | 0.737 | 0.813 |
+| **+0.15** | **0.476** | **0.804** |
+
+**C) Random per-image batch variation (rising spread σ):** F1 fixed 0.818 → 0.743 at σ=0.5;
+F1 gmm 0.815 → 0.813. GMM abstains on **4/250 (1.6%) at every perturbation level** — it adapts
+rather than panic-abstaining.
+
+**Conclusion.** On clean, well-calibrated staining the two tie (~0.81). Under realistic stain
+drift the fixed absolute cutoff degrades badly — down to **F1 0.476** under a 0.15 OD
+background bleed — while the GMM holds at **0.80–0.82** across the whole sweep because it
+re-estimates the threshold per image. That robustness gap, not the clean-data F1, is the
+research-grade case for making adaptive the default. Reproduce:
+`python validation/validate_nuclear_stain_robustness.py 250`
