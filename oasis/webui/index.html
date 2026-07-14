@@ -2613,7 +2613,11 @@ async function runQuantAnalysis() {
     default_pixel_size:    px_x,
     pixel_size_mode:       pxMode,
     dab_threshold:         document.getElementById('q-thresh').value / 100,
-    adaptive_threshold:    isOn('q-adaptive-toggle'),
+    // Nuclear adaptive = the validated GMM valley + abstain gate (oasis/quant/nuclear_classify),
+    // which replaces the old in-Groovy Otsu. Nuclear-only: membrane mode forces it off.
+    adaptive_threshold:    false,
+    nuclear_adaptive:      isOn('q-adaptive-toggle') && !isOn('q-membrane-toggle'),
+    nuclear_ashman_min:    1.25,
     preprocess_normalize:  isOn('q-normalize-toggle'),
     generate_overlays:     isOn('q-overlay-toggle'),
     cleanup_intermediates: isOn('q-cleanup-toggle'),
@@ -4105,7 +4109,12 @@ function spatialBuildConfig(forceMode) {
     dab_threshold_b:       parseFloat(document.getElementById('spatial-thresh-b').value) || 0.10,
     // Mirrored from the Quant tab: per-image Otsu, per-image white-balance, and
     // per-image pixel-size calibration from "_scale" siblings (batch only).
-    adaptive_threshold:    isOn('spatial-adaptive-toggle'),
+    // Nuclear adaptive = validated GMM valley + abstain (nuclear_classify); replaces the
+    // old in-Groovy Otsu. run_single_image applies it only to nuclear images — a membranous
+    // marker keeps the cytoplasm-ring completeness path (that branch takes precedence).
+    adaptive_threshold:    false,
+    nuclear_adaptive:      isOn('spatial-adaptive-toggle'),
+    nuclear_ashman_min:    1.25,
     preprocess_normalize:  isOn('spatial-normalize-toggle'),
     match_scale_images:    mode === 'batch' && isOn('spatial-scale-match-toggle'),
     enable_registration:   isOn('spatial-reg-toggle'),
@@ -4770,13 +4779,14 @@ function spatialAssocShowResults(data) {
       // hardcoded default, since that silently mis-scales the Ripley's K band.
       const rp = p.resolved_params || {};
       const thrTxt = (t) => t ? `${typeof t.value === 'number' ? t.value.toFixed(3) : (t.value ?? '—')} <span class="muted">(${esc(t.method || '—')})</span>` : '—';
+      const qFlag = (sq, t) => (sq === 'low' || (t && /abstain/.test(t.method || ''))) ? ' ' + qcPill('low staining quality — verify', '#d97706') : '';
       const resolvedParamsBlock = (rp.pixel_size_um != null || rp.threshold_a) ? `
         <div class="info-box${rp.pixel_size_is_fallback ? ' amber' : ''}" style="margin:6px 0 10px;font-size:12px;line-height:1.7">
           <strong>Parameters used for this pair</strong>${rp.pixel_size_is_fallback ? ' &nbsp;' + qcPill('PIXEL SIZE FELL BACK TO DEFAULT — statistics likely mis-scaled', '#dc2626') : ''}
           <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:5px">
             <span>Pixel size: <strong>${typeof rp.pixel_size_um === 'number' ? rp.pixel_size_um : '—'} µm/px</strong> <span class="muted">(${esc(rp.pixel_size_source || '—')})</span></span>
-            <span>${sA}: DAB thr ${thrTxt(rp.threshold_a)} · <strong>${esc(rp.compartment_a || '—')}</strong></span>
-            <span>${sB}: DAB thr ${thrTxt(rp.threshold_b)} · <strong>${esc(rp.compartment_b || '—')}</strong></span>
+            <span>${sA}: DAB thr ${thrTxt(rp.threshold_a)} · <strong>${esc(rp.compartment_a || '—')}</strong>${qFlag(rp.staining_quality_a, rp.threshold_a)}</span>
+            <span>${sB}: DAB thr ${thrTxt(rp.threshold_b)} · <strong>${esc(rp.compartment_b || '—')}</strong>${qFlag(rp.staining_quality_b, rp.threshold_b)}</span>
             <span>Registration: <strong>${esc(rp.registration_method || '—')}</strong>${rp.registration_certified ? ' ✓ certified' : ''}</span>
             ${rp.roi_label ? `<span>ROI: <strong>${esc(rp.roi_label)}</strong></span>` : ''}
             ${rp.preprocess_normalize ? '<span>' + pill('#eef2ff', '#3730a3', 'stain-normalized') + '</span>' : ''}

@@ -1846,6 +1846,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             "cytoplasm_overrides": cytoplasm_overrides,
             "membrane_overrides":  membrane_overrides,
             "adaptive_threshold":  adaptive_threshold,
+            "nuclear_adaptive":    bool(config.get("nuclear_adaptive", False)),
+            "nuclear_ashman_min":  float(config.get("nuclear_ashman_min", 1.25)),
             "preprocess_normalize": preprocess_normalize,
             "cell_expansion_um":   cell_expansion_um,
             "_pixel_size_from_ui": True,
