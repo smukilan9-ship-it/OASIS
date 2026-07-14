@@ -365,15 +365,29 @@ def measure_cytoplasm_dab(
         c = float(np.corrcoef(s, q)[0, 1])
         return c if np.isfinite(c) else -2.0
 
-    best = None
+    def _h_validity(h, d):
+        """Median hematoxylin OD over tissue. Physically it MUST be positive (hematoxylin
+        absorbs). A negative value means the stain vectors / white point are wrong for this
+        (usually colour-tinted) slide; the DAB>H dominance gate then saturates and over-calls
+        — this is the faint-TIM-3 92290 failure. Used to reject physically-invalid candidates
+        BEFORE parity ranking (parity is circular here: it rewards matching QuPath's own
+        fixed-vector DAB, so it keeps the fixed channel even when it is broken)."""
+        tissue = (np.abs(h) + np.abs(d)) > 0.1
+        return float(np.median(h[tissue])) if bool(tissue.any()) else float(np.median(h))
+
+    scored = []
     for name, vecs, bg in candidates:
         h, d = _od_channels(rgb, vecs, bg)
-        c = _centroid_parity(d)
-        if best is None or c > best[0]:
-            best = (c, name, vecs, bg, h, d)
-    _, chosen, stain_vectors, background, hem_od, dab_od = best
+        scored.append((_centroid_parity(d), _h_validity(h, d), name, vecs, bg, h, d))
+    # Prefer physically-valid H (median > 0.02), ranked by parity within that set. Fall back
+    # to best-parity-overall only if NO candidate has a valid H — so a degenerate estimate on
+    # a genuinely low-DAB slide (the LL477 case) still reverts to fixed exactly as before.
+    valid = [s for s in scored if s[1] > 0.02]
+    pool = valid if valid else scored
+    best = max(pool, key=lambda s: s[0])
+    _, h_med, chosen, stain_vectors, background, hem_od, dab_od = best
     print(f"  Cytoplasm measurement: {chosen} stain vectors "
-          f"(centroid-parity r={best[0]:.3f})")
+          f"(centroid-parity r={best[0]:.3f}, H-median {h_med:+.3f})")
     del rgb
 
     valid_idx  = [i for i, p in enumerate(fixed) if p is not None]
