@@ -1,9 +1,47 @@
 # Next session — live handoff
 
 **Living doc. Updated after every major step.** Read top-to-bottom before touching code.
-Last updated: **2026-07-13** (Spatial UX round 3: wizard reorder + LoFTR speed subset).
+Last updated: **2026-07-14** (nuclear/membranous classifier + spatial param transparency + Part C core).
 
-## ⚑ Most recent work (2026-07-13) — wizard reorder + LoFTR speed (user feedback)
+## ⚑ Most recent work (2026-07-14) — classifier overhaul + spatial transparency + Part C
+Committed no-Claude-trailer; user pushes. Compartment plan A(nuclear)→B(membranous)→C(wiring).
+
+**Nuclear (Part A, committed b6c24b3 / 54d53a6):** `oasis/quant/nuclear_classify.py` = GMM
+valley + BIC/Ashman abstain gate (numpy EM, **sklearn NOT installed**). `run_pipeline.
+_apply_nuclear_reclassification` = flagged post-step (`nuclear_adaptive`, nuclear-only,
+membrane takes precedence). Benchmarks (`validate_nuclear_classifier.py`, DeepLIIF Ki67,
+598 imgs): GMM **0.808 F1 ties fixed 0.809, beats current Otsu 0.793**, abstains 3.0% @
+ashman 1.25; channel = DAB:Mean (Macenko rejected — abstains 31-47% for no gain).
+Stain-robustness (`validate_nuclear_stain_robustness.py`): under drift fixed collapses to
+**F1 0.476** (bg bleed) while GMM holds 0.80-0.82 → the case for adaptive-as-default.
+
+**Membranous (committed 0736fda / a7664e4):** faint TIM-3 failure is NOT a biological floor
+— it's a stain-selection bug: parity picks FIXED vectors on colour-tinted slides → NEGATIVE
+hematoxylin OD → DAB>H saturates 99.8% → 67% over-call. Fix = `_h_validity` guard in
+`cell_expansion.py` (reject negative-median-H candidates before parity). 92290: H −0.095→
++0.339, dominance 99.8%→35%, over-call 67%→50%. **CAVEAT: changes channel on 2/4 cutoff-fit
+images → membrane cutoffs (pix_thr 0.30/frac_min 0.14) need REFIT + F1 (0.934/0.76) re-confirm,
+blocked on hand-labels not on disk.** Cellpose EMPIRICALLY ruled out (20/901 cells on faint;
+ring geometry sweep flat Δ≤0.14). Cellpose install gotcha: pulls opencv-headless 5.0 shadowing
+pinned opencv 4.13 — removed + restored.
+
+**Spatial param transparency (committed 23d43f3):** user report "pixel size/settings silently
+fall back to 0.5, not global, batch conflated". Backend resolution PROVEN correct/global/
+isolated (`validate_spatial_param_resolution.py`, 13 checks). Added per-pair `resolved_params`
+(pixel size+source, ACTUAL threshold used incl. adaptive value, compartment, registration, ROI)
+→ streamed log + report block with LOUD red flag on pixel-size fallback + `⚠ 0.5 default` pre-run
+warning.
+
+**Part C core (committed ea774f8):** Quant + Spatial adaptive toggle now → `nuclear_adaptive`
+(validated GMM), old Otsu retired. `parse_qupath_output` carries GMM provenance; report shows
+`nuclear_gmm thr=0.285` + staining-quality flag. **REMAINING Part C polish:** explicit
+per-biomarker Nuclear/Membranous selector relabel, per-compartment adaptive default-ON (NOT
+flipped — the project's markers CD8/TIM-3 are membranous, so a global default-on would mis-route
+them; needs the compartment selector first), interactive abstain 'proceed?' prompt.
+
+Push: `cd "/Users/mukilan/PycharmProjects/ihc-original copy" && git push origin main`
+
+## ⚑ Prior work (2026-07-13) — wizard reorder + LoFTR speed (user feedback)
 Browser-verified on serve.py :8765; committed with no Claude co-author trailer.
 - **`8f8e59f`** — Spatial wizard reorder (`oasis/webui/index.html`): steps are now
   **Inputs → Certify → Settings → Validation check & run**. Settings (analysis parameters +
