@@ -87,6 +87,14 @@ def load_config(config_path="config.yaml"):
     #                         illumination without rescaling the DAB signal).
     cfg.setdefault("adaptive_threshold", False)
     cfg.setdefault("preprocess_normalize", False)
+    #   nuclear_adaptive    – NUCLEAR markers: replace the QuPath fixed/Otsu class with
+    #                         the model-based adaptive threshold (GMM valley on this
+    #                         image's DAB distribution) + an abstain gate that flags
+    #                         faint/unimodal images instead of guessing. Off by default;
+    #                         nuclear_ashman_min is the abstain operating point (1.25,
+    #                         chosen on the DeepLIIF Ki67 benchmark).
+    cfg.setdefault("nuclear_adaptive", False)
+    cfg.setdefault("nuclear_ashman_min", 1.25)
 
 
     return cfg
@@ -560,6 +568,98 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
           f"(was {was_pos} with nuclear), expansion {expansion} µm")
 
 
+def _apply_nuclear_reclassification(img_path, json_path, cfg):
+    """Reclassify a NUCLEAR marker with the model-based adaptive threshold and abstain
+    gate (oasis.quant.nuclear_classify), writing the new classification and threshold
+    provenance back into the GeoJSON, the summary JSON, and the detections CSV.
+
+    Nuclear-only — the membrane path takes precedence in run_single_image; this runs
+    only when cfg['nuclear_adaptive'] is set (off by default, so nuclear/quant behaviour
+    is unchanged unless enabled). The threshold is the GMM valley of THIS image's cell
+    DAB:Mean distribution (the channel + operating point the DeepLIIF Ki67 benchmark
+    selected — validation/validate_nuclear_classifier.py). On a faint/unimodal image the
+    gate ABSTAINS: the image is flagged staining_quality:low and the calls fall back to
+    the fixed cutoff, so the UI can ask the user whether to proceed.
+    """
+    import numpy as np
+    from oasis.quant.nuclear_classify import classify_nuclear
+
+    output_dir = cfg["output_dir"]
+    geojson = _find_geojson(img_path, output_dir)
+    if not geojson:
+        print("  Nuclear reclassification: GeoJSON not found — skipping")
+        return
+    try:
+        with open(json_path) as f:
+            summ = json.load(f)
+    except Exception:
+        summ = {}
+    fixed_thr = float(summ.get("dab_threshold", cfg.get("dab_threshold", 0.2)))
+    ashman_min = float(cfg.get("nuclear_ashman_min", 1.25))
+
+    with open(geojson) as f:
+        gj = json.load(f)
+    features = gj.get("features", [])
+    dab = []
+    for ft in features:
+        m = (ft.get("properties", {}).get("measurements", {}) or {})
+        v = m.get("DAB: Mean", m.get("Nucleus: DAB OD mean"))
+        dab.append(float(v) if isinstance(v, (int, float)) else np.nan)
+    dab = np.asarray(dab, float)
+
+    dec = classify_nuclear(dab, fixed_threshold=fixed_thr, ashman_min=ashman_min,
+                           allow_fixed_fallback=True)
+    labels = dec["labels"]
+    if labels is None:                        # allow_fixed_fallback=True ⇒ shouldn't happen
+        labels = dab > fixed_thr
+    pos = 0
+    for ft, is_pos in zip(features, labels):
+        props = ft.setdefault("properties", {})
+        props["classification"] = {"name": "Positive" if bool(is_pos) else "Negative",
+                                   "color": [255, 0, 0] if bool(is_pos) else [0, 200, 0]}
+        if is_pos:
+            pos += 1
+    with open(geojson, "w") as f:
+        json.dump(gj, f)
+
+    # Keep the detections CSV classification column consistent with the GeoJSON.
+    try:
+        import csv
+        stem = os.path.splitext(os.path.basename(img_path))[0]
+        csv_matches = glob.glob(os.path.join(output_dir, f"{stem}*_detections.csv"))
+        if csv_matches:
+            with open(csv_matches[0], newline="") as f:
+                rows = list(csv.reader(f, delimiter="\t"))
+            if rows and len(rows) - 1 == len(features):
+                ci = rows[0].index("Classification")
+                for row, feat in zip(rows[1:], features):
+                    row[ci] = _classification_name(feat.get("properties", {}))
+                with open(csv_matches[0], "w", newline="") as f:
+                    csv.writer(f, delimiter="\t").writerows(rows)
+    except Exception:
+        pass
+
+    total = len(features)
+    summ["nuclear_threshold"] = (round(float(dec["threshold"]), 4)
+                                 if dec["threshold"] is not None else None)
+    summ["nuclear_threshold_method"] = dec["method"]     # gmm | otsu | fixed | abstain
+    summ["nuclear_separability"] = round(float(dec["separability"]), 3)
+    summ["staining_quality"] = dec["quality"]            # ok | low
+    summ["nuclear_abstain"] = bool(dec["abstain"])
+    summ["nuclear_abstain_reason"] = dec["reason"]
+    summ["positive_cells"] = pos
+    summ["negative_cells"] = total - pos
+    if total:
+        summ["positivity_pct"] = round(pos * 100.0 / total, 2)
+    with open(json_path, "w") as f:
+        json.dump(summ, f, indent=4)
+
+    flag = f" — ABSTAIN ({dec['reason']})" if dec["abstain"] else ""
+    print(f"  Nuclear reclassification: {dec['method']} thr={summ['nuclear_threshold']} "
+          f"({pos}/{total} positive, sep={summ['nuclear_separability']}, "
+          f"quality={dec['quality']}){flag}")
+
+
 def _normalized_copy(img_path, cfg):
     """Write a per-image white-balanced copy (same basename) and return its path.
 
@@ -749,6 +849,15 @@ def run_single_image(img_path, cfg, groovy_script):
             _apply_cytoplasm_measurement(img_path, json_path, cfg)
         except Exception as e:
             print(f"  Cytoplasm measurement failed: {e} — keeping nuclear classification")
+    elif cfg.get("nuclear_adaptive"):
+        # Nuclear markers only (membrane path takes precedence above). Off by default;
+        # replaces the QuPath fixed/Otsu classification with the model-based adaptive
+        # threshold (GMM valley + abstain gate) validated in
+        # validation/validate_nuclear_classifier.py.
+        try:
+            _apply_nuclear_reclassification(img_path, json_path, cfg)
+        except Exception as e:
+            print(f"  Nuclear reclassification failed: {e} — keeping QuPath classification")
 
     return json_path
 
