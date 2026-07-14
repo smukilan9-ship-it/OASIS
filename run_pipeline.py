@@ -1712,12 +1712,52 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                 _data["spatial_validity"] = spatial_validity
                 _data["certification"] = certification
 
+        # ── Resolved-parameters provenance: what ACTUALLY ran for THIS pair ──────
+        # Surfaced in the log + results report so nothing is silent — the exact pixel
+        # size and its source, the actual DAB threshold used (the COMPUTED value when
+        # adaptive), the compartment, registration and ROI. In batch every pair carries
+        # its OWN block, so per-pair isolation (own pixel size / threshold / ROI) is
+        # directly visible rather than assumed.
+        _fa, _fb = os.path.basename(path_a), os.path.basename(path_b)
+
+        def _thr_method(fname):
+            if cyto_map.get(fname):
+                return "membrane_completeness"
+            return "adaptive_otsu" if cfg.get("adaptive_threshold") else "fixed"
+
+        resolved_params = {
+            "pixel_size_um":          ref_px,
+            "pixel_size_source":      ref_px_source,
+            "pixel_size_is_fallback": (ref_px_source == "default_fallback"),
+            "pixel_size_a_um":        (metrics_a or {}).get("Pixel_Size_um"),
+            "pixel_size_b_um":        (metrics_b or {}).get("Pixel_Size_um"),
+            "threshold_a":            {"value": (metrics_a or {}).get("DAB_Threshold"),
+                                       "method": _thr_method(_fa)},
+            "threshold_b":            {"value": (metrics_b or {}).get("DAB_Threshold"),
+                                       "method": _thr_method(_fb)},
+            "compartment_a":          "membranous" if cyto_map.get(_fa) else "nuclear",
+            "compartment_b":          "membranous" if cyto_map.get(_fb) else "nuclear",
+            "registration_method":    reg_method,
+            "registration_certified": bool(landmark_cert.get("is_certified")),
+            "roi_label":              pair.get("roi_label"),
+            "preprocess_normalize":   bool(cfg.get("preprocess_normalize")),
+        }
+        _fbwarn = " ⚠PIXEL-SIZE FALLBACK" if resolved_params["pixel_size_is_fallback"] else ""
+        print(f"  RESOLVED PARAMS [{sample_id}]: pixel {ref_px} µm/px "
+              f"({ref_px_source}){_fbwarn}  |  A {stain_a} thr="
+              f"{resolved_params['threshold_a']['value']} "
+              f"{resolved_params['threshold_a']['method']}/{resolved_params['compartment_a']}"
+              f"  |  B {stain_b} thr={resolved_params['threshold_b']['value']} "
+              f"{resolved_params['threshold_b']['method']}/{resolved_params['compartment_b']}"
+              f"  |  reg {reg_method} certified={resolved_params['registration_certified']}")
+
         result = {
             "sample_id":           sample_id,
             "stain_a":             stain_a,
             "stain_b":             stain_b,
             "filename_a":          os.path.basename(path_a),
             "filename_b":          os.path.basename(path_b),
+            "resolved_params":     resolved_params,
             "metrics_a":           metrics_a,
             "metrics_b":           metrics_b,
             "spatial_association": assoc_result,

@@ -4168,6 +4168,16 @@ async function spatialAssocRun() {
   if (config.preprocess_normalize) spOpts.push('stain-normalized');
   if (config.match_scale_images)   spOpts.push('per-image scale calibration');
   appendLog('spatial-log', `Registration: ${config.enable_registration ? 'enabled' : 'disabled'}${spOpts.length ? ' · ' + spOpts.join(' · ') : ''}`, 'normal');
+  // Pixel size is the metric for EVERY spatial statistic — surface it, and warn loudly
+  // if it is the untouched 0.5 default (silently mis-scales Ripley's K otherwise).
+  const spPx = config.session_pixel_size;
+  const spPxSrc = config.match_scale_images ? 'matched scale images'
+    : (spatialSessionPxMode === 'scale' ? 'session scale image' : 'entered manually');
+  appendLog('spatial-log', `Pixel size: ${spPx ?? '—'} µm/px (${spPxSrc}, applied to all images unless a per-image override is set)`, 'normal');
+  if (Number(spPx) === 0.5 && !config.match_scale_images && spatialSessionPxMode === 'manual') {
+    appendLog('spatial-log', '⚠ Pixel size is 0.5 µm/px — the DEFAULT. If you did not set this deliberately, the spatial statistics will be mis-scaled. Verify it in step 1 (Inputs).', 'warn');
+    showToast('Pixel size is the default 0.5 µm/px — verify it is correct for your images');
+  }
 
   await window.pywebview.api.run_spatial_association(config);
 }
@@ -4754,6 +4764,24 @@ function spatialAssocShowResults(data) {
       const titleBadge = qInvalid
         ? qcPill('registration invalid', '#dc2626')
         : `<span class="badge ${bv[0]}">${bv[1]}</span>${qWarn ? ' ' + qcPill('QC caution', '#d97706') : ''}`;
+      // Resolved parameters — EXACTLY what ran for this pair (pixel size + source,
+      // the actual threshold used incl. the computed adaptive value, compartment,
+      // registration, ROI). Loud red flag when the pixel size fell back to the
+      // hardcoded default, since that silently mis-scales the Ripley's K band.
+      const rp = p.resolved_params || {};
+      const thrTxt = (t) => t ? `${typeof t.value === 'number' ? t.value.toFixed(3) : (t.value ?? '—')} <span class="muted">(${esc(t.method || '—')})</span>` : '—';
+      const resolvedParamsBlock = (rp.pixel_size_um != null || rp.threshold_a) ? `
+        <div class="info-box${rp.pixel_size_is_fallback ? ' amber' : ''}" style="margin:6px 0 10px;font-size:12px;line-height:1.7">
+          <strong>Parameters used for this pair</strong>${rp.pixel_size_is_fallback ? ' &nbsp;' + qcPill('PIXEL SIZE FELL BACK TO DEFAULT — statistics likely mis-scaled', '#dc2626') : ''}
+          <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:5px">
+            <span>Pixel size: <strong>${typeof rp.pixel_size_um === 'number' ? rp.pixel_size_um : '—'} µm/px</strong> <span class="muted">(${esc(rp.pixel_size_source || '—')})</span></span>
+            <span>${sA}: DAB thr ${thrTxt(rp.threshold_a)} · <strong>${esc(rp.compartment_a || '—')}</strong></span>
+            <span>${sB}: DAB thr ${thrTxt(rp.threshold_b)} · <strong>${esc(rp.compartment_b || '—')}</strong></span>
+            <span>Registration: <strong>${esc(rp.registration_method || '—')}</strong>${rp.registration_certified ? ' ✓ certified' : ''}</span>
+            ${rp.roi_label ? `<span>ROI: <strong>${esc(rp.roi_label)}</strong></span>` : ''}
+            ${rp.preprocess_normalize ? '<span>' + pill('#eef2ff', '#3730a3', 'stain-normalized') + '</span>' : ''}
+          </div>
+        </div>` : '';
       return `
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
@@ -4763,6 +4791,7 @@ function spatialAssocShowResults(data) {
           ${qcBanner}
           ${certBanner}
           ${bwBanner}
+          ${resolvedParamsBlock}
           ${interactionCard}
           ${segRow}
           ${consBlock}
