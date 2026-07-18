@@ -15,6 +15,14 @@ Living checklist of what's left after the validation-infrastructure refactor.
       authored `smukilan9@gmail.com`; add that email under GitHub → Settings → Emails so it
       links to the account). No Claude/co-author trailers remain.
 
+## Troubleshooting / diagnostics log (design held — not built)
+- [ ] Build the structured per-run diagnostics log per **`docs/diagnostics_log_plan.md`**:
+      `diagnostics.json` + `troubleshooting.md` harvested from the verdicts/warnings the
+      pipeline already computes (nuclear reason/quality, membrane quality, registration
+      TRE/cert, cross-K/bandwidth verdicts, pixel-size source). Additive, no science change.
+      Feeds the future **Troubleshooting tab** ("what happened / what to do next").
+  - Open: raw stdout/stderr retention policy (deferred); build scope order (quant-first vs all).
+
 ## Datasets (shipping)
 - [ ] Decide hosting for the large/restricted datasets and send the links:
   - DeepLIIF (~4 GB), TIM-3 CRC-ICM (~1 GB) → Google Drive / other host.

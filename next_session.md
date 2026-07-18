@@ -1,9 +1,51 @@
 # Next session — live handoff
 
 **Living doc. Updated after every major step.** Read top-to-bottom before touching code.
-Last updated: **2026-07-14** (nuclear/membranous classifier + spatial param transparency + Part C core).
+Last updated: **2026-07-17** (DeepLIIF-vs-InstanSeg segmenter benchmark; prior: StarDist benchmark + classifier overhaul + spatial param transparency + Part C core).
 
-## ⚑ Most recent work (2026-07-14) — classifier overhaul + spatial transparency + Part C
+## ⚑ Most recent work (2026-07-17) — DeepLIIF vs InstanSeg segmenter benchmark
+**Verdict: InstanSeg stays.** Decided on an INDEPENDENT expert-labelled set (HNSCC mIHC,
+`~/Desktop/HNSCC_raw_dataset`, 268 tiles, hematoxylin-only, 0.5 µm, **91,173** expert nuclei) —
+deliberately NOT DeepLIIF's home-turf test set. Both run identically (0.5 µm, adaptive OFF,
+DAB 0.35). InstanSeg **det-F1 0.82** (@15px; pixel-F1 0.823) vs DeepLIIF `DeepLIIF_Latest_Model`
+**det-F1 0.65** (pixel-F1 0.691). DeepLIIF finds similar COUNT (pred/GT 0.97) but localises
+poorly + over-segments background (hallucinated nuclei in stroma on off-distribution
+hematoxylin-only input). Caveat: DeepLIIF trained on full IHC RGB → hematoxylin-only handicaps
+it, but that's the signal the pipeline uses, and it's generative signal-inference that can't do
+membranous CD8/TIM-3 anyway.
+- **How DeepLIIF was run** (reusable): isolated `~/deepliif_runtime/venv` (py3.11) — native
+  `deepliif` can't run on repo py3.14 (2021-era pins: opencv 4.8/torch 2.8/numba 0.57/skimage
+  0.18). Installed inference-only deps at modern versions + `deepliif --no-deps`; stubbed WSI-only
+  `bioformats`/`javabridge` (site-packages stub modules); model `DeepLIIF_Latest_Model` (Zenodo
+  4751737, 2.9 GB) at `~/deepliif_runtime/`; `deepliif test --gpu-ids -1` CPU ~14s/tile. Project
+  `.venv` (pinned opencv 4.13) untouched — do NOT install deepliif there.
+- **Artifacts (UNCOMMITTED, not pushed):** `validation/deepliif_vs_instanseg_RESULTS.md` +
+  `validation/score_hnscc_deepliif_vs_instanseg.py`; ihc.md §3.2 + §7 updated; outputs +
+  montage + RESULTS.md in `~/Desktop/HNSCC_seg_comparison/{deeplif_segmentation,instanseg_segmentation}`.
+- Mask convention (GT + DeepLIIF): blue=nucleus interior, red=marker+ nucleus, green=separating
+  ring, black=bg → instances = connected components of blue|red interior.
+
+## ⚑ Prior work (2026-07-14) — StarDist vs InstanSeg segmenter benchmark
+**Verdict: InstanSeg stays.** Head-to-head on DeepLIIF, identical **brightfield** conditions
+(both headless in QuPath 0.7: `BRIGHTFIELD_H_DAB`, 0.5 µm, full-image annotation, same GeoJSON
+export, same 15 px centroid matcher), 598 imgs / 41,428 IF GT cells. InstanSeg `brightfield_nuclei`
+**det-F1 0.807** (rec 0.752, prec 0.871) vs StarDist `dsb2018_heavy_augment` on the deconvolved
+**hematoxylin** channel @ thr 0.5 **det-F1 0.665** (rec 0.853, prec 0.546; over-detects 64.8k vs
+~41k GT). InstanSeg better on **580/598**. Hematoxylin-intensity post-filter (proxy PR sweep — QuPath
+didn't export per-detection prob) caps StarDist at **0.723**, still below; area filter does nothing
+→ excess are real spurious calls, not splitting. **H&E model NOT run** — data is DAB-IHC not H&E, so
+the deconvolution route already IS the correct brightfield path (no value in `he_heavy_augment`).
+- Native `stardist`/TensorFlow **cannot run** (no TF Python-3.14 build); QuPath StarDist ext v0.6.0
+  ran the `.pb` via bundled TF (no big download). Model was pre-fetched by a prior Codex session at
+  `~/Documents/Codex/2026-07-14/.../outputs/models/dsb2018_heavy_augment.pb`.
+- Artifacts (uncommitted, not pushed): `validation/stardist_vs_instanseg_RESULTS.md`; ihc.md §3.2 +
+  §7 "Segmenter choice" updated; detections + `stardist_vs_instanseg.json` under
+  `~/oasis_validation_datasets/DeepLIIF/_generated_outputs/pipeline_validation/stardist_dsb2018/`;
+  scratchpad scorer `compare_seg.py` + Groovy `stardist_batch.groovy`.
+- Not done (offered, declined-by-scope): true probability-threshold PR curve (re-run with
+  `.includeProbability(true)` at low threshold, ~40 min).
+
+## ⚑ Prior work (2026-07-14) — classifier overhaul + spatial transparency + Part C
 Committed no-Claude-trailer; user pushes. Compartment plan A(nuclear)→B(membranous)→C(wiring).
 
 **Nuclear (Part A, committed b6c24b3 / 54d53a6):** `oasis/quant/nuclear_classify.py` = GMM

@@ -69,6 +69,8 @@ front and flows to all images.
 ### 3.2 Segmentation & quantification
 InstanSeg nuclear segmentation → Ruifrok–Johnston/Macenko stain deconvolution → DAB OD
 per cell. Default class: nuclear DAB > threshold (per-stain, e.g. CD8 0.20, TIM-3 0.10).
+InstanSeg was chosen over StarDist (det-F1 0.807 vs 0.665 on DeepLIIF) and over DeepLIIF's
+own model (det-F1 0.82 vs 0.65 on HNSCC expert masks); see §7 "Segmenter choice".
 
 **Membrane mode** (`cell_expansion.py`, CD8/TIM-3): DAB measured in the **cytoplasmic
 ring** = (expanded cell ∩ Voronoi) − nucleus. Half-plane Voronoi clipping stops an
@@ -406,6 +408,36 @@ runner, same reports):
 - **Detection/membrane** — DeepLIIF IF truth (class F1 ≈ 0.81); membranous CD8 on HNSCC
   mIF (held-out F1 ≈ 0.76, AUC 0.89). IF **proxies** — no same-section DAB+IF truth
   possible (DAB unstrippable).
+- **Segmenter choice — InstanSeg vs StarDist** (`validation/stardist_vs_instanseg_RESULTS.md`,
+  2026-07-14) — both run headless in QuPath under **identical brightfield conditions**
+  (`BRIGHTFIELD_H_DAB`, 0.5 µm, full-image annotation, same GeoJSON export, same 15 px
+  centroid matcher) over all 598 DeepLIIF images / 41,428 IF-derived GT cells. InstanSeg
+  `brightfield_nuclei` **det-F1 0.807** (recall 0.752, prec 0.871) vs StarDist
+  `dsb2018_heavy_augment` on the deconvolved hematoxylin channel (thr 0.5) **det-F1 0.665**
+  (recall 0.853, prec 0.546 — over-detects 64.8k objects vs ~41k GT). **InstanSeg better on
+  580/598 images.** A hematoxylin-intensity post-filter sweep (proxy for a prob-threshold PR
+  curve; QuPath doesn't export per-detection probability) caps StarDist at **det-F1 ≈ 0.723**,
+  still −0.084 below InstanSeg; area filtering does nothing → the excess are genuine spurious
+  nuclei calls, not splitting fragments. StarDist's only edge is raw recall, not worth the
+  precision hit here. Framing is in-domain (InstanSeg, built for brightfield) vs repurposed
+  fluorescence (StarDist); the RGB H&E StarDist model was **not** run because the data is
+  DAB-IHC, not H&E — the deconvolution route already *is* the correct brightfield path.
+  **Decision: InstanSeg stays the segmenter.** TensorFlow has no Python-3.14 build, so the
+  native `stardist` package cannot run in-repo; QuPath's bundled TF path executed the `.pb`.
+- **Segmenter choice — InstanSeg vs DeepLIIF** (`validation/deepliif_vs_instanseg_RESULTS.md`
+  + `score_hnscc_deepliif_vs_instanseg.py`, 2026-07-17) — decided on an **independent**
+  expert-labelled set (HNSCC mIHC, 268 tiles, hematoxylin-only input, 0.5 µm, **91,173**
+  expert nuclei), *not* DeepLIIF's own test distribution (which would be circular home-turf).
+  Both run identically (0.5 µm, adaptive OFF, DAB 0.35). InstanSeg **det-F1 0.82** (@15 px;
+  0.77–0.82 across 6–15 px, pixel-F1 0.823) vs DeepLIIF `DeepLIIF_Latest_Model` **det-F1 0.65**
+  (0.49–0.65, pixel-F1 0.691). DeepLIIF finds a similar *count* (pred/GT 0.97) but **localises
+  poorly and over-segments background** (hallucinated nuclei in stroma on off-distribution
+  hematoxylin-only input); InstanSeg tracks the expert mask closely. **Caveat:** DeepLIIF is
+  trained on full IHC RGB and internally infers hematoxylin→seg, so hematoxylin-only handicaps
+  it — but that IS the nuclear signal the pipeline uses, and DeepLIIF is generative
+  signal-inference (§1) that additionally cannot do membranous CD8/TIM-3. Native `deepliif`
+  can't run on the repo's Python 3.14 (2021-era stack) → isolated py3.11 env, project `.venv`
+  untouched. **Decision: InstanSeg stays.**
 - **Keystone — degradation** (`tests/test_degradation.py`, the End-to-End validation): CODEX
   same-section truth (CD8 vs PD-1) → split to pseudo-serial + inject registration error →
   verdict must not flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and
