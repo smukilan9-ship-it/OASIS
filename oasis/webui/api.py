@@ -871,6 +871,9 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
 
             tol_um = float(payload.get("tol_um") or 4.0)
             want_corr = bool(payload.get("return_correspondences"))
+            # opt-in: recover CROSS-MODAL ROIs where LoFTR fails, via VALIS-rigid (isolated env,
+            # structural certification). Off by default -> default behaviour is byte-identical.
+            _valis_fallback = bool(payload.get("valis_fallback"))
             # Overlap handling: split any-shape overlapping regions into a planar partition
             # so each intersection becomes its OWN separate region (no double-counted cells).
             if bool(payload.get("partition")) and len(rois) > 1:
@@ -892,7 +895,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                 roi_t = roi * ref_scale
                 cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
                                             provisional_matrix=M_t, tol_um=tol_um,
-                                            return_correspondences=want_corr)
+                                            return_correspondences=want_corr,
+                                            valis_fallback=_valis_fallback)
                 v = cert.get("verdict")
                 local_t = cert.get("local_matrix")
                 mov_roi_full = None
