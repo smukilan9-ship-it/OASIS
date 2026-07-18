@@ -250,7 +250,7 @@ def _roi_bbox(poly, W, H, pad):
 def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                       provisional_matrix=None, fallback_ref_lm=None, fallback_mov_lm=None,
                       weights="outdoor", tol_um=4.0, min_matches=8, work_max_dim=800,
-                      return_correspondences=False, fle_fast=False):
+                      return_correspondences=False, fle_fast=False, valis_fallback=False):
     """Certify a user-drawn ROI by a LOCAL rigid fit from LoFTR correspondences inside it.
 
     THE WHOLE POINT. Serial-section deformation is smooth, so a similarity fit CONFINED to a
@@ -328,6 +328,30 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                 fl = loftr_fle(small_r, small_m, c["ref_points"], c["mov_points"],
                                pixel_size_um=px_work, n_trials=2)  # lower bound; 2 is enough
                 fle_um = fl["fle_um"]
+
+    # VALIS-rigid fallback — recover CROSS-MODAL ROIs where LoFTR found too few matches
+    # (H&E<->IHC: LoFTR returns 0, VALIS's deep matcher recovers hundreds). VALIS registers
+    # in the isolated env; certification is the stain-robust STRUCTURAL patch-residual (not the
+    # LoFTR->landmark gate, which needs correspondences we do not have here). Only rigid is used.
+    if ref_pts is None and valis_fallback:
+        try:
+            from oasis.spatial import valis_engine as _ve
+            if _ve.valis_available():
+                vr = _ve.register_crops_and_certify(crop_r, crop_m, float(pixel_size_um))
+                if vr.get("matrix") is not None:
+                    Ac = np.asarray(vr["matrix"], float)[:2]
+                    A_, t_ = Ac[:, :2], Ac[:, 2]
+                    off_m = np.array([mx0, my0], float); off_r = np.array([rx0, ry0], float)
+                    t_full = A_ @ (-off_m) + t_ + off_r     # crop_mov -> crop_ref -> full frame
+                    M_full = np.hstack([A_, t_full.reshape(2, 1)])
+                    return {"ok": bool(vr.get("ok")), "verdict": vr.get("verdict"),
+                            "matrix": M_full.tolist(), "local_matrix": Ac.tolist(),
+                            "source": "valis_rigid_in_roi", "cert_method": "structural_patch_residual",
+                            "median_um": vr.get("median_um"), "region_max_um": vr.get("region_max_um"),
+                            "lumen_tre_um": vr.get("lumen_tre_um"), "n_correspondences": vr.get("n_matches"),
+                            "overlap_frac": vr.get("overlap_frac"), "msg": vr.get("reason")}
+        except Exception as _e:
+            pass  # VALIS unavailable/failed -> fall through to landmark fallback
 
     if ref_pts is None:                                # graceful fallback to landmarks
         if fallback_ref_lm is None or fallback_mov_lm is None:
