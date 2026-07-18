@@ -446,6 +446,97 @@ runner, same reports):
   **image-based** degradation experiment was removed (tissue-scale data, not cell-scale;
   §10) — to be redesigned on an appropriate dataset.
 
+### 7.1 Registration benchmarked against VALIS — full ANHIR (2026-07-18)
+
+Independent, **non-circular** head-to-head of OASIS registration (LoFTR→similarity, and the
+structural `register_similarity` path) + the certification **gate** against **VALIS** (Virtual
+Alignment of pathoLogy Image Series, Nat. Commun. 2023 — the open-source SOTA WSI registrar).
+Harness: `validation/valis_bench/` (`common.py` shared scorer, `run_ours.py`, `run_valis.py`,
+`run_correspondence.py`, `compare.py`, `run_all.sh`, `RESULTS.md`, `README.md`). **The main
+pipeline is untouched** — VALIS runs in an isolated env, exactly like the DeepLIIF benchmark.
+
+**Datasets & where to download**
+- **ANHIR** (Automatic Non-rigid Histological Image Registration, ISBI 2019). Full public
+  training set, **`dataset_medium` = scale-25pc**, **222 scorable training pairs**, **8 tissue
+  types** (lung-lesion, lung-lobes, mammary-gland, COAD, gastric, breast, kidney, mice-kidney).
+  Download from the CTU/CMP server by **HTTP basic auth**, guest `ANHIR-guest` / `isbi2019`
+  (CC-BY-NC-SA): `http://ptak.felk.cvut.cz/Medical/dataset_ANHIR/images/dataset_medium.{csv,zip,
+  z01..z05}` (split zip, ~11.8 GB) + `.../landmarks/dataset_medium.zip`. Recombine
+  (`zip -s 0 dataset_medium.zip --out combined.zip`) and unzip images + landmarks into the same
+  tree → `<SET>/scale-25pc/{STAIN.jpg, STAIN.csv}` (landmarks co-located, ImageJ `,X,Y`). Pairs
+  and the target diagonal come from `dataset_medium.csv` (`status` = training/evaluation;
+  **test-set landmarks are server-side, so only the 222 training pairs are scorable locally** —
+  the same basis as VALIS's reported 230). Stored at `~/oasis_validation_datasets/ANHIR_medium/`.
+  Real µm/px per tissue (from the challenge table, at 25pc): lung-lesion 0.70, lung-lobes 5.10,
+  mammary 9.18, COAD 1.87, gastric 1.01, breast 1.01, kidney 1.01, mice-kidney 0.91.
+- **CIMA** subset (lung + mammary only) is the openly-mirrored ANHIR fragment used for the earlier
+  landmark checks (§7 "Registration"); `common.enumerate_pairs` still reads that split layout.
+- **VALIS runtime**: isolated `~/valis_runtime/venv` (uv, Python 3.11, `valis-wsi` 1.2.0) + brew
+  `vips`; run with `DYLD_LIBRARY_PATH=/opt/homebrew/lib`. Native `valis` cannot run on the repo's
+  Python 3.14, hence isolation; the project `.venv` (pinned opencv/numpy) is never touched.
+
+**Methodology (how circularity is avoided)**
+1. **Landmarks are never given to any registration.** Both methods register from image pixels
+   only; the expert landmarks are used *solely* to score rTRE (relative target registration error
+   = ‖T(moving landmark) − fixed landmark‖ / fixed-image diagonal, the ANHIR metric). MMrTRE =
+   median over pairs of the per-pair median.
+2. **One shared scorer** (`common.rtre`) is imported *identically* by the main `.venv` and the
+   isolated VALIS venv, so the metric cannot drift between methods. The identity (no-registration)
+   baseline is always reported so neither method is credited for pre-alignment.
+3. **VALIS-rigid (distance-preserving) is scored separately from VALIS-nonrigid.** Only rigid is
+   apples-to-apples with OASIS's similarity and cross-K-safe; the non-rigid warp (`warp_xy_from_to
+   (…, non_rigid=True)`) is the operation OASIS **forbids** for spatial-association stats
+   (`serial_registration.assert_distance_preserving`, §6) and is reported only as an accuracy
+   upper bound.
+4. **Gate calibration is judged by landmarks the gate never saw.** The gate is fed the LoFTR
+   correspondences, its verdict recorded, then the *independent* expert-landmark rTRE is tabulated
+   per verdict — a genuine, non-circular test of whether "certified" means "actually accurate."
+5. **Correspondence quality** (`common.correspondence_quality`) checks each LoFTR match against the
+   ground-truth displacement predicted by a **local affine fit to the nearest expert landmarks** —
+   isolating LoFTR error from real tissue deformation. Non-circular (landmarks are independent).
+6. **Big-image handling** — at 25pc, COAD/breast/gastric reach 16k+ px, too large for whole-image
+   LoFTR (OOMs above ~2000 px). Both images are downsampled to a 2000 px working frame for the
+   global fit, then FULL-RES landmarks are warped through it (scale-in → fit → scale-out) so rTRE
+   is measured at full resolution — mirroring VALIS, which also downsamples for its rigid step.
+7. **Scope** — correspondence on **all 222 pairs**; accuracy on a **stratified 44** (7 per tissue,
+   `common.stratified_pairs`) because the full ours+VALIS sweep is ~16 h on this 16 GB machine
+   (runs must be sequential — LoFTR OOMs if a second heavy job shares RAM).
+
+**Timing (per-pair wall time, same machine)** — this is the surprise and it matters:
+
+| step | median | mean | range |
+|---|---:|---:|---:|
+| LoFTR only (correspondence, 2000 px) | 49 s | 51 s | 6–143 s |
+| **VALIS rigid+non-rigid** | **29 s** | 34 s | 7–87 s |
+| OURS LoFTR + structural (full ours path) | 139 s | 153 s | 52–336 s |
+
+On the same 44 pairs **VALIS is ~1.75× faster than our LoFTR pass** (29 s vs 51 s) and ~4.7× faster
+than the full LoFTR+structural pipeline — while also succeeding where LoFTR returns 0 matches.
+
+**Results**
+- *Accuracy (stratified 44):* identity MMrTRE 0.0522 → **VALIS-rigid 0.0037**, VALIS-nonrigid 0.0015,
+  OASIS-LoFTR 0.0052 (**only 23/44 registered** — 0 matches on 21 cross-modal pairs),
+  OASIS-structural 0.0052 median but **mean 0.058** (catastrophic on cross-modal / large-displacement
+  pairs — several worse-than-identity). **Within OASIS's regime it ties VALIS-rigid** (better on
+  14/23 pairs where LoFTR works).
+- *LoFTR correspondence (all 222):* usable matches on **125/222 (56%)**, split by stain appearance —
+  **lung-lesion 100%, lung-lobes 95%** (IHC↔IHC, similar), **mammary 0/38, breast 0/1, kidney 0/1**
+  (cross-modal H&E↔IHC). LoFTR is reliable on similar stains and **fails outright on cross-modal**.
+  OASIS's real use case (CD8 vs TIM-3, both brown DAB) is IHC↔IHC → in LoFTR's good regime, so LoFTR
+  is validated *for what OASIS uses it for*.
+- *Gate calibration:* **fails closed** — every pass verdict (LOCALLY_CERTIFIED 0.0045, RADIUS_LIMITED
+  0.0016) has genuinely low error; it never certified a bad registration. Over-conservative (6/44
+  certified), partly an artifact of whole-slide downsampling making the 5 µm LOO threshold sub-pixel.
+
+**Conclusion & decision.** On the full diversity of ANHIR, **VALIS is the better *general* registrar**
+— robust to cross-modal staining and large displacements that break both OASIS paths, more accurate,
+*and faster*. **Within OASIS's regime (similar-stain serial sections) OASIS ties VALIS-rigid.** OASIS
+stays a specialized serial-section CD8/TIM-3 tool with a fail-closed gate, not a general histology
+registrar. **VALIS-rigid is worth adding as an invariant-safe option** — a drop-in *equivalent
+alternative to LoFTR for different/cross-modal stains where LoFTR fails* (it is faster than LoFTR,
+distance-preserving, and recovers the 44% of pairs LoFTR cannot). Its **non-rigid** warp remains
+forbidden before any cross-K test. Full writeup + reproduce steps: `validation/valis_bench/RESULTS.md`.
+
 ---
 
 ## 8. Limitations & defensible claims
