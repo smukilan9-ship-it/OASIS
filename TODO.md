@@ -23,6 +23,13 @@ Living checklist of what's left after the validation-infrastructure refactor.
       Feeds the future **Troubleshooting tab** ("what happened / what to do next").
   - Open: raw stdout/stderr retention policy (deferred); build scope order (quant-first vs all).
 
+## VALIS-rigid registration engine (scoped — not built)
+- [ ] Implement per **`docs/valis_integration_plan.md`**: VALIS-rigid as an optional engine that
+      feeds the EXISTING gate (subprocess bridge to `~/valis_runtime`, correspondences via
+      `MatchInfo.matched_kp{1,2}_xy`, inserted in the `certify_local_roi` LoFTR-fails branch).
+      Recovers cross-modal ROIs where LoFTR gets 0 matches; faster than LoFTR; rigid-only
+      (non-rigid stays forbidden). Gate/ROI/cross-K unchanged. Validate gate-honesty on VALIS ROIs.
+
 ## Datasets (shipping)
 - [ ] Decide hosting for the large/restricted datasets and send the links:
   - DeepLIIF (~4 GB), TIM-3 CRC-ICM (~1 GB) → Google Drive / other host.

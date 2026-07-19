@@ -1,6 +1,13 @@
 """
 valis_engine.py — MAIN-venv bridge to VALIS-rigid as a registration engine.
 
+ROLE (see docs/valis_certification_research.md): VALIS is a cross-modal REGISTRATION engine,
+NOT a self-certifying gate. The API uses its global rigid transform as the PROVISIONAL for the
+validated Fitzpatrick-West gate (LoFTR-in-ROI / manual landmarks); the structural residual below
+is only a fail-closed GROSS-error QC. A single global rigid cannot reach cell scale on deforming
+serial sections, and the structural residual texture-locks on near-identical hematoxylin, so it
+must never be presented as a cell-scale certificate.
+
 VALIS registers (in the isolated ~/valis_runtime venv, via valis_worker.py subprocess) and
 returns a RIGID moving->reference similarity in original pixels. OASIS then CERTIFIES that
 transform in-house with the STAIN-ROBUST structural patch-residual TRE (serial_registration's
@@ -66,13 +73,42 @@ def _tissue_any(rgb):
     return (((g < 220) | (sat > 20))).astype(np.uint8)
 
 
-def _structural_certify(ref_rgb, mov_rgb, M_work, px_work):
+_STRUCT_PX_FLOOR = 2.0   # µm/px: never MEASURE structural residual finer than this (see below)
+
+
+def _structural_certify(ref_rgb, mov_rgb, M_work, px_work, roi_mask=None,
+                        px_floor=_STRUCT_PX_FLOOR):
     """Fail-closed structural certification of a moving->reference transform (work coords).
     Measures residual on the low-frequency structural (hematoxylin) channel, which is shared
     across serial sections regardless of stain -> works cross-modal. Overlap uses a
-    stain-agnostic tissue mask so cross-modal H&E<->IHC still overlaps."""
+    stain-agnostic tissue mask so cross-modal H&E<->IHC still overlaps.
+
+    roi_mask : optional bool/uint8 array in the REFERENCE work frame. When given, the residual
+    is measured ONLY inside it (per-ROI certification against a global whole-image transform),
+    and the overlap fraction is reported relative to the ROI area.
+
+    px_floor : the residual is never measured finer than this. cv2.phaseCorrelate on the near-
+    identical hematoxylin texture of two serial sections locks onto local texture at fine
+    resolution and UNDER-reports real anatomical deformation ("explains away" a true 24µm offset
+    as ~0µm), which would over-certify. Flooring the measurement resolution keeps the residual a
+    faithful, resolution-stable estimate of displacement (validated on ANHIR lung-lesion: with
+    the floor the structural residual tracks the held-out landmark TRE; without it collapses)."""
     import cv2
     from oasis.spatial import serial_registration as sr
+
+    A = np.asarray(M_work, float)[:2].copy()
+    if px_work < px_floor:                      # downscale so the measurement can't texture-lock
+        f = px_work / px_floor
+        def _ds(im):
+            return cv2.resize(im, (max(int(im.shape[1] * f), 8), max(int(im.shape[0] * f), 8)),
+                              interpolation=cv2.INTER_AREA)
+        ref_rgb, mov_rgb = _ds(ref_rgb), _ds(mov_rgb)
+        A[:, 2] = A[:, 2] * f                   # similarity: translation scales, rotation/scale not
+        if roi_mask is not None:
+            roi_mask = cv2.resize((np.asarray(roi_mask) > 0).astype(np.uint8),
+                                  (ref_rgb.shape[1], ref_rgb.shape[0]),
+                                  interpolation=cv2.INTER_NEAREST)
+        px_work = px_floor
 
     Hr, Wr = ref_rgb.shape[:2]
     ref_struct = sr.structural_channel(ref_rgb, px_work)
@@ -80,15 +116,20 @@ def _structural_certify(ref_rgb, mov_rgb, M_work, px_work):
     ref_mask = sr.tissue_mask(ref_rgb, px_work)          # for lumen cross-check (hema-based)
     mov_mask = sr.tissue_mask(mov_rgb, px_work)
     ref_any = _tissue_any(ref_rgb); mov_any = _tissue_any(mov_rgb)   # for overlap (stain-agnostic)
-    A = np.asarray(M_work, float)[:2]
     warped_struct = cv2.warpAffine(mov_struct, A, (Wr, Hr))
     warped_any = cv2.warpAffine(mov_any, A, (Wr, Hr), flags=cv2.INTER_NEAREST)
     overlap = ((ref_any > 0) & (warped_any > 0)).astype(np.float32)
-    ov_frac = float(overlap.mean())
+    if roi_mask is not None:
+        rm = (np.asarray(roi_mask) > 0).astype(np.float32)
+        overlap = overlap * rm
+        roi_area = float(rm.sum())
+        ov_frac = float(overlap.sum() / roi_area) if roi_area > 0 else 0.0
+    else:
+        ov_frac = float(overlap.mean())
 
     recs = sr.patch_residual_flow(ref_struct, warped_struct, overlap, px_work)
     stats = sr.flow_stats(recs, ref_struct.shape)
-    # independent cross-check: lumen-centroid TRE
+    # independent cross-check: lumen-centroid TRE (anatomical, resolution-stable)
     lumen = None
     try:
         lt = sr.lumen_tre(ref_mask, mov_mask, A, px_work)
@@ -97,11 +138,18 @@ def _structural_certify(ref_rgb, mov_rgb, M_work, px_work):
         pass
 
     med = stats.get("median_um"); reg_max = stats.get("region_max_um")
+    # Take the MORE CONSERVATIVE of the texture residual and the anatomical lumen TRE so a
+    # gross lumen disagreement can veto a texture pass (fail-closed).
+    eff_med = med
+    eff_reg = reg_max
+    if lumen is not None and med is not None:
+        eff_med = max(med, lumen)
+        eff_reg = max(reg_max if reg_max is not None else 0.0, lumen)
     if med is None or ov_frac < 0.10:
         verdict, reason = "NOT_CERTIFIABLE", f"insufficient structural overlap ({ov_frac:.0%})"
-    elif med <= _CERT_UM and (reg_max is None or reg_max <= _DEFORMED_UM):
+    elif eff_med <= _CERT_UM and eff_reg <= _DEFORMED_UM:
         verdict, reason = "STRUCTURALLY_CERTIFIED", "structural residual within tolerance"
-    elif reg_max is not None and reg_max <= _DEFORMED_UM:
+    elif eff_reg <= _DEFORMED_UM:
         verdict, reason = "RADIUS_LIMITED", "median above tolerance but no region deformed"
     else:
         verdict, reason = "NOT_CERTIFIED", "structural residual exceeds deformation limit"
@@ -165,6 +213,41 @@ def register_crops_and_certify(crop_ref_rgb, crop_mov_rgb, pixel_size_um):
     finally:
         import shutil
         shutil.rmtree(tmp, ignore_errors=True)
+
+
+def valis_whole_matrix(ref_path, mov_path, timeout=900):
+    """Register the WHOLE fixed<-moving with VALIS-rigid and return the distance-preserving
+    moving->reference similarity in ORIGINAL full-res pixels (+ n_matches). VALIS is a
+    whole-slide registrar: one global rigid transform is the correct unit — feeding it small
+    ROI crops (located by a possibly-bad cross-modal provisional) mis-registers. Returns
+    {ok, matrix, n_matches} or {ok: False, error}."""
+    from oasis.spatial import serial_registration as sr
+    vt = _valis_transform(os.path.expanduser(ref_path), os.path.expanduser(mov_path),
+                          timeout=timeout)
+    if not vt.get("ok"):
+        return {"ok": False, "error": vt.get("error", "VALIS failed")}
+    M = np.asarray(vt["matrix"], float)                    # moving->reference, ORIGINAL px
+    try:
+        sr.assert_distance_preserving(M, "valis_rigid")    # never let a non-similarity through
+    except Exception as e:
+        return {"ok": False, "error": f"non-similarity from VALIS: {e}"}
+    return {"ok": True, "matrix": M, "n_matches": vt.get("n_matches"),
+            "valis_rigid_rtre": vt.get("valis_rigid_rtre"), "secs": vt.get("secs")}
+
+
+def certify_roi_with_matrix(ref_rgb, mov_rgb, M_work, px_work, roi_poly_work=None):
+    """Certify ONE region against an already-computed (global) moving->reference transform,
+    given in the REFERENCE work frame. Measures the stain-robust structural residual inside
+    the ROI polygon (work-frame px); if roi_poly_work is None the whole overlap is used.
+    Returns the same verdict dict shape as the whole-image path."""
+    roi_mask = None
+    if roi_poly_work is not None:
+        import cv2
+        Hr, Wr = ref_rgb.shape[:2]
+        roi_mask = np.zeros((Hr, Wr), np.uint8)
+        poly = np.round(np.asarray(roi_poly_work, float)).astype(np.int32).reshape(-1, 1, 2)
+        cv2.fillPoly(roi_mask, [poly], 1)
+    return _structural_certify(ref_rgb, mov_rgb, M_work, px_work, roi_mask=roi_mask)
 
 
 if __name__ == "__main__":

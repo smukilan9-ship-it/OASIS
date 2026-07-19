@@ -1,6 +1,12 @@
 # VALIS-rigid as a registration engine — integration scope + MVP
 
-Status: **MVP BUILT (2026-07-18).** Spike de-risked, MVP implemented and verified.
+Status: **SHIPPED as a registration engine (2026-07-19).** The MVP's structural self-certification
+was RETRACTED after validation showed it over-certifies (see `docs/valis_certification_research.md`).
+Final wiring: VALIS's global rigid is the PROVISIONAL for the validated Fitzpatrick–West gate
+(LoFTR-in-ROI / manual landmarks certify); its structural residual is only a fail-closed gross-error
+QC (`_valis_qc`), never a cell-scale certificate. `_valis_cert_region` was removed. Three-engine UI
+(LoFTR / VALIS / manual landmarks); VALIS's value is accelerating the manual-landmark path on
+cross-modal pairs. Below is the original MVP scope, retained for history.
 
 ## MVP — what was built & verified
 - `oasis/spatial/valis_worker.py` — runs in the isolated `~/valis_runtime` venv (subprocess only,

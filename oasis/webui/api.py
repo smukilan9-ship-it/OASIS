@@ -104,6 +104,7 @@ class API:
         self._window  = None
         self._process = None
         self._prov_cache = {}     # (ref_path, mov_path, px) -> provisional thumbnail transform
+        self._valis_cache = {}    # (ref_path, mov_path, px) -> whole-image VALIS-rigid result
 
     def set_window(self, window):
         self._window = window
@@ -350,7 +351,9 @@ class API:
         setup = self.get_setup()
 
         pixel_size_mode = settings.get("pixel_size_mode", "manual")
-        pixel_from_ui = pixel_size_mode in ("manual", "global")
+        # scale_match: per-image µm/px comes from matched scale bars (pixel_overrides); the
+        # UI default covers unmatched images, so it is an explicit UI-provided default too.
+        pixel_from_ui = pixel_size_mode in ("manual", "global", "scale_match")
         if pixel_size_mode == "scale":
             scale_path = settings.get("scale_image")
             measured = self.extract_pixel_size(scale_path) if scale_path else {}
@@ -492,6 +495,15 @@ class API:
                 _tot = d.get("total_cells", 0)
                 _pp = float(d.get("positivity_pct", 0))
                 _conf = "LOW" if (_tot < 50 or _pp < 0.1 or _pp > 95) else "NORMAL"
+                # Nuclear adaptive (GMM valley + abstain) provenance, written per-image by
+                # run_pipeline._apply_nuclear_reclassification. Surface it so the UI shows the
+                # ACTUAL threshold/method used — and, when the gate ABSTAINS on faint staining
+                # (method=fixed/abstain, quality=low), says so instead of silently showing the
+                # fixed OD as if adaptive never ran.
+                _nuc_method = d.get("nuclear_threshold_method")      # gmm | otsu | fixed | abstain | None
+                _nuc_thr = d.get("nuclear_threshold")
+                _fixed_thr = d.get("dab_threshold", 0.2)
+                _eff_thr = _nuc_thr if (_nuc_method in ("gmm", "otsu") and _nuc_thr is not None) else _fixed_thr
                 metrics.append({
                     "name":        Path(d.get("image","")).stem.split(" - ")[0],
                     "total_cells": _tot,
@@ -502,7 +514,14 @@ class API:
                     "pixel_size_source": d.get("pixel_size_source", "unknown"),
                     "pixel_size_warning": bool(d.get("pixel_size_warning", False)),
                     "cells_per_mm2": d.get("cells_per_mm2"),
-                    "threshold":   d.get("dab_threshold",0.2),
+                    "threshold":   _eff_thr,
+                    "fixed_threshold": _fixed_thr,
+                    "nuclear_threshold": _nuc_thr,
+                    "nuclear_threshold_method": _nuc_method,
+                    "nuclear_separability": d.get("nuclear_separability"),
+                    "staining_quality": d.get("staining_quality"),
+                    "nuclear_abstain": bool(d.get("nuclear_abstain", False)),
+                    "nuclear_abstain_reason": d.get("nuclear_abstain_reason"),
                     "confidence":  _conf,
                     "measurement_compartment": d.get("measurement_compartment", "nucleus"),
                     "membrane_classifier": d.get("membrane_classifier"),
@@ -804,6 +823,67 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+    def _valis_global(self, ref_path, mov_path, px_full):
+        """Cached WHOLE-IMAGE VALIS-rigid transform (full-res moving->reference, distance-
+        preserving). VALIS is a whole-slide registrar, so one global rigid transform is the
+        correct unit for every ROI — registering small ROI crops (located by a possibly-bad
+        cross-modal provisional) mis-registers. Result: {ok, matrix(np 2x3 or 3x3), n_matches}."""
+        import numpy as np
+        from oasis.spatial import valis_engine as ve
+        ck = (ref_path, mov_path, round(float(px_full), 4))
+        if ck not in self._valis_cache:
+            self._cert_progress("Registering the whole field with VALIS…")
+            self._valis_cache[ck] = ve.valis_whole_matrix(ref_path, mov_path)
+        r = self._valis_cache[ck]
+        if r.get("ok"):
+            r = {**r, "matrix": np.asarray(r["matrix"], float)}
+        return r
+
+    # VALIS's structural residual is a whole-slide texture proxy: it is calibrated for GROSS
+    # misregistration but over-optimistic at cell scale (it texture-locks on near-identical
+    # serial-section hematoxylin — validated in docs/valis_certification_research.md). So it is
+    # used ONLY as a fail-closed QC, never to certify a region. A single global rigid also cannot
+    # reach cell-scale on deforming sections; certification stays with the validated FW gate
+    # (LoFTR-in-ROI / manual landmarks), for which VALIS supplies a strong cross-modal provisional.
+    _VALIS_QC_GROSS_UM = 50.0     # structural region-max above this => registration is grossly off
+
+    def _valis_full_to_thumb(self, M_full, ref_scale, mov_scale):
+        """VALIS full-res moving->reference similarity -> reference-thumbnail work frame.
+        Correct under UNEQUAL ref/mov thumbnail scales (cross-modal scans differ in size)."""
+        import numpy as np
+        Af = np.asarray(M_full, float)[:2]
+        A = Af[:, :2] * (ref_scale / max(mov_scale, 1e-9))
+        t = Af[:, 2] * ref_scale
+        return np.hstack([A, t.reshape(2, 1)])
+
+    def _valis_qc(self, ref_rgb, ref_scale, mov_rgb, mov_scale, px_full, M_full, roi_full_px=None):
+        """Fail-closed GROSS-error QC of the VALIS registration (NOT a cell-scale certificate).
+        Measures the stain-robust structural residual (whole field, or within an ROI) and flags
+        only clearly-broken registrations. Returns {ok_gross, verdict, region_max_um, median_um,
+        overlap_frac, lumen_tre_um}."""
+        import numpy as np
+        from oasis.spatial import valis_engine as ve
+        M_work = self._valis_full_to_thumb(M_full, ref_scale, mov_scale)
+        px_work = float(px_full) / max(ref_scale, 1e-9)
+        roi_work = None if roi_full_px is None else np.asarray(roi_full_px, float) * ref_scale
+        c = ve.certify_roi_with_matrix(ref_rgb, mov_rgb, M_work, px_work, roi_work)
+        reg = c.get("region_max_um")
+        gross = (c.get("verdict") == "NOT_CERTIFIABLE") or (reg is not None and reg > self._VALIS_QC_GROSS_UM)
+        return {"ok_gross": (not gross),
+                "verdict": "GROSS_MISREGISTRATION" if gross else "NO_GROSS_ERROR",
+                "region_max_um": reg, "median_um": c.get("median_um"),
+                "overlap_frac": c.get("overlap_frac"), "lumen_tre_um": c.get("lumen_tre_um")}
+
+    def valis_available(self, payload: dict = None) -> dict:
+        """Whether the isolated VALIS-rigid runtime (~/valis_runtime) is present and
+        importable. The UI uses this to enable/grey-out the VALIS registration engine."""
+        try:
+            sys.path.insert(0, str(PROJECT_DIR))
+            from oasis.spatial import valis_engine as ve
+            return {"status": "ok", "available": bool(ve.valis_available())}
+        except Exception as e:
+            return {"status": "ok", "available": False, "error": str(e)}
+
     def certify_local_roi_multi(self, payload: dict) -> dict:
         """Certify one or more USER-DRAWN ROIs by a LOCAL rigid fit from LoFTR
         correspondences inside each region (landmark fallback if LoFTR cannot match).
@@ -851,16 +931,6 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                 A = M[:2, :2].copy(); t = M[:2, 2].copy()
                 return np.hstack([A, (t * ref_scale).reshape(2, 1)])  # translation scales
 
-            prov = payload.get("provisional_matrix")
-            if prov is not None:
-                M_t = _full_to_thumb(prov)
-            else:
-                ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
-                if ck not in self._prov_cache:
-                    self._prov_cache[ck] = np.asarray(
-                        sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
-                M_t = self._prov_cache[ck]
-
             def _thumb_to_full(M):
                 A = M[:2, :2].copy(); t = M[:2, 2].copy()
                 return np.hstack([A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
@@ -871,9 +941,33 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
 
             tol_um = float(payload.get("tol_um") or 4.0)
             want_corr = bool(payload.get("return_correspondences"))
-            # opt-in: recover CROSS-MODAL ROIs where LoFTR fails, via VALIS-rigid (isolated env,
-            # structural certification). Off by default -> default behaviour is byte-identical.
+            # Registration engine: "loftr" (default) | "valis". Both CERTIFY through the same
+            # validated Fitzpatrick-West gate below; they differ only in the PROVISIONAL transform
+            # that locates each moving crop. VALIS supplies a strong cross-modal global rigid where
+            # register_similarity fails; its own structural residual is only a gross-error QC, never
+            # a certificate (docs/valis_certification_research.md).
+            _engine = (payload.get("registration_engine") or "loftr").lower()
             _valis_fallback = bool(payload.get("valis_fallback"))
+
+            # provisional moving->reference transform, in thumbnail coords
+            valis_qc = None; vg = None
+            prov = payload.get("provisional_matrix")
+            if _engine == "valis":
+                vg = self._valis_global(payload["ref_path"], payload["mov_path"], px)
+                if not vg.get("ok"):
+                    return {"status": "error",
+                            "error": f"VALIS could not register this pair: {vg.get('error')}"}
+                M_t = self._valis_full_to_thumb(vg["matrix"], ref_scale, mov_scale)
+                valis_qc = self._valis_qc(ref_rgb, ref_scale, mov_rgb, mov_scale, px, vg["matrix"])
+            elif prov is not None:
+                M_t = _full_to_thumb(prov)
+            else:
+                ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
+                if ck not in self._prov_cache:
+                    self._prov_cache[ck] = np.asarray(
+                        sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
+                M_t = self._prov_cache[ck]
+
             # Overlap handling: split any-shape overlapping regions into a planar partition
             # so each intersection becomes its OWN separate region (no double-counted cells).
             if bool(payload.get("partition")) and len(rois) > 1:
@@ -885,6 +979,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             else:
                 work_regions = [{"polygon": r, "is_intersection": False, "origins": [i]}
                                 for i, r in enumerate(rois)]
+
             out = []
             for i, wr in enumerate(work_regions):
                 roi = np.asarray(wr["polygon"], float).reshape(-1, 2)
@@ -893,11 +988,15 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                                 "error": "need >=3 vertices"})
                     continue
                 roi_t = roi * ref_scale
+                # Certify through the validated gate; VALIS only changed the provisional (M_t).
                 cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
                                             provisional_matrix=M_t, tol_um=tol_um,
                                             return_correspondences=want_corr,
-                                            valis_fallback=_valis_fallback)
-                v = cert.get("verdict")
+                                            valis_fallback=_valis_fallback, engine="loftr")
+                region_qc = None
+                if _engine == "valis":
+                    region_qc = self._valis_qc(ref_rgb, ref_scale, mov_rgb, mov_scale, px,
+                                               vg["matrix"], roi_full_px=roi)
                 local_t = cert.get("local_matrix")
                 mov_roi_full = None
                 local_full = None
@@ -905,6 +1004,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     local_full = _thumb_to_full(np.asarray(local_t, float))
                     mov_roi_t = _map_roi_to_mov(roi_t, np.asarray(local_t, float))
                     mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
+                v = cert.get("verdict")
                 cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
                         or cert.get("tre_median_um"))
                 entry = {
@@ -921,6 +1021,8 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     "local_matrix": local_full,
                     "is_intersection": bool(wr.get("is_intersection")),
                     "origins": wr.get("origins", [i]),
+                    "registration_engine": _engine,
+                    "valis_qc": region_qc,
                 }
                 if want_corr and cert.get("corr_ref") is not None:
                     cr = np.asarray(cert["corr_ref"], float) / max(ref_scale, 1e-9)
@@ -930,7 +1032,10 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                 out.append(entry)
             n_ok = sum(1 for r in out if r.get("is_certified"))
             return {"status": "ok", "rois": out, "n_certified": n_ok, "n_total": len(out),
-                    "provisional_method": (None if prov is not None else "register_similarity")}
+                    "registration_engine": _engine, "valis_qc": valis_qc, "valis_n_matches":
+                    (vg.get("n_matches") if vg else None),
+                    "provisional_method": ("valis_rigid" if _engine == "valis"
+                                           else None if prov is not None else "register_similarity")}
         except Exception as e:
             import traceback
             return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
@@ -958,13 +1063,27 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             if ref_rgb is None or mov_rgb is None:
                 return {"status": "error", "error": "Could not load one or both images"}
             px_t = px / max(ref_scale, 1e-9)
-            ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
-            if ck not in self._prov_cache:
-                self._prov_cache[ck] = np.asarray(
-                    sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
-            M_t = self._prov_cache[ck]
+            _engine = (payload.get("registration_engine") or "loftr").lower()
             H, W = ref_rgb.shape[:2]
             max_regions = int(payload.get("max_regions") or 9)
+
+            # Provisional transform for locating moving crops. VALIS engine: a strong cross-modal
+            # global rigid becomes the provisional; every tile is still CERTIFIED by the validated
+            # LoFTR-in-ROI gate (VALIS's structural residual is only a gross-error QC).
+            vg = None; valis_qc = None
+            if _engine == "valis":
+                vg = self._valis_global(payload["ref_path"], payload["mov_path"], px)
+                if not vg.get("ok"):
+                    return {"status": "error",
+                            "error": f"VALIS could not register this pair: {vg.get('error')}"}
+                M_t = self._valis_full_to_thumb(vg["matrix"], ref_scale, mov_scale)
+                valis_qc = self._valis_qc(ref_rgb, ref_scale, mov_rgb, mov_scale, px, vg["matrix"])
+            else:
+                ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
+                if ck not in self._prov_cache:
+                    self._prov_cache[ck] = np.asarray(
+                        sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
+                M_t = self._prov_cache[ck]
 
             # Tissue mask — lenient (pale H-DAB is bright); close small gaps.
             g = cv2.cvtColor(ref_rgb, cv2.COLOR_RGB2GRAY)
@@ -1000,7 +1119,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     self._cert_progress(f"Selecting region size — trying {int(s)} µm…")
                     probe = lm.certify_local_roi(
                         ref_rgb, mov_rgb, _circle(cxc, cyc, rr), px_t,
-                        provisional_matrix=M_t, fle_fast=True, work_max_dim=800)
+                        provisional_matrix=M_t, fle_fast=True, work_max_dim=800, engine="loftr")
                     if probe.get("ok"):
                         region_um = s
                         break
@@ -1055,9 +1174,10 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     f"{attempts}/{min(n_tiles, attempt_cap)} checked…",
                     i=attempts, n=min(n_tiles, attempt_cap))
                 roi_t = np.asarray(poly_t, float)
+                # Validated LoFTR-in-ROI gate; VALIS (when selected) only supplied the provisional M_t.
                 cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
                                             provisional_matrix=M_t, fle_fast=True,
-                                            work_max_dim=800)
+                                            work_max_dim=800, engine="loftr")
                 if not cert.get("ok"):
                     continue
                 local_t = cert.get("local_matrix")
@@ -1076,10 +1196,13 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     "cell_error_um": cell,
                     "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
                     "mov_roi_polygon": mov_roi_full, "local_matrix": local_full,
+                    "registration_engine": _engine,
                 })
             return {"status": "ok", "regions": regions, "n": len(regions),
                     "attempted": attempts, "candidates": len(tiles),
-                    "region_um": round(region_um, 1), "auto_size": auto_size}
+                    "region_um": round(region_um, 1), "auto_size": auto_size,
+                    "registration_engine": _engine, "valis_qc": valis_qc,
+                    "valis_n_matches": (vg.get("n_matches") if vg else None)}
         except Exception as e:
             import traceback
             return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
@@ -1115,11 +1238,24 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
             if ref_rgb is None or mov_rgb is None:
                 return {"status": "error", "error": "Could not load one or both images"}
             px_t = px / max(ref_scale, 1e-9)
-            ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
-            if ck not in self._prov_cache:
-                self._prov_cache[ck] = np.asarray(
-                    sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
-            M_t = self._prov_cache[ck]
+            _engine = (payload.get("registration_engine") or "loftr").lower()
+            # Provisional transform: VALIS global rigid when selected (certification still via the
+            # validated FW gate), else register_similarity. VALIS's structural residual is a
+            # gross-error QC only, never a certificate (docs/valis_certification_research.md).
+            vg = None; valis_qc = None
+            if _engine == "valis":
+                vg = self._valis_global(payload["ref_path"], payload["mov_path"], px)
+                if not vg.get("ok"):
+                    return {"status": "error",
+                            "error": f"VALIS could not register this pair: {vg.get('error')}"}
+                M_t = self._valis_full_to_thumb(vg["matrix"], ref_scale, mov_scale)
+                valis_qc = self._valis_qc(ref_rgb, ref_scale, mov_rgb, mov_scale, px, vg["matrix"])
+            else:
+                ck = (payload["ref_path"], payload["mov_path"], round(px, 4))
+                if ck not in self._prov_cache:
+                    self._prov_cache[ck] = np.asarray(
+                        sr.register_similarity(ref_rgb, mov_rgb, px_t)["matrix"], float)
+                M_t = self._prov_cache[ck]
             H, W = ref_rgb.shape[:2]
 
             # Whole-tissue outline = the global analysis window.
@@ -1155,16 +1291,19 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                         "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
                         "mov_roi_polygon": mov_roi_full, "local_matrix": local_full}
 
-            # 1) GLOBAL — whole field, measured FLE (one real attempt).
+            # 1) GLOBAL — whole field, measured FLE (one real attempt). Validated FW gate for both
+            # engines; VALIS (when selected) supplied the provisional M_t + a gross-error QC.
             self._cert_progress("Certifying the whole field…")
             gcert = lm.certify_local_roi(ref_rgb, mov_rgb, global_roi, px_t,
                                          provisional_matrix=M_t, fle_fast=False,
-                                         work_max_dim=1000)
+                                         work_max_dim=1000, engine="loftr")
             if gcert.get("verdict") == "CERTIFIED":
-                return {"status": "ok", "mode": "global", "verdict": "CERTIFIED",
+                return {"status": "ok", "mode": "global", "verdict": gcert.get("verdict"),
                         "regions": [_to_full(gcert, global_roi)], "n": 1,
+                        "registration_engine": _engine, "valis_qc": valis_qc,
                         "cell_error_um": (gcert.get("cell_error_p90_um")
-                                          or gcert.get("tre_p90_um"))}
+                                          or gcert.get("tre_p90_um")
+                                          or gcert.get("tre_median_um"))}
 
             # 2) LOCAL fallback — disjoint certified regions.
             self._cert_progress("Whole field not certifiable — searching sub-regions…")
@@ -1176,11 +1315,20 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                 return loc
 
             # 3) Nothing certifies — report it, do not force a pass.
+            if _engine == "valis":
+                reason = ("VALIS registered the pair" + (
+                    f" (gross-error QC: {valis_qc.get('verdict')})" if valis_qc else "")
+                    + ", but no region could be certified at cell scale by the validated gate "
+                    "(LoFTR found too few correspondences — expected for cross-modal stains). "
+                    "Certify with the manual-landmark path — the VALIS alignment makes landmark "
+                    "placement fast and accurate — or try a different pair.")
+            else:
+                reason = ("Neither the whole field nor any sub-region could be certified — "
+                          "the sections are too deformed for cell-scale spatial analysis. "
+                          "Try the manual-landmark path, or a different pair.")
             return {"status": "ok", "mode": "none", "regions": [], "n": 0,
-                    "global_verdict": gcert.get("verdict"),
-                    "reason": "Neither the whole field nor any sub-region could be certified — "
-                              "the sections are too deformed for cell-scale spatial analysis. "
-                              "Try the manual-landmark path, or a different pair."}
+                    "global_verdict": gcert.get("verdict"), "registration_engine": _engine,
+                    "valis_qc": valis_qc, "reason": reason}
         except Exception as e:
             import traceback
             return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
@@ -1816,6 +1964,7 @@ Answer concisely and scientifically. Methods sections use past tense passive voi
                     "roi_polygon": r.get("roi_polygon"),
                     "cell_error_um": r.get("cell_error_um"),
                     "method": "user_roi_loftr_local",
+                    "engine": r.get("source"),   # provenance: loftr_in_roi | valis_rigid_in_roi | landmark_fallback
                 }
                 expanded.append(q)
                 kept += 1
