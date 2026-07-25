@@ -96,6 +96,10 @@ jobs:
         run: python -m PyInstaller --noconfirm --clean packaging/OASIS.spec
 
       - name: Smoke-test the frozen bundle
+        # Bounded so a hanging bundle fails in minutes with usable logs, instead of sitting
+        # at the 90-minute job limit and publishing nothing. A frozen app that hangs is a
+        # real failure mode, not a slow one — see the freeze_support() note in app.py.
+        timeout-minutes: 12
         # "It built" and "it works" are different claims. Every bundle-only failure so far
         # (cv2 refusing to import inside a .app, torch absent from a build that completed
         # happily, index.html resolved against a path that stops existing once frozen)

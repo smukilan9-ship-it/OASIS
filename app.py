@@ -2,9 +2,21 @@
 app.py — OASIS Desktop App
 pywebview + HTML/CSS/JS frontend
 """
+import multiprocessing
 import sys
 import importlib
 from pathlib import Path
+
+# MUST be the first thing that runs in a frozen app on Windows, before any other import
+# that might touch multiprocessing. Windows has no fork: a child process is created by
+# re-executing this binary and re-importing __main__. In a frozen build that means the
+# child starts the whole application again — which spawns another child, and so on. The
+# visible symptom is not a crash but a hang (and a growing pile of processes), because
+# nothing ever gets far enough to report an error.
+#
+# freeze_support() makes a re-executed child recognise itself as a child and run its task
+# instead of the app. It is a no-op on macOS and Linux, and on any non-frozen run.
+multiprocessing.freeze_support()
 
 sys.path.insert(0, str(Path(__file__).parent))
 
