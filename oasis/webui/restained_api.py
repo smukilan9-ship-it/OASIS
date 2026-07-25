@@ -36,6 +36,7 @@ def attach_restained_api(api_class):
         setup = self.get_setup()
         run_config = {
             **config,
+            "segmenter": setup.get("segmenter", "native"),
             "qupath_binary": setup.get("qupath_binary"),
             "instanseg_model": setup.get("instanseg_model"),
             "device": setup.get("device", "mps"),
@@ -56,9 +57,10 @@ def attach_restained_api(api_class):
                 # restained_coexpression.py now lives at oasis/restained/ and imports
                 # `from oasis.quant...`, so it must run as a module with the repo root
                 # (project_dir) as cwd — a bare script path would not put oasis/ on sys.path.
+                from oasis.common.worker import worker_cmd
                 self._process = subprocess.Popen(
-                    [sys.executable, "-m", "oasis.restained.restained_coexpression",
-                     "--config", str(config_path)],
+                    worker_cmd("oasis.restained.restained_coexpression",
+                               "--config", str(config_path)),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                     start_new_session=True, cwd=str(project_dir),
                 )

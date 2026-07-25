@@ -150,13 +150,7 @@ def generate_overlay(
     -------
     output_path on success, None on failure
     """
-    try:
-        import cv2
-    except ImportError:
-        print("  Installing opencv-python...")
-        import subprocess, sys
-        subprocess.run([sys.executable, "-m", "pip", "install", "opencv-python"], check=True)
-        import cv2
+    import cv2
 
     from PIL import Image
 
@@ -557,22 +551,9 @@ def generate_association_plot(
 
     Returns out_path on success, "" on failure.
     """
-    try:
-        import matplotlib
-        matplotlib.use("Agg")
-        import matplotlib.pyplot as plt
-    except ImportError:
-        print("  Association plot: installing matplotlib…")
-        import subprocess, sys
-        try:
-            subprocess.run([sys.executable, "-m", "pip", "install", "matplotlib"],
-                           check=True)
-            import matplotlib
-            matplotlib.use("Agg")
-            import matplotlib.pyplot as plt
-        except Exception as e:
-            print(f"  Association plot: matplotlib unavailable: {e}")
-            return ""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
 
     r   = np.asarray(assoc.get("radii_um", []), dtype=float)
     obs = np.asarray(assoc.get("L_minus_r", []), dtype=float)

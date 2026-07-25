@@ -8,6 +8,13 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 
+# Background jobs re-invoke this binary with --oasis-worker <module>. That must be handled
+# BEFORE anything GUI-related is imported, or a frozen worker would open a second window.
+from oasis.common.worker import dispatch_worker          # noqa: E402
+
+if dispatch_worker():
+    sys.exit(0)
+
 
 def _check_dependencies():
     """Fail fast with an ACTIONABLE message if launched on the wrong interpreter /

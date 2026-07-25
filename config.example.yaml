@@ -1,3 +1,7 @@
+# Segmenter: "native" runs the InstanSeg model in-process (no QuPath install needed).
+# "qupath" is the previous path, kept for one release as an escape hatch.
+segmenter: native
+
 cleanup_intermediates: false
 dab_threshold: 0.2
 dashboard_dir: ./output_results

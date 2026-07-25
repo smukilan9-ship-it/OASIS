@@ -73,6 +73,7 @@ def segment(image_path, pixel_size, setup):
         "mode": "automated", "stain_type": "hdab",
         "input_dir": str(in_dir), "output_dir": str(out_dir),
         "dashboard_dir": str(out_dir / "_dash"),
+        "segmenter": setup.get("segmenter", "native"),
         "qupath_binary": os.path.expanduser(setup.get("qupath_binary", "")),
         "instanseg_model": os.path.expanduser(setup.get("instanseg_model", "")),
         "device": setup.get("device", "mps"), "instanseg_threads": setup.get("instanseg_threads", 4),
@@ -83,8 +84,8 @@ def segment(image_path, pixel_size, setup):
     import yaml
     cfg_path = work / "cfg.yaml"
     yaml.safe_dump(cfg, open(cfg_path, "w"))
-    subprocess.run([sys.executable, str(PROJECT_DIR / "run_pipeline.py"),
-                    "--config", str(cfg_path), "--mode", "quant"],
+    from oasis.common.worker import worker_cmd
+    subprocess.run(worker_cmd("run_pipeline", "--config", str(cfg_path), "--mode", "quant"),
                    cwd=str(PROJECT_DIR), capture_output=True, timeout=1800)
     geo = glob.glob(str(out_dir / "*_detections.geojson"))
     return geo[0] if geo else None

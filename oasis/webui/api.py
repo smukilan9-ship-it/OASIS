@@ -17,6 +17,8 @@ SETUP_FILE       = CONFIG_DIR / "setup.yaml"
 EXPERIMENTS_FILE = CONFIG_DIR / "experiments.yaml"
 CONFIG_DIR.mkdir(exist_ok=True)
 
+from oasis.common.worker import worker_cmd            # noqa: E402
+
 DEFAULT_SETUP = {
     "microscope": "",
     "camera": "",
@@ -26,6 +28,9 @@ DEFAULT_SETUP = {
     "default_objective": "10x",
     "device": "mps",
     "instanseg_threads": 4,
+    # Segmenter: "native" runs the InstanSeg TorchScript bundle in-process (no QuPath).
+    # "qupath" is the previous path, kept for one release as an escape hatch.
+    "segmenter": "native",
     "qupath_binary": "/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64",
     "instanseg_model": "~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1",
     # Root that holds the consolidated validation datasets (Validation tab).
@@ -331,11 +336,16 @@ class API:
         """Fast dependency/path check shown before a costly analysis begins."""
         setup = self.get_setup()
         checks = []
-        qpath = os.path.expanduser(setup.get("qupath_binary", ""))
         model = os.path.expanduser(setup.get("instanseg_model", ""))
-        checks.append({"name": "QuPath", "ok": bool(qpath and os.path.exists(qpath)), "path": qpath})
+        native = str(setup.get("segmenter", "native")).lower() != "qupath"
+        if not native:
+            qpath = os.path.expanduser(setup.get("qupath_binary", ""))
+            checks.append({"name": "QuPath", "ok": bool(qpath and os.path.exists(qpath)),
+                           "path": qpath})
         checks.append({"name": "InstanSeg model", "ok": bool(model and os.path.exists(model)), "path": model})
         required = ["numpy", "cv2", "PIL", "yaml"]
+        if native:
+            required += ["torch"]
         if workflow == "spatial": required += ["shapely", "scipy"]
         for name in required:
             try:
@@ -365,6 +375,7 @@ class API:
         cfg = {
             **setup,
             **settings,
+            "segmenter":          setup.get("segmenter", DEFAULT_SETUP["segmenter"]),
             "qupath_binary":      setup.get("qupath_binary", DEFAULT_SETUP["qupath_binary"]),
             "instanseg_model":    setup.get("instanseg_model", DEFAULT_SETUP["instanseg_model"]),
             "device":             setup.get("device", "mps"),
@@ -422,8 +433,7 @@ class API:
                         "Processing complete in","Measuring","Loading:","████","WARNING: Unknown"]
                 images_total = images_done = 0
                 self._process = subprocess.Popen(
-                    [str(Path(sys.executable)), str(PROJECT_DIR / "run_pipeline.py"),
-                     "--config", config_path],
+                    worker_cmd("run_pipeline", "--config", config_path),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     text=True, start_new_session=True, cwd=str(PROJECT_DIR)
                 )
@@ -1829,6 +1839,7 @@ class API:
 
         cfg = {
             **setup,
+            "segmenter":           setup.get("segmenter", DEFAULT_SETUP["segmenter"]),
             "qupath_binary":       setup.get("qupath_binary", DEFAULT_SETUP["qupath_binary"]),
             "instanseg_model":     setup.get("instanseg_model", DEFAULT_SETUP["instanseg_model"]),
             "device":              setup.get("device", "mps"),
@@ -1900,8 +1911,7 @@ class API:
             import json as _json
             try:
                 proc = subprocess.run(
-                    [str(Path(sys.executable)), str(PROJECT_DIR / "run_pipeline.py"),
-                     "--config", config_path, "--mode", "spatial"],
+                    worker_cmd("run_pipeline", "--config", config_path, "--mode", "spatial"),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
                     cwd=str(PROJECT_DIR), timeout=cfg.get("timeout_seconds", 1800))
             except Exception as e:
@@ -1940,8 +1950,7 @@ class API:
                 skip = ["[INFO ]","[WARN ]","Measured Detection","Completed Annotation",
                         "Processing complete in","Measuring","Loading:","████","WARNING: Unknown"]
                 self._process = subprocess.Popen(
-                    [str(Path(sys.executable)), str(PROJECT_DIR / "run_pipeline.py"),
-                     "--config", config_path, "--mode", "spatial"],
+                    worker_cmd("run_pipeline", "--config", config_path, "--mode", "spatial"),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     text=True, start_new_session=True, cwd=str(PROJECT_DIR),
                 )

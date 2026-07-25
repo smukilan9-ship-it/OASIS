@@ -405,7 +405,8 @@ def _segment_reference(reference_path, output_dir, config):
     from run_pipeline import run_single_image
 
     segmentation_config = {
-        "qupath_binary": os.path.expanduser(config["qupath_binary"]),
+        "segmenter": config.get("segmenter", "native"),
+        "qupath_binary": os.path.expanduser(config.get("qupath_binary") or ""),
         "instanseg_model": os.path.expanduser(config["instanseg_model"]),
         "device": config.get("device", "mps"),
         "instanseg_threads": int(config.get("instanseg_threads", 4)),

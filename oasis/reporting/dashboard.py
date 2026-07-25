@@ -418,13 +418,9 @@ def generate_excel(batch_metrics: list, output_path: str, config: dict = None):
         )
         from openpyxl.utils import get_column_letter
         from openpyxl.chart import BarChart, Reference
-    except ImportError:
-        print("  Installing openpyxl...")
-        import subprocess, sys
-        subprocess.run([sys.executable, "-m", "pip", "install", "openpyxl"], check=True)
-        import openpyxl
-        from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-        from openpyxl.utils import get_column_letter
+    except ImportError as e:
+        print(f"  Excel export unavailable (openpyxl): {e}")
+        return None
 
     wb = openpyxl.Workbook()
 

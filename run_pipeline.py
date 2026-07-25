@@ -13,11 +13,7 @@ import time
 import argparse
 import numpy as np
 
-try:
-    import yaml
-except ImportError:
-    subprocess.run([sys.executable, "-m", "pip", "install", "pyyaml"], check=True)
-    import yaml
+import yaml
 
 
 # ==========================================================
@@ -38,11 +34,19 @@ def load_config(config_path="config.yaml"):
         if key in cfg and cfg[key]:
             cfg[key] = os.path.expanduser(str(cfg[key]))
 
+    # Segmenter: "native" (default) runs the InstanSeg TorchScript bundle in-process;
+    # "qupath" shells out to the QuPath binary as before. The QuPath path is retained for one
+    # release as an escape hatch — it is validated as equivalent (ihc.md §7, det/class figures
+    # within 0.005 over 598 DeepLIIF images) but a second implementation is cheap insurance
+    # while the native one is new in the field. Only the MODEL is shared; nothing else is.
+    cfg.setdefault("segmenter", "native")
+    _native = str(cfg.get("segmenter", "native")).lower() != "qupath"
+
     # input_dir is a quantification-only field. Spatial association supplies
     # explicit image paths via spatial_pairs (+ pixel_overrides), so input_dir is
-    # irrelevant there and must not be required. QuPath/InstanSeg are still
-    # needed (spatial runs segmentation), so they stay required for every mode.
-    required = ["qupath_binary", "instanseg_model"]
+    # irrelevant there and must not be required. The InstanSeg model is needed by both
+    # segmenters; the QuPath binary only by the QuPath one.
+    required = ["instanseg_model"] if _native else ["qupath_binary", "instanseg_model"]
     if cfg.get("mode") != "spatial":
         required = ["input_dir"] + required
     for key in required:
@@ -50,7 +54,7 @@ def load_config(config_path="config.yaml"):
             print(f"ERROR: '{key}' is required in config.yaml")
             sys.exit(1)
 
-    if not os.path.exists(cfg["qupath_binary"]):
+    if not _native and not os.path.exists(cfg["qupath_binary"]):
         print(f"ERROR: QuPath not found at: {cfg['qupath_binary']}")
         sys.exit(1)
 
@@ -351,6 +355,84 @@ def save_metadata(metrics, metadata_dir):
 # ==========================================================
 # RUN SINGLE IMAGE
 # ==========================================================
+
+def run_native_segmentation(img_path, cfg, out_basename=None):
+    """Segment one image in-process with oasis.quant.segment and write the SAME three files
+    QuPath's Groovy wrote: <stem>_detections.geojson, <stem>_detections.csv, <stem>_summary.json.
+
+    Downstream code locates these by globbing `<stem>*`, so dropping QuPath's baroque
+    "name.tif - name.tif #1" naming is safe and the outputs are found unchanged.
+    Returns the summary-JSON path, or None on failure.
+    """
+    from oasis.quant import segment as sg
+
+    stem = out_basename or os.path.splitext(os.path.basename(img_path))[0]
+    out_dir = os.path.expanduser(cfg["output_dir"])
+    os.makedirs(out_dir, exist_ok=True)
+
+    px = cfg.get("_resolved_pixel_size", cfg.get("default_pixel_size", 0.5))
+    threshold, adaptive = _resolve_dab_threshold(cfg, os.path.basename(img_path))
+
+    t0 = time.time()
+    try:
+        res = sg.segment_image(img_path, cfg["instanseg_model"], px,
+                               device=_torch_device(cfg.get("device")),
+                               dab_threshold=threshold,
+                               adaptive_threshold=adaptive)
+    except Exception as e:
+        import traceback
+        print(f"  Segmentation FAILED: {type(e).__name__}: {e}")
+        traceback.print_exc()
+        return None
+
+    n = len(res["records"])
+    pos = sum(1 for r in res["records"] if r["classification"] == "Positive")
+    print(f"  Segmented {n} cells ({pos} positive) in {time.time() - t0:.1f}s"
+          + (" [streamed whole-slide]" if res.get("streamed") else "")
+          + (f" [DAB threshold {res['threshold']:.4f}, {res['threshold_method']}]"))
+    if n == 0 and res.get("low_contrast"):
+        print("  WARNING: image has no usable dynamic range (blank / no tissue) — "
+              "no cells reported. This is a guard against amplifying noise into detections.")
+
+    sg.write_geojson(res, os.path.join(out_dir, f"{stem}_detections.geojson"), stem)
+    sg.write_detections_csv(res, os.path.join(out_dir, f"{stem}_detections.csv"), stem)
+    return sg.write_summary(res, os.path.join(out_dir, f"{stem}_summary.json"),
+                            os.path.basename(img_path))
+
+
+def _torch_device(name):
+    """Map the config's device onto something torch will accept, falling back safely."""
+    want = (name or "cpu").lower()
+    if want in ("cpu", ""):
+        return "cpu"
+    try:
+        import torch
+        if want == "mps" and torch.backends.mps.is_available():
+            return "mps"
+        if want.startswith("cuda") and torch.cuda.is_available():
+            return want
+    except Exception:
+        pass
+    return "cpu"
+
+
+def _resolve_dab_threshold(cfg, img_base):
+    """The DAB threshold and adaptive flag for this image — the same precedence the Groovy
+    generator applied: explicit per-image override > stain-token match > global default;
+    adaptive Otsu only when enabled AND no explicit override is in force."""
+    override = (cfg.get("threshold_overrides") or {}).get(img_base)
+    if override is not None:
+        print(f"  DAB threshold: {override} OD (per-image override from UI)")
+        return float(override), False
+
+    threshold = cfg["dab_threshold"]
+    for token, thr in (cfg.get("stain_thresholds") or {}).items():
+        if img_base and str(token).lower() in img_base.lower():
+            print(f"  DAB threshold: {thr} OD (stain '{token}' matched in '{img_base}')")
+            return float(thr), bool(cfg.get("adaptive_threshold"))
+    print(f"  DAB threshold: {threshold} OD (default dab_threshold)")
+    return float(threshold), bool(cfg.get("adaptive_threshold"))
+
 
 def _run_qupath(img_path, cfg, groovy_script):
     """Run QuPath on a single image. Returns json_path or None."""
@@ -734,21 +816,31 @@ def run_single_image(img_path, cfg, groovy_script):
         _geo = _find_geojson(img_path, cfg["output_dir"])
         if (_js and _geo and os.path.exists(_geo)
                 and os.path.getmtime(_js[0]) >= os.path.getmtime(img_path)):
-            print(f"  Reusing existing segmentation for {img_filename} (skip QuPath)")
+            print(f"  Reusing existing segmentation for {img_filename} (skip segmentation)")
             return _js[0]
-
-    generate_groovy_script(cfg, groovy_script, img_path)
 
     # Optional preprocessing: run segmentation/measurement on a per-image
     # white-balanced copy (tone/illumination correction; does NOT rescale DAB).
     # Overlays/naming still key off the original image basename.
-    qp_input = img_path
+    seg_input = img_path
     if cfg.get("preprocess_normalize"):
         norm = _normalized_copy(img_path, cfg)
         if norm:
-            qp_input = norm
+            seg_input = norm
             print("  Preprocessing: per-image white-balance normalization applied")
 
+    # Segmenter dispatch. Both run the same InstanSeg model; "native" runs it in-process
+    # (default), "qupath" shells out to the QuPath binary. See load_config.
+    if str(cfg.get("segmenter", "native")).lower() != "qupath":
+        json_path = run_native_segmentation(
+            seg_input, cfg, out_basename=os.path.splitext(img_filename)[0])
+        if json_path is None:
+            return None
+        return _finish_single_image(img_path, img_filename, json_path, cfg,
+                                    pixel_size, pixel_size_source)
+
+    generate_groovy_script(cfg, groovy_script, img_path)
+    qp_input = seg_input
     command = [cfg["qupath_binary"], "script", "-i", qp_input, groovy_script]
     start_time = time.time()
 
@@ -806,8 +898,14 @@ def run_single_image(img_path, cfg, groovy_script):
     if not matches:
         print(f"ERROR: No JSON results found")
         return None
-    json_path = matches[0]
+    return _finish_single_image(img_path, img_filename, matches[0], cfg,
+                                pixel_size, pixel_size_source)
 
+
+def _finish_single_image(img_path, img_filename, json_path, cfg,
+                         pixel_size, pixel_size_source):
+    """Everything that happens after segmentation, whichever segmenter produced it:
+    pixel-size provenance/QC, then the optional membrane or nuclear reclassification."""
     # Pixel-size provenance + a nucleus-density plausibility check, written into
     # the summary so the UI can flag a run whose pixel size is a silent fallback
     # or implausible (wrong pixel size → nonsensical cell density).
@@ -862,7 +960,7 @@ def run_single_image(img_path, cfg, groovy_script):
         try:
             _apply_nuclear_reclassification(img_path, json_path, cfg)
         except Exception as e:
-            print(f"  Nuclear reclassification failed: {e} — keeping QuPath classification")
+            print(f"  Nuclear reclassification failed: {e} — keeping the segmenter's classification")
 
     return json_path
 
