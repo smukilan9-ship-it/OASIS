@@ -25,7 +25,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 DATA = os.path.expanduser(
     "~/oasis_validation_datasets/DeepLIIF/_generated_outputs/pipeline_validation")
-MODEL_DIR = os.path.expanduser("~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1")
+from oasis.common.paths import default_model_dir
+
+# Vendored at models/ so a fresh clone can run this without QuPath ever being installed.
+MODEL_DIR = default_model_dir()
 
 PIXEL_SIZE_UM = 0.25       # the pixel size the recorded QuPath run used
 DAB_THRESHOLD = 0.2

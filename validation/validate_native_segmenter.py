@@ -35,7 +35,10 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-MODEL_DIR = os.path.expanduser("~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1")
+from oasis.common.paths import default_model_dir
+
+# Vendored at models/ so a fresh clone can run this without QuPath ever being installed.
+MODEL_DIR = default_model_dir()
 
 # A real QuPath export produced by the pipeline, with its source image and the pixel size the
 # run actually used (from the summary JSON beside it).

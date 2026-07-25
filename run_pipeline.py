@@ -15,6 +15,8 @@ import numpy as np
 
 import yaml
 
+from oasis.common.paths import bundled_model_dir
+
 
 # ==========================================================
 # CONFIG LOADER
@@ -42,6 +44,15 @@ def load_config(config_path="config.yaml"):
     cfg.setdefault("segmenter", "native")
     _native = str(cfg.get("segmenter", "native")).lower() != "qupath"
 
+    # The InstanSeg model ships with OASIS (models/, Apache-2.0), so a config need not name
+    # it. Only fall back when the key is absent or empty — an explicit path is honoured even
+    # if it turns out to be wrong, so a typo surfaces as an error rather than being silently
+    # replaced by the bundled model.
+    if not cfg.get("instanseg_model"):
+        _bundled = bundled_model_dir()
+        if _bundled:
+            cfg["instanseg_model"] = _bundled
+
     # input_dir is a quantification-only field. Spatial association supplies
     # explicit image paths via spatial_pairs (+ pixel_overrides), so input_dir is
     # irrelevant there and must not be required. The InstanSeg model is needed by both
@@ -59,8 +70,16 @@ def load_config(config_path="config.yaml"):
         sys.exit(1)
 
     if not os.path.exists(os.path.expanduser(cfg["instanseg_model"])):
-        print(f"ERROR: InstanSeg model not found at: {cfg['instanseg_model']}")
-        sys.exit(1)
+        # A config written before the model was vendored can still point at a QuPath
+        # download that no longer exists. Prefer the shipped copy over failing.
+        bundled = bundled_model_dir()
+        if bundled:
+            print(f"NOTE: configured InstanSeg model not found at "
+                  f"{cfg['instanseg_model']}; using the bundled model at {bundled}")
+            cfg["instanseg_model"] = bundled
+        else:
+            print(f"ERROR: InstanSeg model not found at: {cfg['instanseg_model']}")
+            sys.exit(1)
 
     cfg.setdefault("output_dir", os.path.expanduser("~/Desktop/ihc_results"))
     # Derive dashboard_dir from input_dir only when present (spatial mode has no

@@ -33,7 +33,10 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-MODEL_DIR = os.path.expanduser("~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1")
+from oasis.common.paths import default_model_dir
+
+# Vendored at models/ so a fresh clone can run this without QuPath ever being installed.
+MODEL_DIR = default_model_dir()
 DEFAULT_SLIDE = "/Volumes/Expansion/oasis_datasets/acrobat/valid/0_KI67_val.tif"
 FLAT_IMAGE = os.path.expanduser("~/Desktop/cd8_input/LL477_CD8_x10_3.tif")
 

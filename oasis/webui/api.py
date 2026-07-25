@@ -18,6 +18,7 @@ EXPERIMENTS_FILE = CONFIG_DIR / "experiments.yaml"
 CONFIG_DIR.mkdir(exist_ok=True)
 
 from oasis.common.worker import worker_cmd            # noqa: E402
+from oasis.common.paths import default_model_dir      # noqa: E402
 
 DEFAULT_SETUP = {
     "microscope": "",
@@ -32,7 +33,9 @@ DEFAULT_SETUP = {
     # "qupath" is the previous path, kept for one release as an escape hatch.
     "segmenter": "native",
     "qupath_binary": "/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64",
-    "instanseg_model": "~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1",
+    # Vendored at models/ (Apache-2.0) so a fresh install needs no QuPath download;
+    # falls back to the old QuPath location for installs that predate it.
+    "instanseg_model": default_model_dir(),
     # Root that holds the consolidated validation datasets (Validation tab).
     # Resolved by validation/datasets/resolve.py; kept out of the repo so the
     # project stays lean and the path survives being bundled as a standalone app.

@@ -18,7 +18,9 @@ image_extensions:
   - '*.jpg'
   - '*.jpeg'
 input_dir: ./sample_images
-instanseg_model: ~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1
+# Ships with OASIS (models/, Apache-2.0 — see models/NOTICE.md). Leave as-is unless you
+# want a different InstanSeg model; a missing path falls back to the bundled copy.
+instanseg_model: models/brightfield_nuclei-0.1.1
 instanseg_threads: 4
 magnification: auto
 mode: automated

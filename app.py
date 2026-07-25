@@ -44,10 +44,13 @@ def _check_dependencies():
 _check_dependencies()
 import webview                       # noqa: E402  (after the actionable dep check)
 from oasis.webui.api import API           # noqa: E402
+from oasis.common.paths import resource_dir   # noqa: E402
 
 def main():
     api = API()
-    html_path = str(Path(__file__).parent / "oasis" / "webui" / "index.html")
+    # resource_dir() rather than Path(__file__).parent: in a PyInstaller bundle the UI
+    # files live under sys._MEIPASS, not beside this script.
+    html_path = str(Path(resource_dir()) / "oasis" / "webui" / "index.html")
     window = webview.create_window(
         title="OASIS",
         url=f"file://{html_path}",

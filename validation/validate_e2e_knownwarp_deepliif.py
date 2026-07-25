@@ -39,6 +39,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from oasis.spatial import spatial_stats as ss
+from oasis.common.paths import default_model_dir
 from validation.datasets import resolve as R
 
 PIXEL_SIZE_UM = 0.25                       # DeepLIIF is 40× (~0.25 µm/px)
@@ -58,8 +59,7 @@ def _setup():
     return {
         "qupath": os.path.expanduser(s.get(
             "qupath_binary", "/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64")),
-        "model": os.path.expanduser(s.get(
-            "instanseg_model", "~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1")),
+        "model": os.path.expanduser(s.get("instanseg_model") or default_model_dir()),
         "device": s.get("device", "mps"),
     }
 
