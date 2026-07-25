@@ -7,7 +7,7 @@ change**.
 ## Reporting issues
 
 Open an issue at
-<https://github.com/smukilan9-ship-it/ihc-analysis-/issues>. The tracker is
+<https://github.com/smukilan9-ship-it/OASIS/issues>. The tracker is
 public and readable without a GitHub account.
 
 For anything that produces a wrong or surprising *number*, please include:
