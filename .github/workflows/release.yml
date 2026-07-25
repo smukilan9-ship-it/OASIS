@@ -63,6 +63,20 @@ jobs:
             libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
             gir1.2-gtk-3.0 gir1.2-webkit2-4.1
 
+      - name: Install CPU-only torch (Linux)
+        # On Linux, pip's default torch wheel is the CUDA build (2.13.0+cu130). It drags in
+        # ~2.4 GB of NVIDIA runtime — cuBLAS, cuDNN, cuFFT, cuRAND — and produced a 2,685 MB
+        # bundle against 268 MB on macOS. OASIS segments on CPU here (MPS is Apple-only), so
+        # every byte of that is dead weight for the overwhelming majority of users.
+        #
+        # Installed BEFORE requirements.txt so pip sees torch==2.13.0 already satisfied and
+        # does not fetch the CUDA wheel first. Linux users who do want CUDA should install
+        # from source, where pip gives them the CUDA build by default.
+        if: runner.os == 'Linux'
+        run: |
+          python -m pip install --upgrade pip
+          pip install torch==2.13.0 --index-url https://download.pytorch.org/whl/cpu
+
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
@@ -104,9 +118,26 @@ jobs:
           $h = (Get-FileHash "${{ matrix.asset }}" -Algorithm SHA256).Hash.ToLower()
           "$h  ${{ matrix.asset }}" | Tee-Object -FilePath "${{ matrix.asset }}.sha256"
 
-      - name: Report size
+      - name: Report size and guard against bloat
+        # A 2.7 GB Linux bundle shipped once because pip silently chose the CUDA torch
+        # wheel. Nothing failed — it just built something nobody should download. This
+        # turns that class of regression into a build failure instead of a surprise for
+        # whoever clicks the release link.
         shell: bash
-        run: ls -lh "${{ matrix.asset }}"
+        run: |
+          ls -lh "${{ matrix.asset }}"
+          bytes=$(python -c "import os,sys; print(os.path.getsize(sys.argv[1]))" "${{ matrix.asset }}")
+          mb=$(( bytes / 1048576 ))
+          echo "asset size: ${mb} MB"
+          # Reference points: QuPath's own installers are 229-271 MB, and OASIS should sit
+          # in the same range. 600 MB is loose enough to absorb normal dependency growth
+          # and tight enough to catch an accidental GPU/toolkit stack.
+          if [ "$mb" -gt 600 ]; then
+            echo "::error::Bundle is ${mb} MB, over the 600 MB limit. Something large was"
+            echo "::error::pulled in unintentionally — check for CUDA/GPU wheels or a"
+            echo "::error::forgotten exclude before releasing this."
+            exit 1
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
