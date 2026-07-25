@@ -23,12 +23,38 @@ Living checklist of what's left after the validation-infrastructure refactor.
       Feeds the future **Troubleshooting tab** ("what happened / what to do next").
   - Open: raw stdout/stderr retention policy (deferred); build scope order (quant-first vs all).
 
-## VALIS-rigid registration engine (scoped — not built)
-- [ ] Implement per **`docs/valis_integration_plan.md`**: VALIS-rigid as an optional engine that
-      feeds the EXISTING gate (subprocess bridge to `~/valis_runtime`, correspondences via
-      `MatchInfo.matched_kp{1,2}_xy`, inserted in the `certify_local_roi` LoFTR-fails branch).
-      Recovers cross-modal ROIs where LoFTR gets 0 matches; faster than LoFTR; rigid-only
-      (non-rigid stays forbidden). Gate/ROI/cross-K unchanged. Validate gate-honesty on VALIS ROIs.
+## VALIS — REMOVED (2026-07-25)
+Cut from the shipped app; code in `legacy/valis/`, benchmark still live at
+`validation/valis_bench/`, full rationale in **`valis.md`**. It could only ever supply the
+provisional transform, and certification needs LoFTR correspondences that do not exist on the
+cross-modal pairs it was for — measured: identical outcomes to LoFTR mode on every pair tested.
+- [ ] (future) If cross-modal support is wanted, the one endorsed use is wiring a VALIS
+      transform into `propose_landmarks` to accelerate the MANUAL landmark path. Certification
+      would stay with the validated gate and the human. See valis.md §6.
+
+## Standalone packaging (QuPath withdrawal — segmenter done)
+- [x] Native in-process InstanSeg (`oasis/quant/segment.py`), default; QuPath behind
+      `segmenter: qupath` for one release. Parity gates in `validation/validate_native_segmenter*`.
+- [x] Freeze blockers: `sys.executable` relaunch (now `oasis/common/worker.py` +
+      `--oasis-worker` dispatch) and the four runtime `pip install` calls.
+- [ ] Remove the QuPath escape hatch after one release (`segmenter`, `qupath_binary`,
+      `generate_groovy_script`, `_run_qupath`, the Groovy template).
+- [ ] Ship the InstanSeg model INSIDE the bundle (Apache-2.0, 15 MB) so `instanseg_model` no
+      longer points into `~/QuPath/`. This is the last path that assumes QuPath was installed.
+- [ ] PyInstaller `--onedir --windowed`, exclude PySide6/tests; then sign + notarize
+      (unsigned = Gatekeeper blocks it on every machine that is not this one).
+- [ ] Confirm PyInstaller supports Python 3.14 early — if not, that forces a 3.13 backport.
+- [ ] Decide app-support locations for config/output dirs (currently `~/Desktop/...`).
+
+## QuPath extension (future work — evaluated, parked 2026-07-25)
+Idea: ship a QuPath extension that bootstraps InstanSeg and launches the OASIS UI. Evaluated
+and parked: an extension cannot ship a Python environment, so it would require QuPath AND the
+Python side, which is strictly worse than a standalone bundle; the model is Apache-2.0 and
+15 MB so there is nothing to bootstrap; QuPath is GPL-3 (linking question); and its extension
+API broke across 0.5/0.6/0.7. If discovery on the QuPath catalog is wanted later, a Groovy
+SCRIPT ("Open current image in OASIS") gets most of the reach with no build toolchain, no
+version matrix and no licensing entanglement.
+- [ ] User to decide next step.
 
 ## Datasets (shipping)
 - [ ] Decide hosting for the large/restricted datasets and send the links:
