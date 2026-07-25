@@ -575,6 +575,29 @@ VALIDATIONS = [
         "runtime_tier": "short", "external_deps": ["instanseg"],
     },
     {
+        "id": "native_segmenter_wsi",
+        "title": "Whole-slide reading and streaming segmentation",
+        "category": "segmentation",
+        "claim": "A real pyramidal slide is segmented end to end in bounded memory, with global "
+                 "normalisation percentiles that are EXACT rather than estimated, and streamed "
+                 "output identical to the in-memory path.",
+        "purpose": "The parity gates all ran on flat images that fit in RAM. A 776 Mpx ACROBAT "
+                   "slide does not: the float64 optical-density intermediates alone need "
+                   "~18.6 GB on a 17.2 GB machine. QuPath streamed tiles, so a non-streaming "
+                   "replacement would be a silent capability regression.",
+        "datasets": [],
+        "assumptions": "ACROBAT valid slides on an external volume; 0.907 µm/px.",
+        "limitations": "Runtime is dominated by CPU inference and by read throughput off the "
+                       "external drive; the full-slide run is long by nature.",
+        "interpretation": "J must be EXACT (histogram vs np.percentile). K must match the "
+                          "in-memory path. L must complete in bounded memory.",
+        "expected": "J: 0.0 intensity-unit difference (a downsampled level would be off 0.35, a "
+                    "grid sample 0.28 — both measured and rejected). K: identical objects, DAB "
+                    "MAE 0.00000. L: completes with peak RSS well under the naive requirement.",
+        "runner": {"kind": "script", "script": "validate_native_segmenter_wsi.py"},
+        "runtime_tier": "long", "external_deps": ["instanseg", "openslide"],
+    },
+    {
         "id": "native_segmenter_deepliif_parity",
         "title": "Native segmenter parity gate vs QuPath (DeepLIIF IF truth)",
         "category": "segmentation",

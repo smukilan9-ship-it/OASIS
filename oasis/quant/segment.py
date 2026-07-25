@@ -137,12 +137,39 @@ def _normalize(rgb):
 
     Returns NCHW float32, batch size 1.
     """
+    return _apply_norm(rgb, norm_range(rgb))
+
+
+# Below this 0.1-99.9 intensity span (any channel) an image carries no usable contrast and
+# normalisation would stretch sensor noise across the model's full input range. Measured
+# consequence on a 99.95%-background ACROBAT crop: 3926 "nuclei" out of pure noise.
+#
+# The floor is set from the validated corpus, not by taste: the minimum channel span over all
+# 598 DeepLIIF panels is 98 and LL477's is 144, while the blank crop is 10 and a whole ACROBAT
+# slide is ~99. A floor of 40 therefore cannot alter any validated result (2.5x margin) and
+# still catches the degenerate case by 4x.
+MIN_DYNAMIC_RANGE = 40.0
+
+
+def low_contrast(ranges):
+    """True when no channel has enough dynamic range for normalisation to be meaningful."""
+    return any((hi - lo) < MIN_DYNAMIC_RANGE for lo, hi in ranges)
+
+
+def norm_range(rgb):
+    """The per-channel (lo, hi) percentile pair `_normalize` uses. Split out so a whole-slide
+    run can compute the pair ONCE — from a downsampled level it can afford to hold — and then
+    apply the same constants to every streamed tile, preserving global normalisation without
+    ever materialising the full-resolution image."""
+    a = np.asarray(rgb)
+    return [(float(np.percentile(a[..., c], 0.1)), float(np.percentile(a[..., c], 99.9)))
+            for c in range(a.shape[2])]
+
+
+def _apply_norm(rgb, ranges):
     x = np.asarray(rgb, dtype=np.float32).transpose(2, 0, 1)[None]
-    for c in range(x.shape[1]):
-        ch = x[0, c]
-        lo = np.percentile(ch, 0.1)
-        hi = np.percentile(ch, 99.9)
-        x[0, c] = (ch - lo) / (hi - lo + 1e-6)
+    for c, (lo, hi) in enumerate(ranges):
+        x[0, c] = (x[0, c] - lo) / (hi - lo + 1e-6)
     return x
 
 
@@ -171,7 +198,8 @@ def _tile_grid(h, w, tile=TILE, pad=PADDING):
     return out
 
 
-def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=None):
+def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=None,
+                   ranges=None):
     """Tile, infer, and reconcile into one whole-image label mask.
 
     Reconciliation rule: an object belongs to the tile whose CORE region contains its centroid.
@@ -190,8 +218,14 @@ def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=No
     padded band and so are unaffected by this rule.
     """
     h, w = rgb.shape[:2]
-    norm = _normalize(rgb)                     # once, globally — see _normalize
+    # `ranges` lets a streaming caller supply globally-computed percentiles instead of
+    # recomputing them on this block (which would be per-block normalisation by another name).
+    if ranges is None:
+        ranges = norm_range(rgb)
     labels = np.zeros((h, w), dtype=np.int32)
+    if low_contrast(ranges):        # nothing to segment — see MIN_DYNAMIC_RANGE
+        return labels
+    norm = _apply_norm(rgb, ranges)
     next_id = 1
     contested = 0
     tiles = _tile_grid(h, w, tile, pad)
@@ -335,6 +369,197 @@ def _measure(labels, hem_od, dab_od, px_um):
     return out
 
 
+# ── whole-slide streaming ────────────────────────────────────────────────────────────────
+
+# Above this many pixels the image is streamed rather than held in RAM. The binding constraint
+# is not the RGB array but the optical-density maths: `_od_channels` builds float64 HxWx3
+# intermediates, i.e. 24 bytes/px, so a 776 Mpx ACROBAT slide (48128x16128) needs ~18.6 GB on a
+# 17 GB machine — it does not merely swap, it fails. 64 Mpx keeps the OD peak near 1.5 GB.
+WSI_STREAM_THRESHOLD_PX = 64_000_000
+
+# Pixel budget for estimating the global normalisation percentiles on a slide too large to hold.
+_NORM_ESTIMATE_PX = 12_000_000
+_NORM_PATCH = 512
+
+
+def open_slide(image_path):
+    """openslide handle, or None if this is not a slide openslide can read."""
+    try:
+        import openslide
+        return openslide.OpenSlide(os.path.expanduser(image_path))
+    except Exception:
+        return None
+
+
+def image_dimensions(image_path):
+    """(width, height) without decoding the pixels."""
+    slide = open_slide(image_path)
+    if slide is not None:
+        try:
+            return slide.dimensions
+        finally:
+            slide.close()
+    from PIL import Image
+    with Image.open(os.path.expanduser(image_path)) as im:
+        return im.size
+
+
+def _percentiles_from_hist(hist, lo_q=0.001, hi_q=0.999):
+    """Nearest-rank percentiles from a 256-bin uint8 histogram. Exact for 8-bit data."""
+    total = hist.sum()
+    if total == 0:
+        return 0.0, 0.0
+    c = np.cumsum(hist)
+    lo = int(np.searchsorted(c, lo_q * total, side="left"))
+    hi = int(np.searchsorted(c, hi_q * total, side="left"))
+    return float(min(lo, 255)), float(min(hi, 255))
+
+
+def slide_scan(slide, tile=TILE, progress=None):
+    """One counting pass over a slide: EXACT global normalisation percentiles, plus which
+    stripes contain tissue.
+
+    Sampling was tried first and rejected on measurement. Estimating the percentiles from a grid
+    of level-0 patches (11.5 Mpx of 197) put the normalisation 0.28 normalised units off the
+    exact value, and segmenting a tissue region with the estimate rather than the exact range
+    agreed with it on only 63% of nuclei — the counts looked close (120 vs 126) while a third of
+    the objects were different. Reading a downsampled pyramid level was worse still (0.34),
+    because downsampling averages away the very tails the 0.1/99.9 percentiles are made of.
+
+    Exactness is affordable here because the data is 8-bit: a 256-bin histogram per channel is
+    exact by construction, and the only cost is reading the pixels once more. That cost is
+    repaid immediately — the same pass records which stripes are pure background, and on a
+    typical slide (this ACROBAT slide is ~0.5% tissue) skipping them saves far more inference
+    time than the extra read costs.
+
+    Returns (ranges, tissue_stripes, stats).
+    """
+    W, H = slide.dimensions
+    hist = np.zeros((3, 256), dtype=np.int64)
+    tissue = []
+    stripes = list(range(0, H, tile))
+    for i, y0 in enumerate(stripes):
+        if progress:
+            progress(i + 1, len(stripes))
+        y1 = min(y0 + tile, H)
+        rgb = np.asarray(slide.read_region((0, y0), 0, (W, y1 - y0)).convert("RGB"))
+        for c in range(3):
+            hist[c] += np.bincount(rgb[..., c].ravel(), minlength=256)
+        # "tissue" here only has to be permissive enough not to skip a stripe that could
+        # contain nuclei; the real decision is still the model's.
+        if float((rgb.mean(axis=2) < 225).mean()) > 0.0005:
+            tissue.append(y0)
+    ranges = [_percentiles_from_hist(hist[c]) for c in range(3)]
+    stats = {"stripes": len(stripes), "tissue_stripes": len(tissue),
+             "skipped": len(stripes) - len(tissue)}
+    return ranges, tissue, stats
+
+
+def _slide_norm_ranges(slide):
+    """Exact global normalisation percentiles for a slide (counting pass, no sampling)."""
+    W, H = slide.dimensions
+    if W * H <= _NORM_ESTIMATE_PX:
+        region = np.asarray(slide.read_region((0, 0), 0, (W, H)).convert("RGB"))
+        return norm_range(region), "level0_full"
+    ranges, _tissue, stats = slide_scan(slide)
+    return ranges, f"level0_histogram_{stats['stripes']}stripes"
+
+
+def segment_slide_streaming(image_path, model, pixel_size_um, device="cpu",
+                            tile=TILE, pad=PADDING, progress=None):
+    """Segment and measure a whole slide without ever holding it in memory.
+
+    Processed in STRIPES one tile-row tall and the full image wide. Each stripe is read from
+    openslide with `pad` rows of vertical context, normalised with the GLOBAL constants (so the
+    tile-size-independence property still holds — see `_normalize`), segmented tile by tile, and
+    measured immediately; only the per-object records survive the stripe. Peak memory is a
+    stripe, not a slide.
+
+    Cross-stripe conflicts are handled the same way as cross-tile ones: a `carry` band holds the
+    pixels the previous stripe already claimed, so an object emitted there cannot be overwritten
+    by this stripe. Nuclei are ~10-20 px across and the band is `2*pad` rows, so no object can
+    span it undetected.
+
+    Returns the same record list as `_measure`, in full-resolution image coordinates.
+    """
+    import cv2
+    slide = open_slide(image_path)
+    if slide is None:
+        raise ValueError(f"not an openslide-readable slide: {image_path}")
+    try:
+        W, H = slide.dimensions
+        if W * H <= _NORM_ESTIMATE_PX:
+            ranges, _how = _slide_norm_ranges(slide)
+            stripes = list(range(0, H, tile))
+        else:
+            # counting pass: exact percentiles + which stripes are worth inferring on
+            ranges, stripes, _stats = slide_scan(slide, tile=tile, progress=progress)
+        if low_contrast(ranges):     # blank / no-tissue slide — see MIN_DYNAMIC_RANGE
+            return []
+        records = []
+        next_id = 1
+        carry = None            # (y_start, bool array) claimed pixels from the previous stripe
+        for si, sy0 in enumerate(stripes):
+            if progress:
+                progress(si + 1, len(stripes))
+            sy1 = min(sy0 + tile, H)
+            ry0, ry1 = max(sy0 - pad, 0), min(sy1 + pad, H)
+            rgb = np.asarray(
+                slide.read_region((0, ry0), 0, (W, ry1 - ry0)).convert("RGB"))
+            norm = _apply_norm(rgb, ranges)
+
+            claimed = np.zeros((ry1 - ry0, W), dtype=bool)
+            if carry is not None:
+                cy0, cband = carry
+                # overlap between the previous stripe's read window and this one
+                a0, a1 = max(cy0, ry0), min(cy0 + cband.shape[0], ry1)
+                if a1 > a0:
+                    claimed[a0 - ry0:a1 - ry0] |= cband[a0 - cy0:a1 - cy0]
+
+            labels = np.zeros((ry1 - ry0, W), dtype=np.int32)
+            for x0 in range(0, W, tile):
+                x1 = min(x0 + tile, W)
+                px0, px1 = max(x0 - pad, 0), min(x1 + pad, W)
+                sub = norm[:, :, :, px0:px1]
+                th, tw = sub.shape[2], sub.shape[3]
+                if th < MIN_TILE or tw < MIN_TILE:
+                    sub = np.pad(sub, ((0, 0), (0, 0), (0, max(MIN_TILE - th, 0)),
+                                       (0, max(MIN_TILE - tw, 0))), mode="edge")
+                lab = _forward(model, sub, device)[:ry1 - ry0, :px1 - px0]
+                for oid in np.unique(lab):
+                    if oid == 0:
+                        continue
+                    m = (lab == oid)
+                    ys, xs = np.nonzero(m)
+                    cy = ys.mean() + ry0
+                    cx = xs.mean() + px0
+                    # own it only if the centroid is in this tile's core, in BOTH axes
+                    if not (sy0 <= cy < sy1 and x0 <= cx < x1):
+                        continue
+                    win_l = labels[:, px0:px1]
+                    win_c = claimed[:, px0:px1]
+                    free = m & (win_l == 0) & (~win_c)
+                    if int(free.sum()) < 3:
+                        continue
+                    win_l[free] = next_id
+                    next_id += 1
+
+            # measure this stripe's objects on ORIGINAL pixels, then discard the stripe
+            hem_od, dab_od = _od_channels(rgb)
+            stripe_records = _measure(labels, hem_od, dab_od, float(pixel_size_um))
+            for r in stripe_records:                     # stripe -> full-image coordinates
+                r["polygon"][:, 1] += ry0
+                cx, cy = r["centroid_px"]
+                r["centroid_px"] = (cx, cy + ry0)
+                r["centroid_um"] = (cx * pixel_size_um, (cy + ry0) * pixel_size_um)
+                r["id"] = len(records) + 1
+                records.append(r)
+            carry = (ry0, labels > 0)
+        return records
+    finally:
+        slide.close()
+
+
 def otsu_threshold(values, nbins=256):
     """Otsu's cut over the object DAB means. Ported from the Groovy the pipeline generated, bin
     for bin, so the adaptive-threshold mode keeps producing the same cut it used to."""
@@ -377,9 +602,22 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
 
     Returns {records, labels, threshold, threshold_method, pixel_size_um, width, height,
     downsample}. Coordinates in `records` are FULL-RESOLUTION image pixels regardless of the
-    resampling used for inference.
+    resampling used for inference. `labels` is None on the streamed whole-slide path, where a
+    full-resolution label array cannot be held (3.1 GB for a 776 Mpx slide).
     """
     import cv2
+
+    # Whole slides are streamed. Deciding by DIMENSIONS rather than by file extension means a
+    # large flat TIFF is handled too, and a small .svs is not needlessly streamed.
+    if rgb is None:
+        try:
+            w0, h0 = image_dimensions(image_path)
+        except Exception:
+            w0 = h0 = 0
+        if w0 * h0 > WSI_STREAM_THRESHOLD_PX and open_slide(image_path) is not None:
+            return _segment_image_streamed(image_path, model_dir, pixel_size_um, device,
+                                           dab_threshold, adaptive_threshold, progress)
+
     if rgb is None:
         from oasis.quant.cell_expansion import _load_rgb_full
         rgb = _load_rgb_full(os.path.expanduser(image_path))
@@ -412,6 +650,15 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
     records = _measure(labels, hem_od, dab_od, float(pixel_size_um))
 
     # 4. classify
+    thr, method = _classify(records, dab_threshold, adaptive_threshold)
+
+    return {"records": records, "labels": labels, "threshold": thr,
+            "threshold_method": method, "pixel_size_um": float(pixel_size_um),
+            "width": w, "height": h, "downsample": ds, "streamed": False,
+            "low_contrast": bool(low_contrast(norm_range(work)))}
+
+
+def _classify(records, dab_threshold, adaptive_threshold):
     method = "fixed"
     thr = float(dab_threshold)
     if adaptive_threshold:
@@ -422,10 +669,29 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
             method = "fixed_fallback_few_cells"
     for r in records:
         r["classification"] = "Positive" if r["measurements"]["DAB: Mean"] > thr else "Negative"
+    return thr, method
 
-    return {"records": records, "labels": labels, "threshold": thr,
+
+def _segment_image_streamed(image_path, model_dir, pixel_size_um, device,
+                            dab_threshold, adaptive_threshold, progress):
+    """Whole-slide branch of `segment_image`.
+
+    NOTE ON RESAMPLING: the streaming path reads level 0 and does not resample. In practice
+    whole slides are scanned at 0.25-1.0 µm/px, where `preferred_downsample` is either clamped
+    to 1.0 (coarser than the model's 0.5 µm) or a small integer. If a slide is fine enough to
+    want a downsample > 1, that is reported in the result so the caller can see it was not
+    applied, rather than it being silently ignored.
+    """
+    model = load_model(model_dir, device)
+    w, h = image_dimensions(image_path)
+    ds = preferred_downsample(pixel_size_um, model_pixel_size(model_dir))
+    records = segment_slide_streaming(image_path, model, pixel_size_um,
+                                      device=device, progress=progress)
+    thr, method = _classify(records, dab_threshold, adaptive_threshold)
+    return {"records": records, "labels": None, "threshold": thr,
             "threshold_method": method, "pixel_size_um": float(pixel_size_um),
-            "width": w, "height": h, "downsample": ds}
+            "width": w, "height": h, "downsample": 1.0, "streamed": True,
+            "downsample_requested": ds}
 
 
 # ── exports, in the shapes the rest of the pipeline already reads ────────────────────────

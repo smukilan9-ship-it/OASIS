@@ -470,9 +470,25 @@ runner, same reports):
   verified: bit-identical repeat runs, Otsu identical to a transliteration of the Groovy,
   degenerate inputs (blank/tiny/1-px/thin-strip) return empty without raising, and the membrane
   path (`measure_cytoplasm_dab`) consumes native GeoJSON with ring-DAB median shift 0.0026 OD
-  and membrane-positive rate shift 0.000. **Not validated: a genuine SVS/NDPI** (none available
-  locally) — only the tiled-TIFF read path. **Decision: QuPath is removable — the published
-  figures survive the swap; WSI reading to be confirmed before release.**
+  and membrane-positive rate shift 0.000. **Whole slides** (validated on ACROBAT
+  `0_KI67_val.tif`, 48128×16128 = 776 Mpx, 0.907 µm/px) are **streamed**: holding one whole
+  would need ~18.6 GB for the float64 optical-density intermediates alone, on a 17.2 GB machine.
+  Stripe streaming reproduces the in-memory path **identically** (same object count, DAB MAE
+  0.00000) at bounded peak RSS. Two further findings there: (iii) the global normalisation
+  percentiles must be **exact, not estimated** — a downsampled pyramid level is off by 0.35
+  normalised units (averaging destroys the tails a 0.1/99.9 percentile is made of) and a
+  level-0 grid sample by 0.28; segmenting with the sampled range agreed with the exact one on
+  only **63% of nuclei** while the counts looked reassuringly close (120 vs 126). Since the data
+  is 8-bit, a 256-bin histogram over a counting pass is exact by construction (verified: 0.0
+  difference vs `np.percentile`), and the same pass records which stripes hold tissue so blank
+  ones are skipped. (iv) a **dynamic-range floor** (`MIN_DYNAMIC_RANGE = 40`) is required:
+  normalising a near-blank crop against its own degenerate range amplified sensor noise into
+  **3926 spurious "nuclei"** on a 99.95%-background ACROBAT crop. The floor is set from the
+  validated corpus — minimum channel span is 98 over all 598 DeepLIIF panels and 144 on LL477,
+  versus 10 for the blank crop — so it cannot alter any validated result. Note this also shows
+  global normalisation is a *correctness* property, not only a tile-independence one: the same
+  blank crop under true whole-slide ranges yields 0 objects. **Decision: QuPath is removable —
+  the published figures survive the swap.**
 - **Keystone — degradation** (`tests/test_degradation.py`, the End-to-End validation): CODEX
   same-section truth (CD8 vs PD-1) → split to pseudo-serial + inject registration error →
   verdict must not flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and

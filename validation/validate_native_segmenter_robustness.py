@@ -20,10 +20,8 @@ This covers what they do not:
                           loudly rather than silently moving everyone's counts.)
   I. PYRAMIDAL/TILED TIFF — reading path for whole-slide-style files.
 
-WHAT THIS DOES NOT COVER: a real SVS/NDPI. None is present on this machine (the ACROBAT slides
-live on an external volume). `_load_rgb_full` routes those through openslide, and check I
-exercises only the tiled-TIFF branch. Reading a genuine pyramidal SVS end-to-end remains
-UNVALIDATED and is called out as such rather than assumed.
+Real pyramidal-slide reading, the streaming path and its memory bound are covered separately by
+validate_native_segmenter_wsi.py; check I here only exercises the tiled-TIFF read branch.
 
 Run:  .venv/bin/python validation/validate_native_segmenter_robustness.py
 """
@@ -184,8 +182,8 @@ def main():
         with open(os.path.join(out, "native_segmenter_robustness.json"), "w") as f:
             json.dump(report, f, indent=2)
     print(f"\n{'PASS' if ok else 'FAIL'}")
-    print("NOTE: a genuine SVS/NDPI was not available on this machine — the openslide branch "
-          "of _load_rgb_full remains unvalidated.")
+    print("NOTE: real pyramidal-slide reading and streaming are covered separately by "
+          "validate_native_segmenter_wsi.py.")
     return 0 if ok else 1
 
 
