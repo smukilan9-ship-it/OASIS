@@ -25,7 +25,9 @@ import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 _REGISTRY_FILE = Path(__file__).resolve().parent / "datasets.yaml"
-_SETUP_FILE = Path.home() / ".ihc_analyzer" / "setup.yaml"
+from oasis.common.paths import user_config_dir
+
+_SETUP_FILE = user_config_dir() / "setup.yaml"
 _LEGACY_PATHS_YAML = REPO / "validation" / "datasets" / "paths.yaml"
 
 

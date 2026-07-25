@@ -16,7 +16,8 @@ def attach_restained_api(api_class):
     # (webui → oasis → root). The old .parent.parent pointed at <root>/oasis after the
     # restructure, breaking the subprocess below.
     project_dir = Path(__file__).resolve().parent.parent.parent
-    config_dir = Path.home() / ".ihc_analyzer"
+    from oasis.common.paths import user_config_dir
+    config_dir = user_config_dir()
 
     def preview_restained_bundles(self, folder, hematoxylin_token="_Hematoxylin",
                                   marker_a_token="_CD8", marker_b_token="_FoxP3",

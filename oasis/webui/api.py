@@ -12,13 +12,15 @@ import yaml
 from statistics import median
 from pathlib import Path
 
-CONFIG_DIR       = Path.home() / ".ihc_analyzer"
+from oasis.common.worker import worker_cmd                              # noqa: E402
+from oasis.common.paths import default_model_dir, user_config_dir       # noqa: E402
+
+# Platform-appropriate on new installs; stays at ~/.ihc_analyzer where that already
+# exists, so upgrading never looks like it lost someone's calibration profiles.
+CONFIG_DIR       = user_config_dir()
 SETUP_FILE       = CONFIG_DIR / "setup.yaml"
 EXPERIMENTS_FILE = CONFIG_DIR / "experiments.yaml"
-CONFIG_DIR.mkdir(exist_ok=True)
-
-from oasis.common.worker import worker_cmd            # noqa: E402
-from oasis.common.paths import default_model_dir      # noqa: E402
+CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_SETUP = {
     "microscope": "",

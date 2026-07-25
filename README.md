@@ -34,8 +34,32 @@ Raw images
 ## Requirements
 
 - Python 3.10 or newer.
-- InstanSeg `brightfield_nuclei-0.1.1` model available locally.
-- macOS is the currently targeted desktop environment.
+- InstanSeg `brightfield_nuclei-0.1.1` model — **ships with OASIS**, nothing to download.
+
+### Platform support
+
+| Platform | Prebuilt app | From source |
+|---|---|---|
+| macOS, Apple Silicon (arm64) | ✅ | ✅ |
+| **macOS, Intel (x86_64)** | ❌ | ❌ |
+| Windows x64 | not yet | ✅ (see note) |
+| Linux x86_64 / aarch64 | not yet | ✅ (see note) |
+
+**Intel Macs are not supported, and this cannot be worked around.** PyTorch no longer
+publishes macOS x86_64 wheels — its macOS wheels are arm64 only. Without a PyTorch wheel
+there is no segmenter, so neither the app nor a source install can run. This is an upstream
+constraint, not a choice; it would change only if PyTorch resumed Intel Mac builds.
+
+Running from source on Windows or Linux needs one extra step, because `pywebview` uses a
+different GUI backend on each platform:
+
+- **Windows** — `pip install pythonnet`; the WebView2 Runtime is built into Windows 11 and
+  installable on Windows 10.
+- **Linux** — install the GTK backend's system packages, e.g. on Debian/Ubuntu:
+  `sudo apt install python3-gi python3-gi-cairo gir1.2-gtk-3.0 gir1.2-webkit2-4.1`
+
+The command-line pipeline (`run_pipeline.py`) needs none of this — it has no GUI
+dependency, and `device: mps` falls back to CPU automatically on non-Apple hardware.
 
 QuPath is **not** required. It remains supported as an escape hatch by setting
 `segmenter: qupath` in `config.yaml`, which additionally needs QuPath 0.7.x with
@@ -163,11 +187,24 @@ and machine-specific files outside Git.
 ./packaging/build.sh
 ```
 
-Produces `dist/OASIS.app` (~900 MB unpacked). The bundle is a release asset and is
-never committed. Sign and notarize before distributing, or macOS Gatekeeper will
-refuse to open it on any machine but the one that built it; `build.sh` prints the
-exact commands. See `packaging/OASIS.spec` for the freeze recipe and the three
-bundle-only failures it works around.
+Produces `dist/OASIS.app` (~900 MB unpacked). The bundle is a release asset and is never
+committed. See `packaging/OASIS.spec` for the freeze recipe and the bundle-only failures it
+works around.
+
+### Opening an unsigned build on macOS
+
+OASIS is not currently code-signed or notarized, for the same reason QuPath is not — it
+needs a paid Apple Developer membership. macOS will refuse to open it on first launch:
+
+- **macOS 15 and later** — the app is reported as "damaged". Open **System Settings →
+  Privacy & Security**, scroll to the message about OASIS, and choose **Open Anyway**, then
+  confirm.
+- **macOS 14 and earlier** — right-click the app and choose **Open**, then confirm at the
+  "unidentified developer" prompt.
+
+This is a Gatekeeper policy for unsigned applications, not a sign that the download is
+corrupt. `build.sh` prints the signing and notarization commands for when a certificate is
+available.
 
 ## Contributing, issues, and support
 

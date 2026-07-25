@@ -37,7 +37,9 @@ from .datasets import verify as V
 
 REPO = Path(__file__).resolve().parents[1]
 REPORTS_ROOT = REPO / "validation_reports"
-_SETUP_FILE = Path.home() / ".ihc_analyzer" / "setup.yaml"
+from oasis.common.paths import user_config_dir
+
+_SETUP_FILE = user_config_dir() / "setup.yaml"
 _METRICS_RE = re.compile(r"##METRICS##\s*(\{.*\})\s*$")
 
 

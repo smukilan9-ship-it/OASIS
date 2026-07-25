@@ -15,7 +15,7 @@ import numpy as np
 
 import yaml
 
-from oasis.common.paths import bundled_model_dir
+from oasis.common.paths import bundled_model_dir, default_output_dir
 
 
 # ==========================================================
@@ -81,7 +81,7 @@ def load_config(config_path="config.yaml"):
             print(f"ERROR: InstanSeg model not found at: {cfg['instanseg_model']}")
             sys.exit(1)
 
-    cfg.setdefault("output_dir", os.path.expanduser("~/Desktop/ihc_results"))
+    cfg.setdefault("output_dir", default_output_dir())
     # Derive dashboard_dir from input_dir only when present (spatial mode has no
     # input_dir); otherwise fall back to output_dir.
     if cfg.get("input_dir"):
