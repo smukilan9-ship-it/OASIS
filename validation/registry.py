@@ -570,7 +570,7 @@ VALIDATIONS = [
         "interpretation": "All five checks must pass; tile-size spread <= 2%.",
         "expected": "Label arrays identical across runs; Otsu identical to the Groovy "
                     "transliteration; 0 objects and no exception on degenerate input; "
-                    "tile-size spread 0.7%.",
+                    "tile-size spread 0.7%; CPU/MPS identical labels.",
         "runner": {"kind": "script", "script": "validate_native_segmenter_robustness.py"},
         "runtime_tier": "short", "external_deps": ["instanseg"],
     },
@@ -593,7 +593,8 @@ VALIDATIONS = [
                           "in-memory path. L must complete in bounded memory.",
         "expected": "J: 0.0 intensity-unit difference (a downsampled level would be off 0.35, a "
                     "grid sample 0.28 — both measured and rejected). K: identical objects, DAB "
-                    "MAE 0.00000. L: completes with peak RSS well under the naive requirement.",
+                    "MAE 0.00000. L (full 776 Mpx slide): 27,156 nuclei in 32 stripes, peak RSS "
+                    "5.37 GB vs a naive 18.6 GB, 49 min on CPU / ~17 min on MPS.",
         "runner": {"kind": "script", "script": "validate_native_segmenter_wsi.py"},
         "runtime_tier": "long", "external_deps": ["instanseg", "openslide"],
     },

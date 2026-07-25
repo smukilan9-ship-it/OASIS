@@ -655,7 +655,7 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
     return {"records": records, "labels": labels, "threshold": thr,
             "threshold_method": method, "pixel_size_um": float(pixel_size_um),
             "width": w, "height": h, "downsample": ds, "streamed": False,
-            "low_contrast": bool(low_contrast(norm_range(work)))}
+            "device": device, "low_contrast": bool(low_contrast(norm_range(work)))}
 
 
 def _classify(records, dab_threshold, adaptive_threshold):
@@ -691,7 +691,7 @@ def _segment_image_streamed(image_path, model_dir, pixel_size_um, device,
     return {"records": records, "labels": None, "threshold": thr,
             "threshold_method": method, "pixel_size_um": float(pixel_size_um),
             "width": w, "height": h, "downsample": 1.0, "streamed": True,
-            "downsample_requested": ds}
+            "device": device, "downsample_requested": ds}
 
 
 # ── exports, in the shapes the rest of the pipeline already reads ────────────────────────
@@ -766,6 +766,11 @@ def write_summary(result, path, image_name="", extra=None):
         "dab_threshold_method": result["threshold_method"],
         "segmenter": "instanseg_native",
         "segmenter_downsample": result["downsample"],
+        # Provenance: CPU and MPS agree to ~1.5e-5 OD with identical cell counts and
+        # classifications (597/598 DeepLIIF panels byte-identical), but they are not
+        # bit-identical in every case. Recording the device makes a run reproducible.
+        "segmenter_device": result.get("device", "cpu"),
+        "segmenter_streamed": bool(result.get("streamed")),
     }
     if extra:
         summ.update(extra)

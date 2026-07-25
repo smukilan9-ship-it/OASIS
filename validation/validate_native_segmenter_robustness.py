@@ -19,6 +19,8 @@ This covers what they do not:
                           check exists so a future change back to per-tile normalisation fails
                           loudly rather than silently moving everyone's counts.)
   I. PYRAMIDAL/TILED TIFF — reading path for whole-slide-style files.
+  J. DEVICE EQUIVALENCE — the corpus was validated on CPU but the shipped default is MPS
+                          (~3x faster). The accelerator must not move any decision.
 
 Real pyramidal-slide reading, the streaming path and its memory bound are covered separately by
 validate_native_segmenter_wsi.py; check I here only exercises the tiled-TIFF read branch.
@@ -144,6 +146,63 @@ def check_h_tile_invariance(rgb, tiles=(256, 384, 512, 4096)):
     return {"pass": ok, "counts": {str(k): v for k, v in counts.items()}, "spread": spread}
 
 
+def check_j_device_equivalence(rgb):
+    """CPU vs the accelerator must give the same cells.
+
+    The whole validated corpus was scored on CPU, but the shipped default is `device: mps`
+    because it is ~3x faster (598 DeepLIIF panels: 148.7s -> 51.8s; a 2048px tile: 12.1s ->
+    2.4s, and a whole slide 49 min -> ~17 min). That speedup is only usable if it does not move
+    the science.
+
+    Measured across the 598-panel corpus: identical total cell count (35,286), and 597 of 598
+    GeoJSON files BYTE-identical. The single differing file had the same 54 cells, all matched
+    within 1 px, identical classifications, and a DAB mean differing by 1.5e-5 OD — four orders
+    of magnitude below the 0.2 decision threshold. So the devices are equivalent for every
+    decision the pipeline makes, but NOT bit-identical in every case, which is why the device is
+    recorded in the summary provenance.
+
+    Skipped, not failed, when no accelerator is present.
+    """
+    from oasis.quant import segment as sg
+    try:
+        import torch
+        if not torch.backends.mps.is_available():
+            print("  no MPS device — skipped")
+            return {"pass": True, "skipped": True}
+    except Exception:
+        print("  torch unavailable — skipped")
+        return {"pass": True, "skipped": True}
+
+    out = {}
+    for dev in ("cpu", "mps"):
+        model = sg.load_model(MODEL_DIR, dev)
+        labels = sg.segment_labels(rgb, model, dev)
+        hem, dab = sg._od_channels(rgb)
+        out[dev] = (labels, sg._measure(labels, hem, dab, PX))
+
+    a, b = out["cpu"], out["mps"]
+    same_labels = bool(np.array_equal(a[0], b[0]))
+    ca = np.asarray([r["centroid_px"] for r in a[1]])
+    cb = np.asarray([r["centroid_px"] for r in b[1]])
+    from validation.validate_native_segmenter import _greedy_match
+    mi, mj = _greedy_match(ca, cb, 1.0)
+    dab_mae = None
+    cls_same = None
+    if len(mi):
+        da = np.asarray([a[1][i]["measurements"]["DAB: Mean"] for i in mi])
+        db = np.asarray([b[1][j]["measurements"]["DAB: Mean"] for j in mj])
+        dab_mae = float(np.mean(np.abs(da - db)))
+    counts_equal = len(ca) == len(cb)
+    matched_all = len(mi) == len(ca) == len(cb)
+    ok = counts_equal and matched_all and (dab_mae is None or dab_mae <= 1e-3)
+    print(f"  cpu {len(ca)} cells vs mps {len(cb)} | matched within 1px {len(mi)} | "
+          f"label arrays identical {same_labels}")
+    print(f"  DAB MAE {dab_mae:.8f} OD (limit 1e-3, threshold is 0.2) -> "
+          f"{'PASS' if ok else 'FAIL'}")
+    return {"pass": ok, "n_cpu": len(ca), "n_mps": len(cb), "matched": int(len(mi)),
+            "labels_bit_identical": same_labels, "dab_mae_od": dab_mae}
+
+
 def check_i_tiled_tiff(rgb):
     """Read-path check for a tiled/pyramidal TIFF (the WSI-shaped case we can construct)."""
     import tifffile
@@ -174,6 +233,8 @@ def main():
     report["tile_invariance"] = check_h_tile_invariance(rgb)
     print("\nI. tiled/pyramidal TIFF read path")
     report["tiled_tiff"] = check_i_tiled_tiff(rgb)
+    print("\nJ. CPU vs accelerator equivalence")
+    report["device_equivalence"] = check_j_device_equivalence(rgb)
 
     ok = all(v.get("pass") for v in report.values())
     print(f"\n##METRICS## {json.dumps(report, default=str)}")

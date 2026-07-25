@@ -487,8 +487,18 @@ runner, same reports):
   validated corpus — minimum channel span is 98 over all 598 DeepLIIF panels and 144 on LL477,
   versus 10 for the blank crop — so it cannot alter any validated result. Note this also shows
   global normalisation is a *correctness* property, not only a tile-independence one: the same
-  blank crop under true whole-slide ranges yields 0 objects. **Decision: QuPath is removable —
-  the published figures survive the swap.**
+  blank crop under true whole-slide ranges yields 0 objects. **Full-slide run (completed):** the
+  whole 776 Mpx slide streamed in 32 stripes → **27,156 nuclei**, peak RSS **5.37 GB** against a
+  naive requirement of 18.6 GB; median nucleus area 35.4 µm² (≈6.7 µm equivalent diameter) and
+  ≈8,500 cells/mm² over the tissue, both well inside the pipeline's own plausibility band.
+  Runtime 49 min on CPU, ≈17 min on MPS. **Device:** the corpus was scored on CPU but the
+  shipped default is `device: mps` (598 panels 148.7 s → 51.8 s; a 2048-px tile 12.1 s → 2.4 s).
+  Equivalence measured, not assumed: identical total cell count (35,286) and **597/598 GeoJSON
+  files byte-identical**; the single differing file had the same 54 cells, all matched within
+  1 px, identical classifications, and a DAB mean differing by **1.5e-5 OD** — four orders of
+  magnitude below the 0.2 threshold. Equivalent for every decision the pipeline makes, but not
+  bit-identical in every case, so `segmenter_device` is recorded in each summary for provenance.
+  **Decision: QuPath is removable — the published figures survive the swap.**
 - **Keystone — degradation** (`tests/test_degradation.py`, the End-to-End validation): CODEX
   same-section truth (CD8 vs PD-1) → split to pseudo-serial + inject registration error →
   verdict must not flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and
