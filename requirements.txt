@@ -3,11 +3,10 @@
 # binning, percentiles, and Otsu output, which moves the null envelopes and
 # can change a significance verdict. Fixed seeds only make a run reproducible
 # if the libraries are also fixed.
+# pywebview: install WITHOUT the [qt] extra. On macOS the backend is pyobjc/WebKit;
+# PySide6 is 1.1 GB, is never imported by this codebase, and must stay out of the bundle.
 pywebview==6.2.1
 PyYAML==6.0.3
-python-dotenv==1.2.2
-google-genai==2.5.0
-anthropic==0.103.1
 opencv-python==4.13.0.92
 pillow==12.2.0
 tifffile==2026.5.15
@@ -28,3 +27,10 @@ SimpleITK==2.5.5
 # pyramidal WSIs cannot be thumbnailed and silently fall back to PIL.
 openslide-python==1.4.6
 openslide-bin==4.0.1.1
+
+# Deep-learning stack. torch runs BOTH the LoFTR matcher (via kornia, certification
+# correspondences) and the InstanSeg TorchScript nuclear segmenter. These were previously
+# installed ad hoc and unpinned — pinning them matters as much as numpy/scipy, since the
+# segmenter's output feeds every downstream count.
+torch==2.13.0
+kornia==0.8.3

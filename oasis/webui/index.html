@@ -1201,7 +1201,6 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div style="display:flex;gap:6px;align-items:center;margin-bottom:10px;flex-wrap:wrap">
             <span style="font-size:11px;color:var(--text3);margin-right:4px">Registration engine:</span>
             <button class="btn sm cert-mode-tab" id="cert-mode-loftr-tab" onclick="spatialCertSetMode('loftr')" title="Automatic LoFTR path (default): first try to certify the whole field; if it can't, find or draw disjoint local regions — each certified independently, no manual landmarks. Best for SIMILAR stains (e.g. both DAB).">LoFTR · automatic (default)</button>
-            <button class="btn sm cert-mode-tab" id="cert-mode-valis-tab" onclick="spatialCertSetMode('valis')" title="VALIS deep-feature registration for CROSS-MODAL stains (e.g. H&amp;E ↔ IHC), used as the PROVISIONAL alignment. Regions are still certified by the validated Fitzpatrick–West gate (LoFTR-in-ROI or manual landmarks); VALIS's structural residual is only a gross-error QC. Rigid only. Slower (isolated engine).">VALIS · cross-modal registration</button>
             <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab" onclick="spatialCertSetMode('landmark')" title="Advanced: the scientifically validated manual landmark certification. Place and verify anatomical correspondences by hand; optional single certification ROI.">Manual landmarks</button>
           </div>
           <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
@@ -1237,10 +1236,6 @@ td.muted { color: var(--text3); font-size: 11px; }
               <span class="section-label" style="margin:0">Analysis regions · <span id="spatial-region-engine-label">LoFTR</span></span>
               <span id="spatial-loftr-count" class="badge gray">0 regions</span>
             </div>
-            <div id="spatial-valis-note" style="display:none;padding:8px 10px;border:1px solid #ddd6fe;border-radius:8px;background:#f5f3ff;margin-bottom:10px;font-size:11px;color:#6d28d9">
-              <b>VALIS engine — registration, not a separate gate.</b> VALIS deep-feature registration gives a strong <b>cross-modal</b> (e.g. H&amp;E ↔ IHC) global alignment where <code>register_similarity</code> fails. That alignment is used as the <b>provisional</b>; regions are still <b>certified by the validated Fitzpatrick–West gate</b> (LoFTR-in-ROI, or manual landmarks). VALIS's own structural residual is shown only as a <b>gross-error QC</b>, never as a cell-scale certificate — a single global rigid can't reach cell scale on deforming sections (see <code>docs/valis_certification_research.md</code>). For truly cross-modal pairs, certify with <b>manual landmarks</b>: the VALIS alignment makes placing them fast and accurate. Runs in an isolated engine (slower).
-            </div>
-
             <!-- Path A — automatic (recommended) -->
             <div style="padding:10px 12px;border:1px solid #a5f3fc;border-radius:8px;background:#ecfeff;margin-bottom:10px">
               <div style="font-size:11px;font-weight:700;color:#0e7490;margin-bottom:8px">Recommended · automatic</div>
@@ -1267,7 +1262,7 @@ td.muted { color: var(--text3); font-size: 11px; }
               </div>
             </div>
 
-            <!-- Options (LoFTR only — VALIS uses no match tolerance / correspondence overlay) -->
+            <!-- Options -->
             <div id="spatial-loftr-only-opts" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text2)">
               <label>Match tolerance
                 <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:52px"> µm
@@ -3308,7 +3303,6 @@ async function spatialCertLoad() {
                       certifying:false, roiPoints:[], movRoi:null, roiMode:false,
                       loftrRois:[], loftrDraft:[], loftrMode:false, freehand:false };
   spatialCertRoiUpdateBadge(); loftrRoiSync(); spatialCertSetMode(spatialCertMode);
-  spatialCertProbeValis();
   const imgR = document.getElementById('spatial-cert-ref'), imgM = document.getElementById('spatial-cert-mov');
   imgR.onload = () => { lmFit('ref'); spatialCertRender(); };
   imgM.onload = () => { lmFit('mov'); spatialCertRender(); };
@@ -3503,7 +3497,6 @@ async function loftrRoiCertifyAll() {
       ref_path: w.pair.path_a, mov_path: w.pair.path_b, pixel_size_um: px,
       rois: todo.map(x => x.r.points), provisional_matrix: provisional,
       tol_um: loftrTolUm(), return_correspondences: loftrShowCorr(),
-      registration_engine: spatialCertEngine(),
       partition: true });   // split any overlaps: each intersection becomes its own region
   } catch (e) {
     btn.disabled = false; btn.textContent = 'Certify all regions';
@@ -3536,7 +3529,7 @@ function loftrRoiCommitCertifications() {
     if (prev && prev.method === 'user_roi_loftr_local') spatialCertForgetCurrentCertification();
     return;
   }
-  const engLabel = spatialEngineLabel(certs[0].source, certs[0].registration_engine);
+  const engLabel = spatialEngineLabel(certs[0].source);
   spatialCertifications[w.pair.sample_id] = {
     is_certified: true,
     status: certs.length > 1 ? `${certs.length} ROIs certified` : certs[0].verdict,
@@ -3558,24 +3551,10 @@ function loftrRoiCommitCertifications() {
     + `own local rigid transform. Deformed regions are excluded from analysis.</div></div>`;
   spatialAssocUpdateRunBtn();
 }
-// Render VALIS's gross-error QC (NOT a certificate) as a small inline note.
-function valisQcHtml(qc, nMatches) {
-  if (!qc) return '';
-  const ok = qc.ok_gross;
-  const col = ok ? '#6d28d9' : '#b91c1c';
-  const rm = (qc.region_max_um != null) ? `${Number(qc.region_max_um).toFixed(1)} µm` : '—';
-  const nm = (nMatches != null) ? ` · ${nMatches} matches` : '';
-  return `<br><span style="font-size:11px;color:${col}">VALIS registration QC: `
-    + `<b>${esc(ok ? 'no gross error' : 'gross misregistration')}</b> `
-    + `(structural residual ${rm}${nm}) — a gross-error check, not a cell-scale certificate.</span>`;
-}
-
-// Human-readable provenance for which engine produced a certified region. VALIS (when the
-// active engine) only supplied the provisional; the certificate itself is the LoFTR FW gate.
-function spatialEngineLabel(source, engine) {
-  const valisProv = (engine === 'valis') ? ' · VALIS provisional' : '';
-  if (source === 'landmark_fallback') return 'landmark fallback' + valisProv;
-  return 'LoFTR-in-ROI (no landmarks)' + valisProv;
+// Human-readable provenance for which engine produced a certified region.
+function spatialEngineLabel(source) {
+  if (source === 'landmark_fallback') return 'landmark fallback';
+  return 'LoFTR-in-ROI (no landmarks)';
 }
 function loftrRoiRenderList() {
   const w = spatialCertWork;
@@ -3670,56 +3649,24 @@ function loftrRoiSync() {
 
 // ── Certification mode switch (Landmark validated  ·  LoFTR automatic) ────────
 function spatialCertSetMode(mode) {
-  // Three registration engines. 'loftr' (default) and 'valis' share the automatic/draw-
-  // region workflow (.cert-only-loftr panel); 'landmark' is the manual validated gate.
-  spatialCertMode = (mode === 'valis') ? 'valis' : (mode === 'loftr') ? 'loftr' : 'landmark';
-  const regionEngine = (spatialCertMode === 'loftr' || spatialCertMode === 'valis');
+  // Two registration paths: 'loftr' is the automatic/draw-region workflow
+  // (.cert-only-loftr panel); 'landmark' is the manual validated gate.
+  spatialCertMode = (mode === 'loftr') ? 'loftr' : 'landmark';
+  const regionEngine = (spatialCertMode === 'loftr');
   document.querySelectorAll('.cert-only-landmark').forEach(el =>
     el.classList.toggle('cert-hidden', spatialCertMode !== 'landmark'));
   document.querySelectorAll('.cert-only-loftr').forEach(el =>
     el.classList.toggle('cert-hidden', !regionEngine));
-  ['landmark', 'loftr', 'valis'].forEach(m => {
+  ['landmark', 'loftr'].forEach(m => {
     const t = document.getElementById('cert-mode-' + m + '-tab');
     if (t) t.classList.toggle('active', spatialCertMode === m);
   });
-  // engine-specific chrome inside the shared region panel
-  const lbl = document.getElementById('spatial-region-engine-label');
-  if (lbl) lbl.textContent = (spatialCertMode === 'valis') ? 'LoFTR (VALIS provisional)' : 'LoFTR';
-  const note = document.getElementById('spatial-valis-note');
-  if (note) note.style.display = (spatialCertMode === 'valis') ? '' : 'none';
-  const opts = document.getElementById('spatial-loftr-only-opts');
-  if (opts) opts.style.display = (spatialCertMode === 'valis') ? 'none' : '';
   // leaving a mode cancels any in-progress drawing in the other
   const w = spatialCertWork;
   if (spatialCertMode !== 'landmark') { w.roiMode = false; }
   if (!regionEngine) { w.loftrMode = false; w.freehand = false; w.loftrDraft = []; }
   if (typeof spatialCertRoiUpdateBadge === 'function') spatialCertRoiUpdateBadge();
   loftrRoiSync();
-}
-
-// Which registration engine the automatic / draw-region path should send to the backend.
-function spatialCertEngine() { return (spatialCertMode === 'valis') ? 'valis' : 'loftr'; }
-
-// Grey out the VALIS engine tab when the isolated ~/valis_runtime is absent. Probed once
-// and cached; if unavailable and VALIS was the active mode, fall back to LoFTR.
-let _spatialValisAvail = null;
-async function spatialCertProbeValis() {
-  const tab = document.getElementById('cert-mode-valis-tab');
-  if (!tab) return;
-  if (_spatialValisAvail === null) {
-    try {
-      const r = await window.pywebview.api.valis_available();
-      _spatialValisAvail = !!(r && r.available);
-    } catch (e) { _spatialValisAvail = false; }
-  }
-  if (_spatialValisAvail) {
-    tab.disabled = false; tab.style.opacity = '';
-  } else {
-    tab.disabled = true; tab.style.opacity = '0.45';
-    tab.title = 'VALIS engine not installed — the isolated ~/valis_runtime environment is absent. '
-      + 'LoFTR and manual landmarks are available.';
-    if (spatialCertMode === 'valis') spatialCertSetMode('loftr');
-  }
 }
 
 function loftrTolUm() {
@@ -3748,22 +3695,20 @@ async function loftrAutoFind() {
     // Global-FIRST: try to certify the whole field; else fall back to disjoint local regions.
     r = await window.pywebview.api.certify_spatial_auto({
       ref_path: w.pair.path_a, mov_path: w.pair.path_b, pixel_size_um: px,
-      region_um: loftrRegionUm(), max_regions: 9,
-      registration_engine: spatialCertEngine() });
+      region_um: loftrRegionUm(), max_regions: 9 });
   } catch (e) {
     btn.disabled = false; btn.textContent = label;
     showToast('Certification failed: ' + e); return;
   }
   btn.disabled = false; btn.textContent = label;
   if (r.status !== 'ok') { showToast(r.error || 'Certification failed'); return; }
-  const qcHtml = valisQcHtml(r.valis_qc, r.valis_n_matches);
   if (r.mode === 'none') {
     const badge = document.getElementById('spatial-cert-badge');
     if (badge) { badge.textContent = 'NOT CERTIFIED'; badge.className = 'badge amber'; }
     const res = document.getElementById('spatial-cert-result');
     if (res) res.innerHTML = `<div class="science-summary"><div class="science-summary-copy">`
       + `<strong>Not certified</strong> — ${esc(r.reason || 'the sections are too deformed for cell-scale analysis')}`
-      + `${qcHtml}<br>Try the <b>Manual landmarks</b> path, or a different pair.</div></div>`;
+      + `<br>Try the <b>Manual landmarks</b> path, or a different pair.</div></div>`;
     spatialAssocUpdateRunBtn();
     showToast('Could not certify at cell scale.');
     return;
@@ -3772,17 +3717,13 @@ async function loftrAutoFind() {
   loftrRoiCommitCertifications();
   loftrRoiSync();
   if (r.mode === 'global') {
-    const gEng = spatialEngineLabel((r.regions && r.regions[0] || {}).source, r.registration_engine);
+    const gEng = spatialEngineLabel((r.regions && r.regions[0] || {}).source);
     const res = document.getElementById('spatial-cert-result');
     if (res) res.innerHTML = `<div class="science-summary"><div class="science-summary-copy">`
       + `<strong>Whole field ${esc(r.verdict || 'CERTIFIED')}</strong>${r.cell_error_um ? ' · cell error ' + r.cell_error_um + ' µm' : ''} · ${esc(gEng)} (global fit)`
-      + `<br>The entire section certified — analysed as one window, no regions needed.${qcHtml}</div></div>`;
+      + `<br>The entire section certified — analysed as one window, no regions needed.</div></div>`;
     showToast('✓ Whole field ' + esc(r.verdict || 'CERTIFIED') + (r.cell_error_um ? ` (${r.cell_error_um} µm)` : ''));
   } else {
-    if (qcHtml) {
-      const res = document.getElementById('spatial-cert-result');
-      if (res) res.innerHTML += `<div class="science-summary" style="margin-top:6px"><div class="science-summary-copy">${qcHtml}</div></div>`;
-    }
     showToast(`${r.n} disjoint region(s) certified locally` + (r.global_verdict ? ` — whole field was ${r.global_verdict}` : ''));
   }
 }
