@@ -95,6 +95,24 @@ jobs:
       - name: Build
         run: python -m PyInstaller --noconfirm --clean packaging/OASIS.spec
 
+      - name: Smoke-test the frozen bundle
+        # "It built" and "it works" are different claims. Every bundle-only failure so far
+        # (cv2 refusing to import inside a .app, torch absent from a build that completed
+        # happily, index.html resolved against a path that stops existing once frozen)
+        # produced a green build and a broken app. This drives the real frozen entry point
+        # on the model's own reference image, so a broken bundle cannot reach a release.
+        shell: bash
+        run: |
+          case "${{ runner.os }}" in
+            macOS)   BIN="dist/OASIS.app/Contents/MacOS/OASIS" ;;
+            Windows) BIN="dist/OASIS/OASIS.exe" ;;
+            *)       BIN="dist/OASIS/OASIS" ;;
+          esac
+          test -x "$BIN" || { echo "no executable at $BIN"; ls -R dist | head -40; exit 1; }
+          python packaging/smoke_test.py prepare --dir smoke
+          "$BIN" --oasis-worker run_pipeline --config smoke/config.yaml
+          python packaging/smoke_test.py check --dir smoke
+
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
