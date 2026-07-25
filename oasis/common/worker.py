@@ -32,6 +32,31 @@ import sys
 WORKER_FLAG = "--oasis-worker"
 
 
+def configure_stdio():
+    """Make stdout/stderr UTF-8 so progress output cannot kill a run on Windows.
+
+    Windows defaults console output to the legacy ANSI code page (cp1252), which cannot
+    encode characters this pipeline prints routinely — the ✓ in its completion banner, µ in
+    "µm/px", arrows in progress lines. Printing one raises UnicodeEncodeError.
+
+    That is not a cosmetic failure. It was found by the bundle smoke test: on Windows the
+    pipeline segmented the image correctly, wrote nothing wrong, and then died on the last
+    print of the run — after all the real work was done — and the process hung instead of
+    exiting. A crash while reporting success is indistinguishable from a crash while
+    working, unless you read the traceback.
+
+    errors="replace" rather than "strict" so that a character we did not anticipate degrades
+    to "?" instead of destroying a completed analysis.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        # None in a windowed frozen app; older/wrapped streams may lack reconfigure().
+        if stream is not None and hasattr(stream, "reconfigure"):
+            try:
+                stream.reconfigure(encoding="utf-8", errors="replace")
+            except (OSError, ValueError):
+                pass    # a stream we cannot reconfigure is not worth failing startup over
+
+
 def is_frozen():
     """True when running from a PyInstaller/py2app bundle rather than from source."""
     return bool(getattr(sys, "frozen", False))

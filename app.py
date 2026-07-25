@@ -22,7 +22,10 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 # Background jobs re-invoke this binary with --oasis-worker <module>. That must be handled
 # BEFORE anything GUI-related is imported, or a frozen worker would open a second window.
-from oasis.common.worker import dispatch_worker          # noqa: E402
+from oasis.common.worker import configure_stdio, dispatch_worker   # noqa: E402
+
+# Before the worker runs, so its progress output cannot die on a Windows code page.
+configure_stdio()
 
 if dispatch_worker():
     sys.exit(0)

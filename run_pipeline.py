@@ -16,6 +16,7 @@ import numpy as np
 import yaml
 
 from oasis.common.paths import bundled_model_dir, default_output_dir
+from oasis.common.worker import configure_stdio
 
 
 # ==========================================================
@@ -1986,6 +1987,10 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
 # ==========================================================
 
 if __name__ == "__main__":
+    # Also needed when run directly (`python run_pipeline.py`), not just via the frozen
+    # app, since a Windows console is cp1252 either way.
+    configure_stdio()
+
     parser = argparse.ArgumentParser(description="OASIS Pipeline")
     parser.add_argument("--config", default="config.yaml")
     parser.add_argument("--mode", default="quant",
