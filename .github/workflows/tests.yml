@@ -1,0 +1,48 @@
+name: tests
+
+# macOS is the platform OASIS targets and the one every reported number was
+# measured on, so CI runs there rather than on a cheaper Linux runner. pywebview
+# also needs a real WebKit backend, which the macOS runner has and Linux does not
+# without extra GTK packages the app would never use in practice.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install pinned dependencies
+        # Versions are pinned deliberately (see requirements.txt): numpy/scipy/opencv
+        # drift can move percentiles and Otsu output, which can flip a verdict.
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Show environment
+        run: |
+          python -VV
+          python -c "import torch; print('torch', torch.__version__, 'mps', torch.backends.mps.is_available())"
+
+      - name: Run test suite
+        # Dataset-backed tests skip with a message naming the dataset; datasets are
+        # never committed, so CI exercises the dataset-free tests.
+        run: python -m pytest -v
+
+      - name: Model fidelity against the vendored InstanSeg reference
+        # The strongest cheap check available without external data: the vendored
+        # model must still reproduce its own published reference output exactly.
+        run: python validation/validate_native_segmenter.py

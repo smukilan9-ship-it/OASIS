@@ -1,0 +1,25 @@
+name: Feature request
+description: Suggest a capability or change.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve
+      description: Describe the analysis you cannot currently do, not just the feature.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: What you have in mind
+
+  - type: textarea
+    id: scientific-impact
+    attributes:
+      label: Would this change any reported number?
+      description: >
+        If it touches segmentation, deconvolution, registration, null models, or
+        thresholds, say so. Those changes need a validation alongside them — see
+        CONTRIBUTING.md.

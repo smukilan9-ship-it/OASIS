@@ -156,3 +156,34 @@ Important fields:
 The `.gitignore` excludes local secrets, virtual environments, generated QuPath
 scripts, analysis outputs, and large microscopy image formats. Keep raw datasets
 and machine-specific files outside Git.
+
+## Building the desktop bundle
+
+```bash
+./packaging/build.sh
+```
+
+Produces `dist/OASIS.app` (~900 MB unpacked). The bundle is a release asset and is
+never committed. Sign and notarize before distributing, or macOS Gatekeeper will
+refuse to open it on any machine but the one that built it; `build.sh` prints the
+exact commands. See `packaging/OASIS.spec` for the freeze recipe and the three
+bundle-only failures it works around.
+
+## Contributing, issues, and support
+
+- **Report a bug or ask a question:**
+  <https://github.com/smukilan9-ship-it/ihc-analysis-/issues>
+- **Contributing guidelines:** [CONTRIBUTING.md](CONTRIBUTING.md) — note the extra
+  requirements for any change that affects a reported number.
+- **Code of conduct:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+
+Please do not attach patient images or identifiable data to issues.
+
+## License and citation
+
+OASIS is released under the MIT License ([LICENSE](LICENSE)).
+
+The bundled InstanSeg `brightfield_nuclei` weights in `models/` are Apache-2.0 and
+carry their own attribution and citation requirements, including the licences of
+the datasets they were trained on — see [models/NOTICE.md](models/NOTICE.md). Work
+using OASIS's segmentation should cite InstanSeg as well as OASIS.

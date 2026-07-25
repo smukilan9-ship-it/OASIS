@@ -1,0 +1,62 @@
+name: Bug report
+description: Something crashes, or produces a wrong or surprising number.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Please do not attach patient images or any identifiable data.** A
+        non-identifiable crop or a synthetic image that reproduces the behaviour
+        is enough. If it can only be shown with restricted data, describe it
+        instead and say so.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What did you expect, and what did you get instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Config used (or the command line)
+        2. What kind of image (stain, magnification, pixel size, WSI or tile)
+        3. What you clicked / ran
+    validations:
+      required: true
+
+  - type: textarea
+    id: summary-json
+    attributes:
+      label: Run summary JSON
+      description: >
+        Paste the contents of the run's `*_summary.json`. It records pixel size,
+        DAB threshold, segmenter, device, and git SHA — usually enough to
+        reproduce the run exactly.
+      render: json
+
+  - type: input
+    id: version
+    attributes:
+      label: OASIS version or commit SHA
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: OS and Python version
+      placeholder: "macOS 15.3 (arm64), Python 3.14.0 — or: OASIS.app bundle"
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error output
+      description: Full traceback or the on-screen error, if any.
+      render: shell

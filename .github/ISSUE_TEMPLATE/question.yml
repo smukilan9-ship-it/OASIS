@@ -1,0 +1,28 @@
+name: Question / support
+description: How do I do X? Is this result meaningful?
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        There is no separate forum or mailing list — questions here help the next
+        person with the same one.
+
+        If you are asking whether a result is meaningful, please include the run's
+        `*_summary.json`, and for spatial runs the **registration certification
+        verdict**. Many "this number looks wrong" questions turn out to be a
+        registration or bandwidth gate doing its job, and the verdict says which.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Your question
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Run context (optional)
+      description: Summary JSON, certification verdict, or what you ran.
+      render: json
