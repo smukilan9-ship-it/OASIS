@@ -1,10 +1,16 @@
-# PyInstaller spec for the OASIS desktop app.
+# PyInstaller spec for the OASIS desktop app. Cross-platform.
 #
-# Build with:  ./packaging/build.sh          (from the repo root)
-# or directly: pyinstaller --noconfirm packaging/OASIS.spec
+# Build with:  ./packaging/build.sh          (macOS/Linux, from the repo root)
+# or directly: pyinstaller --noconfirm packaging/OASIS.spec     (any platform)
+#
+# Output differs by platform and that is deliberate:
+#   macOS   -> dist/OASIS.app     (application bundle)
+#   Windows -> dist/OASIS/OASIS.exe
+#   Linux   -> dist/OASIS/OASIS
 #
 # Verified on macOS arm64, Python 3.14.0, PyInstaller 6.21.0, torch 2.13.0. MPS works
-# inside the frozen binary, so the shipped `device: mps` default survives freezing.
+# inside the frozen binary, so the shipped `device: mps` default survives freezing. On
+# Windows and Linux torch has no MPS and `_torch_device` falls back to CPU on its own.
 #
 # THREE THINGS THAT BREAK A NAIVE BUILD, and why each line below exists:
 #
@@ -29,6 +35,7 @@
 #     packaging/rthook_cv2.py for the mechanism. This one appears only in the .app; a
 #     plain --onedir build imports cv2 fine, so it cannot be caught before BUNDLE.
 import os
+import sys
 
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
@@ -57,7 +64,10 @@ hiddenimports = collect_submodules("torch") + [
 ]
 
 excludes = [
-    "PySide6", "PyQt5", "PyQt6",   # pywebview uses the macOS WebKit backend, not Qt.
+    # pywebview uses the native backend on every platform we ship: WebKit via pyobjc on
+    # macOS, WebView2 via pythonnet on Windows, GTK/WebKit2 on Linux. Qt is never used and
+    # PySide6 alone is ~1.1 GB, so it must never be pulled in.
+    "PySide6", "PyQt5", "PyQt6",
     "tensorboard", "tests",
     "matplotlib.tests", "numpy.tests", "scipy.tests",
 ]
@@ -97,15 +107,19 @@ coll = COLLECT(
     name="OASIS",
 )
 
-app = BUNDLE(
-    coll,
-    name="OASIS.app",
-    icon=None,
-    bundle_identifier="io.github.smukilan9.oasis",
-    info_plist={
-        "NSHighResolutionCapable": True,
-        "LSMinimumSystemVersion": "12.0",
-        # The app opens user-selected slide images; no other privileged access.
-        "NSPrincipalClass": "NSApplication",
-    },
-)
+# Only macOS wraps the collected tree in an application bundle. On Windows and Linux the
+# COLLECT directory *is* the deliverable (OASIS/OASIS.exe, OASIS/OASIS), and asking for a
+# BUNDLE there produces nothing useful.
+if sys.platform == "darwin":
+    app = BUNDLE(
+        coll,
+        name="OASIS.app",
+        icon=None,
+        bundle_identifier="io.github.smukilan9.oasis",
+        info_plist={
+            "NSHighResolutionCapable": True,
+            "LSMinimumSystemVersion": "12.0",
+            # The app opens user-selected slide images; no other privileged access.
+            "NSPrincipalClass": "NSApplication",
+        },
+    )

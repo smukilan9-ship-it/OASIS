@@ -1,0 +1,125 @@
+name: release
+
+# Builds the desktop bundle on each platform and attaches it to a GitHub Release.
+#
+# PyInstaller cannot cross-compile: every OS/architecture must be built on its own runner.
+# That is the whole reason this matrix exists.
+#
+# Intel macOS is absent on purpose — PyTorch publishes no macOS x86_64 wheel, so there is
+# no segmenter and therefore nothing to build. See the platform table in README.md.
+#
+# Each job also publishes a SHA-256 for its asset. That is not decoration: a QuPath
+# extension that downloads and executes one of these bundles has to be able to verify what
+# it fetched (see issue #8).
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:      # so the build can be exercised without cutting a release
+
+permissions:
+  contents: write         # required to create/modify releases
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    # Only the macOS bundle is a supported deliverable today. Windows and Linux are being
+    # brought up (issue #4); a failure there must not fail the whole release.
+    continue-on-error: ${{ matrix.advisory }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            name: macOS arm64
+            asset: OASIS-macos-arm64.zip
+            advisory: false
+          - os: windows-latest
+            name: Windows x64
+            asset: OASIS-windows-x64.zip
+            advisory: true
+          - os: ubuntu-latest
+            name: Linux x86_64
+            asset: OASIS-linux-x86_64.tar.gz
+            advisory: true
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+
+      - name: Install Linux GUI backend dependencies
+        # pywebview has no bundled backend on Linux; it binds to the system GTK/WebKit2
+        # stack, which must be present for PyInstaller to analyse the import.
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
+            gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Install Windows GUI backend
+        # pywebview drives the WebView2 runtime through pythonnet on Windows.
+        if: runner.os == 'Windows'
+        run: pip install pythonnet
+
+      - name: Verify the vendored model is present
+        # Building without it yields an app that starts and then fails on the first image.
+        run: python -c "from oasis.common.paths import bundled_model_dir; p = bundled_model_dir(); assert p, 'vendored InstanSeg model missing'; print('model:', p)"
+
+      - name: Build
+        run: python -m PyInstaller --noconfirm --clean packaging/OASIS.spec
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          test -d dist/OASIS.app || { echo "dist/OASIS.app was not produced"; exit 1; }
+          ditto -c -k --keepParent dist/OASIS.app "${{ matrix.asset }}"
+          shasum -a 256 "${{ matrix.asset }}" | tee "${{ matrix.asset }}.sha256"
+
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          test -d dist/OASIS || { echo "dist/OASIS was not produced"; exit 1; }
+          tar -czf "${{ matrix.asset }}" -C dist OASIS
+          sha256sum "${{ matrix.asset }}" | tee "${{ matrix.asset }}.sha256"
+
+      - name: Package (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/OASIS)) { throw "dist/OASIS was not produced" }
+          Compress-Archive -Path dist/OASIS -DestinationPath "${{ matrix.asset }}"
+          $h = (Get-FileHash "${{ matrix.asset }}" -Algorithm SHA256).Hash.ToLower()
+          "$h  ${{ matrix.asset }}" | Tee-Object -FilePath "${{ matrix.asset }}.sha256"
+
+      - name: Report size
+        shell: bash
+        run: ls -lh "${{ matrix.asset }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset }}
+          path: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
+          retention-days: 14
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
