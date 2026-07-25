@@ -507,6 +507,49 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": ["qupath", "instanseg"],
     },
     {
+        "id": "native_segmenter_fidelity",
+        "title": "In-process InstanSeg reproduces the model and QuPath's deconvolution",
+        "category": "segmentation",
+        "claim": "Running the InstanSeg TorchScript bundle in-process reproduces the model's own "
+                 "reference output exactly, and reproduces QuPath's 'DAB: Mean' colour "
+                 "deconvolution to within 0.004 OD.",
+        "purpose": "Isolate the two mechanical halves of dropping QuPath — can we run the model, "
+                   "and can we reproduce the stain measurement — from segmentation variability.",
+        "why": "Every published quantification number was measured through QuPath. Replacing the "
+               "segmenter invalidates them unless the replacement demonstrably agrees.",
+        "datasets": [],
+        "assumptions": "QuPath's fixed BRIGHTFIELD_H_DAB stain vectors and 255 white point "
+                       "(the generated Groovy never estimated stain vectors).",
+        "limitations": "Check B uses QuPath's own polygons, so it tests colour maths only. "
+                       "Check C (end-to-end on one image) is reported, not asserted — it has no "
+                       "ground truth to arbitrate a segmentation disagreement.",
+        "interpretation": "A must be exact. B must reach r ≥ 0.99, slope 1 ± 0.05, MAE ≤ 0.01 OD.",
+        "expected": "A: 336/336 labels, exact. B: r 0.9986, slope 0.991, MAE 0.0035 OD.",
+        "runner": {"kind": "script", "script": "validate_native_segmenter.py"},
+        "runtime_tier": "short", "external_deps": ["instanseg"],
+    },
+    {
+        "id": "native_segmenter_deepliif_parity",
+        "title": "Native segmenter parity gate vs QuPath (DeepLIIF IF truth)",
+        "category": "segmentation",
+        "claim": "Swapping QuPath for the in-process segmenter leaves every published "
+                 "detection and classification figure unchanged within ±0.03.",
+        "purpose": "Re-run the 598-image DeepLIIF IF-truth benchmark with the native segmenter "
+                   "and diff it against the recorded QuPath run, through the SAME scorer.",
+        "why": "This is the gate for removing QuPath. Fidelity checks show the parts agree; only "
+               "this shows the published numbers survive.",
+        "datasets": ["deepliif"],
+        "assumptions": "Same pixel size (0.25 µm) and DAB threshold (0.2) as the recorded run; "
+                       "the QuPath outputs on disk are the ones RESULTS.md reports.",
+        "limitations": "Ki67 is nuclear — this validates nuclear segmentation and classification. "
+                       "Membranous measurement parity needs the HNSCC CD8 harness.",
+        "interpretation": "All five figures within ±0.03 of the QuPath run = QuPath removable.",
+        "expected": "det-recall 0.752→0.747, det-precision 0.871→0.876, class-F1 0.809→0.812, "
+                    "class-acc 0.928→0.929, e2e-F1 0.666→0.669. All |Δ| ≤ 0.005.",
+        "runner": {"kind": "script", "script": "validate_native_segmenter_deepliif.py"},
+        "runtime_tier": "long", "external_deps": ["instanseg"],
+    },
+    {
         "id": "membrane_cd8_hnscc",
         "title": "Membranous CD8 vs HNSCC IF truth",
         "category": "quantification",

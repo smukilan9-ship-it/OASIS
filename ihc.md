@@ -438,6 +438,23 @@ runner, same reports):
   signal-inference (§1) that additionally cannot do membranous CD8/TIM-3. Native `deepliif`
   can't run on the repo's Python 3.14 (2021-era stack) → isolated py3.11 env, project `.venv`
   untouched. **Decision: InstanSeg stays.**
+- **Segmenter runtime — QuPath vs in-process TorchScript** (`oasis/quant/segment.py`,
+  `validation/validate_native_segmenter*.py`, 2026-07-25) — the *model* is unchanged
+  (InstanSeg `brightfield_nuclei`); only the thing that runs it changed, from the QuPath binary
+  + generated Groovy to an in-process `torch.jit` call. Three checks. (a) **Model fidelity:**
+  the TorchScript bundle, fed through our own rdf.yaml `scale_range` preprocessing, reproduces
+  the model's shipped reference output **exactly** (336/336 labels, foreground IoU 1.0).
+  (b) **Deconvolution parity:** our DAB optical density inside QuPath's *own* nucleus polygons
+  vs QuPath's exported `DAB: Mean` — r **0.9986**, slope 0.991, MAE **0.0035 OD** (n=1500,
+  LL477 CD8). (c) **The gate — 598-image DeepLIIF IF-truth benchmark re-run and diffed through
+  the same scorer:** det-recall 0.752→**0.747**, det-precision 0.871→**0.876**, class-only F1
+  0.809→**0.812**, class accuracy 0.928→**0.929**, end-to-end F1 0.666→**0.669**; every
+  |Δ| ≤ 0.005. Runtime 0.25 s/image on CPU. Two QuPath behaviours had to be reproduced
+  explicitly and are the non-obvious part: **resampling to the model's trained 0.5 µm/px**
+  (`getPreferredDownsample`, clamped at 1.0 — never upsample; on 0.752 µm/px LL477 upsampling
+  inflates counts 4796→6719 because enlarged nuclei get split) and **512-px tiling with 32-px
+  context padding plus centroid-in-core object ownership** (without which every seam
+  double-counts). **Decision: QuPath is removable — the published figures survive the swap.**
 - **Keystone — degradation** (`tests/test_degradation.py`, the End-to-End validation): CODEX
   same-section truth (CD8 vs PD-1) → split to pseudo-serial + inject registration error →
   verdict must not flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and
