@@ -52,5 +52,7 @@ validation_reports/
 validation_datasets/
 graphify-out/
 
-# Local editor/agent session files
-
+# Packaging artifacts (the shipped bundle is a GitHub Release asset, never a git object)
+build/
+dist/
+*.dmg

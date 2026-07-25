@@ -1,9 +1,9 @@
 # OASIS
 
 Desktop and command-line tooling for automated immunohistochemistry (IHC)
-analysis of H-DAB/DAB-stained tissue images. The pipeline uses QuPath with
-InstanSeg for nucleus detection, exports cell-level results, draws overlays,
-and generates dashboard and Excel summaries.
+analysis of H-DAB/DAB-stained tissue images. The pipeline runs the InstanSeg
+`brightfield_nuclei` model in-process for nucleus detection, exports cell-level
+results, draws overlays, and generates dashboard and Excel summaries.
 
 The project is designed for research workflows where repeated manual cell
 counting is slow or inconsistent. It keeps microscope-specific settings local
@@ -12,12 +12,11 @@ and does not require committing image data, API keys, or per-machine paths.
 ## Features
 
 - Batch DAB-positive cell quantification from brightfield IHC images.
-- QuPath headless execution with InstanSeg `brightfield_nuclei`.
+- In-process InstanSeg `brightfield_nuclei` segmentation (no external tooling).
 - Fixed DAB optical-density threshold with configurable pixel size.
 - GeoJSON cell-boundary export and OpenCV overlay rendering.
 - HTML dashboard and Excel workbook generation.
-- pywebview desktop UI for setup, experiment management, analysis, results,
-  and optional AI-assisted result discussion.
+- pywebview desktop UI for setup, experiment management, analysis, and results.
 - Spatial-association workflow for paired serial-section stains using image
   registration and population-level cross-type Ripley's K analysis (NOT
   single-cell co-expression, which serial sections cannot establish).
@@ -26,7 +25,7 @@ and does not require committing image data, API keys, or per-machine paths.
 
 ```text
 Raw images
-  -> QuPath headless + InstanSeg
+  -> in-process InstanSeg (TorchScript)
   -> CSV / GeoJSON / JSON exports
   -> Python overlays, dashboard, Excel, spatial association
   -> pywebview desktop UI
@@ -35,14 +34,13 @@ Raw images
 ## Requirements
 
 - Python 3.10 or newer.
-- QuPath 0.7.x with the InstanSeg extension installed.
-- InstanSeg `brightfield_nuclei-0.1.1` model downloaded locally.
+- InstanSeg `brightfield_nuclei-0.1.1` model available locally.
 - macOS is the currently targeted desktop environment.
 
-Optional AI chat support uses either:
-
-- `GEMINI_API_KEY` for Gemini.
-- `ANTHROPIC_API_KEY` for the Anthropic API.
+QuPath is **not** required. It remains supported as an escape hatch by setting
+`segmenter: qupath` in `config.yaml`, which additionally needs QuPath 0.7.x with
+the InstanSeg extension and a `qupath_binary` path. The two paths are gated
+against each other on a 598-image benchmark; see `ihc.md` §7.
 
 ## Setup
 
@@ -50,7 +48,6 @@ Optional AI chat support uses either:
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env
 cp config.example.yaml config.yaml
 ```
 
@@ -59,8 +56,8 @@ Edit `config.yaml` with local paths for:
 - `input_dir`
 - `output_dir`
 - `dashboard_dir`
-- `qupath_binary`
 - `instanseg_model`
+- `qupath_binary` (only when `segmenter: qupath`)
 
 The desktop app also stores user setup in `~/.ihc_analyzer/`.
 
@@ -76,8 +73,9 @@ python app.py
 python run_pipeline.py --config config.yaml
 ```
 
-The pipeline scans `input_dir` for supported image files, runs QuPath
-headlessly, and writes results to `output_dir` and `dashboard_dir`.
+The pipeline scans `input_dir` for supported image files, segments them
+in-process with InstanSeg, and writes results to `output_dir` and
+`dashboard_dir`.
 
 ## Run Spatial Association
 
