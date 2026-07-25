@@ -454,7 +454,25 @@ runner, same reports):
   (`getPreferredDownsample`, clamped at 1.0 — never upsample; on 0.752 µm/px LL477 upsampling
   inflates counts 4796→6719 because enlarged nuclei get split) and **512-px tiling with 32-px
   context padding plus centroid-in-core object ownership** (without which every seam
-  double-counts). **Decision: QuPath is removable — the published figures survive the swap.**
+  double-counts). Two further findings came out of validating the parts the DeepLIIF gate
+  cannot reach — its 512-px panels resample to 256 px, i.e. a *single tile*, so tiling was
+  untested by it. (i) **Contested pixels at seams:** neighbouring tiles infer independently over
+  the shared padded band and disagree at object edges, so a later tile could overwrite an object
+  an earlier one had emitted — measured on LL477/256 px, one object destroyed and one reduced to
+  a fragment out of 5397. Contested pixels now go to the first claimant. (ii) **Normalisation
+  must be global, not per-tile.** The rdf `scale_range` percentiles computed per tile make the
+  count depend on tile size: LL477 gives 5396 objects at 256 px, 5379 at 512 px, 4657 whole — a
+  16% spread driven by a performance knob. Computing them once over the image gives
+  4611/4632/4651/4657 (**0.7% spread**) and lands closer to QuPath. Post-fix: whole-vs-tiled
+  agreement recall **0.989**, precision **0.999**, **0 duplicate** objects, residual 1%
+  disagreement correctly concentrated at seams (54% within 8 px vs 12.6% baseline); LL477 count
+  ratio vs QuPath **0.966** (was 1.40), det-F1 **0.819**, class agreement **0.999**. Also
+  verified: bit-identical repeat runs, Otsu identical to a transliteration of the Groovy,
+  degenerate inputs (blank/tiny/1-px/thin-strip) return empty without raising, and the membrane
+  path (`measure_cytoplasm_dab`) consumes native GeoJSON with ring-DAB median shift 0.0026 OD
+  and membrane-positive rate shift 0.000. **Not validated: a genuine SVS/NDPI** (none available
+  locally) — only the tiled-TIFF read path. **Decision: QuPath is removable — the published
+  figures survive the swap; WSI reading to be confirmed before release.**
 - **Keystone — degradation** (`tests/test_degradation.py`, the End-to-End validation): CODEX
   same-section truth (CD8 vs PD-1) → split to pseudo-serial + inject registration error →
   verdict must not flip. Real truth `csr_only` stable under 1–3° / 3–8 px; engaged and

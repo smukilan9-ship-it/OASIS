@@ -122,11 +122,22 @@ def load_model(model_dir, device="cpu"):
     return _MODEL_CACHE[key]
 
 
-def _normalize(tile_rgb):
+def _normalize(rgb):
     """rdf.yaml `scale_range` preprocessing: per-channel percentile normalisation over the
     spatial axes, 0.1 / 99.9, eps 1e-6. Verified to reproduce the model's shipped reference
-    output exactly."""
-    x = np.asarray(tile_rgb, dtype=np.float32).transpose(2, 0, 1)[None]
+    output exactly.
+
+    APPLIED ONCE OVER THE WHOLE IMAGE, NOT PER TILE. Normalising each tile against its own
+    percentiles makes the model's input — and therefore the cell count — depend on the tile
+    size, which is an arbitrary performance knob. Measured on LL477: per-tile normalisation
+    gives 5396 objects at 256 px, 5379 at 512 px and 4657 as a single tile (a 16% spread),
+    while normalising globally gives 4611 / 4632 / 4651 / 4657 — a 1% spread, and closer to
+    QuPath's 4796. A tissue-density statistic must not move when someone changes a tiling
+    parameter for speed.
+
+    Returns NCHW float32, batch size 1.
+    """
+    x = np.asarray(rgb, dtype=np.float32).transpose(2, 0, 1)[None]
     for c in range(x.shape[1]):
         ch = x[0, c]
         lo = np.percentile(ch, 0.1)
@@ -135,10 +146,10 @@ def _normalize(tile_rgb):
     return x
 
 
-def _infer(model, tile_rgb, device="cpu"):
-    """Run the model on one RGB tile, returning an integer label mask."""
+def _forward(model, chw, device="cpu"):
+    """Run the model on one already-normalised NCHW tile, returning an integer label mask."""
     import torch
-    x = torch.from_numpy(_normalize(tile_rgb))
+    x = torch.from_numpy(np.ascontiguousarray(chw))
     if device != "cpu":
         x = x.to(device)
     with torch.no_grad():
@@ -167,24 +178,35 @@ def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=No
     An object straddling a seam is therefore emitted once, by exactly one tile, and always by a
     tile that saw it with padding context on that side. Objects whose centroid falls outside the
     core are dropped here because the neighbouring tile owns them.
+
+    CONTESTED PIXELS. Ownership decides who EMITS an object, but two neighbouring tiles still
+    infer independently over their shared padded band and can disagree about where one nucleus
+    ends and the next begins. A later tile writing its object over the same pixels would erase
+    part of an object an earlier tile already emitted. Measured on LL477 with 256 px tiles before
+    this guard: one object was overwritten to zero pixels and one reduced to a fragment, out of
+    5397. Contested pixels therefore go to whoever claimed them first, and an object left with
+    fewer than 3 pixels is not emitted at all — so a zero-pixel label can never reach the
+    measurement stage (where it would produce a NaN centroid). Single-tile images have no
+    padded band and so are unaffected by this rule.
     """
-    import cv2
     h, w = rgb.shape[:2]
+    norm = _normalize(rgb)                     # once, globally — see _normalize
     labels = np.zeros((h, w), dtype=np.int32)
     next_id = 1
+    contested = 0
     tiles = _tile_grid(h, w, tile, pad)
     for i, ((y0, y1, x0, x1), (py0, py1, px0, px1)) in enumerate(tiles):
         if progress:
             progress(i + 1, len(tiles))
-        sub = rgb[py0:py1, px0:px1]
-        if sub.shape[0] < MIN_TILE or sub.shape[1] < MIN_TILE:
-            ph = max(MIN_TILE - sub.shape[0], 0)
-            pw = max(MIN_TILE - sub.shape[1], 0)
-            sub = cv2.copyMakeBorder(sub, 0, ph, 0, pw, cv2.BORDER_REPLICATE)
-        lab = _infer(model, sub, device)
+        sub = norm[:, :, py0:py1, px0:px1]
+        th, tw = sub.shape[2], sub.shape[3]
+        if th < MIN_TILE or tw < MIN_TILE:      # model needs >= 32 px per spatial axis
+            sub = np.pad(sub, ((0, 0), (0, 0), (0, max(MIN_TILE - th, 0)),
+                               (0, max(MIN_TILE - tw, 0))), mode="edge")
+        lab = _forward(model, sub, device)
         lab = lab[:py1 - py0, :px1 - px0]
-        ids = np.unique(lab)
-        for oid in ids:
+        window = labels[py0:py1, px0:px1]
+        for oid in np.unique(lab):
             if oid == 0:
                 continue
             m = (lab == oid)
@@ -194,8 +216,16 @@ def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=No
             # core ownership — the half-open convention makes the cores a true partition
             if not (y0 <= cy < y1 and x0 <= cx < x1):
                 continue
-            labels[py0:py1, px0:px1][m] = next_id
+            free = m & (window == 0)
+            n_free = int(free.sum())
+            if n_free < 3:
+                continue
+            if n_free != int(m.sum()):
+                contested += 1
+            window[free] = next_id
             next_id += 1
+    if contested and progress:
+        progress(len(tiles), len(tiles))
     return labels
 
 

@@ -202,6 +202,86 @@ def check_c_end_to_end(image_path, geojson_path, px_um, dab_thr, device="cpu", t
             "downsample": res["downsample"], "secs": round(secs, 1)}
 
 
+def check_d_tiling(image_path, px_um, device="cpu", tile=256, tol_px=3.0):
+    """Does tiling change the answer?
+
+    The DeepLIIF parity gate could not test this: its 512 px panels at 0.25 µm/px resample to
+    256 px, which is ONE tile. So the seam logic — context padding plus centroid-in-core
+    ownership — was never exercised by the numbers that cleared QuPath.
+
+    Here the SAME image is segmented twice: once whole (a single tile, no seams anywhere) and
+    once with a deliberately small tile so seams cut through the middle of the tissue. A correct
+    implementation gives nearly the same objects. Two failure modes are checked by name:
+
+      DUPLICATES  — an object emitted by two tiles appears as two detections a few pixels apart.
+                    Counted directly as near-coincident pairs in the tiled result.
+      SEAM LOSS   — an object dropped by both tiles. Would show as whole-only objects whose
+                    centroids sit on a seam line, so mismatches are reported by distance to the
+                    nearest seam.
+    """
+    import numpy as np
+    from oasis.quant import segment as sg
+    from oasis.quant.cell_expansion import _load_rgb_full
+    from scipy.spatial import cKDTree
+
+    rgb = _load_rgb_full(os.path.expanduser(image_path))
+    h, w = rgb.shape[:2]
+    model = sg.load_model(MODEL_DIR, device)
+
+    whole = sg.segment_labels(rgb, model, device=device, tile=max(h, w) + 64)
+    tiled = sg.segment_labels(rgb, model, device=device, tile=tile)
+
+    def _centroids(lab):
+        from scipy import ndimage
+        n = int(lab.max())
+        if n == 0:
+            return np.zeros((0, 2))
+        c = ndimage.center_of_mass(lab > 0, lab, range(1, n + 1))
+        return np.asarray([(x, y) for y, x in c])
+
+    cw, ct = _centroids(whole), _centroids(tiled)
+
+    # duplicates: near-coincident pairs within the TILED result
+    dups = 0
+    if len(ct) > 1:
+        tree = cKDTree(ct)
+        dups = sum(1 for pair in tree.query_pairs(r=tol_px))
+
+    mi, mj = _greedy_match(cw, ct, tol_px)
+    recall = len(mi) / len(cw) if len(cw) else 0.0
+    precision = len(mi) / len(ct) if len(ct) else 0.0
+
+    # how far are the UNMATCHED whole-image objects from a seam? if seam loss is the cause,
+    # they cluster at distance ~0; if it is ordinary edge-context variation, they scatter.
+    seam_dist = None
+    unmatched = np.setdiff1d(np.arange(len(cw)), mi)
+    if len(unmatched):
+        xs = cw[unmatched, 0] % tile
+        ys = cw[unmatched, 1] % tile
+        d = np.minimum(np.minimum(xs, tile - xs), np.minimum(ys, tile - ys))
+        seam_dist = {"median_px": float(np.median(d)),
+                     "frac_within_8px_of_seam": float(np.mean(d <= 8))}
+    # baseline: what fraction of ALL objects lie within 8 px of a seam? if the unmatched are
+    # not enriched above this, seams are not the explanation.
+    xs, ys = cw[:, 0] % tile, cw[:, 1] % tile
+    dall = np.minimum(np.minimum(xs, tile - xs), np.minimum(ys, tile - ys))
+    base_frac = float(np.mean(dall <= 8)) if len(cw) else 0.0
+
+    n_tiles = len(sg._tile_grid(h, w, tile))
+    ok = dups == 0 and recall >= 0.97 and precision >= 0.97
+    print(f"  whole-image {len(cw)} objects (1 tile) vs tiled {len(ct)} ({n_tiles} tiles of {tile})")
+    print(f"  agreement: recall {recall:.4f} precision {precision:.4f} | "
+          f"duplicate pairs in tiled result: {dups}")
+    if seam_dist:
+        print(f"  unmatched whole-image objects: {len(unmatched)} | "
+              f"{seam_dist['frac_within_8px_of_seam']:.3f} within 8px of a seam "
+              f"(baseline for all objects: {base_frac:.3f})")
+    print(f"  -> {'PASS' if ok else 'FAIL'}")
+    return {"pass": ok, "n_whole": len(cw), "n_tiled": len(ct), "n_tiles": n_tiles,
+            "recall": recall, "precision": precision, "duplicate_pairs": dups,
+            "unmatched_seam_profile": seam_dist, "seam_baseline_frac": base_frac}
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--image", default=DEFAULT_IMAGE)
@@ -210,6 +290,7 @@ def main():
     ap.add_argument("--dab-threshold", type=float, default=DEFAULT_DAB_THR)
     ap.add_argument("--device", default="cpu")
     ap.add_argument("--skip-e2e", action="store_true")
+    ap.add_argument("--skip-tiling", action="store_true")
     args = ap.parse_args()
 
     report = {}
@@ -227,13 +308,19 @@ def main():
     else:
         print("\nB/C skipped — no reference QuPath export at the given paths.")
 
-    ok = report["model_fidelity"]["pass"] and report.get("deconvolution", {"pass": True})["pass"]
+    if os.path.exists(args.image) and not args.skip_tiling:
+        print("\nD. tiling / seam handling (whole-image vs forced small tiles)")
+        report["tiling"] = check_d_tiling(args.image, args.px, args.device)
+
+    ok = (report["model_fidelity"]["pass"]
+          and report.get("deconvolution", {"pass": True})["pass"]
+          and report.get("tiling", {"pass": True})["pass"])
     print(f"\n##METRICS## {json.dumps(report, default=str)}")
     out = os.environ.get("OASIS_REPORT_DIR")
     if out:
         with open(os.path.join(out, "native_segmenter_parity.json"), "w") as f:
             json.dump(report, f, indent=2)
-    print(f"\n{'PASS' if ok else 'FAIL'} (A + B are the assertive checks; C is reported)")
+    print(f"\n{'PASS' if ok else 'FAIL'} (A, B, D are assertive; C is reported)")
     return 0 if ok else 1
 
 

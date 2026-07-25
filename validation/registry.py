@@ -529,6 +529,52 @@ VALIDATIONS = [
         "runtime_tier": "short", "external_deps": ["instanseg"],
     },
     {
+        "id": "native_segmenter_membrane",
+        "title": "Membrane/cytoplasm path on native segmenter output",
+        "category": "quantification",
+        "claim": "measure_cytoplasm_dab consumes native GeoJSON and produces the same "
+                 "population-level membranous call as it did from QuPath output.",
+        "purpose": "The membrane path calibrates its Macenko-estimated DAB channel against the "
+                   "GeoJSON's 'DAB: Mean' and refuses to run without >=50 references. Confirm "
+                   "the anchor is satisfied by native output and the measurements do not shift.",
+        "why": "The nuclear parity gate does not exercise the ring/completeness path at all, and "
+               "that path is what CD8/TIM-3 membranous calls depend on.",
+        "datasets": [],
+        "assumptions": "LL477 CD8 with its recorded QuPath export as the control.",
+        "limitations": "Matched-cell spread is expected (the two runs segment slightly "
+                       "differently); only a systematic shift would indicate a defect. "
+                       "validate_membrane_cd8_hnscc is unaffected — it drives from expert masks.",
+        "interpretation": "Ring-DAB median shift <= 0.01 OD and membrane-positive rate shift "
+                          "<= 0.05 means the marker call is unchanged.",
+        "expected": "Runs; internal calibration r 0.989; ring-median Δ 0.0026 OD; "
+                    "membrane-positive rate Δ 0.000.",
+        "runner": {"kind": "script", "script": "validate_native_segmenter_membrane.py"},
+        "runtime_tier": "short", "external_deps": ["instanseg"],
+    },
+    {
+        "id": "native_segmenter_robustness",
+        "title": "Native segmenter: determinism, thresholds, degenerate input, tiling",
+        "category": "segmentation",
+        "claim": "The segmenter is deterministic, reproduces the Groovy Otsu cut exactly, "
+                 "returns empty rather than raising on degenerate input, and gives counts "
+                 "independent of tile size.",
+        "purpose": "Cover the surfaces the parity gates never touch: repeatability, the adaptive "
+                   "threshold port, blank/tiny/thin images, and tile-size invariance.",
+        "why": "Reproducibility is claimed throughout ihc.md; tile size is a performance knob "
+               "that must not move a tissue-density statistic; background and edge tiles are "
+               "routine inputs in production.",
+        "datasets": [],
+        "assumptions": "CPU inference; a tissue crop from LL477 as the working image.",
+        "limitations": "A genuine SVS/NDPI was unavailable, so the openslide branch of "
+                       "_load_rgb_full is NOT validated — only the tiled-TIFF read path.",
+        "interpretation": "All five checks must pass; tile-size spread <= 2%.",
+        "expected": "Label arrays identical across runs; Otsu identical to the Groovy "
+                    "transliteration; 0 objects and no exception on degenerate input; "
+                    "tile-size spread 0.7%.",
+        "runner": {"kind": "script", "script": "validate_native_segmenter_robustness.py"},
+        "runtime_tier": "short", "external_deps": ["instanseg"],
+    },
+    {
         "id": "native_segmenter_deepliif_parity",
         "title": "Native segmenter parity gate vs QuPath (DeepLIIF IF truth)",
         "category": "segmentation",
