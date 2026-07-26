@@ -846,7 +846,19 @@ exclude; override is second. Fixed OD on faint tissue is *safer*, not more accur
 fails closed (under-calls) where an adaptive or trained rule fails open, which is exactly
 what § 11.2 and § 11.3 measured.
 
-**Tier 3 (planned).** A per-cohort trained classifier — see § 11.5.
+**Tier 3 (planned).** A per-cohort trained classifier — design proposal in
+`docs/classifier_tab_proposal.md`, nothing built. Two findings from writing it are worth
+carrying here. First, `webui/calibration.py` already does most of the job but holds out one
+**cell** at a time; cells within a slide share staining run, illumination and section
+thickness, so leave-one-cell-out scores a model whose own slide is still in training and
+systematically overstates generalisation — leave-one-**image**-out (with the per-fold
+spread, not an average) has to replace it. Second, the membranous path is blocked on a
+feature, not on a model: ring separability is barely above nuclear here (§ 11.2), so a
+classifier trained on the current ring features would be a well-validated wrapper around
+weak ones. Membrane **connectivity** — the longest contiguous positive arc as a fraction of
+the ring, which is what HER2-CONNECT scores and cuts at 0.12/0.56 for κ 0.86 — is the
+missing measurement, and it must be built and shown to lift separability *before* the
+classifier is worth building.
 
 ### 11.5 Open — pending decision
 
