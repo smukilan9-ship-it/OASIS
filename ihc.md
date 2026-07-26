@@ -383,6 +383,15 @@ n=8 provisional, single-annotator.
   similarity; lumens are not matchable by appearance across stains.
 - Confidence-threshold tuning on the residual tail → **cycle + scale consistency** (a
   residual-free selection); the residual tail is a function of the transform under test.
+- Per-image adaptive DAB threshold (GMM valley) → **fixed per-stain cutoff, cohort-wide**
+  (§ 11). A threshold that moves per image quantifies staining variation *into* the
+  biology, which is the one thing the measurement exists to remove.
+- Thresholding a percentile-normalised image → **rejected outright** (§ 11.3). Per-channel
+  percentile rescaling is a white balance; it destroys the optical-density relation that
+  deconvolution depends on and reintroduces counterstain cross-talk.
+- Lowering `ashman_min` to make the adaptive cut fire → **rejected** (§ 11.2). Ashman's D
+  is a two-mode statistic; at 1–3 % positives there is no second mode to find, so relaxing
+  the gate does not fix a mis-specified rule, it only lets it fire.
 
 ---
 
@@ -706,3 +715,120 @@ cross-marker truth + full pipeline, and the keystone gives real truth for the st
 — jointly they bound the gap from every side.** The honest residual, stated plainly: the
 combination of real chromogenic pixels *and* real non-trivial cross-marker truth cannot
 be built for serial DAB; we bound it, we do not close it.
+
+---
+
+## 11. Positivity thresholds — evidence and policy
+
+The pipeline classifies a cell positive on a **fixed per-stain DAB OD cutoff** applied
+across the whole cohort (CD8 0.20, TIM-3 0.10). This section records why, what was
+measured on real slides, and what was rejected. Harness:
+`validation/threshold_audit_ll477.py` → `threshold_audit_ll477_results.json`.
+
+### 11.1 What the field does
+
+There is **no automated gold standard**. The Digital Pathology Association white paper
+(Aeffner *et al.*, *J Pathol Inform* 2019) states the operating rule plainly: *"Final
+algorithm thresholds should be approved by a pathologist before data generation."* The
+same paper names our failure mode — fixed thresholds across colour-variable datasets
+give inconsistent results — and the field uses them anyway, because a threshold that
+moves silently is considered worse than one that is wrong in a known direction.
+
+QuPath, the reference implementation, prescribes no universal value: its guidance is a
+visual-validation loop over the `Nucleus: DAB OD mean` histogram, with ~0.1 offered as a
+permissive start and **0.2 as the conservative "few false positives, may miss true
+positives" point**. Four families exist in practice: (a) manual fixed cutoff on
+deconvolved OD — the de facto standard; (b) hue/intensity pixel thresholds (Aperio
+Positive Pixel Count, ImageJ IHC Profiler, 88.6 % agreement with manual over n=1703);
+(c) **control-derived cutoffs** — DAB-quant sets the threshold from negative-control
+slides at a stated false-positive tolerance (0.1 % → NRMB 0.265; 1 % → 0.116), the only
+approach giving a threshold a statistical rather than visual meaning; (d) trained
+classifiers (QuPath random trees; DeepLIIF).
+
+**Cohort-invariance, not fixedness, is the principle.** Comparing CD8 density between
+patients requires every patient's number to mean the same thing. A fixed cutoff and a
+cohort-wide trained classifier both satisfy this; a per-image adaptive cut does not.
+Precedent: Visiopharm's HER2-CONNECT transfers connectivity cutoffs 0.12 / 0.56 across
+different staining, a different scanner and different outlining **without re-tuning**,
+then validates on the new cohort (κ 0.86–0.87 vs pathologists).
+
+DeepLIIF was evaluated as a threshold-free alternative and **cannot be shipped**: its
+licence is Apache 2.0 **with Commons Clause** (GitHub reports `NOASSERTION` — not
+OSI-approved), which is incompatible with our MIT licence and with JOSS. It also does not
+remove the constant, it relocates it — `PostProcessSegmentationMask.py` classifies on a
+hard `seg_thresh=150` applied to a GAN-generated mask, which is *less* defensible to a
+pathologist than an optical density. Its legitimate use here is as a **ground-truth
+generator** (co-registered IHC + mpIF), which is how § 7 already uses it.
+
+### 11.2 What was measured (8 real slides, 0.7519 µm/px, scale bars excluded)
+
+| Image | Cells | pos @ fixed | Otsu | Ashman D | GMM @ D≥1.25 |
+|---|---|---|---|---|---|
+| CD8_10X_4 | 4521 | 2.6 % | **0.177** | 1.64 | 0.102 |
+| CD8_x10_1 | 12943 | 1.8 % | **0.211** | 1.55 | 0.138 |
+| CD8_x10_2 | 8930 | 1.1 % | 0.141 | 1.52 | 0.074 |
+| CD8_x10_3 | 4632 | 2.4 % | **0.200** | 1.48 | 0.099 |
+| Tim3_Liver_1 | 2917 | 0.0 % | 0.020 | 1.18 | abstain |
+| Tim3_10X_3 | 5564 | 2.6 % | 0.069 | 1.33 | 0.051 |
+| Tim3_x10_1 | 12224 | 0.5 % | 0.049 | 1.11 | abstain |
+| Tim3_x10_2 | 7835 | 0.1 % | 0.016 | 1.27 | 0.002 |
+
+**CD8 0.20 is corroborated** — Otsu independently returns 0.177 / 0.211 / 0.141 / 0.200,
+three of four on the trusted value, and it coincides with QuPath's conservative point.
+Two independent routes agreeing is as much support as a cutoff of this kind ever gets.
+
+**TIM-3 0.10 is not corroborated on this cohort** (Otsu 0.016–0.069) and is provisionally
+read as an inherited convention rather than a derived value. Open — see § 11.4.
+
+**The adaptive GMM is unsafe as configured.** `nuclear_ashman_min` defaults to **1.25** in
+`run_pipeline.py` (the 2.0 in `nuclear_classify.py` is only the library default). At 1.25
+the cut fires on 6 of 8 images at roughly half the trusted value; on Tim3_x10_2 it returns
+0.0022 and calls **28.8 % positive** against 0.1 % at the fixed cut. Production is
+unaffected only because `nuclear_adaptive` defaults to `False`.
+
+**The cause is statistical, not biological.** The membranous-marker hypothesis was tested
+and does not hold: ring separability is barely above nuclear (CD8 1.51 vs 1.48; TIM-3 1.50
+vs 1.33), and neither approaches 2.0. The real cause is that positives are rare (1–6 %),
+so the distribution is unimodal-with-a-tail and Ashman's D — a two-mode statistic — has no
+second mode to find. This is textbook: Otsu requires two clear peaks and **biases toward
+the class with larger intra-class variance**; the triangle method and Rosin's unimodal
+thresholding exist for background-dominated histograms; median + k·MAD is the recommended
+rule for "small signals buried in noise" (Bankhead, *Introduction to Bioimage Analysis*).
+Where GMMs *are* used for marker positivity, the cutoff is the **tail of the fitted
+negative mode** (µ + 3σ, ≈ DAB-quant's false-positive tolerance in parametric form), not
+the crossover of two comparable components. Our GMM uses the wrong cutoff rule for a rare
+marker — which is why forcing it to fire lands ~2× low.
+
+**Visually verified** (both checks confirm the measurement, not a bug): `Tim3_Liver_1` is
+genuinely near-unstained (DAB p99 0.051, 0.2 % of pixels > 0.1), so zero positives is
+correct; `CD8_x10_3` shows clean sparse membranous brown (DAB p99 0.326), so ~2 % is real.
+
+### 11.3 Normalisation before deconvolution — rejected
+
+Percentile-normalising the image and then deconvolving with fixed vectors is **materially
+worse**: on `Tim3_x10_1` it calls **99.3 % of cells positive** (Otsu 0.815), the classic
+counterstain cross-talk failure; `Tim3_Liver_1` goes to 78.7 %. Per-channel percentile
+rescaling is effectively a white balance and destroys the optical-density relation that
+deconvolution assumes. This is consistent with the literature: normalisation
+(Macenko/Reinhard/Vahadane) exists to stabilise *deep-learning input*, and where it has
+been tested on H-DAB extraction specifically, plain deconvolution with well-chosen vectors
+won. Per-image Macenko (used by `cell_expansion`) does move CD8 toward 0.2 (0.074 → 0.163)
+but **declined on 2 of 8 images**; its estimator failure must stay visible, not silent.
+
+### 11.4 Open — pending decision
+
+Not yet settled, deliberately left unwritten rather than guessed:
+
+1. **TIM-3 cutoff.** 0.10 is unsupported by this cohort's Otsu values. Provenance to be
+   established before it is either kept or moved.
+2. **Cohort-wide trained classifier** as an opt-in tier above the fixed cutoff. Design
+   constraint already identified: it must be **blocked until a leave-one-image-out report
+   exists**, because cells within a slide are not independent and a random cell-level split
+   will report inflated accuracy (measured LOIO F1 0.83; 0.30 on the faint image). The
+   quality/abstain gate must apply to the classifier path too. A classifier does not solve
+   membranous markers on its own — it can only combine the features it is given, and § 11.2
+   shows the current ring features add little on this tissue.
+3. **Replacing GMM valley selection with a noise-tail rule** (median + k·MAD, or
+   triangle/Rosin) validated against the existing DeepLIIF-derived labels.
+4. **Negative-control-derived thresholds** (DAB-quant pattern). The most defensible option
+   for a methods paper; blocked on slides, not on code.
