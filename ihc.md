@@ -875,7 +875,118 @@ the ring, which is what HER2-CONNECT scores and cuts at 0.12/0.56 for κ 0.86 �
 missing measurement, and it must be built and shown to lift separability *before* the
 classifier is worth building.
 
-### 11.5 Open — pending decision
+### 11.5 Membrane contiguity — reading the ring as an arc
+
+`membrane_pos_frac` counts *how many* ring pixels are stained. It cannot distinguish one
+clean arc from the same number of pixels scattered around the ring, and real membrane
+staining is contiguous where debris, a neighbour's membrane and counterstain bleed are not.
+`ring_connectivity` (`cell_expansion.py`) bins the ring into angular sectors about the
+centroid and returns the longest contiguous stained run, the number of separate runs, and
+plain coverage. It reuses the identical pixels, threshold and DAB-dominance gate as
+completeness, so the two differ **only** in whether angular order is taken into account.
+
+This is the measurement the HER2 literature settled on rather than a better threshold:
+Visiopharm's HER2-CONNECT skeletonises membrane fragments and scores connectivity 0–1,
+cutting at 0.12 / 0.56 for κ 0.86–0.87 against pathologists; Aperio's Membrane algorithm
+scores completeness alongside intensity.
+
+**Measured discrimination** at equal completeness — one contiguous arc versus the same
+pixel count scattered as speckle, 720 ring pixels / 72 sectors
+(`tests/test_ring_connectivity.py`):
+
+| coverage | arc | speckle | ratio |
+|---|---|---|---|
+| 0.10 | 0.097 | 0.000 | ∞ |
+| 0.20 | 0.194 | 0.014 | 14× |
+| 0.30 | 0.306 | 0.028 | 11× |
+| 0.50 | 0.500 | 0.111 | 4.5× |
+
+Discrimination is strongest at the low coverage real membranous staining actually occupies
+and narrows toward 50 %, where each sector becomes a coin flip against the 0.5 sector
+threshold. Two properties are pinned as tests rather than left to be rediscovered: an arc
+crossing the ±π seam is **one** arc, and speckle finer than one sector is **smoothed into
+apparent coverage** — a real limitation of sector binning, traded for robustness to
+single-pixel noise. Empty sectors are excluded rather than counted as unstained, since a
+thin or Voronoi-clipped ring has angular gaps with no pixels and absence of pixels is not
+evidence of absent stain.
+
+**Still unvalidated against labels.** The gate proposed in
+`docs/classifier_tab_proposal.md` — does connectivity improve *classification* of real
+membranous cells — cannot be run: the hand-labelled TIM-3 set is no longer on disk and the
+HNSCC membrane set was never redistributable. What is established is that the feature
+carries information completeness does not; whether that information improves a real call
+is open.
+
+### 11.6 Per-cohort classifier — what it is worth, measured
+
+`oasis/quant/classifier.py`: ridge logistic regression in numpy over ~6–9 engineered
+features, fitted to one cohort's own labelled cells. Persisted with its held-out report,
+its coefficients and a fingerprint of its decision function.
+
+**Validated against DeepLIIF's IF-derived labels** — 6,663 matched cells across 149 tiles,
+18.1 % positive, ground truth from the co-registered immunofluorescence SegMask panel the
+pipeline never sees (`validation/validate_cell_classifier.py`).
+
+**Result 1 — on clean data the classifier does not beat the fixed cutoff.**
+
+| rule | F1 | AUC |
+|---|---|---|
+| fixed 0.20 OD (shipped) | **0.781** | 0.930 |
+| best possible single cutoff (0.30, hindsight only) | 0.793 | — |
+| classifier, leave-one-image-out | 0.771 | 0.927 |
+
+The shipped cutoff is within 0.012 F1 of the ceiling for *any* single-threshold rule, and
+the classifier does not exceed that ceiling. On clean, well-stained, single-protocol
+material the labelling burden buys nothing. This is why the fixed cutoff is tier 1.
+
+Per-fold F1 spread is wide (sd 0.30, min 0.00) but that is **fold size, not slide failure**:
+the median DeepLIIF tile carries 39 cells and 7 positives, 6 folds contain no positives at
+all, and 11 of the 13 zero-F1 folds have ≤ 2 positives. The pooled figure is the reliable
+one here. On real whole slides the same statistic would carry the meaning intended for it.
+
+**Result 2 — the classifier earns its place exactly when staining varies.** Simulating
+batch-to-batch variation as a per-image additive OD offset:
+
+| per-image drift (OD) | fixed @0.20 | fixed @0.30 | fixed @0.40 | classifier |
+|---|---|---|---|---|
+| 0.00 | 0.781 | 0.793 | 0.770 | 0.771 |
+| 0.05 | 0.777 | 0.785 | 0.763 | 0.766 |
+| 0.10 | 0.715 | 0.776 | 0.759 | **0.766** |
+| 0.20 | 0.537 | 0.628 | 0.716 | **0.765** |
+| 0.30 | 0.484 | 0.525 | 0.571 | **0.765** |
+
+The classifier is flat; every fixed cutoff collapses. **The crossover is at roughly
+0.08 OD of per-image drift** — below it the cutoff wins on simplicity, above it the
+classifier wins outright. Note the control: no fixed cutoff at *any* value survives, so
+this is not the classifier merely sitting at a higher operating point (its effective cutoff
+is ≈ 0.386 OD, and a fixed 0.40 still collapses to 0.571 at drift 0.30).
+
+**The mechanism is not the feature we expected.** Ablating `dab_minus_local_bg` changes
+almost nothing (0.766 → 0.762 at drift 0.10); ablating `dab_over_h` as well still leaves
+0.762. The robustness comes from the *linear model over co-shifting channels*: when
+`dab_mean`, `dab_p90` and `hema_mean` all move together, logistic regression can learn a
+near-zero-sum combination that cancels the shared offset while keeping the within-cell
+contrast. The fitted raw-unit weight sum over those three channels collapses from **3.52**
+at no drift to **≈ −0.6** at drift ≥ 0.10 — the model is deliberately differencing the
+channels. A one-channel threshold has no such option. Local background correction remains
+justified on principle (a gradient *within* one section is not a per-image offset) but it is
+not what produced this result, and the docstring should not claim otherwise.
+
+**Leave-one-IMAGE-out, never leave-one-cell-out.** Cells within a slide share a staining
+run, illumination and section thickness, so a cell-wise fold scores a model whose own slide
+is still in training. `tests/test_classifier.py` demonstrates the inflation on constructed
+data with a per-image offset. `webui/calibration.py` still uses leave-one-cell-out for the
+membrane cutoff fit and should be migrated.
+
+**Membrane classifier: built, not validated.** The feature contract includes
+`membrane_connectivity` and `membrane_arc_count` (§ 11.5), but no labelled membranous set
+is on disk — the hand-labelled TIM-3 export is gone and HNSCC was never redistributable.
+The machinery is exercised by tests; whether it *classifies* real membranous cells better
+than the calibrated completeness cutoff is untested. The tab therefore requires the user's
+own leave-one-image-out report before applying anything, which is the correct answer for a
+per-cohort tool: its validation is inherently produced per cohort.
+
+### 11.7 Open — pending decision
 
 Not yet settled, deliberately left unwritten rather than guessed:
 

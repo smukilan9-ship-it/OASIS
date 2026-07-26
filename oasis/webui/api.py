@@ -246,6 +246,141 @@ class API:
         self.save_setup(setup)
         return {"ok": True, "calibrations": setup["calibrations"]}
 
+    # ── Per-cohort classifier ──────────────────────────────────────────────
+    # A classifier fitted to one cohort's own labelled cells. It writes the same
+    # `classification` property the threshold path writes, so Quant, Spatial and batch
+    # need no changes — it is a third way to fill one contract, not a parallel pipeline.
+    #
+    # Measured caveat, surfaced in the tab rather than buried: on clean, well-stained,
+    # single-protocol nuclear data the classifier does **not** beat a well-chosen fixed
+    # cutoff (ihc.md § 11.6). It is worth the labelling burden when staining varies across
+    # a cohort, not when it does not.
+
+    MIN_CLASSIFIER_IMAGES = 5      # below this the held-out estimate rests on too few folds
+    BLOCK_CLASSIFIER_IMAGES = 3    # below this leave-one-image-out is undefined
+    MIN_CLASSIFIER_CELLS_PER_CLASS = 50
+    RECOMMEND_CLASSIFIER_SLIDES = 20   # below this the cutoff + review step is the better tool
+    MIN_CLASSIFIER_AUC = 0.75
+
+    def classifier_requirements(self):
+        """What the tab needs before it will fit or apply, so the UI can say so up front."""
+        return {"block_below_images": self.BLOCK_CLASSIFIER_IMAGES,
+                "warn_below_images": self.MIN_CLASSIFIER_IMAGES,
+                "min_cells_per_class": self.MIN_CLASSIFIER_CELLS_PER_CLASS,
+                "recommend_above_slides": self.RECOMMEND_CLASSIFIER_SLIDES,
+                "min_auc": self.MIN_CLASSIFIER_AUC}
+
+    def list_classifiers(self):
+        return {"saved": self.get_setup().get("classifiers") or []}
+
+    def delete_classifier(self, name):
+        setup = self.get_setup(); setup.pop("_home", None)
+        setup["classifiers"] = [c for c in (setup.get("classifiers") or [])
+                                if c.get("name") != name]
+        self.save_setup(setup)
+        return {"ok": True, "classifiers": setup["classifiers"]}
+
+    def fit_classifier(self, payload):
+        """Fit on labelled cells pooled across images, and report the honest estimate.
+
+        `payload["items"]` is a list of {image, cells:[{...measurements..., label:0|1}]}.
+        The leave-one-image-out report is produced here and stored with the model — it is
+        not optional, because a per-cohort classifier without a held-out number is
+        indistinguishable from a well-dressed guess.
+        """
+        import numpy as np
+        from oasis.quant import classifier as CL
+
+        kind = str(payload.get("kind") or "nuclear")
+        try:
+            names = CL.feature_names(kind)
+        except ValueError as e:
+            return {"ok": False, "msg": str(e)}
+
+        items = payload.get("items") or []
+        X_parts, y_parts, ids = [], [], []
+        for it in items:
+            cells = [c for c in (it.get("cells") or []) if c.get("label") in (0, 1)]
+            if not cells:
+                continue
+            Xi, _ = CL.extract_features(cells, kind)
+            X_parts.append(Xi)
+            y_parts.append(np.array([int(c["label"]) for c in cells]))
+            ids += [str(it.get("image") or f"image{len(ids)}")] * len(cells)
+        if not X_parts:
+            return {"ok": False, "msg": "No labelled cells supplied"}
+
+        X = np.vstack(X_parts)
+        y = np.concatenate(y_parts)
+        n_images = len(set(ids))
+        n_pos, n_neg = int(y.sum()), int((y == 0).sum())
+
+        if n_images < self.BLOCK_CLASSIFIER_IMAGES:
+            return {"ok": False, "msg":
+                    f"Leave-one-image-out needs at least {self.BLOCK_CLASSIFIER_IMAGES} "
+                    f"labelled images; got {n_images}. With this few slides the fixed "
+                    f"cutoff and the review step are the better tool."}
+        if min(n_pos, n_neg) < self.MIN_CLASSIFIER_CELLS_PER_CLASS:
+            return {"ok": False, "msg":
+                    f"Need at least {self.MIN_CLASSIFIER_CELLS_PER_CLASS} cells of each "
+                    f"class; got {n_pos} positive / {n_neg} negative."}
+
+        report = CL.leave_one_image_out(X, y, ids, kind, names)
+        if not report.get("ok"):
+            return {"ok": False, "msg": report.get("reason", "validation failed")}
+
+        model = CL.fit(X, y, kind, names, meta={"n_images": n_images})
+        model.metrics = report
+        warnings = []
+        if n_images < self.MIN_CLASSIFIER_IMAGES:
+            warnings.append(
+                f"Only {n_images} labelled images — the held-out estimate rests on very "
+                f"few folds and the spread below is the number to read, not the mean.")
+        auc = (report.get("pooled") or {}).get("auc")
+        if auc is not None and auc < self.MIN_CLASSIFIER_AUC:
+            warnings.append(
+                f"Held-out AUC {auc:.2f} is below {self.MIN_CLASSIFIER_AUC}; this "
+                f"classifier can be saved but will not be applied across a cohort.")
+        spread = report.get("fold_f1_std")
+        if spread is not None and spread > 0.15:
+            warnings.append(
+                f"Per-fold F1 varies by {spread:.2f} (worst fold "
+                f"{report.get('fold_f1_min'):.2f}) — at least one slide behaves unlike "
+                f"the rest, which is exactly what a cohort-wide rule has to survive.")
+
+        return {"ok": True, "model": model.to_dict(),
+                "fingerprint": model.fingerprint(),
+                "coefficients": model.coefficient_report(),
+                "report": report, "warnings": warnings,
+                "applicable_cohort_wide": bool(auc is not None
+                                               and auc >= self.MIN_CLASSIFIER_AUC)}
+
+    def save_classifier(self, name, marker, model_dict, report=None):
+        """Persist a fitted classifier. The held-out report travels with it."""
+        from oasis.quant import classifier as CL
+        try:
+            model = CL.CellClassifier.from_dict(model_dict)
+        except (ValueError, KeyError) as e:
+            return {"ok": False, "msg": str(e)}
+        pooled = ((report or model.metrics or {}).get("pooled") or {})
+        if pooled.get("auc") is not None and pooled["auc"] < self.MIN_CLASSIFIER_AUC:
+            # Saving is allowed — refitting later is cheaper than relabelling — but the
+            # record has to carry the reason it cannot be applied.
+            pass
+        setup = self.get_setup(); setup.pop("_home", None)
+        saved = [c for c in (setup.get("classifiers") or []) if c.get("name") != name]
+        saved.append({"name": str(name), "marker": str(marker or "").lower(),
+                      "kind": model.kind, "fingerprint": model.fingerprint(),
+                      "auc": pooled.get("auc"), "f1": pooled.get("f1"),
+                      "n_images": (report or model.metrics or {}).get("n_images"),
+                      "fold_f1_min": (report or model.metrics or {}).get("fold_f1_min"),
+                      "fold_f1_std": (report or model.metrics or {}).get("fold_f1_std"),
+                      "model": model.to_dict()})
+        setup["classifiers"] = saved
+        self.save_setup(setup)
+        return {"ok": True, "classifiers": [{k: v for k, v in c.items() if k != "model"}
+                                            for c in saved]}
+
     def _resolve_calibration(self, name, marker):
         """Find a calibration by explicit name, else by marker (newest user save wins)."""
         pool = BUILTIN_CALIBRATIONS + (self.get_setup().get("calibrations") or [])

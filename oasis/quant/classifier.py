@@ -8,11 +8,22 @@ antibody or scanner (ihc.md § 3.3). The best published universal IHC model reac
 on unseen stains; per-cohort fitting on this project's own data reaches held-out AUC 0.90.
 So the model is fitted where the variation actually lives — inside one cohort.
 
-What this adds over the fixed cutoff is not "it is trained". It is features a single global
-optical density cannot express: local background correction (a cell judged against its
-neighbours, which survives a staining gradient across a section), the DAB-over-haematoxylin
-gate, and for membranous markers the *contiguity* of the stained ring rather than merely
-how much of it is stained.
+What this adds over the fixed cutoff, **measured** (ihc.md § 11.6): on clean, well-stained,
+single-protocol material it adds nothing — held-out F1 0.771 against 0.781 for the shipped
+0.20 OD cutoff, which is itself within 0.012 of the ceiling for any single-threshold rule.
+It wins when staining varies across the cohort. Simulating batch variation as a per-image
+optical-density offset, the classifier is flat (0.771 → 0.765 from zero to 0.30 OD of drift)
+while *every* fixed cutoff collapses (0.20 OD: 0.781 → 0.484). The crossover is around
+0.08 OD of per-image drift.
+
+The mechanism is worth stating because it is not the obvious one. It is not local background
+correction — ablating that feature costs almost nothing. It is that a linear model over
+several *co-shifting* channels can learn a near-zero-sum combination which cancels a shared
+offset while keeping the within-cell contrast; the fitted raw-unit weight sum over
+`dab_mean`/`dab_p90`/`hema_mean` falls from 3.52 at no drift to about −0.6 under drift. A
+one-channel threshold has no such option. Local background correction is still justified —
+a gradient *within* one section is not a per-image offset — but it is not what produced that
+result.
 
 Three design decisions worth stating plainly.
 
