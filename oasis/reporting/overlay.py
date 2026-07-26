@@ -609,6 +609,25 @@ def generate_association_plot(
     ax.axhline(0.0, color="#374151", lw=1.0, ls="--", label="Independence (L−r = 0)")
     ax.plot(r, obs, color="#111827", lw=2.2, label="Observed L−r")
 
+    # THE REGISTRATION FLOOR, DRAWN ON THE CURVE IT CONSTRAINS. Below this radius the two
+    # sections are not aligned finely enough to distinguish real structure from residual
+    # misregistration, so the curve there is UNMEASURABLE — not evidence of independence.
+    # A reader who cannot see the boundary will read the left-hand end as a result, which
+    # is the single most likely misreading of this figure. The DCLF band is deliberately
+    # NOT clipped to the floor (clipping only costs power — validate_radius_floor.py), so
+    # the shading is the only thing that carries the constraint onto the plot.
+    rf = assoc.get("radius_floor") or {}
+    floor_um = rf.get("floor_um")
+    if isinstance(floor_um, (int, float)) and floor_um > float(r.min()):
+        x_lo = float(r.min())
+        x_hi = min(float(floor_um), float(r.max()))
+        ax.axvspan(x_lo, x_hi, color="#64748b", alpha=0.20, hatch="///",
+                   ec="#475569", lw=0.0, zorder=0)
+        ax.axvline(x_hi, color="#475569", lw=1.2, ls=":", zorder=3,
+                   label=f"Registration floor {floor_um:.1f} µm — curve below is unmeasurable")
+        ax.text(x_hi, 0.985, " not resolvable", transform=ax.get_xaxis_transform(),
+                ha="left", va="top", fontsize=7.5, color="#475569", style="italic")
+
     # Annotate the two-band INTERACTION verdict (the headline): short-range
     # colocalization (10–20 µm) and co-infiltration (20–50 µm), each attraction /
     # segregation / shared-compartment-only / none / not-resolvable. This replaces the
@@ -619,19 +638,40 @@ def generate_association_plot(
     coloc = inter.get("colocalization") or {}
     coinf = inter.get("coinfiltration") or {}
     if coloc or coinf:
-        def _band_line(band, name):
+        def _band_line(band, name, band_max_um=None):
             v = band.get("verdict", "none")
             p = band.get("global_p_dclf")
             ptxt = f"  p={p:.3f}" if isinstance(p, (int, float)) else ""
+            # A verdict for a band that lies entirely below the registration floor is not
+            # readable, whatever its p-value. cross_k_all_nulls already returns
+            # `not_resolvable` for this case; the guard is here for results produced before
+            # that existed, so an old JSON re-plotted cannot show a bare "attraction" for a
+            # band the registration never resolved.
+            if (isinstance(floor_um, (int, float)) and band_max_um is not None
+                    and floor_um >= band_max_um and v not in ("not_resolvable",)):
+                return f"{name}: {v}{ptxt}  [below floor — not readable]"
             return f"{name}: {v}{ptxt}"
         lines = []
         if coloc:
-            lines.append(_band_line(coloc, "Colocalization 10–20 µm"))
+            lines.append(_band_line(coloc, "Colocalization 10–20 µm", 20.0))
         if coinf:
-            lines.append(_band_line(coinf, "Co-infiltration 20–50 µm"))
+            lines.append(_band_line(coinf, "Co-infiltration 20–50 µm", 50.0))
+        # State the claim boundary in words next to the verdict, not only as shading. The
+        # 10–20 µm band is REPORTED even when the floor sits above it (the test stays
+        # correctly sized), so without this line a reader can take a colocalization verdict
+        # from a pair whose registration cannot resolve colocalization at all.
+        if isinstance(floor_um, (int, float)):
+            lines.append("contact scale resolved" if rf.get("contact_scale_resolved")
+                         else f"contact scale NOT resolved (floor {floor_um:.1f} µm)"
+                              " — co-infiltration only")
         txt = "\n".join(lines)
         strong = lambda v: v in ("attraction", "segregation")
-        cv, kv = coloc.get("verdict"), coinf.get("verdict")
+        # A band below the floor cannot supply the headline colour either — otherwise the
+        # box is outlined green for a finding the caption immediately disclaims.
+        _readable = lambda v, bmax: (
+            None if (isinstance(floor_um, (int, float)) and floor_um >= bmax) else v)
+        cv = _readable(coloc.get("verdict"), 20.0)
+        kv = _readable(coinf.get("verdict"), 50.0)
         headline = cv if strong(cv) else (kv if strong(kv) else (
             "csr_only" if "csr_only" in (cv, kv) else "none"))
         bcol = _BAND_COL.get(headline, "#6b7280")

@@ -1453,6 +1453,7 @@ class API:
             _min_frac = sr.CERTIFICATION_GATES["min_roi_frac"]
             r_min_um = float(np.sqrt(_min_frac * W * H / 4.0) * px_t)   # square tile, side 2R
             size_policy, sel_floor = "operator_specified", None
+            probe_hits = {}          # rung size -> centre where the size probe certified
             if not auto_size:
                 region_um = float(requested)
             else:
@@ -1503,6 +1504,13 @@ class API:
                     if probe.get("ok"):
                         f = probe.get("min_interpretable_radius_um")
                         probed.append((s, f))
+                        # REMEMBER WHERE IT PASSED. The probe is a full certification at a real
+                        # location, and the tile grid below packs from the tissue edge, so the
+                        # probe centre is generally NOT a grid centre — at R = 450 µm only two
+                        # tiles fit a 10X frame and the nearest sat 160 µm away. Three pairs of
+                        # the 33-pair 10X set certified here and were then reported as zero
+                        # regions because this result was discarded.
+                        probe_hits[s] = (pcx, pcy)
                         if f is not None and f <= contact_um:
                             break        # largest certifying rung, contact scale intact
                 resolving = [(s, f) for s, f in probed if f is not None and f <= contact_um]
@@ -1568,6 +1576,21 @@ class API:
                             score = 1 if (abs(cx - cxc) < 1 and abs(cy - cyc) < 1) else 0
                         tiles.append((score, pts))
             tiles = [p for _, p in sorted(tiles, key=lambda t: -t[0])]
+
+            # PUT THE PROBE'S OWN LOCATION FIRST. It is the one place already known to pass the
+            # gate at this size, so it cannot lower the count and it costs one attempt. It is
+            # clipped to the tissue like any other tile; if clipping leaves too little, the grid
+            # order stands unchanged.
+            hit = probe_hits.get(region_um)
+            if hit is not None:
+                hx, hy = hit
+                sq = _box(hx - R, hy - R, hx + R, hy + R)
+                piece = sq.intersection(tissue_poly) if tissue_poly is not None else sq
+                if (not piece.is_empty) and piece.area >= 0.25 * sq.area:
+                    if piece.geom_type != "Polygon":
+                        piece = max(piece.geoms, key=lambda g: g.area)
+                    tiles.insert(0, [[float(x), float(y)]
+                                     for x, y in piece.exterior.coords[:-1]])
 
             regions, attempts = [], 0
             kept_geoms = []          # accepted regions, for the disjointness check below
