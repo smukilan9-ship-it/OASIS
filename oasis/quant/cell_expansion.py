@@ -210,12 +210,90 @@ def _halfplane_clip(poly, p, q):
         return poly
 
 
+def ring_connectivity(xy, vals, centroid, thr, hvals=None, *, n_sectors=72,
+                      sector_min_frac=0.5, dab_dominance_gate=True):
+    """Read a ring as an ordered arc: how much of the circumference is continuously stained.
+
+    Membrane completeness (`membrane_pos_frac`) counts *how many* ring pixels are stained
+    and cannot distinguish one clean arc from the same number of pixels scattered around
+    the ring as noise. Real membrane staining is contiguous; speckle from debris, an
+    adjacent cell's membrane, or counterstain bleed is not. This is the measurement the
+    HER2 literature settled on — Visiopharm's HER2-CONNECT skeletonises membrane fragments
+    and scores connectivity on 0-1, cutting at 0.12 / 0.56 for kappa 0.86 against
+    pathologists, and Aperio's Membrane algorithm scores completeness alongside intensity.
+
+    The ring is binned into `n_sectors` angular sectors about the nucleus centroid. A
+    sector counts as stained when at least `sector_min_frac` of its pixels pass the same
+    threshold and DAB-dominance gate that completeness uses, so the two features are
+    measured off identical pixels and differ only in whether order is taken into account.
+
+    Returns (connectivity, arc_count, covered_frac):
+      connectivity  longest run of consecutive stained sectors / n_sectors, wrapping
+                    around 0/2pi. One clean half-membrane arc scores ~0.5.
+      arc_count     number of separate stained runs. A real membrane is one or two arcs;
+                    scattered speckle is many.
+      covered_frac  stained sectors / n_sectors, ignoring order. Included so a caller can
+                    see directly how much of connectivity is contiguity and how much is
+                    simply coverage.
+    """
+    if xy is None or vals is None or len(vals) == 0:
+        return 0.0, 0, 0.0
+    xy = np.asarray(xy, dtype=np.float64)
+    vals = np.asarray(vals, dtype=np.float64)
+    if xy.shape[0] != vals.shape[0]:
+        return 0.0, 0, 0.0
+
+    pos = vals > float(thr)
+    if dab_dominance_gate and hvals is not None:
+        hvals = np.asarray(hvals, dtype=np.float64)
+        if hvals.shape == vals.shape:
+            pos = pos & (vals > hvals)
+
+    ang = np.arctan2(xy[:, 1] - float(centroid[1]), xy[:, 0] - float(centroid[0]))
+    sector = np.floor((ang + np.pi) / (2 * np.pi) * n_sectors).astype(int)
+    np.clip(sector, 0, n_sectors - 1, out=sector)
+
+    total = np.bincount(sector, minlength=n_sectors)
+    stained = np.bincount(sector, weights=pos.astype(np.float64), minlength=n_sectors)
+    # An empty sector is not evidence of absence — the ring simply has no pixels at that
+    # angle (thin rings, clipped Voronoi cells). Treating it as unstained would sever an
+    # otherwise continuous arc, so it is excluded from both numerator and denominator.
+    occupied = total > 0
+    if not occupied.any():
+        return 0.0, 0, 0.0
+    frac = np.zeros(n_sectors, dtype=np.float64)
+    frac[occupied] = stained[occupied] / total[occupied]
+    on = (frac >= float(sector_min_frac)) & occupied
+
+    covered = float(on.sum()) / float(occupied.sum())
+    if not on.any():
+        return 0.0, 0, covered
+    if on.all():
+        return 1.0, 1, covered
+
+    # Longest circular run, and how many runs there are. Rotating the array so it starts
+    # at an unstained sector makes the wrap-around case fall out of a linear scan.
+    start = int(np.argmin(on))
+    rolled = np.roll(on, -start)
+    runs, cur = [], 0
+    for flag in rolled:
+        if flag:
+            cur += 1
+        elif cur:
+            runs.append(cur); cur = 0
+    if cur:
+        runs.append(cur)
+    longest = max(runs) if runs else 0
+    return float(longest) / float(n_sectors), len(runs), covered
+
+
 def _mask_stats(geoms, dab_od, x0, y0, w, h, want_values=None, aux_od=None):
     """
     Rasterize each geometry over the [x0:x0+w, y0:y0+h] window using shapely's
     vectorized point-in-polygon test, and return a per-geom dict:
         {"mean": float|None, "p90": float|None, "n": int,
-         "values": np.ndarray|None, "aux_values": np.ndarray|None}
+         "values": np.ndarray|None, "aux_values": np.ndarray|None,
+         "xy": np.ndarray|None}
 
     `mean` is the ring-average DAB OD (the legacy statistic). `p90` is the 90th
     percentile of the ring's pixel OD — it tracks the *brightest arc* and is not
@@ -224,7 +302,9 @@ def _mask_stats(geoms, dab_od, x0, y0, w, h, want_values=None, aux_od=None):
     `values` (the raw per-pixel DAB OD array) is returned only for geometry
     indices in `want_values`. When `aux_od` (e.g. the hematoxylin OD channel) is
     supplied, `aux_values` holds the same pixels' aux OD — used for the per-pixel
-    DAB-dominance gate (DAB > hematoxylin).
+    DAB-dominance gate (DAB > hematoxylin). `xy` holds those pixels' image
+    coordinates, which is what lets a ring be read as an ordered arc rather than an
+    unordered bag of pixels (see `ring_connectivity`).
     """
     import shapely
     xs = np.arange(x0, x0 + w) + 0.5
@@ -237,22 +317,25 @@ def _mask_stats(geoms, dab_od, x0, y0, w, h, want_values=None, aux_od=None):
     for idx, g in enumerate(geoms):
         if g is None or g.is_empty:
             out.append({"mean": None, "p90": None, "n": 0,
-                        "values": None, "aux_values": None})
+                        "values": None, "aux_values": None, "xy": None})
             continue
         mask = shapely.contains_xy(g, fx, fy).reshape(h, w)
         n = int(mask.sum())
         if not n:
             out.append({"mean": None, "p90": None, "n": 0,
-                        "values": None, "aux_values": None})
+                        "values": None, "aux_values": None, "xy": None})
             continue
         vals = sub[mask]
         want = (want_values is not None and idx in want_values)
         keep = vals.astype(np.float32) if want else None
         keep_aux = (sub_aux[mask].astype(np.float32)
                     if (want and sub_aux is not None) else None)
+        keep_xy = (np.stack([gx[mask], gy[mask]], axis=1).astype(np.float32)
+                   if want else None)
         out.append({"mean": float(vals.mean()),
                     "p90": float(np.percentile(vals, 90)),
-                    "n": n, "values": keep, "aux_values": keep_aux})
+                    "n": n, "values": keep, "aux_values": keep_aux,
+                    "xy": keep_xy})
     return out
 
 
@@ -284,8 +367,13 @@ def measure_cytoplasm_dab(
           "cytoplasm_dab_p90":  float | None,   # 90th pct of ring OD (brightest arc)
           "cell_dab_mean":      float | None,   # whole Voronoi-clipped expanded cell
           "membrane_pos_frac":  float | None,   # frac of ring pixels > membrane_pix_thr
+          "membrane_connectivity": float | None, # longest contiguous stained arc / ring
+          "membrane_arc_count":    int | None,   # number of separate stained arcs
           "centroid":           [x, y] | None,
         }
+    `membrane_pos_frac` counts stained ring pixels; `membrane_connectivity` reads the same
+    pixels in angular order, so a clean arc and the same pixel count scattered as speckle
+    are separable (`ring_connectivity`). Both need `membrane_pix_thr`.
     Non-polygon features yield an all-None entry.
 
     `dab_threshold`, if given, is used only to print a validation summary
@@ -399,6 +487,7 @@ def measure_cytoplasm_dab(
     results      = [None] * len(features)
     raw_ring_vals = {}          # feature idx -> raw (uncalibrated) ring pixel DAB OD
     raw_ring_h    = {}          # feature idx -> matching ring pixel hematoxylin OD
+    raw_ring_xy   = {}          # feature idx -> matching ring pixel image coordinates
     ring_fallbacks = 0
 
     for i, poly in enumerate(fixed):
@@ -451,6 +540,7 @@ def measure_cytoplasm_dab(
         else:
             raw_ring_vals[i] = ring_s["values"]
             raw_ring_h[i]    = ring_s["aux_values"]
+            raw_ring_xy[i]   = ring_s["xy"]
         if cell_m is None:
             cell_m = nuc_m
 
@@ -475,6 +565,8 @@ def measure_cytoplasm_dab(
             "cytoplasm_dab_p90":  round(ring_p90, 5) if ring_p90 is not None else None,
             "cell_dab_mean":      round(cell_m, 5)  if cell_m  is not None else None,
             "membrane_pos_frac":  None,   # filled after calibration (needs cal. thr)
+            "membrane_connectivity": None,   # longest contiguous stained arc / circumference
+            "membrane_arc_count":    None,   # number of separate stained arcs
             "centroid":           [float(p[0]), float(p[1])],
             "cell_polygon":       cell_polygon,
         }
@@ -527,6 +619,15 @@ def measure_cytoplasm_dab(
                 if dab_dominance_gate and hvals is not None and len(hvals) == len(vals):
                     pos = pos & (vals > hvals)
                 r["membrane_pos_frac"] = round(float(pos.mean()), 5)
+                # Same pixels, same threshold, same dominance gate — the only difference
+                # is that connectivity reads them in angular order. Measured off the raw
+                # channel against the back-mapped threshold, exactly as completeness is.
+                conn, arcs, _covered = ring_connectivity(
+                    raw_ring_xy.get(i), vals, r["centroid"], raw_thr,
+                    hvals=raw_ring_h.get(i),
+                    dab_dominance_gate=dab_dominance_gate)
+                r["membrane_connectivity"] = round(conn, 5)
+                r["membrane_arc_count"] = int(arcs)
     if keep_ring_values:
         for i, r in enumerate(results):
             vals = raw_ring_vals.get(i)

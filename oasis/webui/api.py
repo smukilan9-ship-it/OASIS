@@ -1264,10 +1264,6 @@ class API:
                 # preference: "a smaller window that keeps the contact scale (~10–20 µm) says
                 # more than the whole field with the contact scale removed."
                 #
-                # The floor is NOT monotone in size (same pair: 450→21.2, 350→24.7, 260→19.0),
-                # so every admissible rung must be probed; there is no shortcut by descending
-                # until it stops improving.
-                #
                 # Two tiers, because the claim boundary is what matters, not the floor per se:
                 #   1. rungs that RESOLVE the contact scale (floor ≤ contact_um) — among these
                 #      take the LARGEST, since the claim is already secured and extra area is
@@ -1276,6 +1272,15 @@ class API:
                 #      exclusion, so there is nothing further to win.
                 #   2. none resolve it — take the largest certifying rung for maximum power and
                 #      record that cell-scale engagement is NOT claimable for this pair.
+                #
+                # The floor is NOT monotone in size (same pair: 450→21.2, 350→24.7, 260→19.0),
+                # so tier 1 cannot be found by descending until the floor stops improving. It
+                # CAN be short-circuited on the ladder's own ordering: `fitting` descends, so
+                # the first certifying rung is the largest certifying rung, and if that one
+                # already resolves the contact scale it is by definition the tier-1 answer.
+                # Only when the largest certifying rung LOSES the contact scale do the smaller
+                # rungs need probing — measured on the 33-pair 10X set that is 3 pairs, so the
+                # exhaustive version cost ~2x runtime (2567s vs 1337s) for an identical result.
                 contact_um = 20.0            # matches spatial.py's contact_scale_resolved
                 probed = []
                 for s in fitting:
@@ -1285,7 +1290,10 @@ class API:
                         ref_rgb, mov_rgb, _circle(pcx, pcy, s / px_t), px_t,
                         provisional_matrix=M_t, fle_fast=True, work_max_dim=800)
                     if probe.get("ok"):
-                        probed.append((s, probe.get("min_interpretable_radius_um")))
+                        f = probe.get("min_interpretable_radius_um")
+                        probed.append((s, f))
+                        if f is not None and f <= contact_um:
+                            break        # largest certifying rung, contact scale intact
                 resolving = [(s, f) for s, f in probed if f is not None and f <= contact_um]
                 if resolving:
                     region_um = max(s for s, _ in resolving)
