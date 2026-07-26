@@ -438,6 +438,50 @@ VALIDATIONS = [
         "runtime_tier": "short", "external_deps": [],
     },
     {
+        "id": "local_smoothness_filter",
+        "title": "Local-smoothness correspondence filter — expert-landmark A/B",
+        "category": "registration",
+        "claim": "Rejecting LoFTR matches that disagree with their neighbours' displacement "
+                 "moves expert-annotated anatomy CLOSER to where the expert put it — so the "
+                 "filter removes wrong correspondences, it does not merely flatter its own "
+                 "residual.",
+        "purpose": "Paired A/B over ANHIR training pairs: fit a similarity from "
+                   "loftr_correspondences with local_k=0 (cycle+scale only) and with "
+                   "local_k=8, then measure realized TRE at the expert landmarks under each.",
+        "why": "The filter SELECTS the points its own residual is measured on, so a smaller "
+               "residual is guaranteed and proves nothing. Expert landmarks are the only "
+               "quantity it cannot influence — LoFTR never sees them, so the entire set is "
+               "held out from both arms and the comparison is like-for-like.",
+        "datasets": [],
+        "assumptions": "Similarity fit; both arms run at an identical working resolution on "
+                       "identical images, so the paired delta isolates the filter.",
+        "limitations": "Needs the ANHIR medium-size IMAGES, which are CC BY-NC-SA and "
+                       "therefore not bundled with the landmark dataset — point ROOT at a "
+                       "local copy. Reported in working pixels, not µm: a paired A/B on "
+                       "identical images does not need the per-tissue µm/px, and asserting "
+                       "an unverified one would be exactly the bookkeeping error the sibling "
+                       "ANHIR harness guards against. ANHIR is H&E/IHC serial histology, not "
+                       "CD8/TIM-3 H-DAB; it bounds the filter's behaviour, not its transfer.",
+        "interpretation": "Do NOT read the aggregate as an accuracy claim — the filter is a "
+                          "no-op wherever the correspondences are already clean, so a large "
+                          "overall shift would be the surprising result. Read instead: the "
+                          "split by whether arm A was contaminated, and the ASYMMETRY among "
+                          "the pairs that move. A filter discarding correct correspondences "
+                          "would show symmetric movement, or regressions as large as its "
+                          "gains.",
+        "expected": "MEASURED, 44 training pairs: no overall shift (Wilcoxon p=0.93; 34/44 "
+                    "move by ≤0.5 px). Split by contamination — where arm A was already "
+                    "<10 px (n=35) mean Δ −0.04 px, i.e. a no-op; where arm A was ≥10 px "
+                    "(n=9) mean Δ −6.97 px, median −1.60 px. Among the 10 pairs that move at "
+                    "all: 8 improve, 2 worsen, best −41.7 px vs worst +2.4 px. Mean cull "
+                    "9.7%. The worst regression (mice-kidney_1 9_PAS→6_CD31, 6.2→8.6 px at a "
+                    "22% cull) is the known cost: on cross-stain pairs the local-continuity "
+                    "assumption can discard correct matches.",
+        "runner": {"kind": "script", "script": "validate_local_smoothness_anhir.py",
+                   "argv": ["--limit", "40"]},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "phase_b_certified",
         "title": "Phase-B: analysis only on certified ROIs",
         "category": "registration",

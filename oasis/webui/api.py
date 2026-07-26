@@ -1022,22 +1022,66 @@ class API:
                 th = np.linspace(0, 2 * np.pi, k, endpoint=False)
                 return np.c_[cx + r * np.cos(th), cy + r * np.sin(th)]
 
+            # ANCHOR ON EVIDENCE, NOT ON THE TISSUE CENTROID. The centroid is a fact about
+            # the tissue's SHAPE and says nothing about where the two sections can actually
+            # be matched. On the liver-junction fields it lands squarely on the tumour
+            # nodule — the one structure whose outline genuinely changes between sections —
+            # while the parenchyma either side of it is registrable, so every attempt failed
+            # at the only place the sweep ever looked. One whole-frame pass (seconds, and
+            # content-cached by loftr_matcher) tells us where correspondences survive; anchor
+            # and ORDER the search by that instead.
+            seed = None
+            try:
+                sc = min(1.0, 900.0 / max(H, W))
+                s_ref = cv2.resize(ref_rgb, (int(W * sc), int(H * sc)),
+                                   interpolation=cv2.INTER_AREA) if sc < 1.0 else ref_rgb
+                s_mov = cv2.resize(mov_rgb, (int(mov_rgb.shape[1] * sc),
+                                             int(mov_rgb.shape[0] * sc)),
+                                   interpolation=cv2.INTER_AREA) if sc < 1.0 else mov_rgb
+                self._cert_progress("Finding where the sections match…")
+                sc_res = lm.loftr_correspondences(s_ref, s_mov, px_t / sc)
+                if sc_res.get("n", 0) >= 12:
+                    seed = np.asarray(sc_res["ref_points"], float) / sc
+            except Exception:
+                seed = None                      # degrade to the centroid anchor, never fail
+            if seed is not None and len(seed):
+                # Densest point of the surviving matches, robust to a few stragglers.
+                cxc, cyc = float(np.median(seed[:, 0])), float(np.median(seed[:, 1]))
+
             # Region size: use the requested value, else AUTO-SELECT the largest size that
-            # certifies at the tissue centroid (largest window = most cells for statistics,
-            # while still certifiable). Probe is fast (fast-FLE, small working res).
+            # certifies at the anchor (largest window = most cells for statistics, while
+            # still certifiable). Probe is fast (fast-FLE, small working res).
+            # NOTE region_um is a RADIUS, so a value of s spans 2s µm. The ladder used to
+            # start at 600 (a 1200 µm span), which does not fit ANY of these camera fields —
+            # a 20X frame is only ~722 µm across — so every rung was skipped as
+            # out-of-frame and the sweep fell back to a single fixed size. Rungs now extend
+            # down to 90 µm, and the fallback is the largest rung that actually fits rather
+            # than a constant that may not.
             requested = payload.get("region_um")
             auto_size = not (requested and float(requested) > 0)
+            ladder = (600.0, 450.0, 350.0, 260.0, 180.0, 130.0, 90.0)
+
+            def _probe_centre(s):
+                """Largest-ROI-preserving anchor for rung `s`: nudge the centre inward until
+                the ROI is inside the frame. Rejecting the rung instead would let an anchor
+                that merely sits NEAR an edge veto every large size — measured, that turned a
+                20X field into a 90 µm probe (too small to certify) purely because the match
+                density peaked off-centre. A rung is unusable only if it cannot fit the frame
+                at ALL, which is a property of the frame, not of where we chose to look."""
+                rr = s / px_t
+                if 2 * rr > W or 2 * rr > H:
+                    return None
+                return min(max(cxc, rr), W - rr), min(max(cyc, rr), H - rr)
             if not auto_size:
                 region_um = float(requested)
             else:
-                region_um = 260.0
-                for s in (600.0, 450.0, 350.0, 260.0):
-                    rr = s / px_t
-                    if cxc - rr < 0 or cyc - rr < 0 or cxc + rr > W or cyc + rr > H:
-                        continue
+                fitting = [s for s in ladder if _probe_centre(s) is not None]
+                region_um = fitting[0] if fitting else min(ladder)
+                for s in fitting:
                     self._cert_progress(f"Selecting region size — trying {int(s)} µm…")
+                    pcx, pcy = _probe_centre(s)
                     probe = lm.certify_local_roi(
-                        ref_rgb, mov_rgb, _circle(cxc, cyc, rr), px_t,
+                        ref_rgb, mov_rgb, _circle(pcx, pcy, s / px_t), px_t,
                         provisional_matrix=M_t, fle_fast=True, work_max_dim=800)
                     if probe.get("ok"):
                         region_um = s
@@ -1074,12 +1118,19 @@ class API:
                     if (not piece.is_empty) and piece.area >= 0.25 * sq.area:
                         if piece.geom_type != "Polygon":
                             piece = max(piece.geoms, key=lambda g: g.area)
-                        # certify the centroid tile first (probe already showed it certifies)
                         pts = [[float(x), float(y)] for x, y in piece.exterior.coords[:-1]]
-                        if abs(cx - cxc) < 1 and abs(cy - cyc) < 1:
-                            tiles.insert(0, pts)
+                        # Rank by how much matchable evidence the tile contains, so the
+                        # attempt budget is spent where certification is possible. The old
+                        # order put the centroid tile first and the rest in raster order —
+                        # on a field whose centre is the one unregistrable structure, the
+                        # cap was exhausted before a viable tile was ever reached.
+                        if seed is not None:
+                            score = int(((seed[:, 0] >= cx - R) & (seed[:, 0] <= cx + R) &
+                                         (seed[:, 1] >= cy - R) & (seed[:, 1] <= cy + R)).sum())
                         else:
-                            tiles.append(pts)
+                            score = 1 if (abs(cx - cxc) < 1 and abs(cy - cyc) < 1) else 0
+                        tiles.append((score, pts))
+            tiles = [p for _, p in sorted(tiles, key=lambda t: -t[0])]
 
             regions, attempts = [], 0
             attempt_cap = max(max_regions * 3, 18)

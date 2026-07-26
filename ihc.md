@@ -176,12 +176,48 @@ The replacement, in `serial_registration.py` (`landmark_register_and_verify(...,
 correct from wrong pairings, AUC 0.48–0.64; SIFT mutual-NN returns 0 matches) — so
 `propose_landmarks`' RANSAC is not a filter, it is what *establishes* the match, which is
 why it can't then test the transform. **LoFTR** (detector-free, whole-image attention) is
-model-free and yields ~750 raw matches where lumens gave 8. Selected on **cycle + scale
-consistency** (no residuals, no tuned threshold), audited by **`residual_field_assay`**
-(Moran's I on residual vectors: smooth field ⇒ real deformation; random ⇒ bad matches —
-the only test here that separates the two without ground truth). Caveat: LoFTR `indoor`
-weights give confidently-wrong-but-smooth matches the assay mislabels — weight choice is
-external and unvalidated beyond `outdoor` on one pair.
+model-free and yields ~750 raw matches where lumens gave 8. Selected on **cycle + scale +
+local-smoothness consistency** (no residuals, no tuned threshold), audited by
+**`residual_field_assay`** (Moran's I on residual vectors: smooth field ⇒ real deformation;
+random ⇒ bad matches — the only test here that separates the two without ground truth).
+Caveat: LoFTR `indoor` weights give confidently-wrong-but-smooth matches the assay
+mislabels — weight choice is external and unvalidated beyond `outdoor` on one pair.
+
+*Local smoothness was added after 84 real CD8/TIM-3 field pairs certified zero regions.*
+Cycle and scale test the matcher against itself, and a match to the wrong instance of a
+repeated structure passes both — the reverse pass and the coarser scale err identically.
+About 10–20 % of survivors were gross errors (one field: 7 µm median residual, **631 µm
+max**), and nothing downstream rejected them, `_fit_similarity_robust` being Huber
+(down-weights, never rejects) under an explicit assumption of human-validated landmarks
+that the dense-matcher path silently broke. Those few points set the residual p90 that
+`cell_error_budget` gates on **and** collapsed the assay's Moran's I, so pairs were failed
+*and* misreported as deformed tissue. The filter keeps a match only if its displacement
+agrees with its k nearest neighbours' median — local continuity only, never global form, so
+a tissue no similarity can describe passes intact and the certification keeps its power to
+reject (`test_local_smoothness_does_not_select_for_a_similarity`). Added assumption, stated:
+the displacement field is continuous at the neighbour scale — true away from tears; across a
+genuine tear it would drop the minority side, so `local_drop_frac` is reported.
+
+**It is a safety net, not an accuracy improvement, and the ANHIR A/B says so**
+(`validate_local_smoothness_anhir.py`, 44 training pairs, expert landmarks held out from both
+arms). No overall shift — Wilcoxon **p = 0.93**, 34/44 pairs move ≤ 0.5 px — which is the
+correct result for a filter that has nothing to remove from an already-clean set: where arm A
+was already < 10 px (n = 35) the mean delta is **−0.04 px**, a no-op. The value is entirely in
+the contaminated tail, which is the regime this pipeline's own data sits in: where arm A was
+≥ 10 px (n = 9), mean delta **−6.97 px**. Among the ten pairs that move at all, 8 improve and
+2 worsen, and the magnitudes are asymmetric — best −41.7 px against worst +2.4 px. Mean cull
+9.7 %. The worst regression (mice-kidney_1 9_PAS→6_CD31, 6.2 → 8.6 px at a 22 % cull) is the
+honest cost and marks the limit: on cross-stain pairs, local continuity can discard correct
+matches. Do not cite the aggregate as evidence the filter registers better; cite the split.
+
+*The assay verdicts on effect size, not p.* It previously called `REAL_DEFORMATION` on
+p < 0.05 alone. Permutation power grows with n, so at a dense matcher's n it said yes to
+structure far too weak to carry a deformation estimate: n = 441 at I = 0.014 — two
+thousandths above its own random control — returned p = 0.001. Every pair tested came back
+`REAL_DEFORMATION`, i.e. the adjudicator had stopped adjudicating in exactly the regime it
+exists for. Moran's I approximates the spatially-structured *fraction* of residual variance
+and so does not inflate with n; `_MORAN_EFFECT_FLOOR = 0.10` sits between the function's two
+controls (smooth 0.331, random −0.006), with p retained as a secondary guard.
 
 **Calibration (the only external check).** `validation/validate_fw_anhir_calibration.py`
 fits on annotator PS, predicts, and measures realized error at annotator JB (held out).

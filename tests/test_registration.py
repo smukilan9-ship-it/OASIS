@@ -367,3 +367,77 @@ def test_prediction_error_is_reported_but_does_not_certify():
         pred.append(out["prediction_error_um"])
     assert pred[1] < pred[0], "prediction SE must shrink with n"
     assert all(v != "CERTIFIED" for v in verdicts), "n alone must not buy certification"
+
+
+# ── Outlier hardening of the dense-matcher path ──────────────────────────────────
+# Regression tests for three defects found when 84 real CD8/TIM-3 field pairs certified
+# zero ROIs: the assay had stopped discriminating at a dense matcher's n, and nothing
+# between the matcher and the Huber fit rejected gross mismatches.
+
+def _smooth_field(src, amp=30.0, period=400.0):
+    return np.c_[amp * np.sin(src[:, 0] / period), amp * np.cos(src[:, 1] / period)]
+
+
+def test_assay_calls_a_contaminated_smooth_field_bad_not_deformed():
+    """The defect: verdicting on p<0.05 alone. A genuinely smooth field with 12% gross
+    outliers has its Moran's I destroyed (I≈0.014, indistinguishable from the random
+    control) yet still reaches p<0.05 at large n — and was reported to the user as
+    deformed TISSUE, when the correct reading is that the matcher is wrong."""
+    rng = np.random.default_rng(3)
+    n = 200
+    ref = rng.uniform(0, 1000, (n, 2))
+    M = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    mov = ref + _smooth_field(ref) + rng.normal(0, 1.0, (n, 2))
+    mov[rng.choice(n, int(0.12 * n), replace=False)] += rng.normal(0, 300, (24, 2))
+    a = sr.residual_field_assay(ref, mov, M, 1.0)
+    assert a["moran_i"] < sr._MORAN_EFFECT_FLOOR
+    assert a["p_value"] < 0.05, "p alone would have passed this — that is the defect"
+    assert a["verdict"] == "CORRESPONDENCES_BAD"
+
+
+def test_assay_still_recognises_a_clean_smooth_field():
+    """The effect-size floor must not cost the assay its true positive."""
+    rng = np.random.default_rng(4)
+    n = 200
+    ref = rng.uniform(0, 1000, (n, 2))
+    M = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    mov = ref + _smooth_field(ref) + rng.normal(0, 1.0, (n, 2))
+    a = sr.residual_field_assay(ref, mov, M, 1.0)
+    assert a["moran_i"] >= sr._MORAN_EFFECT_FLOOR
+    assert a["verdict"] == "REAL_DEFORMATION"
+
+
+def test_assay_random_field_reads_bad():
+    rng = np.random.default_rng(5)
+    n = 200
+    ref = rng.uniform(0, 1000, (n, 2))
+    M = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    mov = ref + rng.normal(0, 5.0, (n, 2))
+    assert sr.residual_field_assay(ref, mov, M, 1.0)["verdict"] == "CORRESPONDENCES_BAD"
+
+
+def test_local_smoothness_rejects_outliers_and_keeps_good_matches():
+    from oasis.spatial.loftr_matcher import _local_smoothness
+    rng = np.random.default_rng(6)
+    n = 200
+    src = rng.uniform(0, 1000, (n, 2))
+    dst = src + _smooth_field(src) + rng.normal(0, 0.5, (n, 2))
+    bad = rng.choice(n, 24, replace=False)
+    dst[bad] += rng.normal(0, 300, (24, 2))
+    keep = _local_smoothness(src, dst, tol_px=4.0)
+    good = np.ones(n, bool); good[bad] = False
+    assert (~keep[bad]).sum() == len(bad), "every gross outlier must be rejected"
+    assert (~keep[good]).sum() <= 0.05 * good.sum(), "must not cull the good population"
+
+
+def test_local_smoothness_does_not_select_for_a_similarity():
+    """THE non-circularity property, and the reason this filter is admissible where RANSAC
+    is not. A shear-plus-bend that NO similarity can describe must pass through intact —
+    otherwise the filter would be manufacturing agreement with the model under test."""
+    from oasis.spatial.loftr_matcher import _local_smoothness
+    rng = np.random.default_rng(7)
+    n = 200
+    src = rng.uniform(0, 1000, (n, 2))
+    warp = np.c_[0.15 * src[:, 1] + 40 * np.sin(src[:, 0] / 250.0), 0.10 * src[:, 0]]
+    dst = src + warp + rng.normal(0, 0.5, (n, 2))
+    assert _local_smoothness(src, dst, tol_px=4.0).sum() >= 0.95 * n

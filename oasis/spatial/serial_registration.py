@@ -44,6 +44,15 @@ from oasis.common.registration import (
 )
 
 
+# Minimum Moran's I for `residual_field_assay` to call a residual field REAL_DEFORMATION.
+# Sited between that function's own two controls — a synthetic smooth field gives I=0.331,
+# pure random vectors give I=-0.006 — at roughly a third of the smooth control and an order
+# of magnitude above the random one. It is an ABSOLUTE cut on purpose: Moran's I approximates
+# the fraction of residual variance that is spatially structured and so does not inflate with
+# n, whereas the permutation p-value does, which is what let n=441 at I=0.014 (indistinguish-
+# able from the random control) be reported as deformed tissue. Not tuned to pass any pair.
+_MORAN_EFFECT_FLOOR = 0.10
+
 # The landmark-certification gates. Fixed (≤5 µm criterion + serial-section z-gap
 # floor), not tuned per dataset. Every caller — interactive certification, guided
 # candidate scoring, local-ROI recovery — must use these same numbers, and every
@@ -1423,16 +1432,37 @@ def _certify_fitzpatrick_west(out, ref, mov, M, pixel_size_um, fle_um, image_wh,
     out["min_interpretable_radius_um"] = registration_radius_floor(accuracy_um)
     tier = "" if n >= target_n else f" (n={n} < {target_n} preferred — provisional)"
     d_rms = deform.get("deformation_rms_um") or 0.0
-    d_ub = deform.get("deformation_rms_ub_um") or 0.0
+    # Report the bound the BUDGET ACTUALLY USED — cell_error_budget gates on
+    # max(p90_ub, rms_ub), so printing rms_ub alone made the message disagree with the
+    # verdict (measured: printed 5.6 µm where the gate saw 74.7 µm), which made a failing
+    # pair impossible to diagnose. Name the dominant term too, since the two mean different
+    # things: rms → a broad scale increase; p90 → a heavy tail, i.e. suspect correspondences.
+    d_rms_ub = deform.get("deformation_rms_ub_um") or 0.0
+    d_p90_ub = deform.get("deformation_p90_ub_um") or 0.0
+    d_ub = budget.get("deformation_p90_ub_um") or max(d_rms_ub, d_p90_ub)
+    which = "p90 of residuals" if d_p90_ub >= d_rms_ub else "RMS scale"
     budget_txt = (f"cell-error p90 {accuracy_um} µm = √(TRE_pred {budget['tre_pred_p90_um']}² "
-                  f"+ deformation≤{d_ub}²), FLE {out['fle_um']} µm, n={n}{tier}")
+                  f"+ deformation≤{d_ub}²  [bound from {which}; "
+                  f"rms_ub {d_rms_ub} µm, p90_ub {d_p90_ub} µm]), "
+                  f"FLE {out['fle_um']} µm, n={n}{tier}")
 
     if d_rms > deformed_loo_um:
+        # A heavy tail is NOT deformation. Real deformation is smooth, so it shifts the whole
+        # residual distribution (rms/median ≈ 1.2); a few correspondences matched to the wrong
+        # structure leave the median alone and blow out the rms. Say which one this is rather
+        # than asserting the tissue is at fault — the two call for opposite remedies.
+        tr = deform.get("tail_ratio")
+        hint = ""
+        if tr is not None and tr > 2.0:
+            hint = (f" NOTE rms/median = {tr} — the residuals are heavy-tailed, which is the "
+                    f"signature of a few WRONG correspondences rather than of smooth tissue "
+                    f"deformation (median residual {deform.get('residual_median_um')} µm). "
+                    f"Check residual_field_assay before blaming the sections.")
         out.update(verdict="DEFORMED",
                    reason=f"tissue deformation RMS {d_rms} µm (residual scatter far beyond "
                           f"the {out['fle_um']} µm localisation noise, p={deform.get('p_value')}) "
                           f"exceeds the {deformed_loo_um} µm limit — the sections do not "
-                          f"share a single similarity (no warp applied)")
+                          f"share a single similarity (no warp applied).{hint}")
         return out
 
     # The proposer could only pair structures within `censor_um`; deformation beyond that
@@ -2086,7 +2116,7 @@ def suggest_moving_landmark(ref_rgb, mov_rgb, ref_point, pixel_size_um,
 
 
 def residual_field_assay(ref_pts, mov_pts, matrix, pixel_size_um, fle_um=None,
-                         n_perm=999, seed=0):
+                         n_perm=999, seed=0, effect_floor=_MORAN_EFFECT_FLOOR):
     """Judge a correspondence SET without ground truth and without trusting the transform.
 
     Fit a similarity, take the residual VECTORS, and ask whether they are spatially
@@ -2096,8 +2126,8 @@ def residual_field_assay(ref_pts, mov_pts, matrix, pixel_size_um, fle_um=None,
     random. Three regimes, and they are distinguishable:
 
         residual ≈ √2·FLE                  → correspondences good, no deformation
-        residual ≫ √2·FLE, I > 0, p small  → correspondences good, REAL deformation
-        residual ≫ √2·FLE, I ≈ 0, p ≈ 0.5  → correspondences BAD. Says nothing about
+        residual ≫ √2·FLE, I ≥ floor       → correspondences good, REAL deformation
+        residual ≫ √2·FLE, I ≈ 0           → correspondences BAD. Says nothing about
                                              deformation. Must not be certified.
 
     This is the only tool here that separates "the tissue is bent" from "the matcher is
@@ -2106,12 +2136,25 @@ def residual_field_assay(ref_pts, mov_pts, matrix, pixel_size_um, fle_um=None,
     gives I=0.331 (p=0.001); pure random vectors give I=-0.006 (p=0.153). Needs n ≳ 10 for
     the permutation test to have power.
 
-    Returns {'n', 'residual_median_um', 'moran_i', 'p_value', 'verdict'}.
+    THE VERDICT IS AN EFFECT SIZE, NOT A p-VALUE, and that distinction is the whole point at
+    a dense matcher's n. The permutation test asks "is the spatial structure non-zero?"; its
+    power grows with n, so at the n LoFTR returns it answers yes to structure far too weak to
+    carry a deformation estimate. Measured on real CD8/TIM-3 pairs: n=441 with I=0.014 —
+    two thousandths above the RANDOM control — returned p=0.001 and was certified as
+    REAL_DEFORMATION. Every pair tested came back REAL_DEFORMATION, so the assay had stopped
+    discriminating in exactly the regime it was built to adjudicate, and matcher error was
+    being reported to the user as deformed tissue. Moran's I is (to a good approximation) the
+    fraction of residual variance that is spatially structured, so it does not inflate with
+    n; `effect_floor` is therefore an absolute cut, sited between the two controls. p is
+    retained as a secondary guard so a small, noisy n cannot pass on a fluke I.
+
+    Returns {'n', 'residual_median_um', 'moran_i', 'p_value', 'effect_floor', 'verdict'}.
     """
     ref = np.asarray(ref_pts, float).reshape(-1, 2)
     mov = np.asarray(mov_pts, float).reshape(-1, 2)
     out = {"n": len(ref), "residual_median_um": None, "moran_i": None,
-           "p_value": None, "verdict": "UNDETERMINED"}
+           "p_value": None, "effect_floor": float(effect_floor),
+           "verdict": "UNDETERMINED"}
     if matrix is None or len(ref) < 6:
         return out
     resid = (_apply_affine(mov, np.asarray(matrix, float)) - ref) * float(pixel_size_um)
@@ -2140,9 +2183,13 @@ def residual_field_assay(ref_pts, mov_pts, matrix, pixel_size_um, fle_um=None,
     floor = 2.0 * float(fle_um) if fle_um else None
     if floor is not None and out["residual_median_um"] <= floor:
         out["verdict"] = "CORRESPONDENCES_GOOD_NO_DEFORMATION"
-    elif p < 0.05:
+    elif obs >= float(effect_floor) and p < 0.05:
         out["verdict"] = "REAL_DEFORMATION"
     else:
+        # Either the structure is too weak to be deformation (I below the floor) or it is not
+        # distinguishable from the permutation null at all. Both mean the same thing for the
+        # caller: these residuals are dominated by incoherent correspondence error, so no
+        # deformation estimate read off them is trustworthy.
         out["verdict"] = "CORRESPONDENCES_BAD"
     return out
 

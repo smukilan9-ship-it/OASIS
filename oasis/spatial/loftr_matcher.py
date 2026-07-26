@@ -29,9 +29,18 @@ on two properties of the MATCHER, computable with no transform at all:
   SCALE CONSISTENCY   match at two image scales. A correspondence survives only if both
                       scales agree within `tol_um`. Real structure is scale-stable;
                       texture aliasing is not.
+  LOCAL SMOOTHNESS    a correspondence survives only if its displacement agrees with the
+                      median displacement of its nearest neighbours. The first two filters
+                      test the MATCHER against itself, and a match to the wrong instance of
+                      a repeated structure passes both — the reverse pass and the coarser
+                      scale make the same mistake for the same reason. This one asks a
+                      question neither can: is the displacement field continuous here?
 
-Neither filter can see the similarity, so the surviving residuals are admissible evidence
-about it. `serial_registration.residual_field_assay` is the acceptance test for the output
+None of the three can see the similarity, so the surviving residuals are admissible evidence
+about it. The third constrains only LOCAL continuity, never global form, so a tissue that no
+similarity describes survives it intact — see `_local_smoothness`.
+
+`serial_registration.residual_field_assay` is the acceptance test for the output
 (and note it catches RANDOM error, not SYSTEMATIC error: LoFTR's `indoor` weights produce
 confidently wrong but spatially SMOOTH matches on this data, residual median 77–170 µm on a
 1443 µm field, which the assay happily labels REAL_DEFORMATION. Weight choice matters and
@@ -190,17 +199,72 @@ def _disp_agree(src_a, dst_a, src_b, dst_b, tol_px, lookup_px):
     return (np.asarray(dist) <= lookup_px) & agree
 
 
+def _local_smoothness(src, dst, tol_px, k=8):
+    """Keep matches whose displacement agrees with their k nearest NEIGHBOURS' displacement.
+
+    THE THIRD FILTER, AND WHY IT IS NEEDED. Cycle and scale test the MATCHER's self-
+    consistency, and a match to the wrong instance of a repeated structure can pass both:
+    the reverse pass makes the same mistake for the same reason, and so does the coarser
+    scale. Measured on real CD8/TIM-3 pairs, roughly 10-20% of the survivors are gross
+    errors — one field had a 7 µm median residual and a 631 µm maximum. Nothing downstream
+    removes them: `_fit_similarity_robust` is Huber, which down-weights but never rejects,
+    and its docstring's assumption that "the researcher validates every correspondence"
+    holds for hand-placed landmarks, not for a dense matcher's output. Those few points then
+    set the residual p90 that `cell_error_budget` gates on, and they destroy the Moran's I
+    that `residual_field_assay` needs, so the pair is failed AND misdiagnosed as deformed
+    tissue.
+
+    WHY THIS IS NOT THE CIRCULARITY THE MODULE EXISTS TO AVOID. RANSAC is barred here
+    because it selects for agreement with the similarity under test, leaving residuals that
+    cannot test it. This filter never forms a similarity. It compares each match only with
+    its immediate spatial neighbours — tens of µm away in a dense field — so it constrains
+    the displacement field to be LOCALLY continuous and says nothing about whether that
+    field is globally a rotation, a scale, or a translation. A smoothly warped tissue that
+    no similarity can describe passes this filter completely intact, which is exactly why
+    the certification that follows retains its power to reject.
+
+    THE ASSUMPTION IT DOES ADD, stated plainly: the true displacement field is continuous at
+    the k-neighbour scale. Serial sections satisfy this away from tears and folds; ACROSS a
+    genuine tear it would discard the correct correspondences on the minority side. Callers
+    get `local_drop_frac` so an implausible cull is visible rather than silent.
+
+    Threshold is `max(tol_px, median + 3·MAD)` of the neighbour deviation: never stricter
+    than the module's declared agreement tolerance, and above that a robust adaptive cut
+    that needs no per-image tuning. Deterministic — no resampling.
+    """
+    from scipy.spatial import cKDTree
+    src = np.asarray(src, float); dst = np.asarray(dst, float)
+    n = len(src)
+    if n <= k + 1:
+        # Too few points for the neighbourhood to be LOCAL: with k ≈ n the median
+        # displacement is the field's global median, i.e. a translation, and rejecting
+        # against it would start selecting for a motion model — the very circularity this
+        # filter is designed to avoid. Shrinking k instead would be worse (fewer points per
+        # median = noisier). Pass everything through and let the certification gate decide.
+        return np.ones(n, bool)
+    d = dst - src
+    _, idx = cKDTree(src).query(src, k=k + 1)
+    med = np.median(d[idx[:, 1:]], axis=1)          # neighbours only, never self
+    dev = np.linalg.norm(d - med, axis=1)
+    m = float(np.median(dev))
+    mad = float(np.median(np.abs(dev - m))) * 1.4826
+    return dev <= max(float(tol_px), m + 3.0 * mad)
+
+
 def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
                           scales=(0.75, 0.5), tol_um=4.0, conf_floor=0.2,
-                          noise=0.0, rng=None):
-    """Cycle- and scale-consistent LoFTR correspondences. No RANSAC, no residuals.
+                          noise=0.0, rng=None, local_k=8):
+    """Cycle-, scale- and locally-smooth LoFTR correspondences. No RANSAC, no residuals.
 
     `noise`/`rng` perturb both images identically-in-distribution; used by `loftr_fle` to
     re-run this WHOLE pipeline under noise, so the FLE it measures belongs to the selected
     population rather than to the raw matcher.
 
+    `local_k` sets the neighbourhood of the third filter (`_local_smoothness`); 0 disables
+    it, which is how the shipped behaviour before it was added can be reproduced.
+
     Returns dict: ref_points, mov_points, confidence, n, n_raw, n_after_cycle,
-    n_after_scale, tol_um, weights, ok, msg.
+    n_after_scale, n_after_local, local_drop_frac, tol_um, weights, ok, msg.
     """
     tol_px = float(tol_um) / float(pixel_size_um)
     s0 = scales[0]
@@ -209,6 +273,7 @@ def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
                                   conf_floor, noise, rng)
     out = {"ref_points": [], "mov_points": [], "confidence": [], "n": 0,
            "n_raw": int(len(fk0)), "n_after_cycle": 0, "n_after_scale": 0,
+           "n_after_local": 0, "local_drop_frac": 0.0,
            "tol_um": float(tol_um), "weights": weights, "ok": False, "msg": ""}
     if len(fk0) < 6:
         out["msg"] = f"LoFTR returned only {len(fk0)} raw matches"
@@ -231,11 +296,25 @@ def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
         fk0, fk1, fcf = fk0[keep], fk1[keep], fcf[keep]
     out["n_after_scale"] = int(len(fk0))
 
+    # LOCAL SMOOTHNESS: the survivors must agree with their own neighbours. Still no
+    # transform — see `_local_smoothness` for why this does not reintroduce circularity.
+    if local_k and len(fk0) > int(local_k) + 1:
+        keep = _local_smoothness(fk0, fk1, tol_px, k=int(local_k))
+        n_before = len(fk0)
+        fk0, fk1, fcf = fk0[keep], fk1[keep], fcf[keep]
+        out["local_drop_frac"] = round(1.0 - len(fk0) / float(n_before), 4)
+    out["n_after_local"] = int(len(fk0))
+    if len(fk0) < 6:
+        out["msg"] = f"only {len(fk0)} matches survive local smoothness"
+        return out
+
     out.update(ref_points=fk0.tolist(), mov_points=fk1.tolist(),
                confidence=[round(float(c), 4) for c in fcf], n=int(len(fk0)),
                ok=len(fk0) >= 6,
                msg=(f"{out['n_raw']} raw → {out['n_after_cycle']} cycle-consistent → "
-                    f"{len(fk0)} scale-consistent (tol {tol_um} µm); no transform used"))
+                    f"{out['n_after_scale']} scale-consistent → {len(fk0)} locally smooth "
+                    f"(dropped {out['local_drop_frac']:.0%}, tol {tol_um} µm); "
+                    f"no transform used"))
     return out
 
 
@@ -250,7 +329,7 @@ def _roi_bbox(poly, W, H, pad):
 def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                       provisional_matrix=None, fallback_ref_lm=None, fallback_mov_lm=None,
                       weights="outdoor", tol_um=4.0, min_matches=8, work_max_dim=800,
-                      return_correspondences=False, fle_fast=False):
+                      return_correspondences=False, fle_fast=False, loftr_kw=None):
     """Certify a user-drawn ROI by a LOCAL rigid fit from LoFTR correspondences inside it.
 
     THE WHOLE POINT. Serial-section deformation is smooth, so a similarity fit CONFINED to a
@@ -308,8 +387,11 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     source = "loftr_in_roi"
     ref_pts = mov_pts = None
     fle_um = None
+    # `loftr_kw` reaches the matcher's own knobs (e.g. local_k=0 to reproduce the pre-
+    # local-smoothness selection) so a validation run can A/B the filter through the real
+    # certification path instead of a reimplementation of it.
     c = loftr_correspondences(small_r, small_m, pixel_size_um=px_work,
-                              weights=weights, tol_um=tol_um)
+                              weights=weights, tol_um=tol_um, **(loftr_kw or {}))
     if c["ok"]:
         rp = np.asarray(c["ref_points"], float) / r + np.array([rx0, ry0])
         mp = np.asarray(c["mov_points"], float) / r + np.array([mx0, my0])
@@ -325,8 +407,13 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                 # region without fast mode for the principled measured FLE.
                 fle_um = 0.7
             else:
+                # Same `loftr_kw` as the selection above: loftr_fle re-runs this pipeline, and
+                # its whole point is that the FLE belongs to the population actually
+                # certified — measuring a differently-filtered set would reintroduce exactly
+                # the mismatch that tripped the FLE-consistency audit.
                 fl = loftr_fle(small_r, small_m, c["ref_points"], c["mov_points"],
-                               pixel_size_um=px_work, n_trials=2)  # lower bound; 2 is enough
+                               pixel_size_um=px_work, n_trials=2,  # lower bound; 2 is enough
+                               **(loftr_kw or {}))
                 fle_um = fl["fle_um"]
 
     # A VALIS-rigid recovery branch lived here for cross-modal ROIs where LoFTR finds nothing.
@@ -361,6 +448,11 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     cert["source"] = source
     cert["n_correspondences"] = int(len(ref_pts))
     cert["fle_um_loftr"] = fle_um
+    # Surfaced so an implausible cull by the local-smoothness filter is visible to the
+    # caller rather than silently shaping the certified set.
+    cert["local_drop_frac"] = c.get("local_drop_frac")
+    cert["loftr_funnel"] = {k: c.get(k) for k in
+                            ("n_raw", "n_after_cycle", "n_after_scale", "n_after_local")}
     cert["ok"] = cert.get("verdict") in ("CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED")
     if return_correspondences:            # the LoFTR points used for the fit (image coords in)
         cert["corr_ref"] = np.asarray(ref_pts, float).tolist()
