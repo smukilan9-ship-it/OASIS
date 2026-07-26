@@ -1098,6 +1098,7 @@ class API:
             # ladder never spends attempts on sizes that are rejected on geometry alone.
             _min_frac = sr.CERTIFICATION_GATES["min_roi_frac"]
             r_min_um = float(np.sqrt(_min_frac * W * H / 4.0) * px_t)   # square tile, side 2R
+            size_policy, sel_floor = "operator_specified", None
             if not auto_size:
                 region_um = float(requested)
             else:
@@ -1112,6 +1113,28 @@ class API:
                 # back to the largest is what made a failed probe condemn the whole pair on a
                 # single attempt.
                 region_um = fitting[-1] if fitting else min(ladder)
+                # SELECT ON THE RADIUS FLOOR, NOT ON SIZE. Taking the first (largest) rung
+                # that certifies maximises cells, and silently spends the contact scale to do
+                # it: measured on LL477_Liver_10X_4, R=450 certifies at a 21.2 µm floor while
+                # R=260 certifies at 19.0 µm — the larger window is chosen and the ~10–20 µm
+                # band is lost. ihc.md §"Precedence is deliberate" states the opposite
+                # preference: "a smaller window that keeps the contact scale (~10–20 µm) says
+                # more than the whole field with the contact scale removed."
+                #
+                # The floor is NOT monotone in size (same pair: 450→21.2, 350→24.7, 260→19.0),
+                # so every admissible rung must be probed; there is no shortcut by descending
+                # until it stops improving.
+                #
+                # Two tiers, because the claim boundary is what matters, not the floor per se:
+                #   1. rungs that RESOLVE the contact scale (floor ≤ contact_um) — among these
+                #      take the LARGEST, since the claim is already secured and extra area is
+                #      free statistical power. Picking the outright smallest floor here would
+                #      trade cells for resolution nobody can use: below ~10 µm is hard-core
+                #      exclusion, so there is nothing further to win.
+                #   2. none resolve it — take the largest certifying rung for maximum power and
+                #      record that cell-scale engagement is NOT claimable for this pair.
+                contact_um = 20.0            # matches spatial.py's contact_scale_resolved
+                probed = []
                 for s in fitting:
                     self._cert_progress(f"Selecting region size — trying {int(s)} µm…")
                     pcx, pcy = _probe_centre(s)
@@ -1119,8 +1142,17 @@ class API:
                         ref_rgb, mov_rgb, _circle(pcx, pcy, s / px_t), px_t,
                         provisional_matrix=M_t, fle_fast=True, work_max_dim=800)
                     if probe.get("ok"):
-                        region_um = s
-                        break
+                        probed.append((s, probe.get("min_interpretable_radius_um")))
+                resolving = [(s, f) for s, f in probed if f is not None and f <= contact_um]
+                if resolving:
+                    region_um = max(s for s, _ in resolving)
+                    size_policy = "contact_scale_resolved"
+                elif probed:
+                    region_um = max(s for s, _ in probed)
+                    size_policy = "largest_certifying_contact_scale_lost"
+                else:
+                    size_policy = "none_certified_at_anchor"
+                sel_floor = dict(probed).get(region_um)
             R = region_um / px_t
             # Non-overlapping grid of SQUARE tiles CLIPPED to the tissue outline — so the
             # regions follow tissue shape (arbitrary polygons), not circles, and a
@@ -1219,12 +1251,29 @@ class API:
                     "index": len(regions), "verdict": cert.get("verdict"), "is_certified": True,
                     "source": cert.get("source"), "n_correspondences": cert.get("n_correspondences"),
                     "cell_error_um": cell,
+                    # Per-region claim boundary. The floor is what bounds interpretation of
+                    # this region's curve; it is NOT applied to the DCLF band (clipping was
+                    # measured to cost power — see validate_radius_floor.py).
+                    "min_interpretable_radius_um": cert.get("min_interpretable_radius_um"),
+                    "contact_scale_resolved": (
+                        cert.get("min_interpretable_radius_um") is not None
+                        and cert.get("min_interpretable_radius_um") <= 20.0),
                     "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
                     "mov_roi_polygon": mov_roi_full, "local_matrix": local_full,
                 })
+            # `contact_scale_resolved` travels with the result because it is a CLAIM boundary,
+            # not a diagnostic: false means cell-scale engagement is not attributable for this
+            # pair and only neighbourhood-scale co-organisation may be reported. Taken from the
+            # regions actually returned, never from the size probe — the probe sits at one
+            # anchor, the returned regions are what the analysis will run on.
+            floors = [r.get("min_interpretable_radius_um") for r in regions
+                      if r.get("min_interpretable_radius_um") is not None]
             return {"status": "ok", "regions": regions, "n": len(regions),
                     "attempted": attempts, "candidates": len(tiles),
-                    "region_um": round(region_um, 1), "auto_size": auto_size}
+                    "region_um": round(region_um, 1), "auto_size": auto_size,
+                    "size_policy": size_policy, "size_probe_floor_um": sel_floor,
+                    "radius_floor_um": (min(floors) if floors else None),
+                    "contact_scale_resolved": (bool(floors) and min(floors) <= 20.0)}
         except Exception as e:
             import traceback
             return {"status": "error", "error": str(e), "trace": traceback.format_exc()[-800:]}
@@ -1998,8 +2047,6 @@ class API:
             "cytoplasm_overrides": cytoplasm_overrides,
             "membrane_overrides":  membrane_overrides,
             "adaptive_threshold":  adaptive_threshold,
-            "nuclear_adaptive":    bool(config.get("nuclear_adaptive", False)),
-            "nuclear_ashman_min":  float(config.get("nuclear_ashman_min", 1.25)),
             "preprocess_normalize": preprocess_normalize,
             "cell_expansion_um":   cell_expansion_um,
             "_pixel_size_from_ui": True,

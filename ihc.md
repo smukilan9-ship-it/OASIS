@@ -723,7 +723,8 @@ be built for serial DAB; we bound it, we do not close it.
 The pipeline classifies a cell positive on a **fixed per-stain DAB OD cutoff** applied
 across the whole cohort (CD8 0.20, TIM-3 0.10). This section records why, what was
 measured on real slides, and what was rejected. Harness:
-`validation/threshold_audit_ll477.py` → `threshold_audit_ll477_results.json`.
+`legacy/nuclear_adaptive/threshold_audit_ll477.py` → `threshold_audit_ll477_results.json`
+(parked alongside the feature it retired).
 
 ### 11.1 What the field does
 
@@ -780,11 +781,13 @@ Two independent routes agreeing is as much support as a cutoff of this kind ever
 **TIM-3 0.10 is not corroborated on this cohort** (Otsu 0.016–0.069) and is provisionally
 read as an inherited convention rather than a derived value. Open — see § 11.4.
 
-**The adaptive GMM is unsafe as configured.** `nuclear_ashman_min` defaults to **1.25** in
-`run_pipeline.py` (the 2.0 in `nuclear_classify.py` is only the library default). At 1.25
-the cut fires on 6 of 8 images at roughly half the trusted value; on Tim3_x10_2 it returns
-0.0022 and calls **28.8 % positive** against 0.1 % at the fixed cut. Production is
-unaffected only because `nuclear_adaptive` defaults to `False`.
+**The adaptive GMM was unsafe as configured, and is now removed.** `nuclear_ashman_min`
+defaulted to **1.25** in `run_pipeline.py` (the 2.0 in `nuclear_classify.py` was only the
+library default). At 1.25 the cut fires on 6 of 8 images at roughly half the trusted value;
+on Tim3_x10_2 it returns 0.0022 and calls **28.8 % positive** against 0.1 % at the fixed
+cut. Production was unaffected only because `nuclear_adaptive` defaulted to `False` — a
+single toggle away from a wrong cohort. The module and its harnesses are parked in
+`legacy/nuclear_adaptive/`; nothing in `oasis/` imports them.
 
 **The cause is statistical, not biological.** The membranous-marker hypothesis was tested
 and does not hold: ring separability is barely above nuclear (CD8 1.51 vs 1.48; TIM-3 1.50
@@ -815,7 +818,23 @@ been tested on H-DAB extraction specifically, plain deconvolution with well-chos
 won. Per-image Macenko (used by `cell_expansion`) does move CD8 toward 0.2 (0.074 → 0.163)
 but **declined on 2 of 8 images**; its estimator failure must stay visible, not silent.
 
-### 11.4 Open — pending decision
+### 11.4 What ships
+
+**Tier 1 (default, v1).** One fixed OD cutoff per stain, applied across the whole cohort.
+
+**Tier 2 (escape hatch).** A per-image override for a one-off faint or poor stain. It is
+**recorded** — the image, the value, and the cohort default it replaced — and surfaced in
+the report, because it is a deliberate exception to the cohort rule rather than a setting.
+The caveat that goes with it: re-thresholding a faint slide until the positive count looks
+right assumes the answer. NordiQC's data is that ~90 % of IHC failures are too-weak or
+false-negative staining, so the first correct response to a faint slide is restain or
+exclude; override is second. Fixed OD on faint tissue is *safer*, not more accurate — it
+fails closed (under-calls) where an adaptive or trained rule fails open, which is exactly
+what § 11.2 and § 11.3 measured.
+
+**Tier 3 (planned).** A per-cohort trained classifier — see § 11.5.
+
+### 11.5 Open — pending decision
 
 Not yet settled, deliberately left unwritten rather than guessed:
 

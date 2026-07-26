@@ -879,10 +879,8 @@ td.muted { color: var(--text3); font-size: 11px; }
           <label>DAB threshold (optical density) — <b id="q-thresh-display">0.20</b> OD</label>
           <input type="range" id="q-thresh" min="5" max="50" value="20"
             oninput="document.getElementById('q-thresh-display').textContent=(this.value/100).toFixed(2)">
-          <div class="toggle-row" style="margin-top:10px">
-            <span>Adaptive threshold <span style="color:var(--text3);font-size:11px">— per-image GMM valley (nuclear only; ignores the slider)</span></span>
-            <div class="toggle" id="q-adaptive-toggle" onclick="toggleQuantAdaptive()"></div>
-          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">One cutoff for the
+            whole cohort. Per-image exceptions can be set after segmentation.</div>
         </div>
         <div class="toggle-row">
           <span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— recommended for faint / variable stains</span></span>
@@ -1314,11 +1312,6 @@ td.muted { color: var(--text3); font-size: 11px; }
           </div>
         </div>
         <div style="margin-top:8px">
-          <div class="toggle-row"><span>Adaptive threshold <span style="color:var(--text3);font-size:11px">— per-image Otsu</span></span>
-            <div class="toggle" id="spatial-adaptive-toggle" onclick="toggleEl('spatial-adaptive-toggle')"></div></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">Computes an Otsu cutoff from each image's own DAB distribution; when on, the two manual OD thresholds above are ignored.</div>
-        </div>
-        <div style="margin-top:8px">
           <div class="toggle-row"><span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
             <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div></div>
           <div style="font-size:11px;color:var(--text3);margin-top:2px">White-balances each image to its own estimated background before measuring DAB. Reduces slide-to-slide stain variation; does not move cell coordinates.</div>
@@ -1693,28 +1686,14 @@ function showView(page, view) {
 // ── Toggle ────────────────────────────────────────────────
 function toggleEl(id) { document.getElementById(id).classList.toggle('on'); }
 function isOn(id)     { return document.getElementById(id).classList.contains('on'); }
-function toggleQuantAdaptive() {
-  // Adaptive (Otsu) is a NUCLEAR-marker tool; it collapses on membranous markers.
-  // Block it while membrane mode is on.
-  if (isOn('q-membrane-toggle')) { showToast('Adaptive is disabled in membrane mode'); return; }
-  toggleEl('q-adaptive-toggle');
-  const on = isOn('q-adaptive-toggle');
-  const sl = document.getElementById('q-thresh');
-  sl.disabled = on; sl.style.opacity = on ? 0.4 : 1;
-  document.getElementById('q-thresh-display').style.opacity = on ? 0.4 : 1;
-}
 function toggleQuantMembrane() {
   toggleEl('q-membrane-toggle');
   const on = isOn('q-membrane-toggle');
-  const at = document.getElementById('q-adaptive-toggle');
-  // Membrane mode uses completeness cutoffs, not a nuclear Otsu threshold —
-  // force adaptive off and grey it out so the two can't fight.
-  if (on && at.classList.contains('on')) {
-    at.classList.remove('on');
-    const sl = document.getElementById('q-thresh'); sl.disabled = false; sl.style.opacity = 1;
-    document.getElementById('q-thresh-display').style.opacity = 1;
-  }
-  at.style.opacity = on ? 0.4 : 1; at.style.pointerEvents = on ? 'none' : 'auto';
+  // Membrane mode scores ring completeness against calibrated cutoffs, so the nuclear
+  // OD slider does not apply.
+  const sl = document.getElementById('q-thresh');
+  sl.disabled = on; sl.style.opacity = on ? 0.4 : 1;
+  document.getElementById('q-thresh-display').style.opacity = on ? 0.4 : 1;
   document.getElementById('q-calib-profile-row').style.display = on ? 'block' : 'none';
   if (on) loadCalibProfiles();
 }
@@ -1767,13 +1746,12 @@ const parameterHelp = {
   pixel_size_um: 'Physical micrometres represented by one image pixel; all distances and areas depend on this calibration.',
   pixel_size_ref_um: 'Reference-section pixel calibration actually used to convert coordinates and residuals into micrometres.',
   pixel_size_source: 'Where the active pixel calibration came from: metadata, manual entry, scale-bar extraction, or fallback.',
-  dab_threshold_a: 'Minimum DAB optical density for marker-positive classification in Image A when adaptive thresholding is off.',
-  dab_threshold_b: 'Minimum DAB optical density for marker-positive classification in Image B when adaptive thresholding is off.',
-  dab_threshold: 'Minimum DAB optical density for marker-positive classification when adaptive thresholding is off.',
-  adaptive_threshold: 'Whether a separate Otsu threshold was estimated from each image instead of using the manual DAB cutoff.',
-  nuclear_classifier: 'Whether the validated adaptive nuclear classifier (per-image GMM valley + abstain gate) was enabled for this run, or a single fixed OD threshold was used.',
-  nuclear_method: 'How the nuclear positivity cutoff was actually chosen for THIS image: fixed OD; adaptive GMM/Otsu; or adaptive that ABSTAINED on faint/unimodal staining and fell back to the fixed cutoff (reason shown).',
-  threshold_used: 'The DAB optical-density cutoff actually applied to call cells positive in this image — the adaptive value when the GMM classifier ran, otherwise the fixed cutoff.',
+  dab_threshold_a: 'Minimum DAB optical density to call a cell positive in Image A. One value for the whole cohort.',
+  dab_threshold_b: 'Minimum DAB optical density to call a cell positive in Image B. One value for the whole cohort.',
+  dab_threshold: 'Minimum DAB optical density to call a cell positive. One value for the whole cohort, so every image is measured on the same scale.',
+  nuclear_classifier: 'How positivity was called for this run. A fixed cohort-wide optical-density cutoff is the default and the only option in v1.',
+  nuclear_method: 'Where the cutoff for THIS image came from: the cohort default, or a recorded per-image override.',
+  threshold_used: 'The DAB optical-density cutoff actually applied to call cells positive in this image.',
   preprocess_normalize: 'Whether each image was white-balanced to its own estimated background before DAB measurement.',
   enable_registration: 'Whether moving-section coordinates were transformed into the fixed-section coordinate system.',
   registration_method: 'Transform method actually used to align the serial sections.',
@@ -2708,11 +2686,9 @@ async function runQuantAnalysis() {
     default_pixel_size:    px_x,
     pixel_size_mode:       pxMode,
     dab_threshold:         document.getElementById('q-thresh').value / 100,
-    // Nuclear adaptive = the validated GMM valley + abstain gate (oasis/quant/nuclear_classify),
-    // which replaces the old in-Groovy Otsu. Nuclear-only: membrane mode forces it off.
+    // One fixed cohort-wide OD cutoff; per-image exceptions are applied after
+    // segmentation and recorded in the output (ihc.md § 11).
     adaptive_threshold:    false,
-    nuclear_adaptive:      isOn('q-adaptive-toggle') && !isOn('q-membrane-toggle'),
-    nuclear_ashman_min:    1.25,
     preprocess_normalize:  isOn('q-normalize-toggle'),
     generate_overlays:     isOn('q-overlay-toggle'),
     // Results-only by default: working/debug files (CSV, GeoJSON, logs, Groovy) are
@@ -2747,9 +2723,7 @@ async function runQuantAnalysis() {
   document.getElementById('quant-log').innerHTML = '';
   setProgress('quant', 0, 'Starting pipeline...');
   appendLog('quant-log', `Analysis started · ${input}`, 'info');
-  const thrTxt = settings.nuclear_adaptive
-    ? 'adaptive nuclear (per-image GMM valley + abstain)'
-    : `${settings.dab_threshold.toFixed(2)} OD (fixed)`;
+  const thrTxt = `${settings.dab_threshold.toFixed(2)} OD (fixed)`;
   appendLog('quant-log', `Threshold: ${thrTxt} · Pixel size: ${px_x} µm/px${settings.preprocess_normalize ? ' · stain-normalized' : ''}${settings.use_cytoplasm_measurement ? ' · membrane ring' : ''}`, 'normal');
 
   const started = await window.pywebview.api.run_pipeline(settings);
@@ -2864,8 +2838,7 @@ function showQuantResults(r) {
     pixel_size_um: lastQuantRunConfig.default_pixel_size,
     pixel_size_source: lastQuantRunConfig.pixel_size_mode,
     dab_threshold: lastQuantRunConfig.dab_threshold,
-    nuclear_classifier: lastQuantRunConfig.nuclear_adaptive
-      ? 'adaptive (per-image GMM valley + abstain)' : 'fixed OD threshold',
+    nuclear_classifier: 'fixed OD threshold',
     preprocess_normalize: lastQuantRunConfig.preprocess_normalize,
     membrane_measurement: lastQuantRunConfig.use_cytoplasm_measurement,
     calibration_profile: lastQuantRunConfig.calibration_name,
@@ -2901,19 +2874,14 @@ function showQuantResults(r) {
   showView('quant', 'results');
 }
 
-// Human-readable nuclear-classifier provenance per image. Distinguishes: adaptive off
-// (fixed OD), adaptive ran (GMM/Otsu, with separability), and adaptive ABSTAINED (faint
-// staining → correctly fell back to the fixed cutoff, with the reason surfaced).
+// Where this image's cutoff came from. A per-image override is a deliberate exception to
+// the cohort rule, so it is named as one rather than folded silently into the result.
 function nuclearMethodLabel(m) {
-  const method = m.nuclear_threshold_method;
-  if (!method) return 'fixed OD threshold (adaptive off)';
-  if (method === 'gmm' || method === 'otsu')
-    return `adaptive · ${method === 'gmm' ? 'GMM valley' : 'Otsu'}`
-      + (m.nuclear_separability != null ? ` (separability ${Number(m.nuclear_separability).toFixed(2)})` : '');
-  // method 'fixed' / 'abstain' => the gate abstained and used the fixed cutoff
-  const reason = m.nuclear_abstain_reason ? ` — ${m.nuclear_abstain_reason}` : '';
-  return `adaptive ABSTAINED → fixed OD${reason}`
-    + (m.staining_quality ? ` · staining quality: ${m.staining_quality}` : '');
+  if (m.threshold_override != null)
+    return `per-image override — ${Number(m.threshold_override).toFixed(3)} OD`
+      + (m.cohort_threshold != null
+         ? ` (cohort default ${Number(m.cohort_threshold).toFixed(3)})` : '');
+  return 'cohort default';
 }
 
 function exportQuantCSV() {
@@ -2964,7 +2932,7 @@ let quantWizardStep = 1;
 const QUANT_WIZARD_HINTS = {
   1: 'Load the image (or a batch folder) and choose where results go. In batch you can auto-match scale-bar images that live in the same folder.',
   2: 'Set the pixel size — the physical scale every measurement depends on. Use the global default, enter it for this run, or detect it from a 100 µm scale-bar image; override per image if needed.',
-  3: 'Choose the marker and how positivity is called: nuclear DAB threshold (fixed, or the validated adaptive GMM), or the membranous cytoplasm-ring compartment. Segmentation is InstanSeg — these choices shape classification only.',
+  3: 'Choose the marker and how positivity is called: a fixed nuclear DAB cutoff applied across the cohort, or the membranous cytoplasm-ring compartment. Segmentation is InstanSeg — these choices shape classification only.',
   4: 'Review the resolved settings and output options, then Run. Segmentation is cached and reused, so the parameters above are locked in when the run starts.',
 };
 function quantWizardGoTo(n) {
@@ -3009,15 +2977,13 @@ function quantBuildReview() {
   else if (pxMode === 'scale')  pxTxt = quantScaleImage.px ? `scale bar — ${quantScaleImage.px} µm/px` : 'scale bar — not yet detected';
   else                          pxTxt = `global default — ${quantGlobalPx} µm/px` + pxSuffix;
   const membrane = isOn('q-membrane-toggle');
-  const adaptive = isOn('q-adaptive-toggle') && !membrane;
   const stainChoice = document.getElementById('q-stain').value;
   const stainName = stainChoice === 'Other'
     ? (document.getElementById('q-stain-other').value.trim() || '(unnamed)')
     : (stainChoice || '(none selected)');
   let thrTxt;
-  if (membrane)      thrTxt = 'calibrated membrane completeness cutoffs';
-  else if (adaptive) thrTxt = 'adaptive — per-image GMM valley';
-  else               thrTxt = `${(document.getElementById('q-thresh').value / 100).toFixed(2)} OD (fixed)`;
+  if (membrane) thrTxt = 'calibrated membrane completeness cutoffs';
+  else          thrTxt = `${(document.getElementById('q-thresh').value / 100).toFixed(2)} OD (fixed)`;
   const rows = [
     ['Mode', mode === 'single' ? 'Single image' : 'Batch (folder)'],
     [mode === 'single' ? 'Image' : 'Folder', esc(input)],
@@ -4319,12 +4285,9 @@ function spatialBuildConfig(forceMode) {
     dab_threshold_b:       parseFloat(document.getElementById('spatial-thresh-b').value) || 0.10,
     // Mirrored from the Quant tab: per-image Otsu, per-image white-balance, and
     // per-image pixel-size calibration from "_scale" siblings (batch only).
-    // Nuclear adaptive = validated GMM valley + abstain (nuclear_classify); replaces the
-    // old in-Groovy Otsu. run_single_image applies it only to nuclear images — a membranous
-    // marker keeps the cytoplasm-ring completeness path (that branch takes precedence).
+    // Fixed cohort-wide OD per marker; a membranous marker instead takes the
+    // cytoplasm-ring completeness path (that branch takes precedence).
     adaptive_threshold:    false,
-    nuclear_adaptive:      isOn('spatial-adaptive-toggle'),
-    nuclear_ashman_min:    1.25,
     preprocess_normalize:  isOn('spatial-normalize-toggle'),
     match_scale_images:    mode === 'batch' && isOn('spatial-scale-match-toggle'),
     enable_registration:   isOn('spatial-reg-toggle'),
