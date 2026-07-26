@@ -126,6 +126,15 @@ html, body {
 .scroll::-webkit-scrollbar-thumb:hover { background: #d4d4d8; }
 
 /* ── Cards ─────────────────────────────────────────────── */
+.qr-views { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+.qr-view-label { font-size:11px; color:var(--text3); margin-bottom:3px;
+                 display:flex; align-items:center; gap:8px; }
+.qr-key { margin-left:auto; display:flex; align-items:center; gap:5px; }
+.qr-key i { width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:2px; }
+.qr-key i.pos { background:#dc2626; } .qr-key i.neg { background:#2563eb; }
+.qr-view canvas { width:100%; height:auto; display:block; border-radius:6px;
+                  background:var(--bg2); }
+@media (max-width: 720px) { .qr-views { grid-template-columns:1fr; } }
 .card {
   background: var(--card);
   border: 1px solid var(--border);
@@ -2848,6 +2857,18 @@ function qrRender() {
       </div>
       <div style="margin:8px 0">${qrHistogramSVG(img.histogram,
             img.membrane ? -1 : thr, 480, 64)}</div>
+      <div class="qr-views" id="qr-views-${i}">
+        <div class="qr-view">
+          <div class="qr-view-label">Slide</div>
+          <canvas id="qr-raw-${i}"></canvas>
+        </div>
+        <div class="qr-view">
+          <div class="qr-view-label">Calls at ${thr.toFixed(2)} OD
+            <span class="qr-key"><i class="pos"></i>positive <i class="neg"></i>negative</span>
+          </div>
+          <canvas id="qr-seg-${i}"></canvas>
+        </div>
+      </div>
       ${img.membrane
         ? `<div style="font-size:11px;color:var(--text3)">Scored on calibrated ring
              completeness, not this cutoff. The nuclear distribution is shown for context
@@ -2864,6 +2885,8 @@ function qrRender() {
            </div>`}
     </div>`;
   }).join('');
+
+  qrState.images.forEach((_, i) => qrLoadViews(i));
 
   const n = Object.keys(qrState.overrides).length;
   document.getElementById('qr-summary-txt').textContent =
@@ -2895,6 +2918,94 @@ function qrFracFromHistogram(h, thr) {
   const total = h.counts.reduce((s, c) => s + c, 0) + (h.overflow || 0);
   return total > 0 ? Math.min(1, pos / total) : 0;
 }
+
+// Slide + calls, side by side. The image is fetched once per slide and cached; only the
+// call overlay is redrawn as the cutoff moves, so dragging the slider stays smooth on a
+// twelve-thousand-cell field. A histogram says how many cells a cutoff selects — only the
+// picture says whether they are the right ones, or debris and edge artefact.
+const qrViewCache = {};
+
+async function qrLoadViews(i) {
+  const img = qrState.images[i];
+  if (!img || qrViewCache[img.name] === 'pending') return;
+  if (!qrViewCache[img.name]) {
+    qrViewCache[img.name] = 'pending';
+    try {
+      const v = await window.pywebview.api.review_image_view(img.name);
+      qrViewCache[img.name] = (v && v.ok) ? v : { failed: true, msg: (v && v.msg) || 'unavailable' };
+    } catch (e) {
+      qrViewCache[img.name] = { failed: true, msg: String(e) };
+    }
+  }
+  qrDrawViews(i);
+}
+
+function qrDrawViews(i) {
+  const img = qrState.images[i];
+  const v = qrViewCache[img && img.name];
+  const host = document.getElementById('qr-views-' + i);
+  if (!v || v === 'pending' || !host) return;
+  if (v.failed) {
+    host.innerHTML = `<div style="font-size:11px;color:var(--text3)">
+      Slide preview unavailable — ${esc(v.msg || '')}. The histogram and counts are
+      unaffected.</div>`;
+    return;
+  }
+  const raw = document.getElementById('qr-raw-' + i);
+  const seg = document.getElementById('qr-seg-' + i);
+  if (!raw || !seg) return;
+
+  for (const cv of [raw, seg]) { cv.width = v.w; cv.height = v.h; }
+  const im = new Image();
+  im.onload = () => {
+    raw.getContext('2d').drawImage(im, 0, 0);
+    qrPaintCalls(i);
+  };
+  im.src = v.image;
+  qrViewCache[img.name]._img = im;
+}
+
+// Redraw only the call overlay. Cells are filled translucently and outlined, so both the
+// classification and the underlying tissue stay visible — the point is to judge whether
+// the cutoff picked the right cells, which a solid mask would hide.
+function qrPaintCalls(i) {
+  const img = qrState.images[i];
+  const v = qrViewCache[img && img.name];
+  const seg = document.getElementById('qr-seg-' + i);
+  if (!v || v.failed || !seg) return;
+  const ctx = seg.getContext('2d');
+  ctx.clearRect(0, 0, seg.width, seg.height);
+  if (v._img && v._img.complete) ctx.drawImage(v._img, 0, 0);
+  ctx.globalAlpha = 0.85;
+
+  const thr = qrThresholdFor(img);
+  let pos = 0;
+  for (const c of v.cells) {
+    if (!c.p || c.p.length < 3) continue;
+    // A membranous image is not called by this cutoff, so its cells are drawn in a
+    // neutral outline rather than given a positive/negative colour that is not theirs.
+    const isPos = img.membrane ? null : (c.v != null && c.v > thr);
+    if (isPos) pos++;
+    ctx.beginPath();
+    ctx.moveTo(c.p[0][0], c.p[0][1]);
+    for (let k = 1; k < c.p.length; k++) ctx.lineTo(c.p[k][0], c.p[k][1]);
+    ctx.closePath();
+    ctx.fillStyle = isPos === null ? 'rgba(120,120,120,0.18)'
+                  : isPos ? 'rgba(220,38,38,0.38)' : 'rgba(37,99,235,0.16)';
+    ctx.fill();
+    ctx.lineWidth = 0.7;
+    ctx.strokeStyle = isPos === null ? 'rgba(120,120,120,0.7)'
+                    : isPos ? 'rgba(185,28,28,0.95)' : 'rgba(37,99,235,0.55)';
+    ctx.stroke();
+  }
+  ctx.globalAlpha = 1;
+  const lab = seg.parentElement.querySelector('.qr-view-label');
+  if (lab && !img.membrane) {
+    lab.childNodes[0].nodeValue = `Calls at ${thr.toFixed(2)} OD — ${pos.toLocaleString()} positive `;
+  }
+}
+
+function qrRepaintAll() { qrState.images.forEach((_, i) => qrPaintCalls(i)); }
 
 function qrCohortChanged(v) {
   qrState.cohort = v;

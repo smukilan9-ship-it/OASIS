@@ -690,6 +690,67 @@ class API:
             })
         return {"ok": True, "cohort_threshold": round(cohort, 4), "images": images}
 
+    def review_image_view(self, name, max_px=520):
+        """Downsampled slide image plus cell outlines, for the side-by-side review panel.
+
+        The browser recolours the cells itself as the cutoff moves, so this is fetched once
+        per image rather than per slider step. Polygons are pre-scaled into thumbnail
+        coordinates and rounded, which is what keeps a 12,000-cell field small enough to
+        hand over as JSON.
+
+        Seeing the calls on the tissue is not decoration. A histogram says how many cells a
+        cutoff selects; only the image says whether they are the *right* ones — whether the
+        cutoff is picking out membrane-stained lymphocytes or catching debris, red blood
+        cells and edge artefact.
+        """
+        import numpy as np
+        from PIL import Image
+        from oasis.webui import calibration
+        from oasis.quant import reclassify as RC
+
+        cfg = self._review_cfg or {}
+        output_dir = cfg.get("output_dir")
+        input_dir = cfg.get("input_dir")
+        if not output_dir:
+            return {"ok": False, "msg": "No segmented run to review"}
+
+        stem = os.path.splitext(str(name))[0]
+        src = None
+        for cand in Path(input_dir or "").glob(f"{stem}.*"):
+            if cand.suffix.lower() in (".tif", ".tiff", ".png", ".jpg", ".jpeg",
+                                       ".svs", ".ndpi"):
+                src = cand
+                break
+        geo = next(iter(sorted(Path(output_dir).glob(f"{stem}*.geojson"))), None)
+        if src is None or geo is None:
+            return {"ok": False, "msg": f"Could not locate image or detections for {name}"}
+
+        try:
+            with Image.open(src) as im:
+                im = im.convert("RGB")
+                W, H = im.size
+                scale = min(float(max_px) / max(W, H), 1.0)
+                thumb = im.resize((max(1, int(W * scale)), max(1, int(H * scale))),
+                                  Image.LANCZOS)
+                b64 = calibration._b64(np.asarray(thumb))
+        except (OSError, ValueError) as e:
+            return {"ok": False, "msg": f"Could not read {src.name}: {e}"}
+
+        values = RC.read_dab_values(str(geo))
+        cells = []
+        for c in calibration._cells(str(geo)):
+            i = c["i"]
+            v = float(values[i]) if i < len(values) and np.isfinite(values[i]) else None
+            pts = c["points"]
+            # Every 2nd vertex at thumbnail scale: a nucleus is ~10 px there, so the
+            # dropped detail is invisible and it roughly halves the payload.
+            if len(pts) > 12:
+                pts = pts[::2]
+            cells.append({"v": None if v is None else round(v, 4),
+                          "p": [[round(x * scale, 1), round(y * scale, 1)] for x, y in pts]})
+        return {"ok": True, "image": b64, "w": thumb.width, "h": thumb.height,
+                "cells": cells}
+
     def preview_threshold(self, geojson_path, threshold):
         """What a candidate cutoff would call positive, without writing anything."""
         import numpy as np
