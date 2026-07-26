@@ -326,6 +326,16 @@ td.muted { color: var(--text3); font-size: 11px; }
   border-radius: var(--r-sm); padding: 10px 12px;
   font-size: 11px; color: var(--text2); line-height: 1.65;
 }
+/* Marks a surface that is usable but not yet dependable across all inputs. Used on the
+   membranous/Calibrate path, which is limited by staining CONTRAST rather than by any
+   threshold we could tune — on faint tissue it is not callable at all. */
+.beta-tag {
+  display: inline-block; vertical-align: middle;
+  font-size: 9px; font-weight: 700; letter-spacing: .06em;
+  padding: 1px 5px; margin-left: 5px; border-radius: 3px;
+  background: #b45309; color: #fff;
+}
+.nav-btn .beta-tag { font-size: 8px; padding: 0 4px; margin-left: 4px; }
 .info-box.amber { background: var(--bg3); border-color: var(--border); color: var(--text2); }
 .info-box.warn  { background: #fafafa; border-color: var(--border2); color: var(--text); margin-top: 10px; }
 
@@ -715,7 +725,7 @@ td.muted { color: var(--text3); font-size: 11px; }
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5"/>
     </svg>
-    Calibrate
+    Calibrate<span class="beta-tag">BETA</span>
   </button>
   <button class="nav-btn bottom" id="nav-validation" onclick="showPage('validation'); loadValidations()">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -798,7 +808,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 
         <div class="field" style="margin-top:12px"><label>Output folder</label>
           <div class="input-with-btn">
-            <input type="text" id="q-output" placeholder="~/Desktop/ihc_results">
+            <input type="text" id="q-output" placeholder="Documents/OASIS/results">
             <button class="btn sm" onclick="pickInto('q-output', null)">Browse</button>
           </div>
         </div>
@@ -879,7 +889,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div class="toggle" id="q-normalize-toggle" onclick="toggleEl('q-normalize-toggle')"></div>
         </div>
         <div class="toggle-row">
-          <span>Membranous marker <span style="color:var(--text3);font-size:11px">— measure DAB in the cytoplasmic ring (CD8 / TIM-3); uses calibrated completeness cutoffs (Calibrate tab)</span></span>
+          <span>Membranous marker <span class="beta-tag">BETA</span> <span style="color:var(--text3);font-size:11px">— measure DAB in the cytoplasmic ring (CD8 / TIM-3); uses calibrated completeness cutoffs (Calibrate tab). Reliable only on well-stained tissue: faint membrane staining is a contrast limit, not a threshold to tune.</span></span>
           <div class="toggle" id="q-membrane-toggle" onclick="toggleQuantMembrane()"></div>
         </div>
         <div class="field" id="q-calib-profile-row" style="display:none;margin-top:8px">
@@ -1473,15 +1483,13 @@ td.muted { color: var(--text3); font-size: 11px; }
 
     <div class="card">
       <div class="card-title">Analysis engine</div>
-      <div class="field"><label>QuPath binary path</label>
-        <div class="input-with-btn">
-          <input type="text" id="s-qupath" placeholder="/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64">
-          <button class="btn sm" onclick="pickInto('s-qupath', null)">Browse</button>
-        </div>
+      <div class="info-box" style="margin-bottom:12px">
+        Segmentation runs in-process with the bundled InstanSeg model. <b>QuPath is not
+        required</b> and does not need to be installed.
       </div>
-      <div class="field"><label>InstanSeg model path</label>
+      <div class="field"><label>InstanSeg model path <span style="color:var(--text3);font-weight:400">— leave blank to use the bundled model</span></label>
         <div class="input-with-btn">
-          <input type="text" id="s-model" placeholder="~/QuPath/v0.7/instanseg/downloaded/brightfield_nuclei-0.1.1">
+          <input type="text" id="s-model" placeholder="Using the model bundled with OASIS">
           <button class="btn sm" onclick="pickInto('s-model', null)">Browse</button>
         </div>
       </div>
@@ -1506,10 +1514,19 @@ td.muted { color: var(--text3); font-size: 11px; }
      PAGE: CALIBRATE
 ═══════════════════════════════════════════════════════════ -->
 <div class="page" id="page-calibrate" style="position:relative">
-  <div class="page-header"><h1>Calibrate cutoffs</h1></div>
+  <div class="page-header"><h1>Calibrate cutoffs <span class="beta-tag">BETA</span></h1>
+    <p class="sub">Membranous markers — works only on well-stained tissue</p></div>
 
   <div id="calib-config" class="scroll">
     <div class="card">
+      <div class="info-box warn" style="margin-bottom:14px">
+        <b>Beta — membranous markers only, and only on well-stained tissue.</b>
+        On faintly stained slides the limit is staining <b>contrast</b>, not the cutoff:
+        the positive and negative populations overlap in the ring signal, so no threshold
+        separates them and calibration cannot rescue the image. Expect the classifier to
+        abstain there rather than produce a confident wrong answer. Judge whether a slide
+        qualifies using the <b>DAB signal</b> view while labelling.
+      </div>
       <div class="card-title">Fit membrane cutoffs to your own slides</div>
       <div class="info-box amber" style="margin-bottom:14px">
         DAB staining isn't quantitative — "how much brown = positive" differs by antibody, protocol and scanner, so cutoffs from another dataset won't transfer. Segment <b>your</b> stained slides, click positive and negative cells, and fit the cutoffs for this marker. Do this <b>once per staining protocol</b>, then switch between saved calibrations in Quant.
@@ -2120,14 +2137,28 @@ function stopPipeline() {
 }
 
 // ── Settings ──────────────────────────────────────────────
+// Validation and Restained are research instruments, not v1 surfaces: Validation needs
+// reference datasets that are not shipped (on a normal install every validation would skip
+// for want of data), and Restained drives an experimental protocol. Hidden unless this is a
+// research build — see oasis/common/edition.py. Hiding rather than deleting keeps one
+// codebase, and `OASIS_RESEARCH=1` brings them back for a single launch.
+function applyEdition(isResearch) {
+  if (isResearch) { document.body.dataset.edition = 'research'; return; }
+  document.body.dataset.edition = 'v1';
+  for (const id of ['nav-validation', 'page-validation', 'nav-restained', 'page-restained']) {
+    const el = document.getElementById(id);
+    if (el) el.remove();
+  }
+}
+
 async function loadSetup() {
   const s = await window.pywebview.api.get_setup();
+  applyEdition(!!s._research);
   document.getElementById('s-microscope').value = s.microscope     || '';
   document.getElementById('s-camera').value     = s.camera         || '';
   document.getElementById('s-scanner').value    = s.scanner        || '';
   document.getElementById('s-px-x').value       = s.pixel_size_x   || 0.5;
   document.getElementById('s-px-y').value       = s.pixel_size_y   || 0.5;
-  document.getElementById('s-qupath').value     = s.qupath_binary  || '';
   document.getElementById('s-model').value      = s.instanseg_model|| '';
   document.getElementById('s-threads').value    = s.instanseg_threads || 4;
 
@@ -2147,10 +2178,14 @@ async function loadSetup() {
   if (spx) spx.value = s.pixel_size_x || 0.5;
 
   const home = s._home || '~';
+  // Results go where the backend says (~/Documents/OASIS/results, or the platform
+  // equivalent) rather than a hardcoded ~/Desktop, which clutters the Desktop and does
+  // not exist on every machine. Kept in one place so the UI and the CLI agree.
+  window.OASIS_DEFAULT_OUTPUT = s._default_output_dir || (home + '/Documents/OASIS/results');
   if (!document.getElementById('q-output').value)
-    document.getElementById('q-output').value = home + '/Desktop/ihc_results';
+    document.getElementById('q-output').value = window.OASIS_DEFAULT_OUTPUT;
   const sOut = document.getElementById('spatial-output');
-  if (sOut && !sOut.value) sOut.value = home + '/Desktop/ihc_spatial_results';
+  if (sOut && !sOut.value) sOut.value = window.OASIS_DEFAULT_OUTPUT + '/spatial';
 }
 
 async function saveSetup() {
@@ -2163,7 +2198,6 @@ async function saveSetup() {
     default_objective: document.getElementById('s-objective').value,
     device:            document.getElementById('s-device').value,
     instanseg_threads: parseInt(document.getElementById('s-threads').value) || 4,
-    qupath_binary:     document.getElementById('s-qupath').value,
     instanseg_model:   document.getElementById('s-model').value,
   };
   await window.pywebview.api.save_setup(data);
@@ -2669,8 +2703,8 @@ async function runQuantAnalysis() {
   const settings = {
     analysis_mode:         quantMode,
     input_dir:             input,
-    output_dir:            document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results',
-    dashboard_dir:         (document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results') + '/output_results',
+    output_dir:            document.getElementById('q-output').value.trim() || window.OASIS_DEFAULT_OUTPUT,
+    dashboard_dir:         (document.getElementById('q-output').value.trim() || window.OASIS_DEFAULT_OUTPUT) + '/output_results',
     default_pixel_size:    px_x,
     pixel_size_mode:       pxMode,
     dab_threshold:         document.getElementById('q-thresh').value / 100,
@@ -2966,7 +3000,7 @@ function quantBuildReview() {
   const input = mode === 'single'
     ? (document.getElementById('q-single-image').value.trim() || '(no image selected)')
     : (document.getElementById('q-input').value.trim() || '(no folder selected)');
-  const out = document.getElementById('q-output').value.trim() || '~/Desktop/ihc_results';
+  const out = document.getElementById('q-output').value.trim() || window.OASIS_DEFAULT_OUTPUT;
   const pxMode = document.querySelector('input[name="q-px"]:checked')?.value || 'manual';
   const pxManual = parseFloat(document.getElementById('q-px-x').value);
   const pxSuffix = mode === 'batch' ? ' (default; scale bars / overrides win)' : '';

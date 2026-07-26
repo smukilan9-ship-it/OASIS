@@ -1,0 +1,590 @@
+[
+  {
+    "image": "LL477_CD8_10X_4.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 4521,
+    "expected_fixed": 0.2,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.026,
+        "dab_p90": 0.0748,
+        "dab_p99": 0.3555,
+        "otsu": 0.1768,
+        "pos_frac_at_fixed": 0.0263,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.644,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.1023318241191511,
+          "method": "gmm",
+          "sep": 1.644,
+          "abstain": false,
+          "pos_frac": 0.051094890510948905
+        }
+      },
+      "B_macenko": {
+        "available": true,
+        "dab_median": 0.0302,
+        "dab_p90": 0.0741,
+        "dab_p99": 0.3224,
+        "otsu": 0.16,
+        "pos_frac_at_fixed": 0.0246,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.687,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.10016966383237674,
+          "method": "gmm",
+          "sep": 1.687,
+          "abstain": false,
+          "pos_frac": 0.04866180048661801
+        }
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": -0.0227,
+        "dab_p90": 0.0581,
+        "dab_p99": 1.3401,
+        "otsu": 0.6601,
+        "pos_frac_at_fixed": 0.0323,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.697,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.697,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "CD8"
+  },
+  {
+    "image": "LL477_CD8_x10_1.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 12943,
+    "expected_fixed": 0.2,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.0605,
+        "dab_p90": 0.0816,
+        "dab_p99": 0.3453,
+        "otsu": 0.2111,
+        "pos_frac_at_fixed": 0.0185,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.554,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.1374701326012648,
+          "method": "gmm",
+          "sep": 1.554,
+          "abstain": false,
+          "pos_frac": 0.022794004017926132
+        }
+      },
+      "B_macenko": {
+        "available": false,
+        "reason": "estimator declined / low contrast"
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": 0.021,
+        "dab_p90": 0.0479,
+        "dab_p99": 0.7265,
+        "otsu": 0.5706,
+        "pos_frac_at_fixed": 0.0198,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.467,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.467,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "CD8"
+  },
+  {
+    "image": "LL477_CD8_x10_2.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 8930,
+    "expected_fixed": 0.2,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.0115,
+        "dab_p90": 0.0366,
+        "dab_p99": 0.2075,
+        "otsu": 0.1405,
+        "pos_frac_at_fixed": 0.0105,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.52,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.07437349601560593,
+          "method": "gmm",
+          "sep": 1.52,
+          "abstain": false,
+          "pos_frac": 0.02296146953405018
+        }
+      },
+      "B_macenko": {
+        "available": true,
+        "dab_median": 0.0771,
+        "dab_p90": 0.1228,
+        "dab_p99": 0.343,
+        "otsu": 0.2447,
+        "pos_frac_at_fixed": 0.0197,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.562,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.16308293497080473,
+          "method": "gmm",
+          "sep": 1.562,
+          "abstain": false,
+          "pos_frac": 0.032594086021505375
+        }
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": -0.0226,
+        "dab_p90": 0.0166,
+        "dab_p99": 0.4833,
+        "otsu": 0.7063,
+        "pos_frac_at_fixed": 0.0155,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.395,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.395,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "CD8"
+  },
+  {
+    "image": "LL477_CD8_x10_3.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 4632,
+    "expected_fixed": 0.2,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.0281,
+        "dab_p90": 0.074,
+        "dab_p99": 0.3989,
+        "otsu": 0.1996,
+        "pos_frac_at_fixed": 0.0242,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.483,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.09924921067960438,
+          "method": "gmm",
+          "sep": 1.483,
+          "abstain": false,
+          "pos_frac": 0.05850604490500864
+        }
+      },
+      "B_macenko": {
+        "available": true,
+        "dab_median": 0.044,
+        "dab_p90": 0.0953,
+        "dab_p99": 0.4181,
+        "otsu": 0.2144,
+        "pos_frac_at_fixed": 0.027,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.531,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.1192411503675241,
+          "method": "gmm",
+          "sep": 1.531,
+          "abstain": false,
+          "pos_frac": 0.06109671848013817
+        }
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": 0.0127,
+        "dab_p90": 0.0754,
+        "dab_p99": 1.2596,
+        "otsu": 0.7103,
+        "pos_frac_at_fixed": 0.0313,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.102,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.102,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "CD8"
+  },
+  {
+    "image": "LL477_Liver_Tim3_10X_1.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 2917,
+    "expected_fixed": 0.1,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.0181,
+        "dab_p90": 0.0309,
+        "dab_p99": 0.053,
+        "otsu": 0.0203,
+        "pos_frac_at_fixed": 0.0,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.176,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.176,
+          "abstain": true,
+          "pos_frac": null
+        }
+      },
+      "B_macenko": {
+        "available": true,
+        "dab_median": 0.0506,
+        "dab_p90": 0.0742,
+        "dab_p99": 0.1134,
+        "otsu": 0.0527,
+        "pos_frac_at_fixed": 0.0195,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.31,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.06611127215339116,
+          "method": "gmm",
+          "sep": 1.31,
+          "abstain": false,
+          "pos_frac": 0.19266369557764826
+        }
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": 0.1468,
+        "dab_p90": 0.2531,
+        "dab_p99": 0.5576,
+        "otsu": 0.408,
+        "pos_frac_at_fixed": 0.7875,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.337,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.27466802631186005,
+          "method": "gmm",
+          "sep": 1.337,
+          "abstain": false,
+          "pos_frac": 0.07541995200548508
+        }
+      }
+    },
+    "stain": "TIM-3"
+  },
+  {
+    "image": "LL477_Tim3_10X_3.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 5564,
+    "expected_fixed": 0.1,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.0175,
+        "dab_p90": 0.0552,
+        "dab_p99": 0.1546,
+        "otsu": 0.0687,
+        "pos_frac_at_fixed": 0.0261,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.329,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.05064994656865615,
+          "method": "gmm",
+          "sep": 1.329,
+          "abstain": false,
+          "pos_frac": 0.11843997124370956
+        }
+      },
+      "B_macenko": {
+        "available": true,
+        "dab_median": 0.0412,
+        "dab_p90": 0.0842,
+        "dab_p99": 0.1878,
+        "otsu": 0.0851,
+        "pos_frac_at_fixed": 0.0633,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.362,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.07825743691164196,
+          "method": "gmm",
+          "sep": 1.362,
+          "abstain": false,
+          "pos_frac": 0.1218547807332854
+        }
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": -0.0073,
+        "dab_p90": 0.0635,
+        "dab_p99": 0.3853,
+        "otsu": 0.7391,
+        "pos_frac_at_fixed": 0.0541,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.578,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.578,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "TIM-3"
+  },
+  {
+    "image": "LL477_Tim3_x10_1.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 12224,
+    "expected_fixed": 0.1,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": 0.0418,
+        "dab_p90": 0.0552,
+        "dab_p99": 0.0799,
+        "otsu": 0.0491,
+        "pos_frac_at_fixed": 0.0047,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.11,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.11,
+          "abstain": true,
+          "pos_frac": null
+        }
+      },
+      "B_macenko": {
+        "available": false,
+        "reason": "estimator declined / low contrast"
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": 0.2086,
+        "dab_p90": 0.2851,
+        "dab_p99": 0.4792,
+        "otsu": 0.8152,
+        "pos_frac_at_fixed": 0.9927,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.856,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 0.856,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "TIM-3"
+  },
+  {
+    "image": "LL477_Tim3_x10_2.tif",
+    "shape": [
+      1440,
+      1920
+    ],
+    "n_cells": 7835,
+    "expected_fixed": 0.1,
+    "variants": {
+      "A_fixed": {
+        "available": true,
+        "dab_median": -0.0067,
+        "dab_p90": 0.0181,
+        "dab_p99": 0.0503,
+        "otsu": 0.0162,
+        "pos_frac_at_fixed": 0.0014,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.272,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": 0.00217792211855955,
+          "method": "gmm",
+          "sep": 1.272,
+          "abstain": false,
+          "pos_frac": 0.2883216336949585
+        }
+      },
+      "B_macenko": {
+        "available": true,
+        "dab_median": 0.0796,
+        "dab_p90": 0.1304,
+        "dab_p99": 0.2023,
+        "otsu": 0.0965,
+        "pos_frac_at_fixed": 0.2742,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.187,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.187,
+          "abstain": true,
+          "pos_frac": null
+        }
+      },
+      "C_normalised": {
+        "available": true,
+        "dab_median": 0.0631,
+        "dab_p90": 0.1828,
+        "dab_p99": 0.488,
+        "otsu": 0.5157,
+        "pos_frac_at_fixed": 0.2973,
+        "ashman2.0": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.115,
+          "abstain": true,
+          "pos_frac": null
+        },
+        "ashman1.25": {
+          "threshold": null,
+          "method": "abstain",
+          "sep": 1.115,
+          "abstain": true,
+          "pos_frac": null
+        }
+      }
+    },
+    "stain": "TIM-3"
+  }
+]

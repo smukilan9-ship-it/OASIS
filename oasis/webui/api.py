@@ -13,7 +13,9 @@ from statistics import median
 from pathlib import Path
 
 from oasis.common.worker import worker_cmd                              # noqa: E402
-from oasis.common.paths import default_model_dir, user_config_dir       # noqa: E402
+from oasis.common.paths import (default_model_dir, default_output_dir,   # noqa: E402
+                                user_config_dir)
+from oasis.common.edition import edition_name, is_research              # noqa: E402
 
 # Platform-appropriate on new installs; stays at ~/.ihc_analyzer where that already
 # exists, so upgrading never looks like it lost someone's calibration profiles.
@@ -127,11 +129,36 @@ class API:
         else:
             result = dict(DEFAULT_SETUP)
         result["_home"] = str(Path.home())
+        # Drives which tabs the UI shows. Sent with the setup so the frontend does not
+        # need a second round-trip before it can decide what to render.
+        result["_research"] = is_research(result)
+        result["_edition"] = edition_name(result)
+        # Platform-appropriate results location, so the UI stops hardcoding ~/Desktop.
+        result["_default_output_dir"] = default_output_dir()
         return result
 
     def save_setup(self, data):
+        """Merge into the stored setup rather than replacing it.
+
+        The UI posts only the fields it renders, so a straight overwrite silently deletes
+        every setting whose input is not on screen. That bit when the QuPath binary field
+        was removed from Settings for v1: saving any unrelated preference would have wiped
+        `qupath_binary`, breaking the `segmenter: qupath` escape hatch for anyone using it.
+        Merging keeps settings the current UI does not expose — including research-only and
+        deprecated ones — intact.
+
+        Keys are dropped only when explicitly set to None.
+        """
+        existing = {}
+        if SETUP_FILE.exists():
+            with open(SETUP_FILE) as f:
+                existing = yaml.safe_load(f) or {}
+        merged = {**existing, **{k: v for k, v in (data or {}).items() if v is not None}}
+        # Transient/derived fields are computed on read; never persist them.
+        for transient in ("_home", "_research", "_edition"):
+            merged.pop(transient, None)
         with open(SETUP_FILE, "w") as f:
-            yaml.dump(data, f, default_flow_style=False)
+            yaml.dump(merged, f, default_flow_style=False)
         return {"ok": True}
 
     def is_first_run(self):
