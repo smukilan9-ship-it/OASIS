@@ -130,6 +130,39 @@ def test_faint_image_is_refused_rather_than_confidently_scored():
     assert ok is False and "dab_mean" in reason
 
 
+def test_gate_compares_image_medians_not_individual_cell_extremes():
+    """Regression. The gate once built its band from the min/max of individual training
+    CELLS and compared an image MEDIAN against it. Cell values span a far wider range than
+    image medians do, so the band admitted anything — a slide shifted half an optical
+    density into the floor was accepted as "within training range". A safety gate that
+    cannot fire is worse than none, because it reads as a check that passed.
+    """
+    names = C.feature_names("nuclear")
+    X, y, ids = _cohort(n_images=6, image_shift=0.03, seed=21)
+    model = C.fit(X, y, "nuclear", names, image_ids=ids)
+
+    span = [hi - lo for lo, hi in model.train_ranges.values()]
+    cell_span = [float(np.nanpercentile(X[:, j], 100) - np.nanpercentile(X[:, j], 0))
+                 for j in range(X.shape[1])]
+    assert span[0] < cell_span[0], "image-median band must be tighter than the cell range"
+
+    faint = X[:200].copy()
+    faint[:, 0] -= 0.5                       # the shift the old gate waved through
+    ok, reason = model.applicable(faint)
+    assert ok is False and "dab_mean" in reason
+
+
+def test_gate_falls_back_to_percentiles_without_image_ids():
+    """Fitting without image identity must still produce a usable band — percentiles, not
+    min/max, so one outlier cell cannot widen it into uselessness."""
+    names = C.feature_names("nuclear")
+    X, y, _ = _cohort(n_images=4, seed=22)
+    X[0, 0] = 50.0                            # a single absurd outlier
+    model = C.fit(X, y, "nuclear", names)
+    lo, hi = model.train_ranges["dab_mean"]
+    assert hi < 5.0, "a lone outlier must not define the band"
+
+
 def test_applicable_reports_no_cells():
     names = C.feature_names("nuclear")
     X, y, _ = _cohort(n_images=3, seed=8)

@@ -117,6 +117,12 @@ def load_config(config_path="config.yaml"):
     cfg.setdefault("stop_after_segmentation", False)
     # `nuclear_adaptive` (per-image GMM valley + abstain gate) was removed in favour of a
     # fixed cohort-wide cutoff — see ihc.md § 11. Code parked in legacy/nuclear_adaptive/.
+    #
+    # `classifier` (a dict as persisted by the Classifier tab) replaces the cutoff with a
+    # per-cohort trained model. It writes the same `classification` property, so nothing
+    # downstream changes. Absent by default: on consistently stained material the fixed
+    # cutoff matches it (ihc.md § 11.6).
+    cfg.setdefault("classifier", None)
     return cfg
 
 
@@ -346,6 +352,12 @@ def parse_qupath_output(json_path):
             # not recorded in any way a reader of the results would ever see.
             "Threshold_Override": data.get("threshold_override"),
             "Cohort_Threshold": data.get("cohort_threshold"),
+            # How these cells were actually called. Obvious to whoever pressed the button;
+            # not obvious to whoever reads the results six months later, which is who
+            # provenance is for.
+            "Positivity_Method": data.get("positivity_method", "fixed cutoff"),
+            "Classifier_Name": data.get("classifier_name"),
+            "Classifier_Fingerprint": data.get("classifier_fingerprint"),
             "Pixel_Size_um": data.get("pixel_size_um", 0.5),
             "Pixel_Size_Source": data.get("pixel_size_source", "unknown"),
             "Cells_Per_mm2": data.get("cells_per_mm2"),
@@ -671,6 +683,44 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
           f"(was {was_pos} with nuclear), expansion {expansion} µm")
 
 
+def _apply_classifier(img_path, json_path, cfg):
+    """Call this image with the cohort's trained classifier, or fall back to the cutoff.
+
+    The applicability gate decides. An image whose features sit outside the training range
+    is refused and handed back to the fixed cutoff with `staining_quality: low` — a model
+    fitted on well-stained slides must not render a confident verdict on a faint one.
+    """
+    from oasis.quant import classifier as CL
+    from oasis.quant import reclassify as RC
+    from oasis.webui import calibration
+
+    geojson = _find_geojson(img_path, cfg["output_dir"])
+    if not geojson:
+        print("  Classifier: GeoJSON not found — skipping")
+        return
+    model = CL.CellClassifier.from_dict(cfg["classifier"])
+    model.name = cfg.get("classifier_name")
+
+    n = len(json.load(open(geojson)).get("features", []))
+    cells = calibration.cells_for_classifier(
+        img_path, geojson, cfg.get("_resolved_pixel_size", 0.5),
+        pos_idx=range(n), neg_idx=[], kind=model.kind)
+    if not cells:
+        print("  Classifier: no measurable cells — skipping")
+        return
+
+    stem = os.path.splitext(os.path.basename(img_path))[0]
+    res = RC.apply_classifier(geojson, json_path, model, cells,
+                              fixed_threshold=float(cfg.get("dab_threshold", 0.2)),
+                              output_dir=cfg["output_dir"], img_stem=stem)
+    if res.get("applied"):
+        print(f"  Classifier {model.fingerprint()}: {res['positive_cells']}/"
+              f"{res['total_cells']} positive ({res['abstained']} near the boundary)")
+    else:
+        print(f"  Classifier REFUSED this image ({res['reason']}) — "
+              f"fell back to the fixed cutoff and flagged staining_quality:low")
+
+
 def _normalized_copy(img_path, cfg):
     """Write a per-image white-balanced copy (same basename) and return its path.
 
@@ -876,6 +926,12 @@ def _finish_single_image(img_path, img_filename, json_path, cfg,
             _apply_cytoplasm_measurement(img_path, json_path, cfg)
         except Exception as e:
             print(f"  Cytoplasm measurement failed: {e} — keeping nuclear classification")
+
+    if cfg.get("classifier"):
+        try:
+            _apply_classifier(img_path, json_path, cfg)
+        except Exception as e:
+            print(f"  Classifier failed: {e} — keeping the cutoff classification")
 
     return json_path
 

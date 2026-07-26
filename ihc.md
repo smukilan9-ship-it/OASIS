@@ -986,7 +986,31 @@ than the calibrated completeness cutoff is untested. The tab therefore requires 
 own leave-one-image-out report before applying anything, which is the correct answer for a
 per-cohort tool: its validation is inherently produced per cohort.
 
-### 11.7 Open — pending decision
+### 11.7 What the Classifier tab does
+
+`Classifier` tab → label cells on ≥ 3 slides (reusing the Calibrate canvas) → fit → the
+**leave-one-image-out report is produced before anything can be saved**, with the per-fold
+spread and the worst slides named. Gates, all enforced server-side: block below 3 labelled
+slides (leave-one-image-out is undefined), warn below 5, block below 50 cells per class,
+and refuse to apply cohort-wide below held-out AUC 0.75. The tab states up front that below
+~20 slides the fixed cutoff plus the review step is the better tool, and states the § 11.6
+measurement — that on consistent staining the classifier does not win.
+
+A fitted model writes the **same `classification` property** the cutoff writes, so Quant,
+Spatial and batch need no changes. Provenance travels with it: `positivity_method`, the
+classifier name, its fingerprint, and how many cells fell near the decision boundary. The
+results row names the method rather than assuming the reader was the person who chose it.
+
+**The applicability gate had a real bug worth recording.** It built its band from the
+min/max of individual training *cells* and compared an incoming image's *median* against
+it. Cell values span far more than image medians do — one slide's `dab_mean` ran −0.005 to
+1.384 — so the band admitted anything, and a slide shifted half an optical density into the
+floor was accepted as "within training range". A safety gate that cannot fire is worse than
+none, because it reads as a check that passed. The band is now built from **per-image
+medians** (5th–95th percentile of cells when image identity is unknown), and the regression
+is pinned in `tests/test_classifier.py`.
+
+### 11.8 Open — pending decision
 
 Not yet settled, deliberately left unwritten rather than guessed:
 

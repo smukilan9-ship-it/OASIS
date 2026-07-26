@@ -730,6 +730,10 @@ td.muted { color: var(--text3); font-size: 11px; }
     </svg>
     Spatial
   </button>
+  <button class="nav-btn" id="nav-classifier" onclick="showPage('classifier')">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.2 4.2l4.3 4.3m7 7l4.3 4.3M1 12h6m10 0h6M4.2 19.8l4.3-4.3m7-7l4.3-4.3"/></svg>
+    <span>Classifier</span>
+  </button>
   <button class="nav-btn" id="nav-calibrate" onclick="showPage('calibrate')">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5"/>
@@ -1549,6 +1553,50 @@ td.muted { color: var(--text3); font-size: 11px; }
 <!-- ═══════════════════════════════════════════════════════
      PAGE: CALIBRATE
 ═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-classifier">
+  <div class="page-header"><h1>Train a classifier <span class="beta-tag">BETA</span></h1>
+    <p class="sub">Fit positivity to this cohort's own labelled cells</p></div>
+  <div class="scroll">
+    <div class="info-box" style="margin-bottom:14px">
+      <b>When this is worth doing.</b> Measured against DeepLIIF's immunofluorescence-derived
+      labels (6,663 cells, 149 images): on clean, consistently stained material a trained
+      classifier does <b>not</b> beat a well-chosen fixed cutoff — held-out F1 0.771 against
+      0.781, and the fixed cutoff is already within 0.012 of the best any single threshold
+      can do. It wins when <b>staining varies across the cohort</b>: under simulated
+      batch-to-batch drift the classifier holds at 0.765 while every fixed cutoff collapses
+      (0.20 OD falls to 0.484). The crossover is around 0.08 OD of per-slide drift.
+      <div style="margin-top:8px">So: if your slides were stained in one run and look
+      consistent, the fixed cutoff plus the review step is the better tool and costs no
+      labelling. Reach for this when slides came from different runs, lots or scanners —
+      and typically once you have <b id="cls-recommend">20</b>+ slides, below which you can
+      still check every slide by eye.</div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">1 · Cohort</div>
+      <div class="field"><label>Marker name <b>(required)</b></label>
+        <input id="cls-marker" placeholder="e.g. CD8"></div>
+      <div class="field"><label>Marker type</label>
+        <select id="cls-kind">
+          <option value="nuclear">Nuclear — DAB inside the nucleus</option>
+          <option value="membrane">Membranous — DAB in the cytoplasmic ring</option>
+        </select>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="cls-kind-note"></div>
+      </div>
+      <div class="field"><label>Default pixel size (µm/px)</label>
+        <input type="number" id="cls-px" value="0.5" step="0.01" min="0.01"></div>
+      <div class="field"><label>Labelled slides <b>(required)</b></label>
+        <div id="cls-image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+        <button class="btn sm" onclick="clsAddImage()">+ Add slide</button>
+        <div style="font-size:11px;color:var(--text3);margin-top:6px" id="cls-req"></div>
+      </div>
+      <button class="run-btn cyan" id="cls-seg-btn" onclick="clsSegment()">Segment &amp; label →</button>
+    </div>
+
+    <div id="cls-results"></div>
+  </div>
+</div>
+
 <div class="page" id="page-calibrate" style="position:relative">
   <div class="page-header"><h1>Calibrate cutoffs <span class="beta-tag">BETA</span></h1>
     <p class="sub">Membranous markers — works only on well-stained tissue</p></div>
@@ -1591,7 +1639,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       <button class="btn sm" onclick="calibZoom(1.25)">+</button>
       <button class="btn sm" onclick="calibZoom(0.8)">−</button>
       <button class="btn sm" id="calib-viewbtn" onclick="calibCycleView()">View: Normalized</button>
-      <button class="btn sm" onclick="calibFit()">Fit cutoffs →</button>
+      <button class="btn sm" onclick="calib.mode === 'classifier' ? clsFit() : calibFit()">Fit →</button>
       <button class="btn sm" onclick="calibBack()">Cancel</button>
       <span style="margin-left:auto;color:#888">Left-click = <span style="color:#ff5a5a">positive</span> · Right-click = <span style="color:#4aa3ff">negative</span> · wheel = zoom · drag = pan · aim for ~50 of each</span>
     </div>
@@ -1793,7 +1841,7 @@ const parameterHelp = {
   dab_threshold_b: 'Minimum DAB optical density to call a cell positive in Image B. One value for the whole cohort.',
   dab_threshold: 'Minimum DAB optical density to call a cell positive. One value for the whole cohort, so every image is measured on the same scale.',
   nuclear_classifier: 'How positivity was called for this run. A fixed cohort-wide optical-density cutoff is the default and the only option in v1.',
-  nuclear_method: 'Where the cutoff for THIS image came from: the cohort default, or a recorded per-image override.',
+  nuclear_method: 'How THIS image was called: the cohort default cutoff, a recorded per-image override, a trained classifier (named and fingerprinted), or a classifier that refused the image and fell back to the cutoff.',
   threshold_used: 'The DAB optical-density cutoff actually applied to call cells positive in this image.',
   preprocess_normalize: 'Whether each image was white-balanced to its own estimated background before DAB measurement.',
   enable_registration: 'Whether moving-section coordinates were transformed into the fixed-section coordinate system.',
@@ -2260,6 +2308,169 @@ function calibShow(which) {
   document.getElementById('calib-label').style.display   = which==='label'   ? 'block':'none';
   document.getElementById('calib-results').style.display = which==='results' ? 'block':'none';
 }
+// ── Classifier tab ────────────────────────────────────────────────────────────
+// Reuses the Calibrate labelling canvas rather than duplicating it: the clicking, panning
+// and view-cycling are identical, only what is fitted from the labels differs. `calib.mode`
+// tells the shared "Fit" button which of the two to run.
+let cls = { images: [], marker: '', kind: 'nuclear', req: null };
+
+async function clsLoadRequirements() {
+  if (cls.req) return cls.req;
+  try { cls.req = await window.pywebview.api.classifier_requirements(); } catch (e) { cls.req = null; }
+  if (cls.req) {
+    document.getElementById('cls-recommend').textContent = cls.req.recommend_above_slides;
+    document.getElementById('cls-req').textContent =
+      `Needs at least ${cls.req.block_below_images} labelled slides for a held-out estimate `
+      + `(${cls.req.warn_below_images}+ before that estimate means much), and at least `
+      + `${cls.req.min_cells_per_class} cells of each class pooled across them.`;
+  }
+  return cls.req;
+}
+
+function clsKindNote() {
+  const k = document.getElementById('cls-kind').value;
+  document.getElementById('cls-kind-note').textContent = k === 'membrane'
+    ? 'Ring features including contiguity. Built and unit-tested, but not yet validated '
+    + 'against labelled membranous cells — your own held-out report is the evidence.'
+    : 'Validated against immunofluorescence-derived labels (ihc.md § 11.6).';
+}
+
+async function clsAddImage() {
+  const f = await window.pywebview.api.pick_file();
+  if (!f || !f.path) return;
+  cls.images.push({ path: f.path, px: parseFloat(document.getElementById('cls-px').value) || 0.5 });
+  clsRenderImageList();
+}
+function clsRemoveImage(i) { cls.images.splice(i, 1); clsRenderImageList(); }
+function clsRenderImageList() {
+  document.getElementById('cls-image-list').innerHTML = cls.images.map((im, i) =>
+    `<div style="display:flex;align-items:center;gap:8px">
+       <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(im.path.split('/').pop())}</span>
+       <input type="number" value="${im.px}" step="0.01" min="0.01" style="width:88px"
+              oninput="cls.images[${i}].px=parseFloat(this.value)||0.5">
+       <button class="btn sm" onclick="clsRemoveImage(${i})">Remove</button>
+     </div>`).join('');
+}
+
+async function clsSegment() {
+  const marker = document.getElementById('cls-marker').value.trim();
+  if (!marker) { showToast('Enter the marker name'); return; }
+  const req = await clsLoadRequirements();
+  const floor = (req && req.block_below_images) || 3;
+  if (cls.images.length < floor) {
+    showToast(`Add at least ${floor} slides — a held-out estimate needs that many folds`);
+    return;
+  }
+  cls.marker = marker;
+  cls.kind = document.getElementById('cls-kind').value;
+
+  // Hand the shared labelling canvas this cohort, and tell it what Fit means here.
+  calib.mode = 'classifier';
+  calib.marker = marker;
+  calib.images = cls.images.map(im => ({ path: im.path, px: im.px }));
+  const btn = document.getElementById('cls-seg-btn');
+  btn.disabled = true;
+  for (let i = 0; i < calib.images.length; i++) {
+    const im = calib.images[i];
+    btn.textContent = `Segmenting ${i + 1}/${calib.images.length}… (InstanSeg, ~1 min each)`;
+    const r = await window.pywebview.api.calibration_prepare(im.path, im.px);
+    if (!r || !r.ok) {
+      btn.disabled = false; btn.textContent = 'Segment & label →';
+      showToast(`Segmentation failed on ${im.path.split('/').pop()}: ${(r && r.msg) || ''}`);
+      return;
+    }
+    im.data = r; im.state = new Array(r.cells.length).fill(0);
+  }
+  btn.disabled = false; btn.textContent = 'Segment & label →';
+  calib.cur = 0;
+  showPage('calibrate');
+  calibShow('label');
+  requestAnimationFrame(() => calibBuild());
+}
+
+// Fit a classifier from the labels currently on the shared canvas.
+async function clsFit() {
+  const items = [];
+  let tp = 0, tn = 0;
+  // Send the labelled indices; the backend measures them. Membranous features need the
+  // cytoplasmic-ring pass, which is far too expensive to run per click.
+  calib.images.forEach(im => {
+    if (!im.data) return;
+    const pos = [], neg = [];
+    im.state.forEach((st, i) => { if (st === 1) pos.push(i); else if (st === 2) neg.push(i); });
+    tp += pos.length; tn += neg.length;
+    if (pos.length || neg.length) {
+      items.push({ image_path: im.path, geojson_path: im.data.geojson,
+                   pixel_size: im.px, pos_idx: pos, neg_idx: neg });
+    }
+  });
+  const req = await clsLoadRequirements();
+  const need = (req && req.min_cells_per_class) || 50;
+  if (tp < need || tn < need) {
+    showToast(`Need ${need}+ of each class pooled across slides (have ${tp} positive / ${tn} negative)`);
+    return;
+  }
+  showToast('Fitting and validating…');
+  const r = await window.pywebview.api.fit_classifier(
+    { kind: cls.kind, marker: cls.marker, items });
+  if (!r || !r.ok) { showToast('Fit failed: ' + ((r && r.msg) || '')); return; }
+  cls.fit = r;
+  calibShow('config');
+  showPage('classifier');
+  clsRenderResults(r);
+}
+
+function clsRenderResults(r) {
+  const p = r.report.pooled || {};
+  const spread = r.report;
+  const folds = (spread.folds || []).filter(f => 'f1' in f)
+                  .slice().sort((a, b) => a.f1 - b.f1);
+  const worst = folds.slice(0, 3);
+  const host = document.getElementById('cls-results');
+  host.innerHTML = `
+    <div class="card">
+      <div class="card-title">2 · Held-out result</div>
+      <div class="info-box" style="margin-bottom:12px">
+        Every number here is <b>leave-one-image-out</b>: each slide was scored by a model
+        fitted on the others. Cells within a slide share a staining run and illumination, so
+        holding out cells instead would score a model that had already seen the slide.
+      </div>
+      <div class="metrics-row c2" style="margin-bottom:12px">
+        <div class="metric cyan"><div class="metric-label">Held-out F1</div>
+          <div class="metric-value cyan">${(p.f1 ?? 0).toFixed(2)}</div>
+          <div class="metric-sub">AUC ${(p.auc ?? 0).toFixed(2)} · precision ${(p.precision ?? 0).toFixed(2)} · recall ${(p.recall ?? 0).toFixed(2)}</div></div>
+        <div class="metric ${spread.fold_f1_std > 0.15 ? 'amber' : 'green'}">
+          <div class="metric-label">Per-fold spread</div>
+          <div class="metric-value" style="font-size:20px">${(spread.fold_f1_min ?? 0).toFixed(2)} – ${(spread.fold_f1_max ?? 0).toFixed(2)}</div>
+          <div class="metric-sub">mean ${(spread.fold_f1_mean ?? 0).toFixed(2)} · sd ${(spread.fold_f1_std ?? 0).toFixed(2)} · ${spread.n_images} slides</div></div>
+      </div>
+      ${worst.length ? `<div style="font-size:11px;color:var(--text3);margin-bottom:10px">
+        Worst slides: ${worst.map(f => `${esc(f.image)} F1 ${f.f1.toFixed(2)}`).join(' · ')}</div>` : ''}
+      ${(r.warnings || []).map(w => `<div class="info-box amber" style="margin-bottom:8px">${esc(w)}</div>`).join('')}
+      <div style="font-size:12px;margin:10px 0 4px"><b>What the model leans on</b>
+        <span style="color:var(--text3);font-size:11px">— standardised weights, so magnitudes compare directly</span></div>
+      <div style="font-size:12px;color:var(--text2)">
+        ${(r.coefficients || []).slice(0, 5).map(c =>
+          `${esc(c.feature)} <b>${c.weight >= 0 ? '+' : ''}${c.weight.toFixed(2)}</b>`).join(' &nbsp;·&nbsp; ')}
+      </div>
+      <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+        <button class="btn primary" onclick="clsSave()">Save classifier</button>
+        <span style="font-size:11px;color:var(--text3)">
+          ${r.applicable_cohort_wide
+            ? 'Held-out AUC clears the bar — this can be applied across the cohort.'
+            : 'Held-out AUC is below the bar, so this can be saved but not applied cohort-wide.'}
+          Fingerprint <code>${esc(r.fingerprint)}</code>.</span>
+      </div>
+    </div>`;
+}
+
+async function clsSave() {
+  if (!cls.fit) return;
+  const r = await window.pywebview.api.save_classifier(
+    cls.marker, cls.marker, cls.fit.model, cls.fit.report);
+  showToast(r && r.ok ? `Saved classifier for ${cls.marker}` : 'Save failed');
+}
+
 async function calibSegment() {
   const marker = document.getElementById('calib-marker').value.trim();
   if (!marker) { showToast('Enter the marker name'); return; }
@@ -3189,6 +3400,13 @@ function showQuantResults(r) {
 // Where this image's cutoff came from. A per-image override is a deliberate exception to
 // the cohort rule, so it is named as one rather than folded silently into the result.
 function nuclearMethodLabel(m) {
+  if (m.classifier_applied) {
+    const ab = m.classifier_abstained ? ` · ${m.classifier_abstained} cells near the boundary` : '';
+    return `trained classifier ${esc(m.classifier_name || '')} (${esc(m.classifier_fingerprint || '')})${ab}`;
+  }
+  if (m.classifier_fingerprint && m.classifier_applied === false)
+    return `classifier refused this image — fell back to the cohort cutoff `
+         + `(${esc(m.classifier_refused_reason || 'outside the training range')})`;
   if (m.threshold_override != null)
     return `per-image override — ${Number(m.threshold_override).toFixed(3)} OD`
       + (m.cohort_threshold != null

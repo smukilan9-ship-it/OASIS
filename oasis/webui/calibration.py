@@ -141,6 +141,65 @@ def _measure_labeled(image_path, geojson_path, pixel_size, pos_idx, neg_idx):
     return cells
 
 
+def cells_for_classifier(image_path, geojson_path, pixel_size, pos_idx, neg_idx, kind):
+    """Per-cell measurement dicts for the labelled cells of ONE image, in classifier form.
+
+    Nuclear measurements come straight from the segmentation GeoJSON. Membranous ones need
+    the cytoplasmic-ring pass (`cell_expansion`), which is the expensive part — so it runs
+    here, once per image at fit time, rather than for every cell the operator clicks.
+    """
+    pos_idx = {int(i) for i in pos_idx}
+    neg_idx = {int(i) for i in neg_idx}
+    wanted = pos_idx | neg_idx
+    if not wanted:
+        return []
+
+    gj = json.load(open(geojson_path))
+    feats = gj.get("features", [])
+
+    ring = {}
+    if kind == "membrane":
+        from oasis.quant.cell_expansion import measure_cytoplasm_dab
+        res = measure_cytoplasm_dab(image_path, geojson_path, float(pixel_size))
+        ring = {i: r for i, r in enumerate(res) if r}
+
+    out = []
+    for i, ft in enumerate(feats):
+        if i not in wanted:
+            continue
+        m = (ft.get("properties", {}) or {}).get("measurements", {}) or {}
+        r = ring.get(i) or {}
+        cell = {
+            "centroid": r.get("centroid") or _centroid_of(ft),
+            "dab_mean": m.get("DAB: Mean"),
+            "dab_p90": m.get("DAB: Max"),
+            "hema_mean": m.get("Hematoxylin: Mean"),
+            "area_px": m.get("Area µm^2") or m.get("Nucleus: Area"),
+            "label": 1 if i in pos_idx else 0,
+        }
+        if kind == "membrane":
+            cell.update({
+                "cytoplasm_dab_mean": r.get("cytoplasm_dab_mean"),
+                "cytoplasm_dab_p90": r.get("cytoplasm_dab_p90"),
+                "membrane_pos_frac": r.get("membrane_pos_frac"),
+                "membrane_connectivity": r.get("membrane_connectivity"),
+                "membrane_arc_count": r.get("membrane_arc_count"),
+            })
+        out.append(cell)
+    return out
+
+
+def _centroid_of(feat):
+    g = feat.get("geometry", {}) or {}
+    c = g.get("coordinates") or []
+    ring = c[0] if g.get("type") == "Polygon" and c else \
+           (c[0][0] if g.get("type") == "MultiPolygon" and c and c[0] else None)
+    if not ring:
+        return [0.0, 0.0]
+    arr = np.asarray(ring, dtype=float)
+    return [float(arr[:, 0].mean()), float(arr[:, 1].mean())]
+
+
 def _neg_t_pix(cells, neg_pct):
     """Pixel-OD threshold = the neg_pct percentile of all NEGATIVE ring pixels pooled."""
     neg_px = [rv for lab, rv, _rh in cells if lab == 0]

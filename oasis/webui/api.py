@@ -297,16 +297,24 @@ class API:
         except ValueError as e:
             return {"ok": False, "msg": str(e)}
 
+        from oasis.webui import calibration
+
         items = payload.get("items") or []
         X_parts, y_parts, ids = [], [], []
         for it in items:
-            cells = [c for c in (it.get("cells") or []) if c.get("label") in (0, 1)]
+            try:
+                cells = calibration.cells_for_classifier(
+                    it["image_path"], it["geojson_path"], it.get("pixel_size", 0.5),
+                    it.get("pos_idx") or [], it.get("neg_idx") or [], kind)
+            except (OSError, ValueError, KeyError, RuntimeError) as e:
+                return {"ok": False,
+                        "msg": f"{os.path.basename(str(it.get('image_path', '?')))}: {e}"}
             if not cells:
                 continue
             Xi, _ = CL.extract_features(cells, kind)
             X_parts.append(Xi)
             y_parts.append(np.array([int(c["label"]) for c in cells]))
-            ids += [str(it.get("image") or f"image{len(ids)}")] * len(cells)
+            ids += [os.path.basename(str(it.get("image_path") or f"image{len(ids)}"))] * len(cells)
         if not X_parts:
             return {"ok": False, "msg": "No labelled cells supplied"}
 
@@ -329,7 +337,7 @@ class API:
         if not report.get("ok"):
             return {"ok": False, "msg": report.get("reason", "validation failed")}
 
-        model = CL.fit(X, y, kind, names, meta={"n_images": n_images})
+        model = CL.fit(X, y, kind, names, meta={"n_images": n_images}, image_ids=ids)
         model.metrics = report
         warnings = []
         if n_images < self.MIN_CLASSIFIER_IMAGES:
@@ -725,6 +733,13 @@ class API:
                     "threshold":   _eff_thr,
                     "threshold_override": _override,
                     "cohort_threshold": _cohort,
+                    "positivity_method": d.get("positivity_method", "fixed cutoff"),
+                    "classifier_name": d.get("classifier_name"),
+                    "classifier_fingerprint": d.get("classifier_fingerprint"),
+                    "classifier_applied": d.get("classifier_applied"),
+                    "classifier_abstained": d.get("classifier_abstained"),
+                    "classifier_refused_reason": d.get("classifier_refused_reason"),
+                    "staining_quality": d.get("staining_quality"),
                     "confidence":  _conf,
                     "measurement_compartment": d.get("measurement_compartment", "nucleus"),
                     "membrane_classifier": d.get("membrane_classifier"),

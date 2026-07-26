@@ -299,9 +299,15 @@ class CellClassifier:
         """Is this image close enough to the training data to be scored at all?
 
         The gate that matters. A model fitted on well-stained slides will render a
-        confident verdict on a faint one unless something stops it. Compares this image's
-        median feature values against the training range, widened by `tol` of that range;
-        an image outside it is refused and handed back to the fixed cutoff.
+        confident verdict on a faint one unless something stops it.
+
+        The comparison is **image median against the spread of training image medians** —
+        not against the spread of individual training cells. That distinction is the whole
+        gate: individual cells span a huge range (one slide's `dab_mean` ran −0.005 to
+        1.384), so a band built from cell extremes is wide enough to admit anything, and an
+        earlier version of this gate accepted a slide shifted half an OD into the floor. The
+        question being asked is "does this slide look like the slides I was trained on",
+        which is a question about slides.
         """
         if len(X) == 0:
             return False, "no cells to score"
@@ -370,14 +376,32 @@ def _standardise(X):
     return mean, scale, med, Xf
 
 
-def fit(X, y, kind, names, l2=1.0, meta=None):
+def training_ranges(X, names, image_ids=None):
+    """The band the applicability gate compares an incoming image against.
+
+    Built from **per-image medians** when image identity is known, because that is the
+    statistic the gate tests. Falls back to the 5th–95th percentile of individual cells
+    otherwise — still far tighter than min/max, which outliers make useless.
+    """
+    X = np.asarray(X, dtype=np.float64)
+    if image_ids is not None and len(set(map(str, image_ids))) >= 2:
+        ids = np.asarray([str(i) for i in image_ids])
+        meds = np.array([[np.nanmedian(X[ids == img, j]) for j in range(X.shape[1])]
+                         for img in dict.fromkeys(ids.tolist())])
+        return {nm: [float(np.nanmin(meds[:, j])), float(np.nanmax(meds[:, j]))]
+                for j, nm in enumerate(names)}
+    return {nm: [float(np.nanpercentile(X[:, j], 5)),
+                 float(np.nanpercentile(X[:, j], 95))]
+            for j, nm in enumerate(names)}
+
+
+def fit(X, y, kind, names, l2=1.0, meta=None, image_ids=None):
     """Fit on everything given. Use `leave_one_image_out` for the honest estimate."""
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y, dtype=int)
     mean, scale, med, Xf = _standardise(X)
     w, b = fit_logistic((Xf - mean) / scale, y, l2=l2)
-    ranges = {nm: [float(np.nanmin(Xf[:, j])), float(np.nanmax(Xf[:, j]))]
-              for j, nm in enumerate(names)}
+    ranges = training_ranges(Xf, names, image_ids)
     return CellClassifier(kind, names, w, b, mean, scale, med,
                           meta={**(meta or {}), "n_cells": int(len(y)),
                                 "n_positive": int(y.sum()),

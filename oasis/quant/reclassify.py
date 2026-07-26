@@ -173,3 +173,92 @@ def apply_threshold(geojson_path, summary_path, threshold, *, cohort_threshold=N
             "total_cells": total,
             "positive_cells": pos,
             "positivity_pct": summary["positivity_pct"]}
+
+
+def apply_classifier(geojson_path, summary_path, model, cells, *, fixed_threshold,
+                     abstain_band=0.10, output_dir=None, img_stem=None):
+    """Classify one image with a fitted per-cohort model, or refuse and fall back.
+
+    The model writes the *same* `classification` property the threshold path writes, so
+    Quant, Spatial and batch need no changes — it is a third way to fill one contract.
+
+    Two refusals are possible and both are recorded rather than hidden:
+
+    **The image is out of range.** A model fitted on well-stained slides will render a
+    confident verdict on a faint one unless something stops it. When the applicability gate
+    rejects the image, the fixed cohort cutoff is used instead and the summary says so. On
+    faint tissue a fixed cutoff is safer, not more accurate — it under-calls, where a
+    trained rule finds the best split of noise and manufactures positives.
+
+    **A cell is on the boundary.** Cells inside `abstain_band` around p=0.5 are counted and
+    reported. They are still given a call so downstream counts stay complete, but the count
+    of them is the honest signal that the model was unsure.
+    """
+    import numpy as np
+    from oasis.quant import classifier as CL
+
+    X, _names = CL.extract_features(cells, model.kind)
+    ok, reason = model.applicable(X)
+    if not ok:
+        res = apply_threshold(geojson_path, summary_path, fixed_threshold,
+                              cohort_threshold=fixed_threshold,
+                              output_dir=output_dir, img_stem=img_stem)
+        _stamp(summary_path, {"classifier_name": getattr(model, "name", None),
+                              "classifier_fingerprint": model.fingerprint(),
+                              "classifier_applied": False,
+                              "classifier_refused_reason": reason,
+                              "staining_quality": "low",
+                              "positivity_method": "fixed cutoff (classifier refused)"})
+        return {**res, "applied": False, "reason": reason}
+
+    labels, abstained = model.predict(X, abstain_band=abstain_band)
+    with open(geojson_path) as f:
+        gj = json.load(f)
+    features = gj.get("features", [])
+    pos = 0
+    for ft, is_pos in zip(features, labels):
+        p = bool(is_pos)
+        props = ft.setdefault("properties", {})
+        props["classification"] = {"name": "Positive" if p else "Negative",
+                                   "color": [255, 0, 0] if p else [0, 200, 0]}
+        pos += int(p)
+    with open(geojson_path, "w") as f:
+        json.dump(gj, f)
+    if output_dir and img_stem:
+        _write_csv_classification(output_dir, img_stem, features)
+
+    total = len(features)
+    _stamp(summary_path, {
+        "positive_cells": pos, "negative_cells": total - pos, "total_cells": total,
+        "positivity_pct": round(pos * 100.0 / total, 2) if total else 0.0,
+        "classifier_name": getattr(model, "name", None),
+        "classifier_fingerprint": model.fingerprint(),
+        "classifier_applied": True,
+        "classifier_abstained": int(np.asarray(abstained).sum()),
+        "positivity_method": "trained classifier",
+        # The cutoff no longer describes how cells were called; leaving a stale one in the
+        # summary would let a reader attribute these counts to a threshold.
+        "threshold_override": None,
+    })
+    return {"applied": True, "total_cells": total, "positive_cells": pos,
+            "abstained": int(np.asarray(abstained).sum())}
+
+
+def _stamp(summary_path, fields):
+    """Merge provenance into the summary JSON, dropping keys explicitly set to None."""
+    if not summary_path:
+        return
+    summary = {}
+    if os.path.exists(summary_path):
+        try:
+            with open(summary_path) as f:
+                summary = json.load(f) or {}
+        except (OSError, ValueError):
+            summary = {}
+    for k, v in fields.items():
+        if v is None:
+            summary.pop(k, None)
+        else:
+            summary[k] = v
+    with open(summary_path, "w") as f:
+        json.dump(summary, f, indent=4)
