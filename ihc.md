@@ -822,6 +822,20 @@ but **declined on 2 of 8 images**; its estimator failure must stay visible, not 
 
 **Tier 1 (default, v1).** One fixed OD cutoff per stain, applied across the whole cohort.
 
+The cutoff is set in a **review step between measurement and output** (`--stage segment`
+→ review → `--stage finish`). Segmentation is expensive and the cutoff is cheap, so they
+are separated: the run stops once cells are measured, the operator sets the cutoff against
+the measured distribution, and **no overlay, dashboard or export is ever produced from an
+unreviewed cutoff**. The histogram is shown beside the count deliberately — at 1–3 %
+positives the image is a handful of brown cells among thousands, and the eye cannot
+distinguish a cutoff on the shoulder of the negative peak from one past it. This is also
+where the DPA's "thresholds approved by a pathologist before data generation" happens.
+A membranous image is scored on calibrated ring completeness, so it is shown for context
+with **no cutoff control and no slider-derived count** — deriving one from the nuclear
+cutoff would put a confident wrong number next to the histogram. Retuning membrane cutoffs
+belongs in Calibrate, where they are fitted against labelled cells.
+(`oasis/quant/reclassify.py`, `tests/test_reclassify.py`.)
+
 **Tier 2 (escape hatch).** A per-image override for a one-off faint or poor stain. It is
 **recorded** — the image, the value, and the cohort default it replaced — and surfaced in
 the report, because it is a deliberate exception to the cohort rule rather than a setting.

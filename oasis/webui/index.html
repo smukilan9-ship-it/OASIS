@@ -973,6 +973,40 @@ td.muted { color: var(--text3); font-size: 11px; }
     </div>
   </div>
 
+  <!-- REVIEW VIEW — set the cutoff before any output exists -->
+  <div class="view" id="quant-review">
+    <div class="scroll">
+      <div class="science-summary"><div class="science-summary-copy">
+        <strong>Cells are measured. Now set where "positive" starts.</strong><br>
+        One cutoff is applied to every image so the cohort is measured on a single scale.
+        Judge it on the histogram as much as the count: with a rare marker only a few
+        percent of cells are positive, and a cutoff sitting on the shoulder of the
+        negative peak behaves very differently from one past it. Nothing is written until
+        you continue.
+      </div></div>
+
+      <div class="card">
+        <div class="field">
+          <label>Cohort DAB cutoff — <b id="qr-cohort-display">0.20</b> OD</label>
+          <input type="range" id="qr-cohort" min="1" max="80" value="20"
+                 oninput="qrCohortChanged(this.value/100)">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">
+            Applies to every image below unless that image carries an override.
+          </div>
+        </div>
+      </div>
+
+      <div id="qr-images"></div>
+
+      <div id="qr-override-note"></div>
+    </div>
+    <div class="wizard-nav">
+      <button type="button" class="btn" onclick="qrResetOverrides()">Clear overrides</button>
+      <span class="wstep-progress" id="qr-summary-txt"></span>
+      <button type="button" class="btn amber" onclick="qrApply()">Continue — generate results</button>
+    </div>
+  </div>
+
   <!-- RESULTS VIEW -->
   <div class="view" id="quant-results">
     <div class="scroll">
@@ -2689,6 +2723,10 @@ async function runQuantAnalysis() {
     // One fixed cohort-wide OD cutoff; per-image exceptions are applied after
     // segmentation and recorded in the output (ihc.md § 11).
     adaptive_threshold:    false,
+    // Stop after measurement so the cutoff is set against the real distribution before
+    // any output exists. Membrane runs skip this — they are scored on calibrated ring
+    // completeness, so there is no nuclear cutoff to review.
+    review_threshold:      !isOn('q-membrane-toggle'),
     preprocess_normalize:  isOn('q-normalize-toggle'),
     generate_overlays:     isOn('q-overlay-toggle'),
     // Results-only by default: working/debug files (CSV, GeoJSON, logs, Groovy) are
@@ -2735,6 +2773,163 @@ async function runQuantAnalysis() {
 }
 
 // ── Pipeline event handler ────────────────────────────────
+// ── Threshold review ──────────────────────────────────────────────────────
+// Segmentation is done and measured; nothing has been written yet. The operator sets the
+// cutoff here, against the distribution rather than by eye alone, and only then are
+// outputs produced. One cohort cutoff by default; a per-image override is allowed for a
+// one-off bad stain and is recorded as an exception (ihc.md § 11.4).
+let qrState = { cohort: 0.20, images: [], overrides: {} };
+
+function qrThresholdFor(img) {
+  return qrState.overrides[img.name] != null ? qrState.overrides[img.name] : qrState.cohort;
+}
+
+// Histogram with the cutoff drawn on it. Log counts, because a rare-positive marker puts
+// 98 % of cells in the first two bins and a linear axis renders the positive tail as a
+// flat line — the exact part the operator is trying to judge.
+function qrHistogramSVG(h, thr, w, hgt) {
+  if (!h || !h.counts || !h.counts.length) return '<div style="color:var(--text3);font-size:11px">no measurable cells</div>';
+  const lo = h.edges[0], hi = h.edges[h.edges.length - 1];
+  const max = Math.max(...h.counts, 1);
+  const y = c => hgt - (Math.log10(1 + c) / Math.log10(1 + max)) * (hgt - 4);
+  const bw = w / h.counts.length;
+  const bars = h.counts.map((c, i) => {
+    const x = i * bw, yy = y(c);
+    const past = (lo + (i + 0.5) * (hi - lo) / h.counts.length) > thr;
+    return `<rect x="${x.toFixed(2)}" y="${yy.toFixed(2)}" width="${Math.max(bw - 0.5, 0.5).toFixed(2)}"
+            height="${(hgt - yy).toFixed(2)}" fill="${past ? '#d97706' : '#94a3b8'}"/>`;
+  }).join('');
+  const tx = hi > lo ? ((thr - lo) / (hi - lo)) * w : 0;
+  const marker = (thr >= lo && thr <= hi)
+    ? `<line x1="${tx.toFixed(2)}" y1="0" x2="${tx.toFixed(2)}" y2="${hgt}"
+             stroke="#dc2626" stroke-width="1.5" stroke-dasharray="3,2"/>` : '';
+  return `<svg width="100%" viewBox="0 0 ${w} ${hgt}" preserveAspectRatio="none"
+            style="display:block">${bars}${marker}</svg>
+          <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
+            <span>${lo.toFixed(2)} OD</span>
+            <span>counts on a log scale${h.overflow ? ` · ${h.overflow} above range` : ''}</span>
+            <span>${hi.toFixed(2)} OD</span></div>`;
+}
+
+function qrShow(data) {
+  qrState = { cohort: data.cohort_threshold, images: data.images || [], overrides: {} };
+  for (const img of qrState.images) {
+    if (img.threshold != null && Math.abs(img.threshold - qrState.cohort) > 1e-9 && !img.membrane)
+      qrState.overrides[img.name] = img.threshold;
+  }
+  const sl = document.getElementById('qr-cohort');
+  sl.value = Math.round(qrState.cohort * 100);
+  document.getElementById('qr-cohort-display').textContent = qrState.cohort.toFixed(2);
+  qrRender();
+  showView('quant', 'review');
+}
+
+function qrRender() {
+  const host = document.getElementById('qr-images');
+  host.innerHTML = qrState.images.map((img, i) => {
+    const thr = qrThresholdFor(img);
+    const over = qrState.overrides[img.name] != null;
+    const n = img.total_cells || 0;
+    // Recompute from the histogram so the count tracks the slider without a round-trip;
+    // the authoritative count is recomputed server-side when the cutoff is applied.
+    // A membranous image is not scored by this cutoff at all, so it reports the count
+    // its own completeness rule produced rather than one derived from the slider.
+    const frac = qrFracFromHistogram(img.histogram, thr);
+    const pos = Math.round(frac * n);
+    const countTxt = img.membrane
+      ? `${(img.scored_positive || 0).toLocaleString()} / ${n.toLocaleString()} positive `
+        + `(${Number(img.scored_pct || 0).toFixed(1)}%) by ring completeness`
+      : `${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13px">${esc(img.name)}</b>
+        ${img.membrane ? '<span class="beta-tag">MEMBRANE</span>' : ''}
+        <span style="margin-left:auto;font-size:12px;color:var(--text2)">${countTxt}</span>
+      </div>
+      <div style="margin:8px 0">${qrHistogramSVG(img.histogram,
+            img.membrane ? -1 : thr, 480, 64)}</div>
+      ${img.membrane
+        ? `<div style="font-size:11px;color:var(--text3)">Scored on calibrated ring
+             completeness, not this cutoff. The nuclear distribution is shown for context
+             only — retune membrane cutoffs in the Calibrate tab, where they are fitted
+             against labelled cells.</div>`
+        : `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+             <label style="font-size:11px;color:var(--text3)">Override this image</label>
+             <input type="number" step="0.01" min="0.01" max="1" value="${thr.toFixed(2)}"
+                    style="width:90px" oninput="qrOverride(${i}, this.value)">
+             ${over ? `<span style="font-size:11px;color:#b45309">exception — cohort default
+                        is ${qrState.cohort.toFixed(2)} OD</span>
+                       <button class="btn sm" onclick="qrClearOverride(${i})">use cohort</button>`
+                    : '<span style="font-size:11px;color:var(--text3)">using the cohort cutoff</span>'}
+           </div>`}
+    </div>`;
+  }).join('');
+
+  const n = Object.keys(qrState.overrides).length;
+  document.getElementById('qr-summary-txt').textContent =
+    n ? `${n} image${n > 1 ? 's' : ''} overridden` : 'one cutoff, whole cohort';
+  document.getElementById('qr-override-note').innerHTML = n
+    ? `<div class="science-summary"><div class="science-summary-copy">
+         <strong>${n} image${n > 1 ? 's are' : ' is'} not measured on the cohort's scale.</strong>
+         Each override is recorded in the results so this is visible to anyone reading them.
+         Worth remembering that re-thresholding a faint slide until the count looks right
+         assumes the answer — most weak staining is a staining failure, so restaining or
+         excluding the slide is usually the better first move.</div></div>`
+    : '';
+}
+
+// Fraction above a cutoff, from the binned distribution. Bins straddling the cutoff are
+// split proportionally; overflow always counts as positive since it sits above the range.
+function qrFracFromHistogram(h, thr) {
+  if (!h || !h.counts || !h.counts.length) return 0;
+  const lo = h.edges[0], hi = h.edges[h.edges.length - 1];
+  const bw = (hi - lo) / h.counts.length;
+  let pos = h.overflow || 0;
+  for (let i = 0; i < h.counts.length; i++) {
+    const a = lo + i * bw, b = a + bw;
+    if (thr <= a) pos += h.counts[i];
+    else if (thr < b && bw > 0) pos += h.counts[i] * (b - thr) / bw;
+  }
+  // Divide by what the bins actually hold rather than the reported n, so a histogram
+  // whose counts and total disagree can never render as a percentage above 100.
+  const total = h.counts.reduce((s, c) => s + c, 0) + (h.overflow || 0);
+  return total > 0 ? Math.min(1, pos / total) : 0;
+}
+
+function qrCohortChanged(v) {
+  qrState.cohort = v;
+  document.getElementById('qr-cohort-display').textContent = v.toFixed(2);
+  qrRender();
+}
+function qrOverride(i, v) {
+  const val = parseFloat(v);
+  const name = qrState.images[i].name;
+  if (!isFinite(val) || val <= 0) return;
+  if (Math.abs(val - qrState.cohort) < 1e-9) delete qrState.overrides[name];
+  else qrState.overrides[name] = val;
+  qrRender();
+}
+function qrClearOverride(i) { delete qrState.overrides[qrState.images[i].name]; qrRender(); }
+function qrResetOverrides() { qrState.overrides = {}; qrRender(); }
+
+async function qrApply() {
+  showView('quant', 'running');
+  setProgress('quant', 88, 'Generating results...');
+  appendLog('quant-log', `Cutoff ${qrState.cohort.toFixed(2)} OD`
+    + (Object.keys(qrState.overrides).length
+       ? ` · ${Object.keys(qrState.overrides).length} per-image override(s)` : ''), 'info');
+  const res = await window.pywebview.api.apply_review({
+    cohort_threshold: qrState.cohort,
+    overrides: qrState.overrides,
+    images: qrState.images,
+  });
+  if (res && res.ok === false) {
+    appendLog('quant-log', 'Could not apply the cutoff: ' + (res.msg || ''), 'error');
+    showToast('Could not apply the cutoff');
+    showView('quant', 'review');
+  }
+}
+
 window.onPipelineEvent = function(event) {
   const { type, data } = event;
   const m = activeMode;   // 'quant' or 'spatial'
@@ -2757,6 +2952,12 @@ window.onPipelineEvent = function(event) {
       + (data.i && data.n ? ' <span style="color:var(--text3)">(' + data.i + '/' + data.n + ')</span>' : '')
       + '<br><span style="color:var(--text3);font-size:11px">LoFTR runs on CPU, so a large section can take a few minutes — this updates as each region is checked.</span>'
       + '</div></div>';
+  } else if (type === 'review') {
+    // Segmentation finished and stopped short of producing anything. The operator sets
+    // the cutoff here; no overlay, dashboard or export exists yet.
+    if (data && data.ok) { qrShow(data); }
+    else { appendLog(logId, 'Could not load the measured distributions: '
+                     + ((data && data.msg) || 'unknown'), 'error'); }
   } else if (type === 'done') {
     setProgress(m, 100, 'Complete');
     if (data.ok) {

@@ -111,6 +111,10 @@ def load_config(config_path="config.yaml"):
     #                         illumination without rescaling the DAB signal).
     cfg.setdefault("adaptive_threshold", False)
     cfg.setdefault("preprocess_normalize", False)
+    # Stop after segmentation so the operator can review the DAB cutoff against the
+    # measured distribution before any output is generated. Off for CLI runs, which are
+    # non-interactive and take the configured cutoff as given.
+    cfg.setdefault("stop_after_segmentation", False)
     # `nuclear_adaptive` (per-image GMM valley + abstain gate) was removed in favour of a
     # fixed cohort-wide cutoff — see ihc.md § 11. Code parked in legacy/nuclear_adaptive/.
     return cfg
@@ -876,7 +880,9 @@ def _finish_single_image(img_path, img_filename, json_path, cfg,
 # ==========================================================
 
 def run_pipeline(config_path="config.yaml"):
-    cfg = load_config(config_path)
+    # Accepts a path or an already-loaded config, so a caller that needs to set a flag
+    # (e.g. --stage segment) does not have to round-trip through a temporary file.
+    cfg = config_path if isinstance(config_path, dict) else load_config(config_path)
 
     print(f"\n{'='*55}")
     print(f"  IHC ANALYZER")
@@ -932,6 +938,49 @@ def run_pipeline(config_path="config.yaml"):
         print("\nNo results to summarize")
         return
 
+    # Review gate. Segmentation and measurement are done and written to disk; deciding
+    # where "positive" starts is a separate, cheap decision the operator makes with the
+    # distribution in front of them. Stopping here means no overlay, dashboard or export
+    # is ever produced from an unreviewed cutoff. `finish_outputs` resumes from the
+    # summaries on disk once the cutoff is settled. (ihc.md § 11.4.)
+    if cfg.get("stop_after_segmentation"):
+        print(f"\n{'='*55}")
+        print("  SEGMENTATION COMPLETE — awaiting threshold review")
+        print(f"{'='*55}")
+        print(f"  Images segmented: {len(batch_metrics)}")
+        print(f"  Total cells:     {sum(m['Total_Cells'] for m in batch_metrics):,}")
+        print(f"{'='*55}")
+        return batch_metrics
+
+    return _generate_outputs(batch_metrics, cfg)
+
+
+def finish_outputs(cfg):
+    """Run the output stages against summaries already on disk.
+
+    Called after the operator has settled the cutoff, so the numbers baked into the
+    overlays, dashboard and export are the reviewed ones. Re-parses the summary JSONs
+    rather than trusting anything held in memory, because `reclassify.apply_threshold`
+    has rewritten them in between.
+    """
+    summaries = sorted(glob.glob(os.path.join(cfg["output_dir"], "*_summary.json")))
+    whitelist = cfg.get("image_whitelist")
+    if whitelist:
+        wl = {os.path.splitext(str(w))[0] for w in whitelist}
+        summaries = [p for p in summaries
+                     if any(os.path.basename(p).startswith(w) for w in wl)]
+    batch_metrics = [m for m in (parse_qupath_output(p) for p in summaries) if m]
+    if not batch_metrics:
+        print("\nNo reviewed results to summarize")
+        return
+    metadata_dir = os.path.join(cfg["dashboard_dir"], "metadata")
+    for m in batch_metrics:
+        save_metadata(m, metadata_dir)
+    return _generate_outputs(batch_metrics, cfg)
+
+
+def _generate_outputs(batch_metrics, cfg):
+    """Overlays, dashboard, export and cleanup — everything downstream of the cutoff."""
     # ── Stage 2+3: Generate overlays ──────────────────────
     if cfg.get("generate_overlays", True) and cfg.get("export_geojson", True):
         print("\nGenerating overlays...")
@@ -1882,6 +1931,12 @@ if __name__ == "__main__":
     parser.add_argument("--mode", default="quant",
                         help="quant = single-stain batch | "
                              "spatial = cross-type spatial association")
+    parser.add_argument("--stage", default="full", choices=["full", "segment", "finish"],
+                        help="quant only. full = segment and generate outputs (default, "
+                             "what a CLI run wants). segment = stop once cells are "
+                             "measured, before any output is produced, so the DAB cutoff "
+                             "can be reviewed. finish = generate outputs from summaries "
+                             "already on disk, after the cutoff has been settled.")
     args = parser.parse_args()
     # "coloc" is a hidden, deprecated alias for "spatial" (kept so older
     # callers/scripts don't break); "spatial" is the canonical name.
@@ -1889,6 +1944,13 @@ if __name__ == "__main__":
     if mode == "spatial":
         run_spatial_association_pipeline(args.config)
     elif mode == "quant":
-        run_pipeline(args.config)
+        if args.stage == "finish":
+            finish_outputs(load_config(args.config))
+        elif args.stage == "segment":
+            cfg = load_config(args.config)
+            cfg["stop_after_segmentation"] = True
+            run_pipeline(cfg)
+        else:
+            run_pipeline(args.config)
     else:
         parser.error(f"unknown --mode {args.mode!r} (use 'quant' or 'spatial')")

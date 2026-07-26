@@ -136,6 +136,7 @@ class API:
         self._window  = None
         self._process = None
         self._prov_cache = {}     # (ref_path, mov_path, px) -> provisional thumbnail transform
+        self._review_cfg = None   # resolved quant cfg awaiting threshold review
 
     def set_window(self, window):
         self._window = window
@@ -475,6 +476,15 @@ class API:
                 cfg["membrane_pix_thr"]  = float(cal["membrane_pix_thr"])
                 cfg["membrane_frac_min"] = float(cal["membrane_frac_min"])
 
+        # Review gate. A nuclear run stops once cells are measured so the operator can set
+        # the cutoff against the real distribution before any output exists. Membrane runs
+        # are scored on calibrated ring completeness, not a nuclear OD cut, so there is no
+        # cutoff here to review — they run straight through (ihc.md § 11.4).
+        review = bool(settings.get("review_threshold")) and not settings.get(
+            "use_cytoplasm_measurement")
+        cfg["stop_after_segmentation"] = review
+        self._review_cfg = cfg if review else None
+
         config_path = str(CONFIG_DIR / "pipeline_config.yaml")
         with open(config_path, "w") as f:
             yaml.dump(cfg, f, default_flow_style=False)
@@ -485,7 +495,8 @@ class API:
                         "Processing complete in","Measuring","Loading:","████","WARNING: Unknown"]
                 images_total = images_done = 0
                 self._process = subprocess.Popen(
-                    worker_cmd("run_pipeline", "--config", config_path),
+                    worker_cmd("run_pipeline", "--config", config_path,
+                               "--stage", "segment" if review else "full"),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     text=True, start_new_session=True, cwd=str(PROJECT_DIR)
                 )
@@ -516,11 +527,14 @@ class API:
                         if images_total > 0:
                             self._emit("progress", {"pct": int(images_done/images_total*85)})
 
-                if self._process.returncode == 0:
+                if self._process.returncode != 0:
+                    self._emit("done", {"ok": False, "msg": "Pipeline failed"})
+                elif review:
+                    self._emit("progress", {"pct": 85})
+                    self._emit("review", self.get_review_data())
+                else:
                     self._emit("progress", {"pct": 100})
                     self._emit("done", {"ok": True, "results": self._load_results(cfg)})
-                else:
-                    self._emit("done", {"ok": False, "msg": "Pipeline failed"})
             except Exception as e:
                 self._emit("done", {"ok": False, "msg": str(e)})
 
@@ -621,6 +635,142 @@ class API:
     # An LLM narrative helper (send_chat) lived here. It was unreachable from the UI, needed
     # network access + a user API key, and would have sent per-image results off-machine
     # without consent. Removed 2026-07-25; retained at legacy/llm/send_chat.py.
+
+    # ── Threshold review ───────────────────────────────────────────────────
+    # Segmentation is expensive and the cutoff is cheap, so they are separated: the run
+    # stops once cells are measured, the operator sets the cutoff against the measured
+    # distribution, and only then is any output produced. This is also the compliance
+    # story — the Digital Pathology Association's guidance is that a human approves the
+    # threshold before data generation, and this is where that happens (ihc.md § 11).
+
+    def get_review_data(self):
+        """Per-image DAB distributions for the images just segmented.
+
+        Returns the histogram, the current cutoff and what it would call positive — the
+        two things needed to judge a cutoff. The histogram matters as much as the picture:
+        at 1-2 % positives the image shows a handful of brown cells among thousands, and
+        the eye cannot tell a cutoff on a shoulder from one on a cliff.
+        """
+        import numpy as np
+        from oasis.quant import reclassify as RC
+
+        cfg = self._review_cfg or {}
+        output_dir = cfg.get("output_dir")
+        if not output_dir or not os.path.isdir(output_dir):
+            return {"ok": False, "msg": "No segmented run to review"}
+
+        cohort = float(cfg.get("dab_threshold", 0.2))
+        images = []
+        for summary_path in sorted(Path(output_dir).glob("*_summary.json")):
+            try:
+                summary = json.loads(summary_path.read_text()) or {}
+            except (OSError, ValueError):
+                continue
+            name = summary.get("image") or summary_path.stem.replace("_summary", "")
+            geo = next(iter(sorted(Path(output_dir).glob(
+                f"{summary_path.stem.replace('_summary', '')}*.geojson"))), None)
+            if geo is None:
+                continue
+            values = RC.read_dab_values(str(geo))
+            membrane = RC.is_membrane_result(summary)
+            thr = float(summary.get("threshold_override") or summary.get("dab_threshold")
+                        or cohort)
+            images.append({
+                "name": name,
+                "geojson": str(geo),
+                "summary": str(summary_path),
+                # A membranous marker is scored on ring completeness against cutoffs fitted
+                # in Calibrate. Its nuclear DAB is shown for context but must not be
+                # offered as a control, or the operator would be tuning the wrong number.
+                "membrane": membrane,
+                "threshold": round(thr, 4),
+                "histogram": RC.histogram(values),
+                "total_cells": int(np.isfinite(values).sum()),
+                "positive_at": round(RC.positive_fraction(values, thr), 5),
+                # A membranous image's real call comes from ring completeness, so its
+                # count must be read from the summary. Deriving one from the nuclear
+                # cutoff would put a confident, wrong number next to the histogram.
+                "scored_positive": (int(summary.get("positive_cells", 0))
+                                    if membrane else None),
+                "scored_pct": (float(summary.get("positivity_pct", 0.0))
+                               if membrane else None),
+            })
+        return {"ok": True, "cohort_threshold": round(cohort, 4), "images": images}
+
+    def preview_threshold(self, geojson_path, threshold):
+        """What a candidate cutoff would call positive, without writing anything."""
+        import numpy as np
+        from oasis.quant import reclassify as RC
+        try:
+            values = RC.read_dab_values(geojson_path)
+        except (OSError, ValueError) as e:
+            return {"ok": False, "msg": str(e)}
+        frac = RC.positive_fraction(values, threshold)
+        n = int(np.isfinite(values).sum())
+        return {"ok": True, "positive_frac": round(frac, 5),
+                "positive_cells": int(round(frac * n)), "total_cells": n}
+
+    def apply_review(self, payload):
+        """Commit the reviewed cutoffs, then generate the outputs.
+
+        `overrides` maps an image name to a cutoff that departs from the cohort default.
+        Each one is written into that image's summary as `threshold_override`, so the
+        report can say which images were not measured on the cohort's scale rather than
+        quietly averaging them in with the rest.
+        """
+        from oasis.quant import reclassify as RC
+
+        cfg = self._review_cfg or {}
+        output_dir = cfg.get("output_dir")
+        if not output_dir:
+            return {"ok": False, "msg": "No segmented run to apply"}
+
+        cohort = float(payload.get("cohort_threshold", cfg.get("dab_threshold", 0.2)))
+        overrides = payload.get("overrides") or {}
+        applied = []
+        for item in (payload.get("images") or []):
+            if item.get("membrane"):
+                continue          # scored on calibrated completeness, not this cutoff
+            name = item.get("name")
+            thr = float(overrides.get(name, cohort))
+            try:
+                stem = Path(item["summary"]).stem.replace("_summary", "")
+                applied.append({"name": name, **RC.apply_threshold(
+                    item["geojson"], item["summary"], thr,
+                    cohort_threshold=cohort, output_dir=output_dir, img_stem=stem)})
+            except (OSError, ValueError, KeyError) as e:
+                return {"ok": False, "msg": f"{name}: {e}"}
+
+        cfg["dab_threshold"] = cohort
+        cfg["stop_after_segmentation"] = False
+        config_path = str(CONFIG_DIR / "pipeline_config.yaml")
+        with open(config_path, "w") as f:
+            yaml.dump(cfg, f, default_flow_style=False)
+
+        def run():
+            try:
+                self._process = subprocess.Popen(
+                    worker_cmd("run_pipeline", "--config", config_path,
+                               "--stage", "finish"),
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                    text=True, start_new_session=True, cwd=str(PROJECT_DIR)
+                )
+                for line in self._process.stdout:
+                    clean = line.strip()
+                    if clean:
+                        self._emit("log", {"msg": clean, "level": "normal"})
+                self._process.wait()
+                if self._process.returncode == 0:
+                    self._emit("progress", {"pct": 100})
+                    self._emit("done", {"ok": True, "results": self._load_results(cfg)})
+                else:
+                    self._emit("done", {"ok": False, "msg": "Output generation failed"})
+            except Exception as e:
+                self._emit("done", {"ok": False, "msg": str(e)})
+
+        threading.Thread(target=run, daemon=True).start()
+        n_over = sum(1 for a in applied if a["override"])
+        return {"ok": True, "applied": applied, "overrides": n_over}
 
     def stop_pipeline(self):
         """Terminate any running pipeline subprocess."""
