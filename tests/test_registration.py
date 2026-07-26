@@ -441,3 +441,29 @@ def test_local_smoothness_does_not_select_for_a_similarity():
     warp = np.c_[0.15 * src[:, 1] + 40 * np.sin(src[:, 0] / 250.0), 0.10 * src[:, 0]]
     dst = src + warp + rng.normal(0, 0.5, (n, 2))
     assert _local_smoothness(src, dst, tol_px=4.0).sum() >= 0.95 * n
+
+
+def test_tile_grid_packs_the_frame_instead_of_yielding_one_candidate():
+    """The auto-sweep tested ONE location per image pair. Its grid stepped by 2*half and
+    pinned the phase to the anchor, so on a 1920x1440 camera field every neighbour of the
+    anchor fell out of bounds. A pair whose centre is unregistrable was then reported
+    DEFORMED with the rest of the field never examined."""
+    from oasis.webui.api import tile_centres
+    W, H, px = 1920, 1440, 0.7519                      # a real 10X frame, 1444 x 1083 um
+    for r_um, min_expected in ((450, 2), (350, 5), (260, 10)):
+        R = r_um / px
+        n = len(tile_centres(0, W, R, max(R, 8.0))) * len(tile_centres(0, H, R, max(R, 8.0)))
+        assert n >= min_expected, f"R={r_um}um gave only {n} candidates"
+
+
+def test_tile_grid_degrades_to_one_centre_when_the_tile_exceeds_the_span():
+    from oasis.webui.api import tile_centres
+    c = tile_centres(0, 100, 80, 80)                   # 160-wide tile in a 100-wide span
+    assert c == [50.0]
+
+
+def test_tile_grid_stays_inside_the_span():
+    from oasis.webui.api import tile_centres
+    for half, stride in ((100, 50), (100, 100), (37, 19)):
+        for c in tile_centres(0, 1000, half, stride):
+            assert c - half >= -1e-9 and c + half <= 1000 + 1e-9

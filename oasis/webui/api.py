@@ -4,6 +4,7 @@ api.py — Python backend for pywebview UI
 import os
 import sys
 import json
+import math
 import glob
 import shutil
 import subprocess
@@ -63,6 +64,25 @@ BUILTIN_CALIBRATIONS = [
     {"name": "CRC-ICM (TIM-3)", "marker": "tim-3",
      "membrane_pix_thr": 0.30, "membrane_frac_min": 0.14, "auc": 0.93, "builtin": True},
 ]
+
+
+def tile_centres(lo, hi, half, stride):
+    """Centres of tiles of half-width `half` packed across [lo, hi] at `stride`.
+
+    Extracted and tested because the previous inline version silently returned a SINGLE
+    centre on every one of these camera fields, and nothing caught it. It stepped by 2·half
+    AND pinned the phase so a chosen anchor was itself a centre; at 10X a 450 µm-radius tile
+    spans 900 µm of a 1443 µm frame, so both neighbours fell outside and the sweep tested one
+    location per image pair. Pairs were then reported DEFORMED with the rest of the field
+    never examined — measured: 9 of 33 10X pairs certify somewhere once the frame is actually
+    packed. Pack from the low edge instead, and let the caller choose a sub-2·half stride;
+    overlap among CANDIDATES is fine because disjointness is enforced on the accepted set.
+    """
+    first, last = lo + half, hi - half
+    if last < first:                      # tile wider than the span — centre it and accept 1
+        return [0.5 * (lo + hi)]
+    n = int(math.floor((last - first) / float(stride)))
+    return [first + i * float(stride) for i in range(n + 1)]
 
 
 def _planar_partition(polygons, min_area=1.0):
@@ -1072,11 +1092,26 @@ class API:
                 if 2 * rr > W or 2 * rr > H:
                     return None
                 return min(max(cxc, rr), W - rr), min(max(cyc, rr), H - rr)
+            # A rung below the certification area gate can never pass, whatever the tissue
+            # does: _apply_certification_roi downgrades any window under min_roi_frac of the
+            # field to NOT_CERTIFIABLE. Derive that limit instead of hard-coding it, so the
+            # ladder never spends attempts on sizes that are rejected on geometry alone.
+            _min_frac = sr.CERTIFICATION_GATES["min_roi_frac"]
+            r_min_um = float(np.sqrt(_min_frac * W * H / 4.0) * px_t)   # square tile, side 2R
             if not auto_size:
                 region_um = float(requested)
             else:
-                fitting = [s for s in ladder if _probe_centre(s) is not None]
-                region_um = fitting[0] if fitting else min(ladder)
+                fitting = [s for s in ladder
+                           if s >= r_min_um and _probe_centre(s) is not None]
+                if not fitting:                 # frame too small for any admissible rung
+                    fitting = [s for s in ladder if _probe_centre(s) is not None]
+                # FALLBACK IS THE SMALLEST ADMISSIBLE RUNG, NOT THE LARGEST. If no size
+                # certifies at the anchor we are no longer choosing a size, we are starting a
+                # SEARCH, and the largest rung is the worst thing to search with — at 10X it
+                # yields two candidate locations where the smallest yields twelve. Falling
+                # back to the largest is what made a failed probe condemn the whole pair on a
+                # single attempt.
+                region_um = fitting[-1] if fitting else min(ladder)
                 for s in fitting:
                     self._cert_progress(f"Selecting region size — trying {int(s)} µm…")
                     pcx, pcy = _probe_centre(s)
@@ -1104,12 +1139,20 @@ class API:
                     if not tp.is_empty and tp.area > 0:
                         tissue_poly = tp.simplify(2.0)
             import math
-            step = max(2.0 * R, 8.0)      # non-overlapping tiles → no auto intersections
+            # SEARCH ON A HALF-R STRIDE, THEN KEEP A DISJOINT SUBSET. The grid used to step by
+            # 2R and be pinned so the anchor was itself a cell centre, which on these camera
+            # fields produced exactly ONE candidate per pair: at 10X a 450 µm-radius tile spans
+            # 900 µm of a 1443×1083 µm frame, and pinning the phase to the anchor pushes every
+            # neighbouring cell out of bounds. So the sweep tested one location, and a pair
+            # whose centre happens to be unregistrable was reported DEFORMED with the rest of
+            # the field never examined — measured on LL478_liver_10X_2, which fails at centre
+            # but certifies in two corners. Overlapping candidates cost only attempts (they are
+            # bounded by attempt_cap and ordered by match density); the returned SET is still
+            # disjoint because `_disjoint` below rejects any tile overlapping one already kept.
+            step = max(R, 8.0)
 
-            def _centers(c, lo, hi):        # cell centres, aligned so (cxc,cyc) IS a centre
-                n0 = int(math.ceil((lo + R - c) / step))
-                n1 = int(math.floor((hi - R - c) / step))
-                return [c + n * step for n in range(n0, n1 + 1)] or [c]
+            def _centers(c, lo, hi):        # `c` (the anchor) no longer sets the grid phase
+                return tile_centres(lo, hi, R, step)
             tiles = []
             for cy in _centers(cyc, y0, y1):
                 for cx in _centers(cxc, x0, x1):
@@ -1133,11 +1176,22 @@ class API:
             tiles = [p for _, p in sorted(tiles, key=lambda t: -t[0])]
 
             regions, attempts = [], 0
+            kept_geoms = []          # accepted regions, for the disjointness check below
             attempt_cap = max(max_regions * 3, 18)
             n_tiles = len(tiles)
             for poly_t in tiles:
                 if len(regions) >= max_regions or attempts >= attempt_cap:
                     break
+                # Candidates now overlap (half-R stride), so enforce disjointness on OUTPUT
+                # instead of on the search. Skipping before the expensive certification also
+                # means an overlapping neighbour of an accepted region costs nothing.
+                cand_geom = _Poly([(float(x), float(y)) for x, y in poly_t])
+                if not cand_geom.is_valid:
+                    cand_geom = cand_geom.buffer(0)
+                if any((not g.intersection(cand_geom).is_empty) and
+                       g.intersection(cand_geom).area > 0.05 * cand_geom.area
+                       for g in kept_geoms):
+                    continue
                 attempts += 1
                 self._cert_progress(
                     f"Certifying regions — {len(regions)} certified, "
@@ -1160,6 +1214,7 @@ class API:
                     mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
                 cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
                         or cert.get("tre_median_um"))
+                kept_geoms.append(cand_geom)
                 regions.append({
                     "index": len(regions), "verdict": cert.get("verdict"), "is_certified": True,
                     "source": cert.get("source"), "n_correspondences": cert.get("n_correspondences"),
