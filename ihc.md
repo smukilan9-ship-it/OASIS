@@ -239,6 +239,21 @@ decides *whether*:
   assigns the verdict. The threshold is identical to the landmark path — a drawn region is
   never given an easier gate. `landmarks_are_model_selected=False` here because LoFTR
   matches are not RANSAC-selected against the fitted similarity.
+- **Auto region size follows the claim boundary, not the cell count.** The size ladder is
+  probed at the seeded anchor and the chosen rung is the **largest one whose radius floor
+  still resolves the contact scale** (≤ 20 µm, the same test `spatial.py` uses for
+  `contact_scale_resolved`) — not simply the largest rung that certifies. The two differ:
+  on LL477_Liver_10X_4, R = 450 µm certifies at a 21.2 µm floor while R = 260 µm certifies
+  at 19.0 µm, so size-first silently spends the ~10–20 µm band for area. When *no* rung
+  keeps the contact scale, the largest certifying rung is taken for statistical power and
+  `size_policy` records that cell-scale engagement is **not** claimable for that pair. The
+  floor is not monotone in size (450 → 21.2, 350 → 24.7, 260 → 19.0), so smaller rungs are
+  probed whenever the largest certifying one loses the band; when it does not, the ladder's
+  descending order already makes it the answer and probing stops. Measured on the 33-pair
+  10X set the policy chose the same size as size-first on every pair (16/33 pairs, 18
+  regions either way) — it is a **claim guard for the cases where they diverge**, not an
+  accuracy win, and the early exit keeps it free (1326 s vs 1337 s; the exhaustive form
+  cost 2567 s for the identical result).
 - **Overlapping drawn regions** are split by a shapely planar partition
   (`webui/api._planar_partition`) so an intersection becomes its **own separate region** —
   no cell is counted under two different transforms.
