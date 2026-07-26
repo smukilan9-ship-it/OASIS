@@ -341,6 +341,11 @@ def parse_qupath_output(json_path):
             "Negative_Cells": data["negative_cells"],
             "Positivity_Index_Pct": round(pos_pct, 2),
             "DAB_Threshold": data.get("dab_threshold", 0.2),
+            # Present only when this image was measured off the cohort's scale. The
+            # exported report has to say so; an override that only lives in the UI is
+            # not recorded in any way a reader of the results would ever see.
+            "Threshold_Override": data.get("threshold_override"),
+            "Cohort_Threshold": data.get("cohort_threshold"),
             "Pixel_Size_um": data.get("pixel_size_um", 0.5),
             "Pixel_Size_Source": data.get("pixel_size_source", "unknown"),
             "Cells_Per_mm2": data.get("cells_per_mm2"),

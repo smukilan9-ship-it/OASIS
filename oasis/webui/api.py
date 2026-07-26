@@ -570,15 +570,13 @@ class API:
                 _tot = d.get("total_cells", 0)
                 _pp = float(d.get("positivity_pct", 0))
                 _conf = "LOW" if (_tot < 50 or _pp < 0.1 or _pp > 95) else "NORMAL"
-                # Nuclear adaptive (GMM valley + abstain) provenance, written per-image by
-                # run_pipeline._apply_nuclear_reclassification. Surface it so the UI shows the
-                # ACTUAL threshold/method used — and, when the gate ABSTAINS on faint staining
-                # (method=fixed/abstain, quality=low), says so instead of silently showing the
-                # fixed OD as if adaptive never ran.
-                _nuc_method = d.get("nuclear_threshold_method")      # gmm | otsu | fixed | abstain | None
-                _nuc_thr = d.get("nuclear_threshold")
-                _fixed_thr = d.get("dab_threshold", 0.2)
-                _eff_thr = _nuc_thr if (_nuc_method in ("gmm", "otsu") and _nuc_thr is not None) else _fixed_thr
+                # Cutoff provenance. `threshold_override` is present only when this image
+                # was deliberately measured off the cohort's scale; carrying it through is
+                # what lets the results view name the exception instead of averaging it in
+                # with everything else (ihc.md § 11.4).
+                _eff_thr = float(d.get("dab_threshold", 0.2))
+                _override = d.get("threshold_override")
+                _cohort = d.get("cohort_threshold")
                 metrics.append({
                     "name":        Path(d.get("image","")).stem.split(" - ")[0],
                     "total_cells": _tot,
@@ -590,13 +588,8 @@ class API:
                     "pixel_size_warning": bool(d.get("pixel_size_warning", False)),
                     "cells_per_mm2": d.get("cells_per_mm2"),
                     "threshold":   _eff_thr,
-                    "fixed_threshold": _fixed_thr,
-                    "nuclear_threshold": _nuc_thr,
-                    "nuclear_threshold_method": _nuc_method,
-                    "nuclear_separability": d.get("nuclear_separability"),
-                    "staining_quality": d.get("staining_quality"),
-                    "nuclear_abstain": bool(d.get("nuclear_abstain", False)),
-                    "nuclear_abstain_reason": d.get("nuclear_abstain_reason"),
+                    "threshold_override": _override,
+                    "cohort_threshold": _cohort,
                     "confidence":  _conf,
                     "measurement_compartment": d.get("measurement_compartment", "nucleus"),
                     "membrane_classifier": d.get("membrane_classifier"),
