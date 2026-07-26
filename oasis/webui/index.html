@@ -907,6 +907,16 @@ td.muted { color: var(--text3); font-size: 11px; }
           <label>Cutoff profile</label>
           <select id="q-calib-profile"><option value="">Auto (match marker)</option></select>
         </div>
+        <div class="field" id="q-classifier-row" style="margin-top:8px">
+          <label>Positivity rule</label>
+          <select id="q-classifier" onchange="quantClassifierChanged()">
+            <option value="">Fixed OD cutoff (recommended)</option>
+          </select>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px" id="q-classifier-note">
+            A trained classifier is worth it when staining varies across the cohort; on
+            consistent staining it matches the fixed cutoff. Train one in the Classifier tab.
+          </div>
+        </div>
       </div>
 
       <div class="card" id="q-biomarkers-card">
@@ -1753,6 +1763,11 @@ function showPage(id) {
   const btn = document.getElementById('nav-' + id);
   if (id === 'spatial') btn.classList.add('spatial-active');
   else btn.classList.add('active');
+  // Refresh on entry so a classifier saved a moment ago is immediately selectable.
+  if (id === 'quant' && typeof loadQuantClassifiers === 'function') loadQuantClassifiers();
+  if (id === 'classifier' && typeof clsLoadRequirements === 'function') {
+    clsLoadRequirements(); clsKindNote();
+  }
 }
 
 function showView(page, view) {
@@ -2946,7 +2961,7 @@ async function runQuantAnalysis() {
     // Stop after measurement so the cutoff is set against the real distribution before
     // any output exists. Membrane runs skip this — they are scored on calibrated ring
     // completeness, so there is no nuclear cutoff to review.
-    review_threshold:      !isOn('q-membrane-toggle'),
+    review_threshold:      !isOn('q-membrane-toggle') && !document.getElementById('q-classifier').value,
     preprocess_normalize:  isOn('q-normalize-toggle'),
     generate_overlays:     isOn('q-overlay-toggle'),
     // Results-only by default: working/debug files (CSV, GeoJSON, logs, Groovy) are
@@ -2962,6 +2977,15 @@ async function runQuantAnalysis() {
     use_cytoplasm_measurement: isOn('q-membrane-toggle'),
     calibration_name:          isOn('q-membrane-toggle') ? (document.getElementById('q-calib-profile')?.value || '') : '',
   };
+
+  // A trained classifier replaces the cutoff entirely; it writes the same classification
+  // property, so nothing downstream changes.
+  const clsSel = document.getElementById('q-classifier').value;
+  if (clsSel !== '') {
+    const chosen = quantClassifiers[parseInt(clsSel, 10)];
+    settings.classifier = chosen.model;
+    settings.classifier_name = chosen.name;
+  }
 
   // Biomarkers supply per-stain DAB thresholds matched by filename token.
   if (quantBiomarkers.length) {
@@ -2993,6 +3017,54 @@ async function runQuantAnalysis() {
 }
 
 // ── Pipeline event handler ────────────────────────────────
+// Saved per-cohort classifiers, offered as an alternative to the cutoff. A classifier
+// that failed its held-out bar is listed but not selectable — it can exist without being
+// trusted, and hiding it entirely would make the failure invisible.
+let quantClassifiers = [];
+
+async function loadQuantClassifiers() {
+  try {
+    const r = await window.pywebview.api.list_classifiers();
+    quantClassifiers = (r && r.saved) || [];
+  } catch (e) { quantClassifiers = []; }
+  const req = await (window.pywebview.api.classifier_requirements
+    ? window.pywebview.api.classifier_requirements() : Promise.resolve({ min_auc: 0.75 }));
+  const sel = document.getElementById('q-classifier');
+  if (!sel) return;
+  const minAuc = (req && req.min_auc) || 0.75;
+  sel.innerHTML = '<option value="">Fixed OD cutoff (recommended)</option>'
+    + quantClassifiers.map((c, i) => {
+        const weak = c.auc == null || c.auc < minAuc;
+        const spread = (c.fold_f1_min != null)
+          ? `, worst slide F1 ${Number(c.fold_f1_min).toFixed(2)}` : '';
+        return `<option value="${i}"${weak ? ' disabled' : ''}>${esc(c.name)} — held-out AUC `
+             + `${c.auc == null ? 'n/a' : Number(c.auc).toFixed(2)}${spread}`
+             + `${weak ? ' (below the bar — not applicable)' : ''}</option>`;
+      }).join('');
+}
+
+function quantClassifierChanged() {
+  const v = document.getElementById('q-classifier').value;
+  const note = document.getElementById('q-classifier-note');
+  const sl = document.getElementById('q-thresh');
+  const on = v !== '';
+  // The OD slider no longer decides anything when a classifier is driving, so it is greyed
+  // rather than left looking live.
+  if (sl) { sl.disabled = on; sl.style.opacity = on ? 0.4 : 1; }
+  const disp = document.getElementById('q-thresh-display');
+  if (disp) disp.style.opacity = on ? 0.4 : 1;
+  if (!on) {
+    note.textContent = 'A trained classifier is worth it when staining varies across the '
+      + 'cohort; on consistent staining it matches the fixed cutoff. Train one in the '
+      + 'Classifier tab.';
+    return;
+  }
+  const c = quantClassifiers[parseInt(v, 10)];
+  note.innerHTML = `Cells will be called by <b>${esc(c.name)}</b> `
+    + `(fingerprint <code>${esc(c.fingerprint || '')}</code>, ${c.n_images || '?'} labelled slides). `
+    + `Any slide outside its training range is refused and falls back to the cutoff, flagged in the results.`;
+}
+
 // ── Threshold review ──────────────────────────────────────────────────────
 // Segmentation is done and measured; nothing has been written yet. The operator sets the
 // cutoff here, against the distribution rather than by eye alone, and only then are
