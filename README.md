@@ -61,10 +61,10 @@ different GUI backend on each platform:
 The command-line pipeline (`run_pipeline.py`) needs none of this — it has no GUI
 dependency, and `device: mps` falls back to CPU automatically on non-Apple hardware.
 
-QuPath is **not** required. It remains supported as an escape hatch by setting
-`segmenter: qupath` in `config.yaml`, which additionally needs QuPath 0.7.x with
-the InstanSeg extension and a `qupath_binary` path. The two paths are gated
-against each other on a 598-image benchmark; see `research/ihc.md` §7.
+Segmentation runs the bundled InstanSeg model in-process. No external segmenter
+is needed. The removed QuPath/Groovy arm was validated as equivalent on a
+598-image benchmark before removal (`research/ihc.md` §7); the code is kept for
+reference in `legacy/qupath/`.
 
 ## Setup
 
@@ -81,7 +81,6 @@ Edit `config.yaml` with local paths for:
 - `output_dir`
 - `dashboard_dir`
 - `instanseg_model`
-- `qupath_binary` (only when `segmenter: qupath`)
 
 The desktop app also stores user setup in `~/.ihc_analyzer/`.
 
@@ -177,7 +176,7 @@ Important fields:
 
 ## Repository Hygiene
 
-The `.gitignore` excludes local secrets, virtual environments, generated QuPath
+The `.gitignore` excludes local secrets, virtual environments, generated
 scripts, analysis outputs, and large microscopy image formats. Keep raw datasets
 and machine-specific files outside Git.
 

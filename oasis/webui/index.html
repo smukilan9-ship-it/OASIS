@@ -922,7 +922,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       <div class="card" id="q-biomarkers-card">
         <div class="card-title">Advanced mixed-stain batch rules <span style="font-weight:400;font-size:11px;text-transform:none;color:var(--text3)">(optional)</span></div>
         <div class="info-box amber" style="margin-bottom:12px">
-          Define biomarkers (e.g. CD8, TIM-3). Each image is matched to a biomarker by a token in its filename and uses that marker's DAB threshold. Images matching no biomarker fall back to the global DAB threshold above. All visible workflows preserve the original QuPath measurement and classification.
+          Define biomarkers (e.g. CD8, TIM-3). Each image is matched to a biomarker by a token in its filename and uses that marker's DAB threshold. Images matching no biomarker fall back to the global DAB threshold above. All visible workflows preserve the original measurement and classification.
           <div style="margin-top:8px">
             <b>Starting defaults:</b> CD8 — <b>0.20</b> OD; TIM-3 — <b>0.10</b> OD.
           </div>
@@ -944,7 +944,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       <div class="wizard-step" id="q-step-4" data-step="4">
       <div class="card">
         <div class="card-title">Output options</div>
-        <div class="info-box amber" style="margin-bottom:12px">A run keeps only the results you need: <b>overlays</b>, the <b>dashboard + Excel</b>, and per-image <b>summary.json</b>. Working/debug files (per-cell CSV, GeoJSON, QuPath logs, the Groovy script) are cleaned up automatically — turn the toggle on to keep them (needed to reuse this segmentation in the Spatial tab).</div>
+        <div class="info-box amber" style="margin-bottom:12px">A run keeps only the results you need: <b>overlays</b>, the <b>dashboard + Excel</b>, and per-image <b>summary.json</b>. Working/debug files (per-cell CSV, GeoJSON, segmentation logs) are cleaned up automatically — turn the toggle on to keep them (needed to reuse this segmentation in the Spatial tab).</div>
         <div class="toggle-row">
           <span>Generate cell boundary overlays</span>
           <div class="toggle on" id="q-overlay-toggle" onclick="toggleEl('q-overlay-toggle')"></div>
@@ -1534,8 +1534,8 @@ td.muted { color: var(--text3); font-size: 11px; }
     <div class="card">
       <div class="card-title">Analysis engine</div>
       <div class="info-box" style="margin-bottom:12px">
-        Segmentation runs in-process with the bundled InstanSeg model. <b>QuPath is not
-        required</b> and does not need to be installed.
+        Segmentation runs in-process with the bundled InstanSeg model. <b>No external
+        segmenter</b> needs to be installed.
       </div>
       <div class="field"><label>InstanSeg model path <span style="color:var(--text3);font-weight:400">— leave blank to use the bundled model</span></label>
         <div class="input-with-btn">
@@ -3929,7 +3929,7 @@ function spatialCertPoint(ev, image, meta) {
   const r = image.getBoundingClientRect();
   let x = (ev.clientX - r.left) / r.width  * meta.width;
   let y = (ev.clientY - r.top)  / r.height * meta.height;
-  // Edge-inclusive (QuPath-like): clamp to the image bounds so a click/drag past an
+  // Edge-inclusive: clamp to the image bounds so a click/drag past an
   // edge snaps to the boundary and is included, instead of producing out-of-image
   // coordinates that get dropped.
   x = Math.max(0, Math.min(meta.width,  x));
@@ -4433,7 +4433,7 @@ function lmWheel(side,e){ e.preventDefault(); const p=lmPanes[side];
 function lmDown(side,e){
   // Capture the pointer so a drag/draw keeps sending events even after it leaves the
   // stage — combined with the edge-clamp in spatialCertPoint, drawing continues and
-  // snaps to the image boundary instead of stopping at the edge (QuPath-like).
+  // snaps to the image boundary instead of stopping at the edge.
   try { document.getElementById('lm-stage-'+side).setPointerCapture(e.pointerId); } catch(_){}
   if(side==='ref' && spatialCertWork.freehand){ loftrFreehandDown(e); return; }
   const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }

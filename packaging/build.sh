@@ -23,7 +23,7 @@ if ! "$PY" -c "import PyInstaller" 2>/dev/null; then
   "$PY" -m pip install pyinstaller
 fi
 
-# The vendored weights are what make the bundle QuPath-independent. Building without them
+# The vendored weights are what make the bundle self-contained. Building without them
 # yields an app that starts and then fails on the first image, so fail here instead.
 if [ ! -f "$ROOT/models/brightfield_nuclei-0.1.1/rdf.yaml" ]; then
   echo "error: models/brightfield_nuclei-0.1.1 is missing or incomplete." >&2

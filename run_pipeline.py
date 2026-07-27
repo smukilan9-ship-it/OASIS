@@ -31,19 +31,10 @@ def load_config(config_path="config.yaml"):
     with open(config_path) as f:
         cfg = yaml.safe_load(f)
 
-    path_keys = ["input_dir", "output_dir", "dashboard_dir",
-                 "qupath_binary", "instanseg_model"]
+    path_keys = ["input_dir", "output_dir", "dashboard_dir", "instanseg_model"]
     for key in path_keys:
         if key in cfg and cfg[key]:
             cfg[key] = os.path.expanduser(str(cfg[key]))
-
-    # Segmenter: "native" (default) runs the InstanSeg TorchScript bundle in-process;
-    # "qupath" shells out to the QuPath binary as before. The QuPath path is retained for one
-    # release as an escape hatch — it is validated as equivalent (research/ihc.md §7, det/class figures
-    # within 0.005 over 598 DeepLIIF images) but a second implementation is cheap insurance
-    # while the native one is new in the field. Only the MODEL is shared; nothing else is.
-    cfg.setdefault("segmenter", "native")
-    _native = str(cfg.get("segmenter", "native")).lower() != "qupath"
 
     # The InstanSeg model ships with OASIS (models/, Apache-2.0), so a config need not name
     # it. Only fall back when the key is absent or empty — an explicit path is honoured even
@@ -56,9 +47,8 @@ def load_config(config_path="config.yaml"):
 
     # input_dir is a quantification-only field. Spatial association supplies
     # explicit image paths via spatial_pairs (+ pixel_overrides), so input_dir is
-    # irrelevant there and must not be required. The InstanSeg model is needed by both
-    # segmenters; the QuPath binary only by the QuPath one.
-    required = ["instanseg_model"] if _native else ["qupath_binary", "instanseg_model"]
+    # irrelevant there and must not be required.
+    required = ["instanseg_model"]
     if cfg.get("mode") != "spatial":
         required = ["input_dir"] + required
     for key in required:
@@ -66,13 +56,9 @@ def load_config(config_path="config.yaml"):
             print(f"ERROR: '{key}' is required in config.yaml")
             sys.exit(1)
 
-    if not _native and not os.path.exists(cfg["qupath_binary"]):
-        print(f"ERROR: QuPath not found at: {cfg['qupath_binary']}")
-        sys.exit(1)
-
     if not os.path.exists(os.path.expanduser(cfg["instanseg_model"])):
-        # A config written before the model was vendored can still point at a QuPath
-        # download that no longer exists. Prefer the shipped copy over failing.
+        # A config written before the model was vendored can still point at a download
+        # that no longer exists. Prefer the shipped copy over failing.
         bundled = bundled_model_dir()
         if bundled:
             print(f"NOTE: configured InstanSeg model not found at "
@@ -127,200 +113,6 @@ def load_config(config_path="config.yaml"):
 
 
 # ==========================================================
-# GROOVY SCRIPT GENERATOR
-# ==========================================================
-
-def generate_groovy_script(cfg, script_path="generated_pipeline.groovy", img_path=None,
-                           threshold_override=None):
-    model_path = os.path.expanduser(cfg["instanseg_model"])
-
-    img_base = os.path.basename(img_path) if img_path else ""
-
-    # An explicit per-image threshold (passed directly, or via
-    # cfg["threshold_overrides"] keyed by filename — set by the Spatial
-    # Association UI) takes priority over everything and skips the
-    # stain_thresholds filename lookup entirely.
-    if threshold_override is None and img_base:
-        threshold_override = (cfg.get("threshold_overrides") or {}).get(img_base)
-
-    if threshold_override is not None:
-        threshold = threshold_override
-        print(f"  DAB threshold: {threshold} OD (per-image override from UI)")
-    else:
-        # Per-stain DAB threshold: if stain_thresholds is configured, match the
-        # image filename (case-insensitive substring) against its keys and use the
-        # first matching threshold; otherwise fall back to the global dab_threshold.
-        threshold = cfg["dab_threshold"]
-        stain_thresholds = cfg.get("stain_thresholds")
-        if stain_thresholds:
-            img_name = img_base.lower()
-            matched_token = None
-            for token, thr in stain_thresholds.items():
-                if img_name and str(token).lower() in img_name:
-                    threshold, matched_token = thr, token
-                    break
-            if matched_token is not None:
-                print(f"  DAB threshold: {threshold} OD "
-                      f"(stain '{matched_token}' matched in '{img_base}')")
-            else:
-                why = "no stain token matched filename" if img_name \
-                    else "no image filename available"
-                print(f"  DAB threshold: {threshold} OD (default dab_threshold; {why})")
-
-    # Adaptive (Otsu) threshold: applies when enabled and no explicit per-image
-    # override is in force. The cut is computed in-Groovy from this image's own
-    # cell DAB:Mean distribution, so it adapts to per-slide stain intensity.
-    adaptive = bool(cfg.get("adaptive_threshold")) and threshold_override is None
-    if adaptive:
-        threshold_block = f'''def _dabVals = detections.collect {{ it.getMeasurementList().get("DAB: Mean") }}.findAll {{ it != null && !it.isNaN() }}
-double threshold
-if (_dabVals.size() >= 20) {{
-    double _mx = _dabVals.max(); if (_mx <= 0) _mx = 1e-6
-    int _NB = 256; int[] _h = new int[_NB]
-    _dabVals.each {{ v -> int _bi = (int)Math.min(_NB - 1, Math.max(0, Math.round(v / _mx * (_NB - 1)))); _h[_bi]++ }}
-    int _tot = _dabVals.size(); double _sum = 0.0
-    for (int i = 0; i < _NB; i++) _sum += (double)i * _h[i]
-    double _sumB = 0.0; int _wB = 0; double _maxVar = -1.0; int _thrBin = 0
-    for (int i = 0; i < _NB; i++) {{
-        _wB += _h[i]; if (_wB == 0) continue; int _wF = _tot - _wB; if (_wF == 0) break
-        _sumB += (double)i * _h[i]; double _mB = _sumB / _wB; double _mF = (_sum - _sumB) / _wF
-        double _var = (double)_wB * _wF * (_mB - _mF) * (_mB - _mF)
-        if (_var > _maxVar) {{ _maxVar = _var; _thrBin = i }}
-    }}
-    threshold = _thrBin / (double)(_NB - 1) * _mx
-    println "DAB threshold: " + threshold + " (ADAPTIVE Otsu over " + _tot + " cells)"
-}} else {{
-    threshold = {threshold}
-    println "DAB threshold: " + threshold + " (fixed fallback; <20 cells for Otsu)"
-}}'''
-    else:
-        threshold_block = (f'double threshold = {threshold}\n'
-                           f'println "DAB threshold: " + threshold + " (fixed OD)"')
-
-    device = cfg["device"]
-    threads = cfg["instanseg_threads"]
-    tile_dims = cfg["tile_dims"]
-    output_dir = os.path.expanduser(cfg["output_dir"])
-    default_pixel_size = cfg.get("_resolved_pixel_size", cfg.get("default_pixel_size", 0.5))
-
-    script = f"""import qupath.ext.instanseg.core.InstanSeg
-import qupath.lib.objects.PathObjects
-import qupath.lib.roi.ROIs
-import qupath.lib.regions.ImagePlane
-import qupath.lib.common.GeneralTools
-
-def imageData = getCurrentImageData()
-if (imageData == null) {{ println "ERROR: No image loaded"; return }}
-def server = imageData.getServer()
-
-println "======================================"
-println "STARTING ANALYSIS"
-println "======================================"
-println "Image: " + server.getMetadata().getName()
-println "Width: " + server.getWidth()
-println "Height: " + server.getHeight()
-
-removeAllObjects()
-setImageType('BRIGHTFIELD_H_DAB')
-
-double pixelSize = {default_pixel_size}
-setPixelSizeMicrons(pixelSize, pixelSize)
-println "Pixel size: " + pixelSize + " um/px"
-
-def roi = ROIs.createRectangleROI(0, 0, server.getWidth(), server.getHeight(), ImagePlane.getDefaultPlane())
-def annotation = PathObjects.createAnnotationObject(roi)
-addObject(annotation)
-selectObjects(annotation)
-println "Full image annotation created"
-
-println "Running InstanSeg..."
-def instanseg = InstanSeg.builder()
-    .modelPath("{model_path}")
-    .device("{device}")
-    .nThreads({threads})
-    .tileDims({tile_dims})
-    .interTilePadding(32)
-    .makeMeasurements(true)
-    .randomColors(false)
-    .build()
-
-instanseg.detectObjects()
-println "InstanSeg completed"
-
-def detections = getDetectionObjects()
-println "Total cells detected: " + detections.size()
-if (detections.isEmpty()) {{ println "WARNING: No detections found"; return }}
-
-{threshold_block}
-
-def positiveClass = getPathClass("Positive")
-def negativeClass = getPathClass("Negative")
-int positiveCount = 0
-int negativeCount = 0
-
-detections.each {{ cell ->
-    def dab = cell.getMeasurementList().get("DAB: Mean")
-    if (dab != null && !dab.isNaN() && dab > threshold) {{
-        cell.setPathClass(positiveClass); positiveCount++
-    }} else {{
-        cell.setPathClass(negativeClass); negativeCount++
-    }}
-}}
-
-fireHierarchyUpdate()
-double positivityPct = (positiveCount * 100.0) / detections.size()
-
-println "======================================"
-println "FINAL RESULTS"
-println "======================================"
-println "Total cells:    " + detections.size()
-println "Positive cells: " + positiveCount
-println "Negative cells: " + negativeCount
-println "Positivity %:   " + String.format("%.2f", positivityPct)
-
-def outDir = new File("{output_dir}")
-if (!outDir.exists()) outDir.mkdirs()
-def imageName = GeneralTools.stripExtension(server.getMetadata().getName())
-
-def csvPath = new File(outDir, imageName + "_detections.csv").getAbsolutePath()
-saveDetectionMeasurements(csvPath)
-println "CSV exported to: " + csvPath
-
-def jsonPath = new File(outDir, imageName + "_summary.json").getAbsolutePath()
-def summary = \"\"\"{{
-    "image": "${{server.getMetadata().getName()}}",
-    "pixel_size_um": ${{pixelSize}},
-    "image_width": ${{server.getWidth()}},
-    "image_height": ${{server.getHeight()}},
-    "total_cells": ${{detections.size()}},
-    "positive_cells": ${{positiveCount}},
-    "negative_cells": ${{negativeCount}},
-    "positivity_pct": ${{String.format("%.2f", positivityPct)}},
-    "dab_threshold": ${{String.format("%.4f", threshold)}}
-}}\"\"\"
-new File(jsonPath).text = summary.trim()
-println "JSON exported to: " + jsonPath
-"""
-
-    if cfg.get("export_geojson", True):
-        script += f"""
-def geojsonPath = new File("{output_dir}", imageName + "_detections.geojson").getAbsolutePath()
-exportObjectsToGeoJson(getDetectionObjects(), geojsonPath, "FEATURE_COLLECTION")
-println "GeoJSON exported to: " + geojsonPath
-"""
-
-    script += """
-println "======================================"
-println "PIPELINE FINISHED SUCCESSFULLY"
-println "======================================"
-"""
-
-    with open(script_path, "w") as f:
-        f.write(script)
-    return script_path
-
-
-# ==========================================================
 # CONFIDENCE + JSON PARSER
 # ==========================================================
 
@@ -331,7 +123,7 @@ def compute_confidence(total, pos_pct):
     return "NORMAL"
 
 
-def parse_qupath_output(json_path):
+def parse_summary_json(json_path):
     if not os.path.exists(json_path):
         print(f"  Missing results: {json_path}")
         return None
@@ -386,9 +178,9 @@ def save_metadata(metrics, metadata_dir):
 
 def run_native_segmentation(img_path, cfg, out_basename=None):
     """Segment one image in-process with oasis.quant.segment and write the SAME three files
-    QuPath's Groovy wrote: <stem>_detections.geojson, <stem>_detections.csv, <stem>_summary.json.
+    Segmentation writes: <stem>_detections.geojson, <stem>_detections.csv, <stem>_summary.json.
 
-    Downstream code locates these by globbing `<stem>*`, so dropping QuPath's baroque
+    Downstream code locates these by globbing `<stem>*`, so dropping the older baroque
     "name.tif - name.tif #1" naming is safe and the outputs are found unchanged.
     Returns the summary-JSON path, or None on failure.
     """
@@ -445,7 +237,7 @@ def _torch_device(name):
 
 
 def _resolve_dab_threshold(cfg, img_base):
-    """The DAB threshold and adaptive flag for this image — the same precedence the Groovy
+    """The DAB threshold and adaptive flag for this image — the same precedence the segmenter
     generator applied: explicit per-image override > stain-token match > global default;
     adaptive Otsu only when enabled AND no explicit override is in force."""
     override = (cfg.get("threshold_overrides") or {}).get(img_base)
@@ -460,52 +252,6 @@ def _resolve_dab_threshold(cfg, img_base):
             return float(thr), bool(cfg.get("adaptive_threshold"))
     print(f"  DAB threshold: {threshold} OD (default dab_threshold)")
     return float(threshold), bool(cfg.get("adaptive_threshold"))
-
-
-def _run_qupath(img_path, cfg, groovy_script):
-    """Run QuPath on a single image. Returns json_path or None."""
-    img_filename = os.path.basename(img_path)
-    command = [cfg["qupath_binary"], "script", "-i", img_path, groovy_script]
-    start_time = time.time()
-    env = os.environ.copy()
-    env["JAVA_TOOL_OPTIONS"] = "-Djava.awt.headless=true"
-    process = subprocess.Popen(
-        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-        text=True, env=env, start_new_session=True
-    )
-    stdout_lines = []
-    try:
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if line:
-                clean = line.strip()
-                stdout_lines.append(clean)
-                if clean and not any(x in clean for x in [
-                    "INFO", "WARN", "Measured Detection",
-                    "Completed Annotation", "LOADER", "PyInstaller"
-                ]):
-                    print(clean)
-        process.wait(timeout=cfg["timeout_seconds"])
-    except subprocess.TimeoutExpired:
-        process.kill()
-        return None, round(time.time()-start_time,2)
-
-    runtime = round(time.time()-start_time, 2)
-    log_dir = os.path.join(cfg["dashboard_dir"], "logs")
-    os.makedirs(log_dir, exist_ok=True)
-    with open(os.path.join(log_dir, f"{img_filename}_stdout.log"), "w") as f:
-        f.write("\n".join(stdout_lines))
-    with open(os.path.join(log_dir, f"{img_filename}_stderr.log"), "w") as f:
-        f.write(process.stderr.read())
-
-    if process.returncode != 0:
-        return None, runtime
-
-    clean_prefix = os.path.splitext(img_filename)[0]
-    matches = glob.glob(os.path.join(cfg["output_dir"], f"{clean_prefix}*_summary.json"))
-    return (matches[0] if matches else None), runtime
 
 
 def _classification_name(props):
@@ -539,7 +285,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
             summ = json.load(f)
     except Exception:
         summ = {}
-    # The threshold QuPath actually used is baked into the summary JSON.
+    # The threshold the segmenter actually used is baked into the summary JSON.
     threshold = float(summ.get("dab_threshold", cfg.get("dab_threshold", 0.2)))
 
     # Membrane-completeness classification (opt-in). When membrane_pix_thr AND
@@ -603,7 +349,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
     with open(geojson, "w") as f:
         json.dump(gj, f)
 
-    # Keep the tab-delimited QuPath detection export consistent with the GeoJSON
+    # Keep the tab-delimited detection export consistent with the GeoJSON
     # and summary. Previously it silently retained the raw nuclear classes while
     # the UI showed cytoplasm classes.
     try:
@@ -647,7 +393,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
         summ["positivity_pct"] = round(pos * 100.0 / total, 2)
     summ["measurement_compartment"] = "cytoplasm"
     summ["cell_expansion_um"]       = expansion
-    summ["cytoplasm_dab_calibrated_to_qupath"] = True
+    summ["cytoplasm_dab_calibrated"] = True
     summ["membrane_classifier"] = "completeness" if use_completeness else "ring_mean"
     if use_completeness:
         summ["membrane_pix_thr"]  = float(pix_thr)
@@ -724,7 +470,7 @@ def _apply_classifier(img_path, json_path, cfg):
 def _normalized_copy(img_path, cfg):
     """Write a per-image white-balanced copy (same basename) and return its path.
 
-    Corrects tone/illumination to a per-image white point so QuPath's H-DAB
+    Corrects tone/illumination to a per-image white point so the H-DAB
     deconvolution and InstanSeg see a consistent input across slides. Scales each
     channel so the slide's own background maps to white — it does NOT rescale the
     DAB signal. Best-effort: on very large WSIs or any failure, returns None so
@@ -754,7 +500,7 @@ def _normalized_copy(img_path, cfg):
         return None
 
 
-def run_single_image(img_path, cfg, groovy_script):
+def run_single_image(img_path, cfg):
     img_filename = os.path.basename(img_path)
 
     print(f"\n{'='*50}")
@@ -781,7 +527,7 @@ def run_single_image(img_path, cfg, groovy_script):
 
     # Segmentation reuse: if a prior step (e.g. the 75 µm bandwidth pre-flight) already
     # produced this image's summary JSON + GeoJSON in the output dir and they are newer
-    # than the source image, skip the (expensive) QuPath run and reuse them. Gated by an
+    # than the source image, skip the (expensive) segmentation run and reuse them. Gated by an
     # explicit flag so CLI re-runs are never silently short-circuited.
     if cfg.get("reuse_existing_geojson"):
         _prefix = os.path.splitext(img_filename)[0]
@@ -803,76 +549,13 @@ def run_single_image(img_path, cfg, groovy_script):
             seg_input = norm
             print("  Preprocessing: per-image white-balance normalization applied")
 
-    # Segmenter dispatch. Both run the same InstanSeg model; "native" runs it in-process
-    # (default), "qupath" shells out to the QuPath binary. See load_config.
-    if str(cfg.get("segmenter", "native")).lower() != "qupath":
-        json_path = run_native_segmentation(
-            seg_input, cfg, out_basename=os.path.splitext(img_filename)[0])
-        if json_path is None:
-            return None
-        return _finish_single_image(img_path, img_filename, json_path, cfg,
-                                    pixel_size, pixel_size_source)
-
-    generate_groovy_script(cfg, groovy_script, img_path)
-    qp_input = seg_input
-    command = [cfg["qupath_binary"], "script", "-i", qp_input, groovy_script]
-    start_time = time.time()
-
-    # On macOS, use 'open -gj' equivalent by setting LSUIElement via env
-    # This prevents QuPath from stealing focus when launched headlessly
-    env = os.environ.copy()
-    env["JAVA_TOOL_OPTIONS"] = "-Djava.awt.headless=true"
-
-    process = subprocess.Popen(
-        command,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-        env=env,
-        start_new_session=True  # prevents focus steal on macOS
-    )
-    stdout_lines = []
-    try:
-        while True:
-            line = process.stdout.readline()
-            if not line and process.poll() is not None:
-                break
-            if line:
-                clean = line.strip()
-                stdout_lines.append(clean)
-                if clean and not any(x in clean for x in [
-                    "INFO", "WARN", "Measured Detection",
-                    "Completed Annotation", "LOADER", "PyInstaller"
-                ]):
-                    print(clean)
-        process.wait(timeout=cfg["timeout_seconds"])
-    except subprocess.TimeoutExpired:
-        process.kill()
-        print(f"TIMEOUT")
+    # One segmenter: the InstanSeg TorchScript bundle, run in-process. The QuPath/Groovy
+    # arm was removed 2026-07-27 (legacy/qupath/groovy_segmentation.py records why).
+    json_path = run_native_segmentation(
+        seg_input, cfg, out_basename=os.path.splitext(img_filename)[0])
+    if json_path is None:
         return None
-
-    runtime = round(time.time() - start_time, 2)
-
-    log_dir = os.path.join(cfg["dashboard_dir"], "logs")
-    os.makedirs(log_dir, exist_ok=True)
-    with open(os.path.join(log_dir, f"{img_filename}_stdout.log"), "w") as f:
-        f.write("\n".join(stdout_lines))
-    with open(os.path.join(log_dir, f"{img_filename}_stderr.log"), "w") as f:
-        f.write(process.stderr.read())
-
-    if process.returncode != 0:
-        print(f"FAILED (exit code {process.returncode})")
-        return None
-
-    print(f"Completed in {runtime}s")
-
-    clean_prefix = os.path.splitext(img_filename)[0]
-    matches = glob.glob(os.path.join(cfg["output_dir"],
-                                      f"{clean_prefix}*_summary.json"))
-    if not matches:
-        print(f"ERROR: No JSON results found")
-        return None
-    return _finish_single_image(img_path, img_filename, matches[0], cfg,
+    return _finish_single_image(img_path, img_filename, json_path, cfg,
                                 pixel_size, pixel_size_source)
 
 
@@ -960,11 +643,6 @@ def run_pipeline(config_path="config.yaml"):
     os.makedirs(cfg["dashboard_dir"], exist_ok=True)
     metadata_dir = os.path.join(cfg["dashboard_dir"], "metadata")
 
-    groovy_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "generated_pipeline.groovy"
-    )
-
     # Find images
     images = []
     for ext in cfg["image_extensions"]:
@@ -984,10 +662,10 @@ def run_pipeline(config_path="config.yaml"):
 
     batch_metrics = []
     for img_path in images:
-        json_path = run_single_image(img_path, cfg, groovy_path)
+        json_path = run_single_image(img_path, cfg)
         if json_path is None:
             continue
-        metrics = parse_qupath_output(json_path)
+        metrics = parse_summary_json(json_path)
         if not metrics:
             continue
         batch_metrics.append(metrics)
@@ -1030,7 +708,7 @@ def finish_outputs(cfg):
         wl = {os.path.splitext(str(w))[0] for w in whitelist}
         summaries = [p for p in summaries
                      if any(os.path.basename(p).startswith(w) for w in wl)]
-    batch_metrics = [m for m in (parse_qupath_output(p) for p in summaries) if m]
+    batch_metrics = [m for m in (parse_summary_json(p) for p in summaries) if m]
     if not batch_metrics:
         print("\nNo reviewed results to summarize")
         return
@@ -1124,7 +802,7 @@ def _find_geojson(img_path: str, output_dir: str):
 
 
 def _find_detection_csv(img_path: str, output_dir: str):
-    """Find the tab-delimited QuPath all-detections export for an image."""
+    """Find the tab-delimited all-detections export for an image."""
     stem = os.path.splitext(os.path.basename(img_path))[0]
     matches = glob.glob(os.path.join(output_dir, f"{stem}*_detections.csv"))
     return matches[0] if matches else None
@@ -1140,7 +818,7 @@ def cytoplasm_overrides_for_pair(cfg, path_a, path_b):
 
       • reference / image-A role  → OFF  (CD8 nuclear measurement is the
                                           validated path)
-      • moving / image-B role     → OFF  (preserve original QuPath classification;
+      • moving / image-B role     → OFF  (preserve the original classification;
                                           membrane-ring analysis is opt-in)
 
     Any explicit per-image entry already in cfg["cytoplasm_overrides"] wins, so
@@ -1150,7 +828,7 @@ def cytoplasm_overrides_for_pair(cfg, path_a, path_b):
     merged = dict(cfg.get("cytoplasm_overrides") or {})
     a, b = os.path.basename(path_a), os.path.basename(path_b)
     merged.setdefault(a, False)   # reference / image A — nuclear (validated)
-    merged.setdefault(b, False)   # preserve original QuPath classification by default
+    merged.setdefault(b, False)   # preserve the original classification by default
     return merged
 
 
@@ -1426,7 +1104,7 @@ def evaluate_registration_qc(reg_result, qc_metrics, pixel_size_um,
 def run_spatial_association_pipeline(config_path="config.yaml"):
     """
     Cross-type spatial-association pipeline.
-    Processes pre-built pairs: runs QuPath on both images, registers them into a
+    Processes pre-built pairs: segments both images, registers them into a
     shared coordinate space, then measures population-level spatial association
     (cross-type Ripley's K / g(r) — see spatial.run_spatial_association). This is
     NOT single-cell co-expression, which serial sections cannot establish.
@@ -1448,11 +1126,6 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
     print(f"  Registration: {'enabled' if cfg.get('enable_registration', True) else 'disabled'}")
     print(f"  Output:       {cfg['output_dir']}")
     print(f"{'='*55}")
-
-    groovy_path = os.path.join(
-        os.path.dirname(os.path.abspath(__file__)),
-        "generated_pipeline.groovy"
-    )
 
     spatial_results = []
 
@@ -1495,9 +1168,9 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         pair_cfg = {**cfg, "output_dir": pair_out, "dashboard_dir": pair_out,
                     "cytoplasm_overrides": cyto_map}
 
-        # ── Run QuPath on both images ──────────────────────────────────
+        # ── Segment both images ────────────────────────────────────────
         print(f"\nProcessing {stain_a}...")
-        json_a = run_single_image(path_a, pair_cfg, groovy_path)
+        json_a = run_single_image(path_a, pair_cfg)
         geojson_a = _find_geojson(path_a, pair_out)
         csv_a = _find_detection_csv(path_a, pair_out)
         # Capture the REFERENCE (image-A) pixel size exactly as A's segmentation
@@ -1511,21 +1184,21 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                                      "default_fallback")
 
         print(f"\nProcessing {stain_b}...")
-        json_b = run_single_image(path_b, pair_cfg, groovy_path)
+        json_b = run_single_image(path_b, pair_cfg)
         geojson_b = _find_geojson(path_b, pair_out)
 
         if not json_a or not json_b:
-            print(f"  SKIPPING pair {sample_id}: QuPath failed for one or both images")
+            print(f"  SKIPPING pair {sample_id}: segmentation failed for one or both images")
             spatial_results.append({
                 "sample_id": sample_id, "stain_a": stain_a, "stain_b": stain_b,
                 "filename_a": os.path.basename(path_a),
                 "filename_b": os.path.basename(path_b),
-                "error": "QuPath failed",
+                "error": "segmentation failed",
             })
             continue
 
-        metrics_a = parse_qupath_output(json_a)
-        metrics_b = parse_qupath_output(json_b)
+        metrics_a = parse_summary_json(json_a)
+        metrics_b = parse_summary_json(json_b)
 
         if not geojson_a or not geojson_b:
             print(f"  WARNING: GeoJSON missing for pair {sample_id} — skipping matching")

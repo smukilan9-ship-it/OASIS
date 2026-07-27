@@ -24,8 +24,7 @@ __pycache__/
 config.yaml
 *.local.yaml
 
-# Generated QuPath and analysis outputs
-generated_pipeline.groovy
+# Generated analysis outputs
 *_detections.csv
 *_detections.geojson
 *_summary.json

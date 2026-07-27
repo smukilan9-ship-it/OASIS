@@ -749,7 +749,7 @@ def write_detections_csv(result, path, image_name=""):
 
 
 def write_summary(result, path, image_name="", extra=None):
-    """The per-image summary JSON `parse_qupath_output` consumes."""
+    """The per-image summary JSON `parse_summary_json` consumes."""
     recs = result["records"]
     total = len(recs)
     pos = sum(1 for r in recs if r["classification"] == "Positive")

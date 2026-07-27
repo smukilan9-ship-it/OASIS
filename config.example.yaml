@@ -1,7 +1,3 @@
-# Segmenter: "native" runs the InstanSeg model in-process (no QuPath install needed).
-# "qupath" is the previous path, kept for one release as an escape hatch.
-segmenter: native
-
 cleanup_intermediates: false
 dab_threshold: 0.2
 dashboard_dir: ./output_results
@@ -27,7 +23,6 @@ mode: automated
 output_dir: ./ihc_results
 overlay_downsample: 1.0
 overlay_show_negative: true
-qupath_binary: /Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64
 # Optional per-stain DAB thresholds. The image filename is matched (case-
 # insensitive substring) against these keys; the first match wins, otherwise
 # dab_threshold above is used.

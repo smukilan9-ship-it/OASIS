@@ -423,10 +423,9 @@ def _segment_reference(reference_path, output_dir, config):
         "export_geojson": True,
         "generate_overlays": False,
     }
-    groovy_path = str(Path(output_dir) / "restained_segmentation.groovy")
-    summary_path = run_single_image(str(reference_path), segmentation_config, groovy_path)
+    summary_path = run_single_image(str(reference_path), segmentation_config)
     if not summary_path:
-        raise RuntimeError("Existing QuPath/InstanSeg segmentation step did not produce results")
+        raise RuntimeError("InstanSeg segmentation step did not produce results")
     stem = Path(reference_path).stem
     geojson_path = Path(output_dir) / f"{stem}_detections.geojson"
     if not geojson_path.exists():

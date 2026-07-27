@@ -47,7 +47,7 @@ datas = [
     (os.path.join(ROOT, "oasis", "webui", "index.html"), "oasis/webui"),
     (os.path.join(ROOT, "oasis", "webui", "restained_coexpression.js"), "oasis/webui"),
     # InstanSeg weights (Apache-2.0, see models/NOTICE.md). Vendoring these is what makes
-    # the bundle independent of a QuPath install.
+    # the bundle self-contained: no external segmenter install.
     (os.path.join(ROOT, "models", "brightfield_nuclei-0.1.1"),
      "models/brightfield_nuclei-0.1.1"),
     (os.path.join(ROOT, "config.example.yaml"), "."),
