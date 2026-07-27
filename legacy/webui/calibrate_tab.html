@@ -1,0 +1,81 @@
+<!-- Calibrate tab — RETIRED from the app 2026-07-27.
+
+WHY IT WAS RETIRED
+It fitted membrane completeness cutoffs from hand-labelled cells. The Classifier tab does
+the same job for the same compartment (oasis/quant/classifier.py supports kind="membrane")
+and validates it more honestly: leave-one-IMAGE-out rather than leave-one-cell-out. Cells
+within one slide share that slide's staining, so a leave-one-cell-out estimate is optimistic
+in exactly the way that matters for a cohort-wide rule.
+
+Two labelling interfaces for one task also meant every change to labelling had to be made
+twice -- the same argument that retired the second segmenter in issue #7.
+
+WHAT WAS KEPT
+The three-view labelling canvas (Normalized / DAB signal / Original) is the genuinely good
+part and moves to the Classifier tab. Saved calibrations already on disk are still read by
+the membranous path in Quant; only the fitting UI is gone.
+
+<div class="page" id="page-calibrate" style="position:relative">
+  <div class="page-header"><h1>Calibrate cutoffs <span class="beta-tag">BETA</span></h1>
+    <p class="sub">Membranous markers — works only on well-stained tissue</p></div>
+
+  <div id="calib-config" class="scroll">
+    <div class="card">
+      <div class="info-box warn" style="margin-bottom:14px">
+        <b>Beta — membranous markers only, and only on well-stained tissue.</b>
+        On faintly stained slides the limit is staining <b>contrast</b>, not the cutoff:
+        the positive and negative populations overlap in the ring signal, so no threshold
+        separates them and calibration cannot rescue the image. Expect the classifier to
+        abstain there rather than produce a confident wrong answer. Judge whether a slide
+        qualifies using the <b>DAB signal</b> view while labelling.
+      </div>
+      <div class="card-title">Fit membrane cutoffs to your own slides</div>
+      <div class="info-box amber" style="margin-bottom:14px">
+        DAB staining isn't quantitative — "how much brown = positive" differs by antibody, protocol and scanner, so cutoffs from another dataset won't transfer. Segment <b>your</b> stained slides, click positive and negative cells, and fit the cutoffs for this marker. Do this <b>once per staining protocol</b>, then switch between saved calibrations in Quant.
+        <div style="margin-top:8px">Add <b>one or more</b> representative slides — pooling several fields captures the staining variability a single image misses, and the callability score is reported as an honest <b>leave-one-cell-out</b> estimate.</div>
+        <div style="margin-top:8px">While labeling you can toggle three views: <b>Normalized</b> (recommended — green/blue cast removed, judge cell morphology), <b>DAB signal</b> (only the brown marker on white — use it to <b>confirm</b> a cell is really positive), and <b>Original</b>. Label from Normalized; use DAB signal as the tiebreaker for faint cells.</div>
+      </div>
+      <div class="field"><label>Marker name <b>(required)</b></label>
+        <input id="calib-marker" placeholder="e.g. TIM-3"></div>
+      <div class="field"><label>Default pixel size (µm/px)</label>
+        <input type="number" id="calib-px" value="0.5" step="0.01" min="0.01">
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Applied to images you add below; edit per-image if a slide was scanned at a different magnification.</div></div>
+      <div class="field"><label>Stained images <b>(required)</b></label>
+        <div id="calib-image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+        <button class="btn sm" onclick="calibAddImage()">+ Add image</button></div>
+      <button class="run-btn cyan" id="calib-seg-btn" onclick="calibSegment()">Segment &amp; label →</button>
+    </div>
+  </div>
+
+  <div id="calib-label" style="display:none;position:absolute;inset:56px 0 0 0">
+    <div id="calib-bar" style="position:absolute;top:0;left:0;right:0;height:46px;background:#1b1b1f;border-bottom:1px solid #333;display:flex;align-items:center;gap:12px;padding:0 14px;z-index:5;font-size:12px">
+      <span id="calib-imgnav" style="display:flex;align-items:center;gap:6px"></span>
+      <b id="calib-name" style="color:#fff;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
+      <span>Positive <b style="color:#ff5a5a" id="calib-np">0</b></span>
+      <span>Negative <b style="color:#4aa3ff" id="calib-nn">0</b></span>
+      <span id="calib-pooled" style="color:#888"></span>
+      <button class="btn sm" onclick="calibZoom(1.25)">+</button>
+      <button class="btn sm" onclick="calibZoom(0.8)">−</button>
+      <button class="btn sm" id="calib-viewbtn" onclick="calibCycleView()">View: Normalized</button>
+      <button class="btn sm" onclick="calib.mode === 'classifier' ? clsFit() : calibFit()">Fit →</button>
+      <button class="btn sm" onclick="calibBack()">Cancel</button>
+      <span style="margin-left:auto;color:#888">Left-click = <span style="color:#ff5a5a">positive</span> · Right-click = <span style="color:#4aa3ff">negative</span> · wheel = zoom · drag = pan · aim for ~50 of each</span>
+    </div>
+    <div id="calib-stage" style="position:absolute;top:46px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;background:#111">
+      <div id="calib-world" style="position:absolute;transform-origin:0 0"><img id="calib-im" style="display:block;position:absolute;top:0;left:0"><svg id="calib-ov" style="position:absolute;top:0;left:0"></svg></div>
+    </div>
+  </div>
+
+  <div id="calib-results" style="display:none" class="scroll">
+    <div class="card">
+      <div class="card-title">Fitted cutoffs</div>
+      <div id="calib-metrics" class="metrics-row c2"></div>
+      <div id="calib-perimage" style="font-size:12px;color:var(--text2);margin:10px 0"></div>
+      <div id="calib-verdict" style="margin:12px 0"></div>
+      <div style="display:flex;gap:8px">
+        <button class="btn primary" id="calib-save-btn" onclick="calibSave()">Save for this marker</button>
+        <button class="btn" onclick="calibRelabel()">← Re-label</button>
+      </div>
+    </div>
+  </div>
+</div>

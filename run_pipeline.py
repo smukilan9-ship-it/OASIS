@@ -543,7 +543,13 @@ def run_single_image(img_path, cfg):
     # white-balanced copy (tone/illumination correction; does NOT rescale DAB).
     # Overlays/naming still key off the original image basename.
     seg_input = img_path
-    if cfg.get("preprocess_normalize"):
+    # A slide the user excluded while reviewing the normalization preview is segmented
+    # exactly as captured — the correction is per-image and can be wrong for one slide
+    # without being wrong for the cohort.
+    _excluded = os.path.basename(img_path) in set(cfg.get("normalize_exclude") or [])
+    if _excluded and cfg.get("preprocess_normalize"):
+        print("  Preprocessing: skipped for this image (excluded by the operator)")
+    if cfg.get("preprocess_normalize") and not _excluded:
         norm = _normalized_copy(img_path, cfg)
         if norm:
             seg_input = norm

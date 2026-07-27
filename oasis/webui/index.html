@@ -132,6 +132,11 @@ html, body {
 .qr-key { margin-left:auto; display:flex; align-items:center; gap:5px; }
 .qr-key i { width:8px; height:8px; border-radius:2px; display:inline-block; margin-right:2px; }
 .qr-key i.pos { background:#dc2626; } .qr-key i.neg { background:#2563eb; }
+.qr-pan { position:relative; overflow:hidden; border-radius:6px; background:var(--bg3);
+          touch-action:none; cursor:grab; }
+.qr-zoomhint { margin-left:auto; font-size:10px; color:var(--text3); }
+.qr-zoombar { display:flex; align-items:center; gap:6px; margin-top:8px; }
+.qr-zoomlvl { font-size:11px; color:var(--text3); }
 .qr-view canvas { width:100%; height:auto; display:block; border-radius:6px;
                   background:var(--bg2); }
 @media (max-width: 720px) { .qr-views { grid-template-columns:1fr; } }
@@ -406,6 +411,21 @@ td.muted { color: var(--text3); font-size: 11px; }
 .wizard-stepper .wstep { font-size: 11px; padding: 5px 9px; }
 .wizard-stepper .wstep .wstep-n { width: 15px; height: 15px; font-size: 9px; }
 .wizard-stepper { gap: 8px; }
+
+/* Pager for the per-image normalization preview. */
+.q-normnav { display: flex; align-items: center; gap: 10px; margin: 4px 0 10px; }
+.q-normpos { flex: 1; text-align: center; font-size: 11.5px; color: var(--text2);
+             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* One unmatched image: name, value, state. A three-column grid so the inputs line up
+   in a column instead of drifting with each filename's length. */
+.q-fbrow { display: grid; grid-template-columns: 1fr 104px 58px; gap: 10px;
+           align-items: center; padding: 5px 0; }
+.q-fbrow + .q-fbrow { border-top: 1px solid var(--border); }
+.q-fbname { font-size: 11.5px; color: var(--text); overflow: hidden;
+            text-overflow: ellipsis; white-space: nowrap; }
+.q-fbstate { font-size: 11px; color: var(--text3); text-align: right; }
+.q-fbstate.ok { color: #166534; }
 
 /* Before/after image pair for the normalization preview. */
 .q-prev { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 10px; }
@@ -800,12 +820,6 @@ td.muted { color: var(--text3); font-size: 11px; }
   <button class="nav-btn" id="nav-classifier" onclick="showPage('classifier')">
     <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.2 4.2l4.3 4.3m7 7l4.3 4.3M1 12h6m10 0h6M4.2 19.8l4.3-4.3m7-7l4.3-4.3"/></svg>
     <span>Classifier</span>
-  </button>
-  <button class="nav-btn" id="nav-calibrate" onclick="showPage('calibrate')">
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="12" cy="12" r="9"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/><circle cx="12" cy="12" r="2.5"/>
-    </svg>
-    Calibrate<span class="beta-tag">BETA</span>
   </button>
   <button class="nav-btn bottom" id="nav-validation" onclick="showPage('validation'); loadValidations()">
     <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1574,7 +1588,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div style="font-size:11px;color:var(--text3);margin-top:2px">Measures DAB in a cytoplasmic ring (not the nucleus), using each marker's calibrated membrane-completeness cutoffs — the correct compartment for membranous markers.</div>
         </div>
         <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
-          <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the cytoplasmic ring using each marker's <b>calibrated completeness cutoffs</b> (Calibrate tab) instead of nuclear DAB — the correct compartment for membranous markers. Needs a calibration per marker; without one it falls back to the weaker ring-mean rule.</div>
+          <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the cytoplasmic ring using each marker's <b>calibrated completeness cutoffs</b> instead of nuclear DAB — the correct compartment for membranous markers. Needs a calibration per marker; without one it falls back to the weaker ring-mean rule.</div>
           <div class="row2">
             <div class="field"><label>Image A cutoff profile</label>
               <select id="spatial-calib-a"><option value="">Auto (match marker)</option></select>
@@ -1775,7 +1789,7 @@ td.muted { color: var(--text3); font-size: 11px; }
      PAGE: CALIBRATE
 ═══════════════════════════════════════════════════════════ -->
 <div class="page" id="page-classifier">
-  <div class="page-header"><h1>Train a classifier <span class="beta-tag">BETA</span></h1>
+  <div class="page-header"><h1>Train a classifier</h1>
     <p class="sub">Fit positivity to this cohort's own labelled cells</p></div>
   <div class="scroll">
     <div class="info-box" style="margin-bottom:14px">
@@ -1816,40 +1830,12 @@ td.muted { color: var(--text3); font-size: 11px; }
 
     <div id="cls-results"></div>
   </div>
-</div>
 
-<div class="page" id="page-calibrate" style="position:relative">
-  <div class="page-header"><h1>Calibrate cutoffs <span class="beta-tag">BETA</span></h1>
-    <p class="sub">Membranous markers — works only on well-stained tissue</p></div>
-
-  <div id="calib-config" class="scroll">
-    <div class="card">
-      <div class="info-box warn" style="margin-bottom:14px">
-        <b>Beta — membranous markers only, and only on well-stained tissue.</b>
-        On faintly stained slides the limit is staining <b>contrast</b>, not the cutoff:
-        the positive and negative populations overlap in the ring signal, so no threshold
-        separates them and calibration cannot rescue the image. Expect the classifier to
-        abstain there rather than produce a confident wrong answer. Judge whether a slide
-        qualifies using the <b>DAB signal</b> view while labelling.
-      </div>
-      <div class="card-title">Fit membrane cutoffs to your own slides</div>
-      <div class="info-box amber" style="margin-bottom:14px">
-        DAB staining isn't quantitative — "how much brown = positive" differs by antibody, protocol and scanner, so cutoffs from another dataset won't transfer. Segment <b>your</b> stained slides, click positive and negative cells, and fit the cutoffs for this marker. Do this <b>once per staining protocol</b>, then switch between saved calibrations in Quant.
-        <div style="margin-top:8px">Add <b>one or more</b> representative slides — pooling several fields captures the staining variability a single image misses, and the callability score is reported as an honest <b>leave-one-cell-out</b> estimate.</div>
-        <div style="margin-top:8px">While labeling you can toggle three views: <b>Normalized</b> (recommended — green/blue cast removed, judge cell morphology), <b>DAB signal</b> (only the brown marker on white — use it to <b>confirm</b> a cell is really positive), and <b>Original</b>. Label from Normalized; use DAB signal as the tiebreaker for faint cells.</div>
-      </div>
-      <div class="field"><label>Marker name <b>(required)</b></label>
-        <input id="calib-marker" placeholder="e.g. TIM-3"></div>
-      <div class="field"><label>Default pixel size (µm/px)</label>
-        <input type="number" id="calib-px" value="0.5" step="0.01" min="0.01">
-        <div style="font-size:11px;color:var(--text3);margin-top:4px">Applied to images you add below; edit per-image if a slide was scanned at a different magnification.</div></div>
-      <div class="field"><label>Stained images <b>(required)</b></label>
-        <div id="calib-image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
-        <button class="btn sm" onclick="calibAddImage()">+ Add image</button></div>
-      <button class="run-btn cyan" id="calib-seg-btn" onclick="calibSegment()">Segment &amp; label →</button>
-    </div>
-  </div>
-
+  <!-- The hand-labelling canvas, moved here when the Calibrate tab was retired.
+       It is the part of that tab worth keeping: three views of the same cells
+       (Normalized to judge morphology, DAB signal to confirm a faint call, and
+       Original), which is how a labeller actually decides. calibShow() switches
+       between the config form above and these two views. -->
   <div id="calib-label" style="display:none;position:absolute;inset:56px 0 0 0">
     <div id="calib-bar" style="position:absolute;top:0;left:0;right:0;height:46px;background:#1b1b1f;border-bottom:1px solid #333;display:flex;align-items:center;gap:12px;padding:0 14px;z-index:5;font-size:12px">
       <span id="calib-imgnav" style="display:flex;align-items:center;gap:6px"></span>
@@ -1860,7 +1846,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       <button class="btn sm" onclick="calibZoom(1.25)">+</button>
       <button class="btn sm" onclick="calibZoom(0.8)">−</button>
       <button class="btn sm" id="calib-viewbtn" onclick="calibCycleView()">View: Normalized</button>
-      <button class="btn sm" onclick="calib.mode === 'classifier' ? clsFit() : calibFit()">Fit →</button>
+      <button class="btn sm" onclick="clsFit()">Fit →</button>
       <button class="btn sm" onclick="calibBack()">Cancel</button>
       <span style="margin-left:auto;color:#888">Left-click = <span style="color:#ff5a5a">positive</span> · Right-click = <span style="color:#4aa3ff">negative</span> · wheel = zoom · drag = pan · aim for ~50 of each</span>
     </div>
@@ -1869,19 +1855,8 @@ td.muted { color: var(--text3); font-size: 11px; }
     </div>
   </div>
 
-  <div id="calib-results" style="display:none" class="scroll">
-    <div class="card">
-      <div class="card-title">Fitted cutoffs</div>
-      <div id="calib-metrics" class="metrics-row c2"></div>
-      <div id="calib-perimage" style="font-size:12px;color:var(--text2);margin:10px 0"></div>
-      <div id="calib-verdict" style="margin:12px 0"></div>
-      <div style="display:flex;gap:8px">
-        <button class="btn primary" id="calib-save-btn" onclick="calibSave()">Save for this marker</button>
-        <button class="btn" onclick="calibRelabel()">← Re-label</button>
-      </div>
-    </div>
-  </div>
 </div>
+
 
 <!-- ═══════════════════════════════════════════════════════
      PAGE: VALIDATION
@@ -2505,36 +2480,16 @@ async function saveSetup() {
 let calib = { marker:'', images:[], cur:0,
               data:null, state:[], views:[], view:1, sc:1, tx:0, ty:0, polys:{}, fit:null };
 
-function calibDefaultPx(){ return parseFloat(document.getElementById('calib-px').value) || 0.5; }
 
-async function calibAddImage() {
-  const f = await window.pywebview.api.pick_file();
-  if (!f) return;
-  if (calib.images.some(im => im.path === f)) { showToast('That image is already added'); return; }
-  calib.images.push({ path:f, px:calibDefaultPx(), data:null, state:[] });
-  calibRenderImageList();
-}
-function calibRemoveImage(i){ calib.images.splice(i,1); calibRenderImageList(); }
-function calibRenderImageList() {
-  const box = document.getElementById('calib-image-list');
-  if (!calib.images.length) {
-    box.innerHTML = '<div style="font-size:12px;color:var(--text3)">No images yet — add at least one representative stained slide.</div>';
-    return;
-  }
-  box.innerHTML = calib.images.map((im,i)=>`
-    <div style="display:flex;gap:8px;align-items:center">
-      <span style="flex:1;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(im.path)}">${esc(im.path.split('/').pop())}${im.data?' ✓':''}</span>
-      <label style="font-size:11px;color:var(--text3)">µm/px</label>
-      <input type="number" value="${im.px}" step="0.01" min="0.01" style="width:78px"
-             onchange="calib.images[${i}].px=parseFloat(this.value)||calib.images[${i}].px">
-      <button class="btn sm" onclick="calibRemoveImage(${i})">Remove</button>
-    </div>`).join('');
-}
 
 function calibShow(which) {
-  document.getElementById('calib-config').style.display  = which==='config'  ? 'block':'none';
+  // 'config' is now the Classifier tab's own form; only the label/results views are
+  // switched here, so a missing element is expected rather than an error.
+  // Only two views remain on this canvas: the Classifier's own form (the page's .scroll)
+  // and the labelling stage. The retired tab's config and results panels are gone.
+  const form = document.querySelector('#page-classifier > .scroll');
+  if (form) form.style.display = which === 'label' ? 'none' : 'block';
   document.getElementById('calib-label').style.display   = which==='label'   ? 'block':'none';
-  document.getElementById('calib-results').style.display = which==='results' ? 'block':'none';
 }
 // ── Classifier tab ────────────────────────────────────────────────────────────
 // Reuses the Calibrate labelling canvas rather than duplicating it: the clicking, panning
@@ -2611,7 +2566,7 @@ async function clsSegment() {
   }
   btn.disabled = false; btn.textContent = 'Segment & label →';
   calib.cur = 0;
-  showPage('calibrate');
+  showPage('classifier');   // the labelling canvas now lives on the Classifier tab
   calibShow('label');
   requestAnimationFrame(() => calibBuild());
 }
@@ -2699,29 +2654,6 @@ async function clsSave() {
   showToast(r && r.ok ? `Saved classifier for ${cls.marker}` : 'Save failed');
 }
 
-async function calibSegment() {
-  const marker = document.getElementById('calib-marker').value.trim();
-  if (!marker) { showToast('Enter the marker name'); return; }
-  if (!calib.images.length) { showToast('Add at least one stained image'); return; }
-  calib.marker = marker;
-  const btn = document.getElementById('calib-seg-btn');
-  btn.disabled = true;
-  for (let i=0;i<calib.images.length;i++) {
-    const im = calib.images[i];
-    if (im.data) continue;                                  // already segmented
-    btn.textContent = `Segmenting ${i+1}/${calib.images.length}… (InstanSeg, ~1 min each)`;
-    const r = await window.pywebview.api.calibration_prepare(im.path, im.px);
-    if (!r || !r.ok) {
-      btn.disabled=false; btn.textContent='Segment & label →';
-      showToast(`Segmentation failed on ${im.path.split('/').pop()}: ${(r&&r.msg)||''}`); return;
-    }
-    im.data = r; im.state = new Array(r.cells.length).fill(0);
-  }
-  btn.disabled=false; btn.textContent='Segment & label →';
-  calib.cur = 0;
-  calibShow('label');            // make the stage visible FIRST so it has a size
-  requestAnimationFrame(() => calibBuild());
-}
 function calibBuild() {
   const image = calib.images[calib.cur];
   calib.data = image.data; calib.state = image.state;      // current image is live
@@ -2794,53 +2726,8 @@ function calibZoom(f){ f=calibClampF(f); const st=document.getElementById('calib
   addEventListener('pointerup',()=>{drag=false;});
   document.getElementById('calib-ov').addEventListener('click',e=>{if(moved>4)e.stopImmediatePropagation();},true);
 })();
-async function calibFit() {
-  const items = []; let tp=0, tn=0;
-  calib.images.forEach(im => {
-    if (!im.data) return;
-    const pos=[], neg=[];
-    im.state.forEach((s,i)=>{ if(s===1)pos.push(i); else if(s===2)neg.push(i); });
-    tp+=pos.length; tn+=neg.length;
-    items.push({ image_path:im.path, geojson_path:im.data.geojson,
-                 pixel_size:im.px, pos_idx:pos, neg_idx:neg });
-  });
-  if (tp<8 || tn<8) { showToast(`Need ~8+ of each pooled across images (have ${tp} pos / ${tn} neg)`); return; }
-  showToast('Fitting cutoffs…');
-  const r = await window.pywebview.api.calibration_fit_multi(items);
-  if (!r || !r.ok) { showToast('Fit failed: ' + (r&&r.msg||'')); return; }
-  calib.fit = r;
-  const held  = r.loo_auc != null;                          // held-out numbers available?
-  const auc   = held ? r.loo_auc : r.auc;
-  const f1    = held ? r.loo_f1  : r.f1;
-  document.getElementById('calib-metrics').innerHTML = `
-    <div class="metric cyan"><div class="metric-label">${held?'Held-out separability (leave-one-cell-out AUC)':'Separability (AUC · in-sample)'}</div>
-      <div class="metric-value cyan">${auc.toFixed(2)}</div>
-      <div class="metric-sub">${held?'LOO ':''}F1 ${f1.toFixed(2)} · ${r.n_pos}+/${r.n_neg}− · ${r.n_images} image${r.n_images===1?'':'s'}</div></div>
-    <div class="metric green"><div class="metric-label">Fitted cutoffs</div>
-      <div class="metric-value green" style="font-size:20px">${r.membrane_pix_thr.toFixed(3)} / ${r.membrane_frac_min.toFixed(2)}</div>
-      <div class="metric-sub">pixel thr / min ring fraction${held?` · in-sample AUC ${r.auc.toFixed(2)}`:''}</div></div>`;
-  document.getElementById('calib-perimage').innerHTML = (r.per_image||[])
-    .map(p=>`${esc(p.image)}: <b style="color:#ff5a5a">${p.n_pos}+</b> / <b style="color:#4aa3ff">${p.n_neg}−</b>`).join(' &nbsp;·&nbsp; ');
-  const q = held ? 'held-out ' : '';
-  document.getElementById('calib-verdict').innerHTML = r.callable
-    ? `<div class="info-box" style="border-color:#2e7d32">✓ This marker is callable (${q}AUC ${auc.toFixed(2)}). Save the cutoffs and Quant will use them for <b>${esc(calib.marker)}</b> in membrane mode.</div>`
-    : `<div class="info-box amber">⚠ Low ${q}separability (AUC ${auc.toFixed(2)}) — positives and negatives don't separate on unseen cells. The staining may be too faint to call, or the labels need review. Saving is allowed but treat results as unverified.</div>`;
-  calibShow('results');
-}
-async function calibSave() {
-  if (!calib.fit) return;
-  const name = prompt('Name this calibration (so you can switch between them in Quant):',
-                      `${calib.marker} — ${new Date().toLocaleDateString()}`);
-  if (!name) return;
-  const btn=document.getElementById('calib-save-btn'); btn.disabled=true;
-  const r = await window.pywebview.api.save_calibration(name, calib.marker, calib.fit);
-  btn.disabled=false;
-  if (r && r.ok) { showToast(`Saved "${name}" ✓ — pick it under Cutoff profile in Quant`); calibShow('config'); }
-  else showToast('Save failed');
-}
 function calibRelabel(){ calibShow('label'); requestAnimationFrame(()=>calibBuild()); }
-function calibBack(){ calibShow('config'); calibRenderImageList(); }
-calibRenderImageList();   // initial empty-state render
+function calibBack(){ calibShow('config'); }   // the Classifier tab owns its own slide list
 
 // ── QUANTIFICATION ────────────────────────────────────────
 
@@ -2893,13 +2780,12 @@ function renderQuantUnmatchedList() {
   }
   host.innerHTML = items.map((item, i) => {
     const cur = quantOverrides[item.filename];
-    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-      <span style="flex:1;min-width:150px;font-size:11px">${esc(item.filename)}</span>
-      <input type="number" step="0.01" min="0.01" style="width:96px"
-             placeholder="µm/px" value="${cur != null ? cur : ''}"
+    return `<div class="q-fbrow">
+      <span class="q-fbname" title="${esc(item.filename)}">${esc(item.filename)}</span>
+      <input type="number" step="0.01" min="0.01" placeholder="µm/px"
+             value="${cur != null ? cur : ''}"
              oninput="quantSetUnmatchedPx(${i}, this.value)">
-      <span style="font-size:11px;color:${cur != null ? 'var(--ok,#166534)' : 'var(--text3)'}">
-        ${cur != null ? 'set' : 'not set'}</span>
+      <span class="q-fbstate${cur != null ? ' ok' : ''}">${cur != null ? 'set' : 'not set'}</span>
     </div>`;
   }).join('');
 }
@@ -2939,41 +2825,86 @@ function setToggle(id, on) {
 }
 // ── Normalization preview ───────────────────────────────────────────────────
 // The toggle claims normalization "does not rescale DAB, so it cannot move positivity".
-// That is true and it is also exactly the kind of claim a user should not have to take on
-// faith, so show both images. Uses whichever image is to hand: the single-image path, or
-// the first image of a batch folder.
+// True, and exactly the kind of claim a user should not have to take on faith. In batch
+// the preview pages through every image, because normalization is per-image: one slide
+// can be already balanced (identity) while the next moves substantially, and the only way
+// to know is to look. Any image can be excluded individually.
+let quantNormState = { images: [], i: 0, skip: new Set() };
+
+async function quantNormImages() {
+  if (quantMode !== 'batch') {
+    const p = document.getElementById('q-single-image').value.trim();
+    return p ? [p] : [];
+  }
+  const folder = document.getElementById('q-input').value.trim();
+  if (!folder) return [];
+  const files = await window.pywebview.api.list_images(folder);
+  return (files || []).map(f => folder + '/' + (typeof f === 'string' ? f : f.filename));
+}
+
 async function quantPreviewNormalization() {
   const host = document.getElementById('q-norm-preview');
-  let path = document.getElementById('q-single-image').value.trim();
-  if (!path && quantMode === 'batch') {
-    const folder = document.getElementById('q-input').value.trim();
-    if (folder) {
-      const files = await window.pywebview.api.list_images(folder);
-      const first = (files || [])[0];
-      if (first) path = folder + '/' + (typeof first === 'string' ? first : first.filename);
-    }
+  if (!quantNormState.images.length) {
+    quantNormState.images = await quantNormImages();
+    quantNormState.i = 0;
   }
-  if (!path) { showToast('Pick an image or a folder on step 1 first'); return; }
-  host.innerHTML = '<div class="q-note" style="margin-top:10px">Rendering…</div>';
+  if (!quantNormState.images.length) { showToast('Pick an image or a folder on step 1 first'); return; }
+  await quantRenderNorm();
+}
+
+async function quantRenderNorm() {
+  const host = document.getElementById('q-norm-preview');
+  const st = quantNormState;
+  const path = st.images[st.i];
+  const name = path.split('/').pop();
+  host.innerHTML = '<div class="q-note" style="margin-top:10px">Rendering ' + esc(name) + '…</div>';
   const r = await window.pywebview.api.preview_normalization(path);
-  if (!r || !r.ok) { host.innerHTML = `<div class="info-box warn" style="margin-top:10px">Could not render: ${esc((r&&r.msg)||'unknown error')}</div>`; return; }
+  if (!r || !r.ok) {
+    host.innerHTML = `<div class="info-box warn" style="margin-top:10px">Could not render ${esc(name)}: ${esc((r&&r.msg)||'unknown error')}</div>`;
+    return;
+  }
   const wp = (r.white_point || []).join(', ');
   const verdict = r.is_noop
-    ? `<b>No change on this image.</b> Its background is already white
-       (measured white point ${wp}), so the correction is the identity and normalization
-       would leave the pixels exactly as they are.`
-    : `Background driven to white from a measured white point of ${wp} —
-       pixels move by ${r.mean_shift} on average, ${r.max_shift} at most (0–255).
-       The brown signal keeps its relative strength; only tone and illumination move.`;
-  host.innerHTML = `<div class="q-prev">
+    ? `<b>No change on this image.</b> Its background is already white (measured white point
+       ${wp}), so the correction is the identity.`
+    : `Background driven to white from a measured white point of ${wp} — pixels move by
+       ${r.mean_shift} on average, ${r.max_shift} at most (0–255). The brown signal keeps its
+       relative strength; only tone and illumination move.`;
+  const skipped = st.skip.has(name);
+  const many = st.images.length > 1;
+  host.innerHTML = `
+    ${many ? `<div class="q-normnav">
+      <button class="btn sm" ${st.i === 0 ? 'disabled' : ''} onclick="quantNormStep(-1)">← Previous</button>
+      <span class="q-normpos">${st.i + 1} of ${st.images.length} · ${esc(name)}</span>
+      <button class="btn sm" ${st.i >= st.images.length - 1 ? 'disabled' : ''} onclick="quantNormStep(1)">Next →</button>
+    </div>` : ''}
+    <div class="q-prev"${skipped ? ' style="opacity:.45"' : ''}>
       <figure><img src="${r.original}" alt="original"><figcaption>Original</figcaption></figure>
       <figure><img src="${r.normalized}" alt="normalized"><figcaption>${r.is_noop ? 'After normalization — identical' : 'After normalization'}</figcaption></figure>
     </div>
     <div class="q-note" style="margin-top:8px">${verdict} This is the image the segmentation
-      model would receive.</div>`;
+      model would receive.</div>
+    ${many ? `<div class="q-switch" style="margin-top:10px">
+      <div class="q-sw-title">Normalize this image</div>
+      <div class="toggle ${skipped ? '' : 'on'}" onclick="quantNormToggleImage('${esc(name)}')"></div>
+      <div class="q-sw-plain">Turn off for a slide where the correction does the wrong thing —
+        it is then segmented exactly as captured. ${st.skip.size ? `<b>${st.skip.size} excluded so far.</b>` : ''}</div>
+    </div>` : ''}`;
 }
-// Offer the preview as soon as the toggle is switched on — the point of the toggle is the
-// thing it does to the image.
+
+function quantNormStep(d) {
+  const st = quantNormState;
+  st.i = Math.max(0, Math.min(st.images.length - 1, st.i + d));
+  quantRenderNorm();
+}
+
+// Excluded images are sent to the backend by filename; the run normalizes everything else.
+function quantNormToggleImage(name) {
+  const st = quantNormState;
+  if (st.skip.has(name)) st.skip.delete(name); else st.skip.add(name);
+  quantRenderNorm();
+}
+
 function quantNormalizeToggled() {
   if (isOn('q-normalize-toggle')) quantPreviewNormalization();
   else document.getElementById('q-norm-preview').innerHTML = '';
@@ -3018,6 +2949,7 @@ async function onQuantFolderPicked(folder) {
     ? `${files.length} image(s) found in folder`
     : 'No images found in this folder';
   quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
+  quantNormState = { images: [], i: 0, skip: new Set() };
   renderQuantScaleMatches();
   // SCALE MATCHING IS THE DEFAULT WHEN IT IS POSSIBLE. Pixel size can differ between
   // images acquired at the same nominal magnification, so a per-image bar is strictly
@@ -3092,30 +3024,16 @@ function renderQuantScaleMatches() {
       <td class="${p.pixel_size ? 'green' : 'amber'}">${p.pixel_size ? `${p.pixel_size} µm/px` : esc(p.error || 'not readable')}</td>
     </tr>
   `).join('') : '<tr><td colspan="3" class="muted">No scale-image pairs found</td></tr>';
-  const fallbackRows = fallback.length ? fallback.map((item, i) => {
-    const manual = quantOverrides[item.filename];
-    const status = manual ? `Manual override: ${manual} µm/px` : 'Global pixel size';
-    return `
-      <tr>
-        <td>${esc(item.filename)}</td>
-        <td class="muted">${esc(item.reason)}</td>
-        <td>
-          <input type="number" id="q-scale-manual-${i}" placeholder="µm/px" step="0.01" min="0.01" style="width:78px">
-          <button class="btn sm" onclick="quantApplyScaleManual(${i})">Manual</button>
-          <button class="btn sm" onclick="quantUseGlobalForScale(${i})">Use global</button>
-          <span class="muted" style="margin-left:6px">${esc(status)}</span>
-        </td>
-      </tr>
-    `;
-  }).join('') : '<tr><td colspan="3" class="muted">All analysis images have matched scale values.</td></tr>';
+  // The matched pairs, and ONLY the matched pairs. Unmatched images are resolved in the
+  // block below this one; they used to be listed here too, with their own µm/px box and
+  // "Manual"/"Use global" buttons, so the same value was solicited in three places on one
+  // screen (here, the unmatched block, and the per-image exceptions card).
   const unmatchedScales = quantScaleMatches.unmatched_scale_images || [];
   el.innerHTML = `
-    <div class="info-box" style="margin-bottom:8px">
-      ${pairs.length} matched scale pair(s), ${fallback.length} image(s) using fallback, ${unmatchedScales.length} unused scale image(s).
+    <div class="q-note" style="margin-bottom:8px">
+      ${pairs.length} matched, ${fallback.length} unmatched${unmatchedScales.length ? `, ${unmatchedScales.length} scale image(s) unused` : ''}.
     </div>
     <table><thead><tr><th>Analysis image</th><th>Scale image</th><th>Pixel size</th></tr></thead><tbody>${pairRows}</tbody></table>
-    <div class="section-label" style="margin-top:12px">Fallbacks</div>
-    <table><thead><tr><th>Analysis image</th><th>Reason</th><th>Action</th></tr></thead><tbody>${fallbackRows}</tbody></table>
   `;
 }
 
@@ -3137,28 +3055,20 @@ async function previewQuantScaleMatches(opts) {
   return silent ? res : true;
 }
 
-function quantApplyScaleManual(i) {
-  const item = quantScaleFallbackItems()[i];
-  const px = parseFloat(document.getElementById(`q-scale-manual-${i}`)?.value);
-  if (!item || !(px > 0)) { showToast('Enter a valid pixel size'); return; }
-  quantOverrides[item.filename] = px;
-  renderQuantOverrides();
-  renderQuantScaleMatches();
-}
 
-function quantUseGlobalForScale(i) {
-  const item = quantScaleFallbackItems()[i];
-  if (!item) return;
-  delete quantOverrides[item.filename];
-  renderQuantOverrides();
-  renderQuantScaleMatches();
-}
 
 function renderQuantOverrides() {
   const el = document.getElementById('q-overrides-list');
-  const entries = Object.entries(quantOverrides);
+  // An image resolved in the unmatched block is NOT listed again here. Both write the
+  // same quantOverrides map, so listing both places showed one decision twice and
+  // invited the user to "fix" a value they had just set.
+  const owned = new Set(quantScaleFallbackItems().map(i => i.filename));
+  const entries = Object.entries(quantOverrides).filter(([f]) => !owned.has(f));
   if (entries.length === 0) {
-    el.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:2px 0">No overrides set</div>';
+    const n = owned.size;
+    el.innerHTML = '<div style="color:var(--text3);font-size:11px;padding:2px 0">'
+      + (n ? `No exceptions. ${n} unmatched image${n > 1 ? 's are' : ' is'} handled above.`
+           : 'No exceptions set.') + '</div>';
     return;
   }
   el.innerHTML = entries.map(([f,px]) => `
@@ -3291,6 +3201,8 @@ async function runQuantAnalysis() {
     // completeness, so there is no nuclear cutoff to review.
     review_threshold:      !isOn('q-membrane-toggle') && !document.getElementById('q-classifier').value,
     preprocess_normalize:  isOn('q-normalize-toggle'),
+    // Slides the user excluded while paging the preview: segmented as captured.
+    normalize_exclude:     [...quantNormState.skip],
     generate_overlays:     isOn('q-overlay-toggle'),
     // Output selection (step 5). results.csv is always written; the summary JSON is
     // always produced (the in-app table is built from it) and this flag decides only
@@ -3478,27 +3390,34 @@ function qrRender() {
       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
         <b style="font-size:13px">${esc(img.name)}</b>
         ${img.membrane ? '<span class="beta-tag">MEMBRANE</span>' : ''}
-        <span style="margin-left:auto;font-size:12px;color:var(--text2)">${countTxt}</span>
+        <span id="qr-count-${i}" style="margin-left:auto;font-size:12px;color:var(--text2)">${countTxt}</span>
       </div>
-      <div style="margin:8px 0">${qrHistogramSVG(img.histogram,
+      <div style="margin:8px 0" id="qr-hist-${i}">${qrHistogramSVG(img.histogram,
             img.membrane ? -1 : thr, 480, 64)}</div>
       <div class="qr-views" id="qr-views-${i}">
         <div class="qr-view">
-          <div class="qr-view-label">Slide</div>
-          <canvas id="qr-raw-${i}"></canvas>
+          <div class="qr-view-label">Slide
+            <span class="qr-zoomhint">scroll to zoom · drag to pan</span></div>
+          <div class="qr-pan" id="qr-pan-raw-${i}"><canvas id="qr-raw-${i}"></canvas></div>
         </div>
         <div class="qr-view">
-          <div class="qr-view-label">Calls at ${thr.toFixed(2)} OD
+          <div class="qr-view-label">Calls at <b id="qr-thr-${i}">${thr.toFixed(2)}</b> OD
             <span class="qr-key"><i class="pos"></i>positive <i class="neg"></i>negative</span>
           </div>
-          <canvas id="qr-seg-${i}"></canvas>
+          <div class="qr-pan" id="qr-pan-seg-${i}"><canvas id="qr-seg-${i}"></canvas></div>
         </div>
+      </div>
+      <div class="qr-zoombar">
+        <button class="btn sm" onclick="qrZoom(${i}, 1/1.4)">−</button>
+        <button class="btn sm" onclick="qrZoom(${i}, 1.4)">+</button>
+        <button class="btn sm" onclick="qrZoomReset(${i})">Fit</button>
+        <span class="qr-zoomlvl" id="qr-zoomlvl-${i}">1.0×</span>
       </div>
       ${img.membrane
         ? `<div style="font-size:11px;color:var(--text3)">Scored on calibrated ring
              completeness, not this cutoff. The nuclear distribution is shown for context
-             only — retune membrane cutoffs in the Calibrate tab, where they are fitted
-             against labelled cells.</div>`
+             only — retune membrane cutoffs by training a membrane classifier in the Classifier
+             tab, where they are fitted against labelled cells.</div>`
         : `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
              <label style="font-size:11px;color:var(--text3)">Override this image</label>
              <input type="number" step="0.01" min="0.01" max="1" value="${thr.toFixed(2)}"
@@ -3512,7 +3431,10 @@ function qrRender() {
   }).join('');
 
   qrState.images.forEach((_, i) => qrLoadViews(i));
+  qrUpdateOverrideSummary();
+}
 
+function qrUpdateOverrideSummary() {
   const n = Object.keys(qrState.overrides).length;
   document.getElementById('qr-summary-txt').textContent =
     n ? `${n} image${n > 1 ? 's' : ''} overridden` : 'one cutoff, whole cohort';
@@ -3524,6 +3446,85 @@ function qrRender() {
          assumes the answer — most weak staining is a staining failure, so restaining or
          excluding the slide is usually the better first move.</div></div>`
     : '';
+}
+
+// ── Zoom / pan on the review views ──────────────────────────────────────────
+// The two canvases are the same field, so they share one transform: whatever you do to
+// the slide happens to the calls, and the pair stays registered. Implemented as a CSS
+// transform on a wrapper rather than by redrawing at a new scale — the canvas content is
+// untouched, so zooming costs nothing and cannot flash.
+const qrZoomState = {};        // i -> {sc, tx, ty}
+
+function qrZoomFor(i) {
+  if (!qrZoomState[i]) qrZoomState[i] = { sc: 1, tx: 0, ty: 0 };
+  return qrZoomState[i];
+}
+function qrApplyZoom(i) {
+  const z = qrZoomFor(i);
+  for (const which of ['raw', 'seg']) {
+    const cv = document.getElementById(`qr-${which}-${i}`);
+    if (cv) {
+      cv.style.transform = `translate(${z.tx}px, ${z.ty}px) scale(${z.sc})`;
+      cv.style.transformOrigin = '0 0';
+    }
+  }
+  const lvl = document.getElementById('qr-zoomlvl-' + i);
+  if (lvl) lvl.textContent = z.sc.toFixed(1) + '×';
+}
+function qrZoom(i, f, ox, oy) {
+  const z = qrZoomFor(i);
+  const next = Math.max(1, Math.min(12, z.sc * f));
+  f = next / z.sc;
+  const pan = document.getElementById('qr-pan-raw-' + i);
+  const r = pan ? pan.getBoundingClientRect() : { width: 300, height: 200 };
+  const cx = ox == null ? r.width / 2 : ox;
+  const cy = oy == null ? r.height / 2 : oy;
+  z.tx = cx - (cx - z.tx) * f;
+  z.ty = cy - (cy - z.ty) * f;
+  z.sc = next;
+  qrClampZoom(i, r);
+  qrApplyZoom(i);
+}
+// Keep the image covering its frame, so panning cannot strand the user on blank space.
+function qrClampZoom(i, r) {
+  const z = qrZoomFor(i);
+  if (z.sc <= 1) { z.sc = 1; z.tx = 0; z.ty = 0; return; }
+  const w = r.width, h = r.height;
+  z.tx = Math.min(0, Math.max(w - w * z.sc, z.tx));
+  z.ty = Math.min(0, Math.max(h - h * z.sc, z.ty));
+}
+function qrZoomReset(i) { qrZoomState[i] = { sc: 1, tx: 0, ty: 0 }; qrApplyZoom(i); }
+
+// One delegated listener set, attached once per card after render.
+function qrBindZoom(i) {
+  for (const which of ['raw', 'seg']) {
+    const pan = document.getElementById(`qr-pan-${which}-${i}`);
+    if (!pan || pan.dataset.zoomBound) continue;
+    pan.dataset.zoomBound = '1';
+    pan.addEventListener('wheel', e => {
+      e.preventDefault();
+      const r = pan.getBoundingClientRect();
+      qrZoom(i, e.deltaY < 0 ? 1.15 : 1 / 1.15, e.clientX - r.left, e.clientY - r.top);
+    }, { passive: false });
+    let drag = false, px = 0, py = 0;
+    pan.addEventListener('pointerdown', e => {
+      if (qrZoomFor(i).sc <= 1) return;
+      drag = true; px = e.clientX; py = e.clientY;
+      pan.setPointerCapture(e.pointerId); pan.style.cursor = 'grabbing';
+    });
+    pan.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const z = qrZoomFor(i);
+      z.tx += e.clientX - px; z.ty += e.clientY - py;
+      px = e.clientX; py = e.clientY;
+      qrClampZoom(i, pan.getBoundingClientRect());
+      qrApplyZoom(i);
+    });
+    const stop = e => { drag = false; pan.style.cursor = ''; };
+    pan.addEventListener('pointerup', stop);
+    pan.addEventListener('pointercancel', stop);
+  }
+  qrApplyZoom(i);
 }
 
 // Fraction above a cutoff, from the binned distribution. Bins straddling the cutoff are
@@ -3563,6 +3564,7 @@ async function qrLoadViews(i) {
     }
   }
   qrDrawViews(i);
+  qrBindZoom(i);
 }
 
 function qrDrawViews(i) {
@@ -3597,7 +3599,10 @@ function qrPaintCalls(i) {
   const img = qrState.images[i];
   const v = qrViewCache[img && img.name];
   const seg = document.getElementById('qr-seg-' + i);
-  if (!v || v.failed || !seg) return;
+  // 'pending' is a sentinel, not a view, and a view can legitimately carry no cells
+  // (an empty field). Repainting now runs on every cutoff change rather than only after
+  // a full re-render, so this has to tolerate being called before the view has landed.
+  if (!v || v === 'pending' || v.failed || !seg || !Array.isArray(v.cells)) return;
   const ctx = seg.getContext('2d');
   ctx.clearRect(0, 0, seg.width, seg.height);
   if (v._img && v._img.complete) ctx.drawImage(v._img, 0, 0);
@@ -3632,18 +3637,45 @@ function qrPaintCalls(i) {
 
 function qrRepaintAll() { qrState.images.forEach((_, i) => qrPaintCalls(i)); }
 
+// Moving the cutoff must not rebuild the DOM. qrRender() replaces the whole image list,
+// which destroys every canvas and forces the slide image to be decoded again — the
+// canvas is blank until onload fires, which is the flash. Structure only changes when an
+// override is added or removed; the cutoff itself only changes three things per card:
+// the count, the histogram marker, and the colour of each call. Those are patched.
 function qrCohortChanged(v) {
   qrState.cohort = v;
   document.getElementById('qr-cohort-display').textContent = v.toFixed(2);
-  qrRender();
+  qrState.images.forEach((_, i) => qrRefreshThreshold(i));
+  qrUpdateOverrideSummary();
+}
+
+function qrRefreshThreshold(i) {
+  const img = qrState.images[i];
+  if (!img) return;
+  const thr = qrThresholdFor(img);
+  const n = img.total_cells || 0;
+  const frac = qrFracFromHistogram(img.histogram, thr);
+  const cnt = document.getElementById('qr-count-' + i);
+  if (cnt && !img.membrane) {
+    const pos = Math.round(frac * n);
+    cnt.textContent = `${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
+  }
+  const lbl = document.getElementById('qr-thr-' + i);
+  if (lbl) lbl.textContent = thr.toFixed(2);
+  const hist = document.getElementById('qr-hist-' + i);
+  if (hist) hist.innerHTML = qrHistogramSVG(img.histogram, img.membrane ? -1 : thr, 480, 64);
+  qrPaintCalls(i);              // recolours from the cached image — no reload, no flash
 }
 function qrOverride(i, v) {
   const val = parseFloat(v);
   const name = qrState.images[i].name;
   if (!isFinite(val) || val <= 0) return;
+  const had = qrState.overrides[name] != null;
   if (Math.abs(val - qrState.cohort) < 1e-9) delete qrState.overrides[name];
   else qrState.overrides[name] = val;
-  qrRender();
+  // Only the appearance/disappearance of the "exception" row is structural.
+  if (had !== (qrState.overrides[name] != null)) qrRender();
+  else { qrRefreshThreshold(i); qrUpdateOverrideSummary(); }
 }
 function qrClearOverride(i) { delete qrState.overrides[qrState.images[i].name]; qrRender(); }
 function qrResetOverrides() { qrState.overrides = {}; qrRender(); }
