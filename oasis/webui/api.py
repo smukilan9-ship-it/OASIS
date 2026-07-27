@@ -431,6 +431,18 @@ class API:
         except Exception:
             return []
 
+    def list_folder_images(self, folder):
+        """The folder split into what will be analysed and what is calibration evidence.
+
+        Every screen that counts, previews or pages through "the images in this folder"
+        needs the analysis list, not the file list: a scale-bar photograph is neither
+        segmented nor normalized, so offering to normalize one is offering a decision
+        that has no effect. Returned as one call so no screen can partition it its own way.
+        """
+        from oasis.common.imaging import split_scale_images
+        analysis, scale = split_scale_images(self.list_images(folder))
+        return {"analysis": analysis, "scale": scale}
+
     def preview_quant_scale_matches(self, folder):
         """
         Preview Quantification batch scale calibration.
@@ -446,10 +458,8 @@ class API:
             if not os.path.isdir(folder):
                 return {"status": "error", "error": "Folder not found"}
 
+            from oasis.common.imaging import split_scale_images
             files = self.list_images(folder)
-
-            def is_scale_file(name):
-                return "scale" in Path(name).stem.lower()
 
             def key_for(stem, remove_scale=False):
                 s = stem.lower()
@@ -458,8 +468,7 @@ class API:
                 s = re.sub(r"(?<!\d)x(\d+)(?!\d)", r"\1x", s)
                 return re.sub(r"[^a-z0-9]+", "_", s).strip("_")
 
-            scale_files = [f for f in files if is_scale_file(f)]
-            analysis_files = [f for f in files if not is_scale_file(f)]
+            analysis_files, scale_files = split_scale_images(files)
 
             scale_entries = []
             for name in scale_files:
@@ -609,15 +618,30 @@ class API:
         os.makedirs(cfg.get("output_dir",""), exist_ok=True)
         os.makedirs(cfg.get("dashboard_dir",""), exist_ok=True)
 
-        # Calibration cutoffs (Calibrate tab / preloaded presets) drive membrane mode:
-        # an explicitly chosen profile, else the newest one matching the marker. This
-        # overrides any UI default so cutoffs fit to the user's own slides actually run.
+        # Membrane cutoffs. A membranous cell is positive when enough of its ring is
+        # stained, which takes exactly two numbers: the OD above which a ring pixel counts
+        # as stained, and the fraction of the ring that must clear it. Both now come from
+        # the Quant screen, where the operator can see them.
+        #
+        # They used to be resolved HERE instead, from a saved profile matched against the
+        # marker NAME. That had two failure modes the operator could not see: analysing
+        # TIM-3 silently swapped in the built-in CRC-ICM cutoffs over whatever was on
+        # screen, and analysing a marker with no matching profile silently fell back to a
+        # different rule entirely (ring MEAN > nuclear cutoff), so two runs that looked
+        # identical were scored by different statistics. A saved profile now only applies
+        # when the operator picks it by name, and picking it fills the two numbers in.
         if settings.get("use_cytoplasm_measurement"):
-            cal = self._resolve_calibration(settings.get("calibration_name"),
-                                            settings.get("stain_name"))
-            if cal:
-                cfg["membrane_pix_thr"]  = float(cal["membrane_pix_thr"])
-                cfg["membrane_frac_min"] = float(cal["membrane_frac_min"])
+            pix = settings.get("membrane_pix_thr")
+            frac = settings.get("membrane_frac_min")
+            if pix is None or frac is None:
+                cal = self._resolve_calibration(settings.get("calibration_name"),
+                                                settings.get("stain_name"))
+                if cal:
+                    pix = cal["membrane_pix_thr"] if pix is None else pix
+                    frac = cal["membrane_frac_min"] if frac is None else frac
+            if pix is not None and frac is not None:
+                cfg["membrane_pix_thr"] = float(pix)
+                cfg["membrane_frac_min"] = float(frac)
 
         # Review gate. A nuclear run stops once cells are measured so the operator can set
         # the cutoff against the real distribution before any output exists. Membrane runs
@@ -754,8 +778,10 @@ class API:
         if sp.exists():
             summary_text = sp.read_text().strip()
 
-        dashboards = sorted(glob.glob(str(Path(dashboard_dir) / "ihc_dashboard_*.html")), key=os.path.getmtime)
-        excels     = sorted(glob.glob(str(Path(dashboard_dir) / "ihc_results_*.xlsx")), key=os.path.getmtime)
+        # The HTML dashboard and the timestamped Excel workbook are gone; nothing has
+        # written either since the reporting rework, so the two buttons offering to open
+        # them could only ever have been dead. The run's one table is results.csv.
+        results_csv = Path(output_dir) / "results.csv"
 
         overlays_dir = str(Path(output_dir) / "overlays")
         overlays = glob.glob(str(Path(output_dir) / "*_overlay.png"))
@@ -769,8 +795,7 @@ class API:
         return {
             "metrics":        metrics,
             "summary":        summary_text,
-            "dashboard_path": dashboards[-1] if dashboards else "",
-            "excel_path":     excels[-1] if excels else "",
+            "results_csv":    str(results_csv) if results_csv.exists() else "",
             "overlays_dir":   overlays_dir if overlays else "",
             "output_dir":     output_dir,
         }
@@ -840,18 +865,22 @@ class API:
             })
         return {"ok": True, "cohort_threshold": round(cohort, 4), "images": images}
 
-    def review_image_view(self, name, max_px=520):
-        """Downsampled slide image plus cell outlines, for the side-by-side review panel.
+    def review_image_view(self, name, max_px=1800):
+        """Slide image plus cell outlines, for the side-by-side review panel.
 
         The browser recolours the cells itself as the cutoff moves, so this is fetched once
-        per image rather than per slider step. Polygons are pre-scaled into thumbnail
-        coordinates and rounded, which is what keeps a 12,000-cell field small enough to
-        hand over as JSON.
+        per image rather than per slider step. Polygons are pre-scaled into the returned
+        image's coordinates and rounded, which is what keeps a 12,000-cell field small
+        enough to hand over as JSON.
 
         Seeing the calls on the tissue is not decoration. A histogram says how many cells a
         cutoff selects; only the image says whether they are the *right* ones — whether the
         cutoff is picking out membrane-stained lymphocytes or catching debris, red blood
-        cells and edge artefact.
+        cells and edge artefact. That judgement is made at the scale of a single nucleus,
+        which is why this is served at 1800 px rather than the 520 px it used to be: a
+        nucleus was four pixels across, so zooming in magnified a blur and the panel could
+        not answer the only question it exists to answer. At 1800 px a 10X nucleus is
+        ~15 px and stays sharp to roughly 4x zoom.
         """
         import numpy as np
         from PIL import Image
@@ -892,10 +921,14 @@ class API:
             i = c["i"]
             v = float(values[i]) if i < len(values) and np.isfinite(values[i]) else None
             pts = c["points"]
-            # Every 2nd vertex at thumbnail scale: a nucleus is ~10 px there, so the
-            # dropped detail is invisible and it roughly halves the payload.
-            if len(pts) > 12:
-                pts = pts[::2]
+            # Cap the outline at 16 vertices, sampled uniformly. A nucleus is convex
+            # enough that 16 points draw it smoothly even zoomed in, and the cap is what
+            # keeps a 12,000-cell field to a few megabytes of JSON. (This used to drop
+            # every 2nd vertex, justified by nuclei being ~10 px wide in the old 520 px
+            # preview — at 1800 px they are three times that and the halving showed.)
+            if len(pts) > 16:
+                step = -(-len(pts) // 16)
+                pts = pts[::step]
             cells.append({"v": None if v is None else round(v, 4),
                           "p": [[round(x * scale, 1), round(y * scale, 1)] for x, y in pts]})
         return {"ok": True, "image": b64, "w": thumb.width, "h": thumb.height,
@@ -1049,13 +1082,11 @@ class API:
             im = Image.open(path).convert("RGB")
             im.thumbnail((int(max_px), int(max_px)), Image.Resampling.LANCZOS)
             arr = np.asarray(im)
-            # Same white-point estimate run_pipeline._normalized_copy uses, so the preview
-            # is the transform that will actually be applied and not an approximation of it.
-            flat = arr.reshape(-1, 3).astype(np.float64)
-            bright = flat[flat.mean(1) > np.percentile(flat.mean(1), 80)]
-            bg = np.clip(np.percentile(bright, 99, axis=0), 200, 255)
-            norm = np.clip(arr.astype(np.float64) * (255.0 / bg.reshape(1, 1, 3)),
-                           0, 255).astype(np.uint8)
+            # The SAME function run_pipeline._normalized_copy calls, so the preview is the
+            # transform that will actually be applied rather than a second implementation
+            # of it that can drift (both copies previously carried the same crash).
+            from oasis.common.imaging import white_balance
+            norm, bg = white_balance(arr)
 
             def enc(a):
                 buf = BytesIO()

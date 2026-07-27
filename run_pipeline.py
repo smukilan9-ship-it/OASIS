@@ -154,6 +154,13 @@ def parse_summary_json(json_path):
             "Pixel_Size_Source": data.get("pixel_size_source", "unknown"),
             "Cells_Per_mm2": data.get("cells_per_mm2"),
             "Pixel_Size_Warning": data.get("pixel_size_warning", False),
+            # Which compartment was measured, and — for a membranous run — the two numbers
+            # that defined "positive". Carried here because results.csv is read long after
+            # the run, by someone who cannot ask what the settings were.
+            "Compartment": data.get("measurement_compartment", "nucleus"),
+            "Membrane_Rule": data.get("membrane_classifier"),
+            "Membrane_Pix_Thr": data.get("membrane_pix_thr"),
+            "Membrane_Frac_Min": data.get("membrane_frac_min"),
             "Confidence": compute_confidence(total, pos_pct)
         }
     except Exception as e:
@@ -484,12 +491,10 @@ def _normalized_copy(img_path, cfg):
         if os.path.getsize(img_path) > 400 * 1024 * 1024:
             print("  Preprocessing: skipped (image too large to normalize safely)")
             return None
+        from oasis.common.imaging import white_balance
         rgb = np.asarray(Image.open(img_path).convert("RGB"))
-        flat = rgb.reshape(-1, 3).astype(np.float64)
-        bright = flat[flat.mean(1) > np.percentile(flat.mean(1), 80)]
-        bg = np.clip(np.percentile(bright, 99, axis=0), 200, 255)
-        out = np.clip(rgb.astype(np.float64) * (255.0 / bg.reshape(1, 1, 3)),
-                      0, 255).astype(np.uint8)
+        # Shared with the Quant preview, so what the operator was shown is what runs.
+        out, _wp = white_balance(rgb)
         pre_dir = os.path.join(cfg["output_dir"], "_preproc")
         os.makedirs(pre_dir, exist_ok=True)
         dest = os.path.join(pre_dir, os.path.basename(img_path))
@@ -659,6 +664,22 @@ def run_pipeline(config_path="config.yaml"):
     if whitelist:
         wl = {str(w) for w in whitelist}
         images = [p for p in images if os.path.basename(p) in wl]
+
+    # Scale-bar photographs are calibration evidence, not tissue. They live in the same
+    # folder by design (that is how per-image calibration is matched), and this glob used
+    # to pick them up and segment them: nuclei detected in a photograph of a ruler, a row
+    # in results.csv for a slide that does not exist, and the cohort positivity diluted by
+    # it. Excluded by name, and said out loud rather than dropped quietly.
+    # An explicit whitelist is a deliberate choice of files and is never second-guessed.
+    if cfg.get("exclude_scale_images", True) and not whitelist:
+        from oasis.common.imaging import split_scale_images
+        keep, dropped = split_scale_images(images)
+        if dropped:
+            print(f"\nSkipping {len(dropped)} scale-bar image(s) — calibration only, "
+                  "not analysed:")
+            for p in dropped:
+                print(f"  · {os.path.basename(p)}")
+        images = keep
 
     if not images:
         print(f"\nNo images found in: {cfg['input_dir']}")
