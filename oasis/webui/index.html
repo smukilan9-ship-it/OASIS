@@ -1152,15 +1152,40 @@ td.muted { color: var(--text3); font-size: 11px; }
               background of the same average intensity is not, and an average cannot tell
               them apart.</div>
           </div>
+          <div class="info-box amber" id="q-membrane-req" style="display:none;margin-top:12px">
+            <b>Only usable on well-stained tissue, and only with a trained membrane
+            classifier.</b>
+            <div style="margin-top:6px">Ring completeness needs the stain to stand clear of
+              the ring background. Where it does not, positive and negative cells overlap in
+              every ring measurement and <b>no pair of cutoffs separates them</b> — measured
+              here: held-out F1 <b>0.83</b> across slides that stained well, and <b>0.30</b>
+              on the one faint slide in the same set. That is a staining outcome, not a
+              setting you can tune your way out of.</div>
+            <div style="margin-top:6px">So the rule has to be fitted on your own cells rather
+              than guessed. In the <b>Classifier</b> tab, label positive and negative cells on
+              <b>at least 3 slides</b> (5 or more preferred) with <b>50 of each class</b>; the
+              fit is refused unless its leave-one-image-out <b>AUC reaches 0.75</b>. A run
+              cannot use membranous scoring until one exists.</div>
+            <div style="margin-top:6px"><b>On faint or low-contrast slides use the nuclear
+              fixed-OD cutoff instead</b> — turn this off. It measures the wrong compartment
+              for a surface marker, so it is a weaker claim, but it is a measurement rather
+              than a coin toss. A trained classifier already does this per image: a slide
+              outside its training range is refused, handed back to the cutoff, and named in
+              the results.</div>
+          </div>
         </div>
 
         <div class="q-group" id="q-classifier-row">
           <div class="q-glabel">Positivity rule</div>
-          <div class="q-gplain">A <b>fixed optical-density cutoff</b> is the default and is
-            usually the right answer: one number for the cohort, adjustable per image against
-            that image's own histogram after segmentation. A trained classifier is worth its
-            labelling cost only when staining varies so much across the cohort that no single
-            cutoff fits.</div>
+          <div class="q-gplain" id="q-rule-plain-nuc">A <b>fixed optical-density cutoff</b> is
+            the default and is usually the right answer: one number for the cohort, adjustable
+            per image against that image's own histogram after segmentation. A trained
+            classifier is worth its labelling cost only when staining varies so much across the
+            cohort that no single cutoff fits.</div>
+          <div class="q-gplain" id="q-rule-plain-mem" style="display:none">The order of
+            preference is reversed for a membranous marker: here a trained classifier is
+            <b>required</b>, not an upgrade. Only classifiers fitted on the cytoplasmic ring
+            are listed — a nuclear one reads features a ring does not have.</div>
           <select id="q-classifier" onchange="quantClassifierChanged()">
             <option value="">Fixed optical-density (OD) cutoff — recommended</option>
           </select>
@@ -1198,14 +1223,13 @@ td.muted { color: var(--text3); font-size: 11px; }
             rim and reject speckle. The two numbers together are the entire rule.</div>
           <input type="range" id="q-ringfrac" min="2" max="60" value="15"
             oninput="document.getElementById('q-ringfrac-display').textContent=(this.value/100).toFixed(2)">
-          <div class="q-note" style="margin-top:6px"><b>Both numbers are worth fitting rather
-            than guessing.</b> What has been validated here is the completeness rule, using
-            cutoffs fitted on labelled cells — not cutoffs chosen by eye. Labelling in the
-            <b>Classifier</b> tab derives the pixel threshold from the ring pixels of cells you
-            marked negative, picks the ring fraction that best separates your labels, and
-            reports a leave-one-cell-out score so you can see whether the marker is callable on
-            your staining at all. The values above are a starting point: 0.15 and 0.10 come
-            from the public CRC-ICM TIM-3 set, whose own fitted pixel threshold was 0.30.</div>
+          <div class="q-note" style="margin-top:6px">These two numbers are the <b>fallback</b>,
+            not the rule this mode is meant to run on. They apply to any image the trained
+            classifier refuses, and to a run that has no classifier — which is not a validated
+            configuration. Treat them as a starting point: 0.10 and 0.15 come from the public
+            CRC-ICM TIM-3 set, whose own fitted pixel threshold was in fact 0.30, and fitted
+            values across cohorts have ranged from 0.08 to 0.30. Nothing here has been measured
+            against ground truth with cutoffs chosen by hand.</div>
           <div class="q-inline" style="margin-top:12px">
             <span class="q-fbname" style="flex:none">Load cutoffs from a saved calibration</span>
             <select id="q-calib-profile" style="flex:1;min-width:260px;max-width:420px"
@@ -2095,6 +2119,13 @@ function quantApplyCompartment() {
   document.getElementById('q-od-nuclear-plain').style.display  = on ? 'none' : 'inline';
   document.getElementById('q-od-membrane-plain').style.display = on ? 'inline' : 'none';
   document.getElementById('q-ringfrac-group').style.display    = on ? 'block' : 'none';
+  document.getElementById('q-membrane-req').style.display      = on ? 'block' : 'none';
+  document.getElementById('q-rule-plain-nuc').style.display    = on ? 'none' : 'block';
+  document.getElementById('q-rule-plain-mem').style.display    = on ? 'block' : 'none';
+  // A nuclear classifier reads features that do not exist for a ring, and vice versa, so
+  // the list of applicable classifiers depends on the compartment. It used to offer every
+  // saved classifier in both modes.
+  loadQuantClassifiers();
   document.getElementById('q-od-note').textContent = on
     ? 'Membranous runs are not stopped for a cutoff review: the review histogram is of '
       + 'nuclear DAB, which is not what scores these cells. Both numbers are set here.'
@@ -3331,6 +3362,19 @@ async function runQuantAnalysis() {
     ? document.getElementById('q-stain-other').value.trim() : stainChoice;
   if (!stainName) { showToast('Select or enter the stain type'); return; }
 
+  // Membranous scoring requires a membrane classifier fitted on this cohort's own cells.
+  // Ring completeness only separates positive from negative where the stain stands clear
+  // of the ring background, and the ONLY thing that establishes that for a given cohort is
+  // a held-out score on labelled cells from it. Hand-set cutoffs have never been measured
+  // against ground truth; the two sliders exist as the per-image fallback the classifier
+  // hands faint slides back to, not as a way to run the mode without one.
+  if (isOn('q-membrane-toggle') && !document.getElementById('q-classifier').value) {
+    quantWizardGoTo(4);
+    showToast('Membranous scoring needs a trained membrane classifier — label at least '
+              + '3 slides in the Classifier tab, or switch this marker to the nuclear cutoff');
+    return;
+  }
+
   // ── Pixel size: REQUIRED and explicit. No silent fallback to a default. ──
   // In batch, matched scale bars + per-image overrides take precedence, but a
   // resolved DEFAULT is still required for any image that has neither.
@@ -3473,16 +3517,25 @@ async function runQuantAnalysis() {
 let quantClassifiers = [];
 
 async function loadQuantClassifiers() {
+  let all = [];
   try {
     const r = await window.pywebview.api.list_classifiers();
-    quantClassifiers = (r && r.saved) || [];
-  } catch (e) { quantClassifiers = []; }
+    all = (r && r.saved) || [];
+  } catch (e) { all = []; }
+  // Only classifiers fitted for the compartment being measured. A nuclear model reads
+  // features a ring does not have, so offering one for a membranous run was offering a
+  // configuration that could only produce nonsense.
+  const wantKind = isOn('q-membrane-toggle') ? 'membrane' : 'nuclear';
+  quantClassifiers = all.filter(c => (c.kind || 'nuclear') === wantKind);
   const req = await (window.pywebview.api.classifier_requirements
     ? window.pywebview.api.classifier_requirements() : Promise.resolve({ min_auc: 0.75 }));
   const sel = document.getElementById('q-classifier');
   if (!sel) return;
   const minAuc = (req && req.min_auc) || 0.75;
-  sel.innerHTML = '<option value="">Fixed optical-density (OD) cutoff — recommended</option>'
+  const first = wantKind === 'membrane'
+    ? '<option value="">Hand-set cutoffs above — not a validated configuration</option>'
+    : '<option value="">Fixed optical-density (OD) cutoff — recommended</option>';
+  sel.innerHTML = first
     + quantClassifiers.map((c, i) => {
         const weak = c.auc == null || c.auc < minAuc;
         const spread = (c.fold_f1_min != null)
@@ -3492,7 +3545,7 @@ async function loadQuantClassifiers() {
              + `${weak ? ' (below the bar — not applicable)' : ''}</option>`;
       }).join('')
     // A route to the thing you need, from the place you discover you need it.
-    + '<option value="__train">＋ Train a classifier… (opens the Classifier tab)</option>';
+    + `<option value="__train">＋ Train a ${wantKind} classifier… (opens the Classifier tab)</option>`;
 }
 
 function quantClassifierChanged() {
@@ -3508,10 +3561,13 @@ function quantClassifierChanged() {
   const sl = document.getElementById('q-thresh');
   const on = v !== '';
   // The OD slider no longer decides anything when a classifier is driving, so it is greyed
-  // rather than left looking live.
-  if (sl) { sl.disabled = on; sl.style.opacity = on ? 0.4 : 1; }
+  // rather than left looking live — EXCEPT in membranous mode, where the cutoffs are what
+  // an image refused by the classifier is handed back to. Greying them there would hide a
+  // control that is still deciding the answer for the faintest slides in the cohort.
+  const grey = on && !isOn('q-membrane-toggle');
+  if (sl) { sl.disabled = grey; sl.style.opacity = grey ? 0.4 : 1; }
   const disp = document.getElementById('q-thresh-display');
-  if (disp) disp.style.opacity = on ? 0.4 : 1;
+  if (disp) disp.style.opacity = grey ? 0.4 : 1;
   if (!on) {
     note.innerHTML = 'Measured: on clean, single-protocol staining a trained classifier does '
       + '<b>not</b> beat a well-chosen fixed cutoff, and it costs a labelling pass per cohort '
