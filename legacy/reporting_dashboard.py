@@ -1,3 +1,19 @@
+"""HTML dashboard + Excel workbook — REMOVED from the pipeline 2026-07-27.
+
+WHY IT WAS REMOVED
+It restated numbers that were already in the per-image summaries, in two formats that both
+have to be converted before anything can be done with them: an HTML page that is read once
+and never reopened, and a timestamped .xlsx. Together they were the largest single source
+of output clutter in a run, and neither was a step toward any downstream analysis.
+
+Replaced by oasis/reporting/results_table.py, which writes one results.csv -- one row per
+image, carrying not just the counts but the cutoff, the pixel size and the SOURCE of that
+pixel size, so a row can be checked months later.
+
+Kept because the HTML/Excel layout encodes real decisions about which columns matter, and
+because any published figure generated from an earlier run came out of this file.
+"""
+
 """
 dashboard.py
 Generates a beautiful HTML dashboard + enhanced Excel from IHC analysis results.

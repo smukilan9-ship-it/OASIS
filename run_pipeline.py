@@ -1,6 +1,6 @@
 """
 OASIS — Main Pipeline v5
-Full automated flow with overlay generation and dashboard.
+Full automated flow with overlay generation and a results table.
 Usage: python run_pipeline.py [--config path/to/config.yaml]
 """
 
@@ -267,7 +267,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
     Re-measure DAB in the cytoplasmic ring (membrane markers) and reclassify each
     cell, writing the new classification AND all three DAB measurements (nucleus,
     cytoplasm, cell) back into the GeoJSON properties and the summary JSON so that
-    overlays / spatial association / dashboard all use the cytoplasm-based classification.
+    overlays / spatial association / results table all use the cytoplasm-based classification.
 
     Cells with degenerate geometry keep their original nuclear classification.
     """
@@ -679,7 +679,7 @@ def run_pipeline(config_path="config.yaml"):
 
     # Review gate. Segmentation and measurement are done and written to disk; deciding
     # where "positive" starts is a separate, cheap decision the operator makes with the
-    # distribution in front of them. Stopping here means no overlay, dashboard or export
+    # distribution in front of them. Stopping here means no overlay, table or export
     # is ever produced from an unreviewed cutoff. `finish_outputs` resumes from the
     # summaries on disk once the cutoff is settled. (research/ihc.md § 11.4.)
     if cfg.get("stop_after_segmentation"):
@@ -698,7 +698,7 @@ def finish_outputs(cfg):
     """Run the output stages against summaries already on disk.
 
     Called after the operator has settled the cutoff, so the numbers baked into the
-    overlays, dashboard and export are the reviewed ones. Re-parses the summary JSONs
+    overlays, table and export are the reviewed ones. Re-parses the summary JSONs
     rather than trusting anything held in memory, because `reclassify.apply_threshold`
     has rewritten them in between.
     """
@@ -735,20 +735,17 @@ def _generate_outputs(batch_metrics, cfg):
         except Exception as e:
             print(f"  Overlay generation failed: {e}")
 
-    # ── Stage 3: Dashboard + Excel ─────────────────────────
-    # Optional: the results table in the app is built from the per-image summary JSONs,
-    # not from the dashboard, so skipping this costs the workbook and the HTML page and
-    # nothing else.
-    if not cfg.get("generate_dashboard", True):
-        print("\nDashboard/Excel skipped (not selected in output options)")
-    else:
-        print(f"\nGenerating dashboard for {len(batch_metrics)} images...")
-        try:
-            from oasis.reporting.dashboard import generate_all_outputs as _gao
-            html_path, excel_path = _gao(batch_metrics, cfg["dashboard_dir"], cfg)
-            print(f"\n  Open dashboard: file://{html_path}")
-        except Exception as e:
-            print(f"  Dashboard generation failed: {e}")
+    # ── Stage 3: Results table ─────────────────────────────
+    # One CSV, one row per image, always written. The HTML dashboard was removed: it
+    # restated the same numbers in a page nobody opened twice, and it was the largest
+    # single source of output clutter. Anything a researcher does next -- statistics,
+    # a figure, a supplementary table -- starts from the CSV.
+    try:
+        from oasis.reporting.results_table import write_results_table
+        table_path = write_results_table(batch_metrics, cfg["output_dir"], cfg)
+        print(f"\n  Results table: {table_path}")
+    except Exception as e:
+        print(f"  Results table failed: {e}")
 
     # ── Final summary ──────────────────────────────────────
     total_cells = sum(m["Total_Cells"] for m in batch_metrics)

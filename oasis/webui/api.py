@@ -1027,6 +1027,55 @@ class API:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+    def preview_normalization(self, image_path: str, max_px: int = 620) -> dict:
+        """Original and white-balanced versions of one image, side by side.
+
+        Normalization runs before segmentation and changes what the model sees, so the
+        user should be able to look at it rather than trust a toggle labelled
+        "recommended for faint stains". It corrects tone and illumination to a per-image
+        white point; it does NOT rescale DAB, which is why it cannot move positivity on
+        its own — but that claim is only believable if the two images are shown.
+        """
+        try:
+            import base64
+            from io import BytesIO
+            import numpy as np
+            from PIL import Image
+            Image.MAX_IMAGE_PIXELS = None
+
+            path = os.path.expanduser(str(image_path))
+            if not os.path.exists(path):
+                return {"ok": False, "msg": "image not found"}
+            im = Image.open(path).convert("RGB")
+            im.thumbnail((int(max_px), int(max_px)), Image.Resampling.LANCZOS)
+            arr = np.asarray(im)
+            # Same white-point estimate run_pipeline._normalized_copy uses, so the preview
+            # is the transform that will actually be applied and not an approximation of it.
+            flat = arr.reshape(-1, 3).astype(np.float64)
+            bright = flat[flat.mean(1) > np.percentile(flat.mean(1), 80)]
+            bg = np.clip(np.percentile(bright, 99, axis=0), 200, 255)
+            norm = np.clip(arr.astype(np.float64) * (255.0 / bg.reshape(1, 1, 3)),
+                           0, 255).astype(np.uint8)
+
+            def enc(a):
+                buf = BytesIO()
+                Image.fromarray(np.asarray(a, dtype=np.uint8)).save(buf, "JPEG", quality=88)
+                return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode("ascii")
+
+            # Say how much this actually changes. On a slide whose background is already
+            # white the white point is (255,255,255) and the transform is the identity —
+            # showing two identical images with no explanation looks like a broken preview
+            # when it is in fact the correct and useful answer.
+            diff = np.abs(norm.astype(np.int16) - arr.astype(np.int16))
+            return {"ok": True, "original": enc(arr), "normalized": enc(norm),
+                    "w": im.width, "h": im.height,
+                    "white_point": [round(float(v), 1) for v in bg],
+                    "mean_shift": round(float(diff.mean()), 2),
+                    "max_shift": int(diff.max()),
+                    "is_noop": bool(diff.max() <= 1)}
+        except Exception as e:
+            return {"ok": False, "msg": str(e)}
+
     def prepare_landmark_pair(self, ref_path: str, mov_path: str) -> dict:
         """Return compact, blinded browser previews while retaining full-res coordinates."""
         try:
