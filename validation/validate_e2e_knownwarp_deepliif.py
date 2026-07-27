@@ -1,7 +1,7 @@
 """
 validate_e2e_knownwarp_deepliif.py — Validation B of the end-to-end suite.
 
-REAL DAB PIXELS + FULL PIPELINE, known-warp reconstruction (ihc.md §10).
+REAL DAB PIXELS + FULL PIPELINE, known-warp reconstruction (research/ihc.md §10).
 
 The real-DAB cell-scale end-to-end ground truth we want (two DIFFERENT chromogenic
 markers on corresponding sections with a known association) does not exist. This

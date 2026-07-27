@@ -1719,7 +1719,7 @@ insufficient.
 
 ## 22. Stabilization pass — enforcing the validity rules in the app (2026-06-21)
 
-This pass closes the gap the audit (`audit_20260621.md`) identified between the
+This pass closes the gap the audit (`research/audit_20260621.md`) identified between the
 documented honesty standard and the shipping app. **Staged: validity first**; the
 in-app landmark picker and the full visual workflow redesign are deferred (see
 "Remaining"). No scientific threshold was tuned; the dirty worktree's unrelated
@@ -1750,7 +1750,7 @@ software-execution / segmentation / marker-threshold / biological validity.
 - A2: the unsupported "~90% segmentation agreement" claim is flagged UNVERIFIED in §3.
 - A3/B2/B5: the retired "three null models" design is corrected to the
   reweighted-primary + CSR-baseline in §7 (banner), `spatial.py` docstring,
-  `index.html` (headline + comment), and `learn.md` §20.
+  `index.html` (headline + comment), and `research/learn.md` §20.
 - A4: §9b banner — its table uses the retired CSR null; see §15.7.
 - A5: `_reweight_run.log` / `_reweight_run2.log` prepended with SUPERSEDED banners
   (kept, not deleted).

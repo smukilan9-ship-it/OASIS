@@ -99,7 +99,7 @@ session was a version of that circularity.
 - `validation/validate_fw_anhir_calibration.py` — 2-annotator external calibration.
 
 ### Docs
-- `ihc.md` § 3.5 (new), § 3.4 note, § 6 + § 7 additions.
+- `research/ihc.md` § 3.5 (new), § 3.4 note, § 6 + § 7 additions.
 
 ### Scratchpad (NOT in repo — under the session scratchpad dir)
 - `loftr_test.py`, `loftr_certify.py`, `loftr_sweep.py`, `loftr_final.py` — exploratory LoFTR

@@ -2347,7 +2347,7 @@ function clsKindNote() {
   document.getElementById('cls-kind-note').textContent = k === 'membrane'
     ? 'Ring features including contiguity. Built and unit-tested, but not yet validated '
     + 'against labelled membranous cells — your own held-out report is the evidence.'
-    : 'Validated against immunofluorescence-derived labels (ihc.md § 11.6).';
+    : 'Validated against immunofluorescence-derived labels (research/ihc.md § 11.6).';
 }
 
 async function clsAddImage() {
@@ -2956,7 +2956,7 @@ async function runQuantAnalysis() {
     pixel_size_mode:       pxMode,
     dab_threshold:         document.getElementById('q-thresh').value / 100,
     // One fixed cohort-wide OD cutoff; per-image exceptions are applied after
-    // segmentation and recorded in the output (ihc.md § 11).
+    // segmentation and recorded in the output (research/ihc.md § 11).
     adaptive_threshold:    false,
     // Stop after measurement so the cutoff is set against the real distribution before
     // any output exists. Membrane runs skip this — they are scored on calibrated ring
@@ -3069,7 +3069,7 @@ function quantClassifierChanged() {
 // Segmentation is done and measured; nothing has been written yet. The operator sets the
 // cutoff here, against the distribution rather than by eye alone, and only then are
 // outputs produced. One cohort cutoff by default; a per-image override is allowed for a
-// one-off bad stain and is recorded as an exception (ihc.md § 11.4).
+// one-off bad stain and is recorded as an exception (research/ihc.md § 11.4).
 let qrState = { cohort: 0.20, images: [], overrides: {} };
 
 function qrThresholdFor(img) {
@@ -5368,7 +5368,7 @@ function spatialAssocShowResults(data) {
              border:1px solid #d97706;background:#fffbeb;color:#92400e">
           <strong>⚠ Not landmark-certified (registration QC only).</strong> This pair used the automated
           registration QC, which is <em>not</em> the §18–20 landmark certification and is known-unreliable
-          on field-of-view serial sections (ihc.md §18.4). "Valid" here means the legacy QC gate passed —
+          on field-of-view serial sections (research/ihc.md §18.4). "Valid" here means the legacy QC gate passed —
           a weaker claim than CERTIFIED. Do not report a biological finding from an uncertified pair.
         </div>`;
       // ── 75 µm bandwidth spatial-validity (SEPARATE from registration cert) ──────
@@ -5464,7 +5464,7 @@ function spatialAssocShowResults(data) {
         const col = nsig ? (ndir === 'segregation' ? '#b45309' : '#16a34a') : '#6b7280';
         let extra = '';
         if (key === 'reweighted' && typeof nd.bandwidth_um === 'number') {
-          extra = `<div class="muted" style="font-size:10px">intensity bandwidth ${nd.bandwidth_um} µm (calibrated, ihc.md §15)</div>`;
+          extra = `<div class="muted" style="font-size:10px">intensity bandwidth ${nd.bandwidth_um} µm (calibrated, research/ihc.md §15)</div>`;
         } else if (key === 'dense_morphology') {
           extra = `<div class="muted" style="font-size:10px">all-cell support + ${nd.jitter_um ?? 2} µm jitter; DCLF ${(nd.dclf_band_um||[10,30]).join('–')} µm; support n=${nd.support_n ?? '—'}</div>`;
         }

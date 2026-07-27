@@ -140,7 +140,7 @@ def main():
         f"DCLF band 10–50 µm   pixel size {PIX} µm/px")
     log(f"  * inhomogeneous 1x (50 µm) was the FORMER primary — this script documents")
     log(f"    why it (and toroidal) were RETIRED. The production primary is now the")
-    log(f"    calibrated reweighted cross-K; see validate_reweighted_null.py + ihc.md §15.")
+    log(f"    calibrated reweighted cross-K; see validate_reweighted_null.py + research/ihc.md §15.")
 
     # Scenario 1 (the question): shared preference, no cross-association.
     shared = run_scenario(

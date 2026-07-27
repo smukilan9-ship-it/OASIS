@@ -2,7 +2,7 @@
 validate_hyreco.py — validate the landmark-driven registration CERTIFICATION against
 the public HyReCo dataset's expert ground-truth landmarks.
 
-WHY HyReCo (the selected public dataset; see learn.md):
+WHY HyReCo (the selected public dataset; see research/learn.md):
   • Contains CD8 (+ HE, Ki67, CD45) consecutive serial sections AND a re-stained
     (HE→PHH3) pair — the exact regime of our problem.
   • Ships 690 landmarks (11–19 per section) placed AND verified by two experienced

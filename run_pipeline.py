@@ -39,7 +39,7 @@ def load_config(config_path="config.yaml"):
 
     # Segmenter: "native" (default) runs the InstanSeg TorchScript bundle in-process;
     # "qupath" shells out to the QuPath binary as before. The QuPath path is retained for one
-    # release as an escape hatch — it is validated as equivalent (ihc.md §7, det/class figures
+    # release as an escape hatch — it is validated as equivalent (research/ihc.md §7, det/class figures
     # within 0.005 over 598 DeepLIIF images) but a second implementation is cheap insurance
     # while the native one is new in the field. Only the MODEL is shared; nothing else is.
     cfg.setdefault("segmenter", "native")
@@ -116,12 +116,12 @@ def load_config(config_path="config.yaml"):
     # non-interactive and take the configured cutoff as given.
     cfg.setdefault("stop_after_segmentation", False)
     # `nuclear_adaptive` (per-image GMM valley + abstain gate) was removed in favour of a
-    # fixed cohort-wide cutoff — see ihc.md § 11. Code parked in legacy/nuclear_adaptive/.
+    # fixed cohort-wide cutoff — see research/ihc.md § 11. Code parked in legacy/nuclear_adaptive/.
     #
     # `classifier` (a dict as persisted by the Classifier tab) replaces the cutoff with a
     # per-cohort trained model. It writes the same `classification` property, so nothing
     # downstream changes. Absent by default: on consistently stained material the fixed
-    # cutoff matches it (ihc.md § 11.6).
+    # cutoff matches it (research/ihc.md § 11.6).
     cfg.setdefault("classifier", None)
     return cfg
 
@@ -1003,7 +1003,7 @@ def run_pipeline(config_path="config.yaml"):
     # where "positive" starts is a separate, cheap decision the operator makes with the
     # distribution in front of them. Stopping here means no overlay, dashboard or export
     # is ever produced from an unreviewed cutoff. `finish_outputs` resumes from the
-    # summaries on disk once the cutoff is settled. (ihc.md § 11.4.)
+    # summaries on disk once the cutoff is settled. (research/ihc.md § 11.4.)
     if cfg.get("stop_after_segmentation"):
         print(f"\n{'='*55}")
         print("  SEGMENTATION COMPLETE — awaiting threshold review")
@@ -1255,7 +1255,7 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
             "max_radius_um":   cfg.get("max_radius_um", 100.0),
             "radius_step_um":  cfg.get("radius_step_um", 2.0),
             # A6: the reweighted-primary test ASSUMES tissue architecture is coarser
-            # than this bandwidth (ihc.md §15.5). The architecture scale is now MEASURED
+            # than this bandwidth (research/ihc.md §15.5). The architecture scale is now MEASURED
             # per pair (spatial_stats.estimate_architecture_scale) and gated: a "robust"
             # verdict is only trustworthy when the measured scale clears the calibrated
             # validity threshold (validate_architecture_scale.py).
@@ -1741,7 +1741,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                      "QC gate passed; it does NOT mean the pair is CERTIFIED, and "
                      "§18.4 shows this automated metric is unreliable on FOV-crop "
                      "serial sections. No reported biological finding should rest on "
-                     "an uncertified pair (run landmark certification — ihc.md §19)."),
+                     "an uncertified pair (run landmark certification — research/ihc.md §19)."),
         }
 
         # ── 75 µm bandwidth spatial-validity gate (SEPARATE from registration) ─────

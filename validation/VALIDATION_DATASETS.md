@@ -1,7 +1,7 @@
 # Public datasets for validating cross-type spatial association
 
 Curated for validating the redesigned spatial-association method (intensity-
-reweighted inhomogeneous cross-K; see `ihc.md` §15). Each entry tests whether the
+reweighted inhomogeneous cross-K; see `research/ihc.md` §15). Each entry tests whether the
 method recovers a **known/published** spatial relationship. We need BOTH:
 - **positive controls** — cell-type pairs that genuinely co-localize, and
 - **negative/segregation controls** — pairs that occupy separate compartments,
@@ -68,7 +68,7 @@ Legend — Rel.: expected relationship. **+** co-localization (positive control)
 - **Modality / markers:** CODEX; CD8 **and immunoregulatory/exhaustion markers** (PD-1; check channel list for TIM-3/LAG-3).
 - **Why it tests us:** the **only** identified multiplex set plausibly containing **both CD8 and TIM-3** — direct biological match to our pipeline's target.
 - **Expected:** exhausted-CD8 ↔ tumor **+** in responders' topography; CD8↔checkpoint co-expression patterns.
-- **Caveat (critical):** access is **on request / restricted** (as already noted in `ihc.md` §9). Not freely batch-downloadable; flag for the user to request. Use as a confirmatory, not bulk, set.
+- **Caveat (critical):** access is **on request / restricted** (as already noted in `research/ihc.md` §9). Not freely batch-downloadable; flag for the user to request. Use as a confirmatory, not bulk, set.
 
 ---
 

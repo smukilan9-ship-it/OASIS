@@ -13,7 +13,7 @@ default it came from. When the two differ the image carries `threshold_override`
 every downstream reader can see that this image was measured on a different scale from
 its neighbours. A per-image exception is a legitimate answer to a one-off bad stain, but
 it breaks the comparability that makes a cohort a cohort, so it is written down rather
-than absorbed. (ihc.md § 11.4.)
+than absorbed. (research/ihc.md § 11.4.)
 
 **Nuclear only.** Membranous markers are called on ring completeness against calibrated
 cutoffs, not on a nuclear OD cut — see `cell_expansion.py`. `is_membrane_result` detects

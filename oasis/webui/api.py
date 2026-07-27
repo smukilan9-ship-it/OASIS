@@ -253,7 +253,7 @@ class API:
     #
     # Measured caveat, surfaced in the tab rather than buried: on clean, well-stained,
     # single-protocol nuclear data the classifier does **not** beat a well-chosen fixed
-    # cutoff (ihc.md § 11.6). It is worth the labelling burden when staining varies across
+    # cutoff (research/ihc.md § 11.6). It is worth the labelling burden when staining varies across
     # a cohort, not when it does not.
 
     MIN_CLASSIFIER_IMAGES = 5      # below this the held-out estimate rests on too few folds
@@ -622,7 +622,7 @@ class API:
         # Review gate. A nuclear run stops once cells are measured so the operator can set
         # the cutoff against the real distribution before any output exists. Membrane runs
         # are scored on calibrated ring completeness, not a nuclear OD cut, so there is no
-        # cutoff here to review — they run straight through (ihc.md § 11.4).
+        # cutoff here to review — they run straight through (research/ihc.md § 11.4).
         review = bool(settings.get("review_threshold")) and not settings.get(
             "use_cytoplasm_measurement")
         cfg["stop_after_segmentation"] = review
@@ -716,7 +716,7 @@ class API:
                 # Cutoff provenance. `threshold_override` is present only when this image
                 # was deliberately measured off the cohort's scale; carrying it through is
                 # what lets the results view name the exception instead of averaging it in
-                # with everything else (ihc.md § 11.4).
+                # with everything else (research/ihc.md § 11.4).
                 _eff_thr = float(d.get("dab_threshold", 0.2))
                 _override = d.get("threshold_override")
                 _cohort = d.get("cohort_threshold")
@@ -784,7 +784,7 @@ class API:
     # stops once cells are measured, the operator sets the cutoff against the measured
     # distribution, and only then is any output produced. This is also the compliance
     # story — the Digital Pathology Association's guidance is that a human approves the
-    # threshold before data generation, and this is where that happens (ihc.md § 11).
+    # threshold before data generation, and this is where that happens (research/ihc.md § 11).
 
     def get_review_data(self):
         """Per-image DAB distributions for the images just segmented.
@@ -1208,7 +1208,7 @@ class API:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
-    # VALIS was evaluated as a third registration engine and REMOVED (see valis.md and
+    # VALIS was evaluated as a third registration engine and REMOVED (see research/valis.md and
     # legacy/valis/). It could only ever supply the PROVISIONAL transform: certification stayed
     # with the validated Fitzpatrick-West gate, which needs LoFTR correspondences that do not
     # exist on the cross-modal pairs VALIS was for. Measured consequence: VALIS mode returned
@@ -1472,7 +1472,7 @@ class API:
                 # that certifies maximises cells, and silently spends the contact scale to do
                 # it: measured on LL477_Liver_10X_4, R=450 certifies at a 21.2 µm floor while
                 # R=260 certifies at 19.0 µm — the larger window is chosen and the ~10–20 µm
-                # band is lost. ihc.md §"Precedence is deliberate" states the opposite
+                # band is lost. research/ihc.md §"Precedence is deliberate" states the opposite
                 # preference: "a smaller window that keeps the contact scale (~10–20 µm) says
                 # more than the whole field with the contact scale removed."
                 #
@@ -2555,7 +2555,7 @@ class API:
                     # count SIGNIFICANT findings (verdict 'robust' = significant under
                     # the calibrated reweighted primary) separately from CSR-ONLY
                     # findings (significant only under the weak homogeneous baseline,
-                    # i.e. a shared-preference artifact — see ihc.md §15).
+                    # i.e. a shared-preference artifact — see research/ihc.md §15).
                     n_sig, global_ps, n_excluded_qc = 0, [], 0
                     n_robust, n_csr_only = 0, 0
                     for r in results:

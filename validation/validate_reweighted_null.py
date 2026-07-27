@@ -1,7 +1,7 @@
 """
 validate_reweighted_null.py — 3-regime proof for the redesigned PRIMARY test
 (spatial_stats.cross_k_inhom_reweighted_test), the intensity-reweighted
-inhomogeneous cross-K with per-simulation intensity re-estimation (ihc.md §15).
+inhomogeneous cross-K with per-simulation intensity re-estimation (research/ihc.md §15).
 
 A null is shippable ONLY if it passes ALL THREE:
   1. SHARED-PREFERENCE H0  (the regime the old nulls failed): A,B independent draws
@@ -153,7 +153,7 @@ def main():
             "anti-conservative resampling-Kinhom + toroidal gate.")
     else:
         log("  ⚠ NO bandwidth passes all three regimes. Do NOT ship this null as-is.")
-        log("  Report the failure plainly (ihc.md §15) — the honest fallback is a "
+        log("  Report the failure plainly (research/ihc.md §15) — the honest fallback is a "
             "covariate-conditioned null requiring architecture segmentation we do "
             "not yet have.")
 

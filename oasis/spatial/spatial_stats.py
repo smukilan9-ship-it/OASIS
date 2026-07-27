@@ -42,7 +42,7 @@ _DCLF_RMIN_UM = 10.0
 _DCLF_RMAX_UM = 50.0
 
 # Two-scale decomposition of the 10–50 µm interaction band into the two DISTINCT
-# biological findings they conflate (see ihc.md §15.6). These are reported
+# biological findings they conflate (see research/ihc.md §15.6). These are reported
 # SEPARATELY — a pair can co-localize at short range without regional
 # co-infiltration, or co-infiltrate a region while segregating at contact scale.
 #   • Short-range colocalization — hard-core floor to ~2 cell diameters. Cross-type
@@ -75,7 +75,7 @@ _KDE_BANDWIDTH_UM = 50.0
 # so the estimated λ captures the tissue ARCHITECTURE (the shared compartments)
 # without absorbing the within-band cell–cell interaction being tested. The exact
 # value is chosen by the 3-regime calibration (validate_primary_null_calibration.py
-# / validate_reweighted_null.py), not assumed — see ihc.md §15.
+# / validate_reweighted_null.py), not assumed — see research/ihc.md §15.
 _REWEIGHT_BANDWIDTH_UM = 75.0
 
 # Dense-tissue fallback null. This is deliberately NOT a smaller KDE bandwidth
@@ -694,7 +694,7 @@ def _null_k_toroidal(tree_a, radii_px, norm, points_b, bbox, n_perm, rng):
 # ──────────────────────────────────────────────────────────────────────────────
 # PRIMARY production test — intensity-reweighted inhomogeneous cross-K
 #
-# (See ihc.md §15 for the full diagnosis.) The resampling Kinhom and the toroidal
+# (See research/ihc.md §15 for the full diagnosis.) The resampling Kinhom and the toroidal
 # shift were both anti-conservative under shared tissue preference. The fix is the
 # literature-standard inhomogeneous cross-K (Baddeley–Møller–Waagepetersen):
 #
@@ -857,7 +857,7 @@ def cross_k_inhom_reweighted_test(
 ) -> dict:
     """
     PRIMARY production test for cross-type association beyond shared tissue
-    preference (see module note above and ihc.md §15).
+    preference (see module note above and research/ihc.md §15).
 
     Returns the same summary shape as the other nulls (radii_um, K_observed,
     L_minus_r, null envelope, per-r p-values, global DCLF, n_perm) plus
@@ -1092,7 +1092,7 @@ def _assess_robustness(summaries: dict, primary: str = None) -> dict:
     """
     Reduce the per-null DCLF calls to a single verdict, GATED ON THE CALIBRATED
     PRIMARY (the intensity-reweighted inhomogeneous cross-K), with homogeneous CSR
-    kept only as a diagnostic baseline. (See ihc.md §15: the old resampling-Kinhom
+    kept only as a diagnostic baseline. (See research/ihc.md §15: the old resampling-Kinhom
     and toroidal nulls were anti-conservative under shared tissue preference and no
     longer gate anything.) Verdicts:
       • "robust"   — significant under the CALIBRATED primary → association beyond
@@ -1160,7 +1160,7 @@ def _assess_interaction(summaries: dict, primary: str = None,
     """
     Report the two DISTINCT cross-type findings SEPARATELY, each on the CALIBRATED
     primary null (co-infiltration and short-range colocalization are not one thing —
-    see ihc.md §15.6). Replaces the single 'robust' label with a per-scale verdict:
+    see research/ihc.md §15.6). Replaces the single 'robust' label with a per-scale verdict:
 
       • short-range colocalization  [_COLOC band]  — cross-type proximity at the
         immediate-neighbourhood scale (down to the registration floor, NOT single-
@@ -1252,7 +1252,7 @@ def cross_k_all_nulls(
       • "reweighted"  — PRIMARY. Intensity-reweighted inhomogeneous cross-K with
         per-simulation intensity re-estimation (cross_k_inhom_reweighted_test). It
         is size-controlled under shared tissue preference AND uniform independence
-        AND retains power (validated in validate_reweighted_null.py / ihc.md §15).
+        AND retains power (validated in validate_reweighted_null.py / research/ihc.md §15).
         Its curves drive the top-level result and the robustness verdict.
       • "homogeneous" — DIAGNOSTIC baseline only. Significant-under-CSR-but-not-the-
         primary ⇒ the "csr_only" verdict that flags shared-preference artifacts.
@@ -1740,7 +1740,7 @@ def cohort_multiple_comparison_correction(per_pair_pvalues, method: str = "bh",
     return base
 
 
-# ── Architecture-scale estimator + validity gate (audit A6 / ihc.md §15.5) ──────
+# ── Architecture-scale estimator + validity gate (audit A6 / research/ihc.md §15.5) ──────
 # The reweighted primary null (bandwidth _REWEIGHT_BANDWIDTH_UM) ASSUMES the tissue
 # architecture varies on a scale COARSER than the reweighting bandwidth, so the
 # intensity reweighting removes shared compartment preference without absorbing the

@@ -70,7 +70,7 @@ def _shared_architecture_no_interaction(rng):
     interaction — exactly what two registered serial sections of the SAME block look
     like under H0. The calibrated primary MUST return ~none here. (Architecture is
     modelled coarser than the 10–50 µm interaction band, as real tissue compartments
-    are; see ihc.md §15 for the bandwidth ≤ architecture-scale requirement.)"""
+    are; see research/ihc.md §15 for the bandwidth ≤ architecture-scale requirement.)"""
     k = int(rng.integers(5, 10))
     centres = rng.uniform(80, WIN - 80, (k, 2))     # SAME centres for A and B
     sig = 100.0                                      # coarse architecture (> band)

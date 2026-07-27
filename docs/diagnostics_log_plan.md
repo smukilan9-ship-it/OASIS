@@ -48,7 +48,7 @@ Every event is self-explaining and carries the four things a human (or the tab) 
 { "stage": "...", "level": "info|warn|error|blocker", "code": "STABLE_CODE",
   "image": "file or pair", "what": "plain sentence",
   "why": "measured cause", "evidence": { "numbers": "that fired it" },
-  "next": "actionable fix", "auto_recoverable": true, "doc": "ihc.md#anchor" }
+  "next": "actionable fix", "auto_recoverable": true, "doc": "research/ihc.md#anchor" }
 ```
 
 **C. Event catalog** (grounded in real failure points in the code)

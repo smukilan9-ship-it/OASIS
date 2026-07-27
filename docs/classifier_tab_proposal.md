@@ -3,7 +3,7 @@
 Status: **proposal, nothing built.** Written against the code as of `29cd742`.
 
 The shipped default is one fixed DAB cutoff per stain across the cohort, reviewed against
-the measured distribution before any output exists (`ihc.md` § 11.4). This proposes the
+the measured distribution before any output exists (`research/ihc.md` § 11.4). This proposes the
 tier above it: a classifier the user trains **on their own cohort**, from their own
 labelled cells, that then calls every image in that cohort.
 
@@ -21,7 +21,7 @@ PD-L1/HER2. Against that, this project's own per-cohort membrane calibration rea
 **held-out AUC 0.90 / LOIO F1 0.83** on real CD8, and **AUC 0.93** on the CRC-ICM TIM-3
 preset. Per-cohort fitting beats the universal model by a wide margin.
 
-`ihc.md` § 3.3 already states why: *DAB is not quantitative — cutoffs don't transfer across
+`research/ihc.md` § 3.3 already states why: *DAB is not quantitative — cutoffs don't transfer across
 antibody/scanner.* A universal positivity model would have to be immune to exactly the
 variation that breaks fixed cutoffs. The clean way to say it:
 

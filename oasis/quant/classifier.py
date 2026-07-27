@@ -4,11 +4,11 @@ classifier.py — a positivity classifier fitted to ONE cohort's own labelled ce
 Why per-cohort and not a shipped model: segmentation generalises because a nucleus looks
 like a nucleus, but positivity does not, because positivity is a property of the assay
 rather than of the morphology. DAB is not quantitative and cutoffs do not transfer across
-antibody or scanner (ihc.md § 3.3). The best published universal IHC model reaches κ 0.578
+antibody or scanner (research/ihc.md § 3.3). The best published universal IHC model reaches κ 0.578
 on unseen stains; per-cohort fitting on this project's own data reaches held-out AUC 0.90.
 So the model is fitted where the variation actually lives — inside one cohort.
 
-What this adds over the fixed cutoff, **measured** (ihc.md § 11.6): on clean, well-stained,
+What this adds over the fixed cutoff, **measured** (research/ihc.md § 11.6): on clean, well-stained,
 single-protocol material it adds nothing — held-out F1 0.771 against 0.781 for the shipped
 0.20 OD cutoff, which is itself within 0.012 of the ceiling for any single-threshold rule.
 It wins when staining varies across the cohort. Simulating batch variation as a per-image

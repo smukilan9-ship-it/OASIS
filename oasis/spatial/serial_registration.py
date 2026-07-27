@@ -3,7 +3,7 @@ serial_registration.py
 Serial-section-appropriate registration + structural QC + local-residual TRE
 for paired H-DAB CD8 / TIM-3 sections (Phase A certification).
 
-WHY THIS EXISTS (see ihc.md "Phase A — registration redesign"):
+WHY THIS EXISTS (see research/ihc.md "Phase A — registration redesign"):
 The legacy path (registration.py: rigid Euler2D MI, then nuclear ORB/SIFT) cannot
 register serial sections — individual nuclei are different physical objects across
 the z-gap, so nuclear texture does not correspond — and its QC fails *closed* on
@@ -270,7 +270,7 @@ def _run_similarity(fixed, moving, init_tf, metric="mi"):
 
     metric="mi"  → Mattes mutual information on the intensity structural channel
                    (localises well but its histogram can ALIAS on quasi-periodic
-                   tissue, per ihc.md §18.4).
+                   tissue, per research/ihc.md §18.4).
     metric="ngf" → normalized cross-correlation on the GRADIENT-MAGNITUDE (edge)
                    image. SimpleITK has no true NGF/MIND optimiser metric (only the
                    six built-ins), so this is the closest edge-DRIVEN optimiser the
@@ -394,7 +394,7 @@ def register_similarity(ref_rgb, mov_rgb, pixel_size_um):
     by the Normalized Gradient Field (NGF) edge-alignment score — not by the optimiser
     metric value.
 
-    WHY (ihc.md §18.4): the intensity MI histogram, and dense NCC/phase-correlation,
+    WHY (research/ihc.md §18.4): the intensity MI histogram, and dense NCC/phase-correlation,
     SATURATE or ALIAS on this quasi-periodic tissue, which is what produced spurious
     period-shifted and identity picks. So we now:
       1. Generate candidates from TWO complementary optimisers per init — Mattes MI on

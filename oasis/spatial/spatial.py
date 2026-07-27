@@ -176,7 +176,7 @@ _NULL_SEED     = 0       # fixed seed → reproducible significance numbers
 # this many cells to be meaningful. Between this and dense_min_positive (30) the
 # marker is SPARSE: the test still runs on the marker-independent all-cell support
 # null (which does not need the sparse marker's own intensity), but the result
-# carries an explicit underpowered flag. See ihc.md §15.7 and Q3.
+# carries an explicit underpowered flag. See research/ihc.md §15.7 and Q3.
 _SPARSE_MIN_POSITIVE = 5
 
 
@@ -543,7 +543,7 @@ def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, win
     window (NOT a universal image property — the same image under a different ROI can
     give a different verdict).
 
-    ARCHITECTURE is a property of the TISSUE, not the marker (Q3 / ihc.md §15.7): the
+    ARCHITECTURE is a property of the TISSUE, not the marker (Q3 / research/ihc.md §15.7): the
     75 µm reweight is size-controlled when the tissue's characteristic length ℓ̂ is
     coarser than the band. So ℓ̂ is estimated from the marker-independent ALL-CELL
     support field (`support`) when available — which is always dense — instead of
@@ -887,7 +887,7 @@ def run_spatial_association(
         nulls=("reweighted","homogeneous")): the size-controlled intensity-reweighted
         inhomogeneous cross-K drives the verdict; homogeneous CSR is a diagnostic
         shared-preference flag only. (The earlier homogeneous+inhomogeneous+toroidal
-        "three null" design was RETIRED as anti-conservative — see ihc.md §15.3;
+        "three null" design was RETIRED as anti-conservative — see research/ihc.md §15.3;
         those nulls remain computable for the calibration scripts but never gate.)
       • A∩B INTERSECTION tissue window: the analysis window is the intersection of
         A's tissue mask and B's tissue mask (registered into A space), since regions
@@ -1048,7 +1048,7 @@ def run_spatial_association(
                 p_a, p_b, n_a_excl, n_b_excl = p_a_full, p_b_full, 0, 0
 
             # A (near-)absent marker has no spatial arrangement to test — report it as an
-            # abundance/absence finding, not "no association" (Q3 / ihc.md §15.7).
+            # abundance/absence finding, not "no association" (Q3 / research/ihc.md §15.7).
             if int(len(p_a)) < _SPARSE_MIN_POSITIVE or int(len(p_b)) < _SPARSE_MIN_POSITIVE:
                 absent = [m for m, n in ((m_a, len(p_a)), (m_b, len(p_b)))
                           if int(n) < _SPARSE_MIN_POSITIVE]
@@ -1209,7 +1209,7 @@ def run_spatial_association(
                 "dense_fallback": dense_info,
             }
 
-            # Architecture-scale guard (audit A6 / ihc.md §15.5): the reweighted
+            # Architecture-scale guard (audit A6 / research/ihc.md §15.5): the reweighted
             # primary is size-controlled only when tissue architecture is coarser than
             # the bandwidth. Measure ℓ̂ per marker (worst case) and flag any 'robust'
             # verdict whose architecture scale is too fine to trust — turning the

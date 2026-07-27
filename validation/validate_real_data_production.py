@@ -181,7 +181,7 @@ if __name__ == "__main__":
     log("        limited reweighted test removes. At the 10–50 µm CELL scale, CD8 do")
     log("        infiltrate the tumour MARGIN, giving genuine local proximity.")
     log("    (b) Tumour nests finer than the 75 µm intensity bandwidth can cause some")
-    log("        reweighting leak (ihc.md §15.5 bandwidth ≤ architecture-scale limit).")
+    log("        reweighting leak (research/ihc.md §15.5 bandwidth ≤ architecture-scale limit).")
     log("  ⇒ CD8–tumour is NOT a clean cell-scale negative control for this statistic;")
     log("    compartment-scale segregation is real but is deliberately not what a")
     log("    band-limited cross-type test measures. A cell-scale-exclusive pair (or")

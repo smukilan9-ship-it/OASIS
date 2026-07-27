@@ -64,7 +64,7 @@ dependency, and `device: mps` falls back to CPU automatically on non-Apple hardw
 QuPath is **not** required. It remains supported as an escape hatch by setting
 `segmenter: qupath` in `config.yaml`, which additionally needs QuPath 0.7.x with
 the InstanSeg extension and a `qupath_binary` path. The two paths are gated
-against each other on a 598-image benchmark; see `ihc.md` §7.
+against each other on a 598-image benchmark; see `research/ihc.md` §7.
 
 ## Setup
 

@@ -91,7 +91,7 @@
         </div>
         <div class="card">
           <div class="card-title">Correspondence certification (required)</div>
-          <div class="info-box warn" style="margin-bottom:12px"><b>Equal image dimensions do NOT verify shared cell coordinates.</b> A grossly non-corresponding tile with matching dimensions can produce a false double-positive signal (ihc.md §21.6, tile Case2_S3_1_1). Co-expression statistics are <b>fail-closed</b> until you confirm the three captures are the same physical section in shared coordinates. Verify visually (overlay/landmarks) before certifying. A hematoxylin cross-correlation diagnostic is reported per tile to inform this — it is advisory, not an automatic pass.</div>
+          <div class="info-box warn" style="margin-bottom:12px"><b>Equal image dimensions do NOT verify shared cell coordinates.</b> A grossly non-corresponding tile with matching dimensions can produce a false double-positive signal (research/ihc.md §21.6, tile Case2_S3_1_1). Co-expression statistics are <b>fail-closed</b> until you confirm the three captures are the same physical section in shared coordinates. Verify visually (overlay/landmarks) before certifying. A hematoxylin cross-correlation diagnostic is reported per tile to inform this — it is advisory, not an automatic pass.</div>
           <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
             <input type="checkbox" id="r-correspondence-certified">
             I have verified these images share cell coordinates (same physical section) and certify correspondence.

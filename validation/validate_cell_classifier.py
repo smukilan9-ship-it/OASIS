@@ -37,7 +37,7 @@ from oasis.quant import classifier as C                    # noqa: E402
 DATA = os.path.expanduser(
     "~/oasis_validation_datasets/DeepLIIF/inputs/DeepLIIF_Testing_Set")
 PANEL = 512
-FIXED_CUTOFF = 0.20          # the shipped nuclear default (ihc.md § 11.2)
+FIXED_CUTOFF = 0.20          # the shipped nuclear default (research/ihc.md § 11.2)
 MATCH_TOL_PX = 12.0          # centroid match radius between detection and ground truth
 
 

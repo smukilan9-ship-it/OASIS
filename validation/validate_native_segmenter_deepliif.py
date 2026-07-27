@@ -3,7 +3,7 @@ validate_native_segmenter_deepliif.py — the parity GATE for dropping QuPath.
 
 `validate_native_segmenter.py` shows the native segmenter reproduces the model exactly and
 QuPath's colour deconvolution to 0.003 OD. Neither proves the thing that actually matters: that
-the numbers ihc.md publishes still hold. Those were all measured through QuPath.
+the numbers research/ihc.md publishes still hold. Those were all measured through QuPath.
 
 This runs the native segmenter over the same 598 DeepLIIF images, with the same pixel size
 (0.25 µm) and DAB threshold (0.2) as the recorded QuPath run, writes GeoJSON in the same shape,

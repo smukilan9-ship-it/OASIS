@@ -161,7 +161,7 @@ VALIDATIONS = [
                  "cancels between observed and null (both use the same uncorrected estimator).",
         "purpose": "A/B the estimator with and without a translation edge correction at "
                    "fixed seeds and show identical calibration.",
-        "why": "Justifies the deliberate 'no edge correction' design decision (ihc.md §17).",
+        "why": "Justifies the deliberate 'no edge correction' design decision (research/ihc.md §17).",
         "datasets": [],
         "assumptions": "Same window/estimator for observed and null.",
         "limitations": "Demonstrated on the translation correction; not every edge scheme.",
@@ -182,7 +182,7 @@ VALIDATIONS = [
         "datasets": [],
         "assumptions": "Bandwidth (75 µm) exceeds the tissue architecture scale.",
         "limitations": "Mildly anti-conservative near the bandwidth; calibrated at a single "
-                       "bandwidth (disclosed in ihc.md §15.5).",
+                       "bandwidth (disclosed in research/ihc.md §15.5).",
         "interpretation": "PASS = shared-preference false-positive rate within tolerance.",
         "expected": "Shared-preference rate ~0.03 at bw=75 µm.",
         "runner": {"kind": "script", "script": "validate_primary_null_calibration.py"},
@@ -490,7 +490,7 @@ VALIDATIONS = [
         "purpose": "Exercise the certified-ROI gating of the spatial path on CIMA data.",
         "why": "Closes the loop between certification and what the pipeline will analyse.",
         "datasets": ["cima_landmarks", "codex_crc"],
-        "assumptions": "Certification thresholds as in ihc.md §3.5.",
+        "assumptions": "Certification thresholds as in research/ihc.md §3.5.",
         "limitations": "Few real certifiable pairs exist publicly.",
         "interpretation": "PASS = only certified ROIs are analysed.",
         "expected": "Certified ROI analysed; others refused.",
@@ -604,7 +604,7 @@ VALIDATIONS = [
                  "independent of tile size.",
         "purpose": "Cover the surfaces the parity gates never touch: repeatability, the adaptive "
                    "threshold port, blank/tiny/thin images, and tile-size invariance.",
-        "why": "Reproducibility is claimed throughout ihc.md; tile size is a performance knob "
+        "why": "Reproducibility is claimed throughout research/ihc.md; tile size is a performance knob "
                "that must not move a tissue-density statistic; background and edge tiles are "
                "routine inputs in production.",
         "datasets": [],
@@ -791,7 +791,7 @@ VALIDATIONS = [
         "purpose": "Warp a real DeepLIIF IHC panel by a known transform, segment both, "
                    "register, and check the reconstruction TRE + that the verdict is "
                    "recovered only WITH registration (necessity control).",
-        "why": "Bounds one side of the untestable real-DAB cell-scale gap (ihc.md §10): "
+        "why": "Bounds one side of the untestable real-DAB cell-scale gap (research/ihc.md §10): "
                "real pixels + full pipeline, with a geometric ground truth we can build.",
         "datasets": ["deepliif"],
         "assumptions": "Same-image warp → the two cell populations are identical (trivial, "

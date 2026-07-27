@@ -25,7 +25,7 @@ requires (notably a clearly labelled "Statement of need") and marks what only th
 author can supply.
 
 Numbers are deliberately NOT baked in here. Every quantitative claim should be
-copied from `ihc.md` / the `validation_reports/` bundles at the time of writing,
+copied from `research/ihc.md` / the `validation_reports/` bundles at the time of writing,
 so the paper cites figures that were re-measured against the submitted commit
 rather than remembered. Placeholders read [FIG: ...].
 
@@ -76,7 +76,7 @@ serial sections, but tooling that reports a per-cell "double-positive" count
 invites exactly that misreading. OASIS reports a population statistic and states
 in its output what the statistic does and does not license. [TODO: one sentence on
 the fail-closed gates — registration certification, bandwidth verdict, dense-tissue
-null selection — citing `ihc.md`.]
+null selection — citing `research/ihc.md`.]
 
 # Implementation
 
@@ -109,7 +109,7 @@ registration certification against public landmark datasets. Take the numbers fr
 the current `validation_reports/` bundles, not from memory.]
 
 Alternatives that were evaluated and rejected are documented rather than
-discarded; `valis.md` records why a registration backend that outperformed the
+discarded; `research/valis.md` records why a registration backend that outperformed the
 chosen one on a public benchmark was nonetheless removed, because it could not be
 certified honestly within this architecture.
 

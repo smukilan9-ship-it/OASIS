@@ -1,7 +1,7 @@
 """
 validate_native_segmenter.py — does the in-process InstanSeg reproduce QuPath?
 
-This is the gate that decides whether QuPath can be dropped. Every validated number in ihc.md
+This is the gate that decides whether QuPath can be dropped. Every validated number in research/ihc.md
 (det-F1 0.807 vs StarDist, class-F1 0.81 on DeepLIIF, the HNSCC membrane results) was measured
 through QuPath. Replacing the segmenter invalidates all of them unless the replacement agrees.
 

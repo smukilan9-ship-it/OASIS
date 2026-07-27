@@ -1,7 +1,7 @@
 """
 validate_architecture_scale.py — operating characteristics of the reweighted primary
 null as a function of tissue architecture scale, and validation of the architecture-
-scale estimator that gates it (audit A6 / ihc.md §15.5).
+scale estimator that gates it (audit A6 / research/ihc.md §15.5).
 
 WHY. The reweighted inhomogeneous cross-K (bandwidth 75 µm) assumes tissue
 architecture is COARSER than the reweighting bandwidth. When architecture varies

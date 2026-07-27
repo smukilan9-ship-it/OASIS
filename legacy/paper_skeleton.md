@@ -117,7 +117,7 @@ Pull rows from validation/registry.py. Numbers to include (VERIFY each before us
 - End-to-end bounding suite: keystone degradation (CODEX CD8/PD-1) + Validation B
   (known-warp DeepLIIF, reconstruction TRE ~1.6 µm) [+ Validation A once built].
 - **YOU WRITE:** the table + a paragraph per group. Frame the e2e as "we bound the untestable
-  case from three sides," per ihc.md §10.
+  case from three sides," per research/ihc.md §10.
 
 ## 6. Results / illustrative application (LL477)  ← proof-of-concept, NOT a finding
 - Present the discrimination story, not "3 associations":

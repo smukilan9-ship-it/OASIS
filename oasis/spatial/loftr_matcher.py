@@ -419,7 +419,7 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     # A VALIS-rigid recovery branch lived here for cross-modal ROIs where LoFTR finds nothing.
     # It was removed: its structural-residual certification over-certified 2-3x against held-out
     # expert landmarks, and no automatic method supplies anatomically-faithful correspondences on
-    # cross-modal pairs. Manual landmarks remain the only honest path there. See valis.md.
+    # cross-modal pairs. Manual landmarks remain the only honest path there. See research/valis.md.
 
     if ref_pts is None:                                # graceful fallback to landmarks
         if fallback_ref_lm is None or fallback_mov_lm is None:

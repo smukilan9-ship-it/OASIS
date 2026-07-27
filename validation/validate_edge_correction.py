@@ -1,6 +1,6 @@
 """
 validate_edge_correction.py — does EDGE CORRECTION change the reweighted cross-K
-null's calibration? (Settles "why no edge correction"; ihc.md §17.)
+null's calibration? (Settles "why no edge correction"; research/ihc.md §17.)
 
 Hypothesis: observed and null K are both computed with NO edge correction, so a
 systematic boundary undercount hits BOTH sides of the DCLF rank test and cancels →

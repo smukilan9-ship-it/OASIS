@@ -43,7 +43,7 @@ finer scale); optional persistent JVM-warm worker for multi-ROI speed; wire the 
 
 ## Original scope (retained for reference)
  Motivated by the ANHIR
-benchmark (`validation/valis_bench/RESULTS.md`, ihc.md §7.1): VALIS-rigid is faster than our
+benchmark (`validation/valis_bench/RESULTS.md`, research/ihc.md §7.1): VALIS-rigid is faster than our
 LoFTR pass (29 s vs 51 s/pair), distance-preserving, and — decisively — **produces
 correspondences on cross-modal H&E↔IHC stains where LoFTR returns 0 matches** (LoFTR: lung
 95–100%, mammary/breast/kidney 0%).
