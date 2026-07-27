@@ -736,15 +736,19 @@ def _generate_outputs(batch_metrics, cfg):
             print(f"  Overlay generation failed: {e}")
 
     # ── Stage 3: Dashboard + Excel ─────────────────────────
-    print(f"\nGenerating dashboard for {len(batch_metrics)} images...")
-    try:
-        from oasis.reporting.dashboard import generate_all_outputs
-        html_path, excel_path = generate_all_outputs(
-            batch_metrics, cfg["dashboard_dir"], cfg
-        )
-        print(f"\n  Open dashboard: file://{html_path}")
-    except Exception as e:
-        print(f"  Dashboard generation failed: {e}")
+    # Optional: the results table in the app is built from the per-image summary JSONs,
+    # not from the dashboard, so skipping this costs the workbook and the HTML page and
+    # nothing else.
+    if not cfg.get("generate_dashboard", True):
+        print("\nDashboard/Excel skipped (not selected in output options)")
+    else:
+        print(f"\nGenerating dashboard for {len(batch_metrics)} images...")
+        try:
+            from oasis.reporting.dashboard import generate_all_outputs as _gao
+            html_path, excel_path = _gao(batch_metrics, cfg["dashboard_dir"], cfg)
+            print(f"\n  Open dashboard: file://{html_path}")
+        except Exception as e:
+            print(f"  Dashboard generation failed: {e}")
 
     # ── Final summary ──────────────────────────────────────
     total_cells = sum(m["Total_Cells"] for m in batch_metrics)
@@ -765,8 +769,11 @@ def _generate_outputs(batch_metrics, cfg):
         patterns = [
             "*_detections.csv",
             "*_detections.geojson",
-            # Keep *_summary.json — needed by UI to display results
         ]
+        # *_summary.json is always WRITTEN — the app's results table is built from it —
+        # but it can be discarded afterwards if the user did not ask to keep it.
+        if not cfg.get("keep_summary_json", True):
+            patterns.append("*_summary.json")
         removed = 0
         for pattern in patterns:
             for f in _glob.glob(os.path.join(cfg["output_dir"], pattern)):

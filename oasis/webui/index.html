@@ -776,18 +776,24 @@ td.muted { color: var(--text3); font-size: 11px; }
   <!-- CONFIG VIEW -->
   <div class="view active" id="quant-config">
     <div class="scroll">
-      <!-- Guided wizard: 4 config steps mirroring the Spatial tab. Each step is a
-           .wizard-step; only the active one shows (quantWizardGoTo). Every input ID
-           is unchanged — this is a presentational reorganization, no science change. -->
+      <!-- Guided wizard. The step order follows what actually happens to an image:
+           you say what to analyse and where results go, you establish the physical
+           scale, the cells are segmented, the cells are classified, and then you
+           choose what to keep. Segmentation and classification were previously one
+           step, which put the DAB cutoff on the same screen as "nuclei are segmented
+           with InstanSeg" and made the cutoff look like a segmentation parameter.
+           They are separate concerns and are now separate steps. -->
       <div class="card" style="padding:14px">
         <div class="wizard-stepper" id="quant-wizard-stepper">
-          <button type="button" class="wstep active" data-step="1" onclick="quantWizardGoTo(1)"><span class="wstep-n">1</span> Inputs</button>
+          <button type="button" class="wstep active" data-step="1" onclick="quantWizardGoTo(1)"><span class="wstep-n">1</span> Inputs &amp; outputs</button>
           <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="2" onclick="quantWizardGoTo(2)"><span class="wstep-n">2</span> Calibration</button>
+          <button type="button" class="wstep" data-step="2" onclick="quantWizardGoTo(2)"><span class="wstep-n">2</span> Pixel size</button>
           <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="3" onclick="quantWizardGoTo(3)"><span class="wstep-n">3</span> Classification</button>
+          <button type="button" class="wstep" data-step="3" onclick="quantWizardGoTo(3)"><span class="wstep-n">3</span> Segmentation</button>
           <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="4" onclick="quantWizardGoTo(4)"><span class="wstep-n">4</span> Review &amp; run</button>
+          <button type="button" class="wstep" data-step="4" onclick="quantWizardGoTo(4)"><span class="wstep-n">4</span> Classification</button>
+          <span class="wstep-sep">→</span>
+          <button type="button" class="wstep" data-step="5" onclick="quantWizardGoTo(5)"><span class="wstep-n">5</span> Save &amp; run</button>
         </div>
         <div class="wstep-hint" id="quant-wizard-hint"></div>
       </div>
@@ -824,48 +830,98 @@ td.muted { color: var(--text3); font-size: 11px; }
             <input type="text" id="q-output" placeholder="Documents/OASIS/results">
             <button class="btn sm" onclick="pickInto('q-output', null)">Browse</button>
           </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Which files land
+            here is chosen at the last step — this is only where they go.</div>
         </div>
       </div>
       </div><!-- /q-step-1 -->
 
-      <!-- STEP 2: Calibration (pixel size) -->
+      <!-- STEP 2: Pixel size.
+           Previously four sibling radio buttons with no ordering, so a batch user had
+           to know that "scale_match" existed and was the right answer. It is now the
+           default whenever scale-bar images are actually present, and the screen is
+           organised as: where does the number come from, then what happens to the
+           images that source cannot cover. -->
       <div class="wizard-step" id="q-step-2" data-step="2">
       <div class="card">
         <div class="card-title">Pixel size <span style="color:#dc2626">*required</span></div>
-        <div class="info-box amber" style="margin-bottom:12px">Every measurement — cell density, ring size — depends on this. There is <b>no silent default</b>: set it explicitly, or the run is blocked.<span id="q-px-batch-hint" style="display:none"> In batch, this is the default for images that have no matched scale bar and no per-image override.</span></div>
+        <div class="info-box amber" style="margin-bottom:12px">Every measurement — cell
+          density, ring size, every distance in the Spatial tab — is in microns, and this
+          is what converts pixels to microns. There is <b>no silent default</b>: the run is
+          blocked until it is set.</div>
+
         <div style="display:flex;flex-direction:column;gap:8px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="radio" name="q-px" value="manual" checked onchange="onQuantPxChange()"> Enter manually
+          <label id="q-px-scalematch-opt" style="display:none;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="scale_match" onchange="onQuantPxChange()" style="margin-top:2px">
+            <span><b>Match each image to its own scale-bar image</b> <span class="badge amber" style="margin-left:4px">recommended</span>
+              <span style="display:block;color:var(--text3);font-weight:400;margin-top:2px">Most accurate: scale can differ between images even at the same magnification.</span></span>
           </label>
-          <div id="q-px-manual" style="padding-left:24px">
-            <input type="number" id="q-px-x" placeholder="µm/px — required" step="0.01" min="0.01" style="width:200px" oninput="quantPxTouched()">
+          <div id="q-px-scalematch" style="display:none;padding-left:24px">
+            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Scale-bar images
+              are read <b>only</b> for µm/px and are <b>excluded from analysis</b>. Each
+              analysis image uses its own matched bar.</div>
+            <button class="btn sm" onclick="previewQuantScaleMatches()">Re-check matches</button>
+            <div id="q-scale-match-preview" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
+
+            <!-- What happens to images the matcher could not cover. This is the part that
+                 was previously a bare "default µm/px" box with no explanation of when it
+                 applied, so it read as a second global setting rather than a fallback. -->
+            <div id="q-px-unmatched-block" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+              <div style="font-size:12px;font-weight:600;margin-bottom:6px">
+                Images with no matched scale bar (<span id="q-px-unmatched-count">0</span>)</div>
+              <div style="display:flex;flex-direction:column;gap:6px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="q-px-unmatched" value="one" checked onchange="onQuantUnmatchedChange()">
+                  Apply one pixel size to all of them
+                </label>
+                <div id="q-px-unmatched-one" style="padding-left:24px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+                  <input type="number" id="q-px-scalematch-default" placeholder="µm/px" step="0.01" min="0.01" style="width:120px" oninput="quantPxTouched()">
+                  <button class="btn sm" type="button" onclick="quantUseCohortPx()">Use cohort default (<span id="q-px-cohort-val2">…</span>)</button>
+                </div>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="q-px-unmatched" value="each" onchange="onQuantUnmatchedChange()">
+                  Set each one individually
+                </label>
+                <div id="q-px-unmatched-each" style="display:none;padding-left:24px">
+                  <div id="q-px-unmatched-list" style="display:flex;flex-direction:column;gap:6px"></div>
+                </div>
+              </div>
+            </div>
           </div>
-          <label id="q-px-scale-opt" style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="radio" name="q-px" value="scale" onchange="onQuantPxChange()"> Read from a 100 µm scale-bar image
+
+          <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="global" onchange="onQuantPxChange()" style="margin-top:2px">
+            <span><b>Use the cohort pixel size</b> — <span id="q-px-global-val">…</span> µm/px
+              <span style="display:block;color:var(--text3);font-weight:400;margin-top:2px">Set once in Settings for a whole cohort acquired on one scope at one magnification.</span></span>
+          </label>
+
+          <label id="q-px-scale-opt" style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="scale" onchange="onQuantPxChange()" style="margin-top:2px">
+            <span><b>Read one 100 µm scale-bar image</b>
+              <span style="display:block;color:var(--text3);font-weight:400;margin-top:2px">One bar, applied to everything in this run.</span></span>
           </label>
           <div id="q-px-scale" style="display:none;padding-left:24px">
             <button class="btn sm" onclick="quantPickScaleImage()">Select scale image…</button>
             <div id="q-px-scale-result" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
           </div>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="radio" name="q-px" value="global" onchange="onQuantPxChange()"> Use global default (<span id="q-px-global-val">…</span> µm/px, from Settings)
+
+          <label style="display:flex;align-items:flex-start;gap:8px;font-size:12px;cursor:pointer">
+            <input type="radio" name="q-px" value="manual" checked onchange="onQuantPxChange()" style="margin-top:2px">
+            <span><b>Type it in</b>
+              <span style="display:block;color:var(--text3);font-weight:400;margin-top:2px">Use when the value is known from the scope's specification.</span></span>
           </label>
-          <label id="q-px-scalematch-opt" style="display:none;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="radio" name="q-px" value="scale_match" onchange="onQuantPxChange()"> Take from scale images <span style="color:var(--text3);font-weight:400">— reference-only, matched per analysis image</span>
-          </label>
-          <div id="q-px-scalematch" style="display:none;padding-left:24px">
-            <div style="font-size:11px;color:var(--text3);margin-bottom:8px">Scale-bar images in the folder are used <b>only to read µm/px</b> — they are <b>excluded from analysis</b>. Each analysis image takes its own matched scale bar's pixel size; the default below covers any image without a match.</div>
-            <button class="btn sm" onclick="previewQuantScaleMatches()">Preview matched pairs</button>
-            <div id="q-scale-match-preview" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
-            <div style="margin-top:10px"><label style="font-size:12px;color:var(--text2)">Default µm/px for unmatched images <span style="color:#dc2626">*</span>
-              <input type="number" id="q-px-scalematch-default" placeholder="µm/px — required" step="0.01" min="0.01" style="width:150px;margin-left:6px" oninput="quantPxTouched()"></label></div>
+          <div id="q-px-manual" style="padding-left:24px">
+            <input type="number" id="q-px-x" placeholder="µm/px — required" step="0.01" min="0.01" style="width:200px" oninput="quantPxTouched()">
           </div>
         </div>
-        <div id="q-px-warn" style="display:none;margin-top:10px" class="info-box amber">No pixel size provided — enter it manually, read it from a scale bar, take it from matched scale images, or explicitly choose the global default before running.</div>
+        <div id="q-px-warn" style="display:none;margin-top:10px" class="info-box amber">No pixel size provided — pick one of the sources above before running.</div>
       </div>
 
       <div class="card" id="q-overrides-card">
-        <div class="card-title">Per-image pixel size overrides <span style="font-weight:400;font-size:11px;text-transform:none;color:var(--text3)">(optional)</span></div>
+        <div class="card-title">Per-image exceptions <span style="font-weight:400;font-size:11px;text-transform:none;color:var(--text3)">(optional)</span></div>
+        <div style="font-size:11px;color:var(--text3);margin-bottom:10px">Overrides win over
+          every source above, including a matched scale bar. Use only when you know a
+          specific image was acquired differently.</div>
         <div id="q-overrides-list" style="margin-bottom:10px"></div>
         <div style="display:flex;gap:8px">
           <select id="q-ov-file" style="flex:1"><option value="">— select image —</option></select>
@@ -875,11 +931,36 @@ td.muted { color: var(--text3); font-size: 11px; }
       </div>
       </div><!-- /q-step-2 -->
 
-      <!-- STEP 3: Segmentation & classification -->
+      <!-- STEP 3: Segmentation. Finding the cells. Nothing here decides positivity —
+           that is step 4. Keeping the DAB cutoff on this screen (as it was) implied the
+           cutoff changed what got segmented, which it never did. -->
       <div class="wizard-step" id="q-step-3" data-step="3">
       <div class="card">
-        <div class="card-title">Segmentation &amp; classification</div>
-        <div class="info-box amber" style="margin-bottom:12px">Nuclei are segmented with InstanSeg (fixed). These settings decide only how a cell is called <b>positive</b> — they do not change segmentation.</div>
+        <div class="card-title">Find the cells</div>
+        <div class="info-box" style="margin-bottom:12px">Every nucleus in the image is
+          segmented with the bundled <b>InstanSeg</b> model. The model is fixed and takes no
+          tuning — the only choice here is whether to correct the image first. Nothing on
+          this step decides which cells count as positive.</div>
+        <div class="toggle-row">
+          <span>Correct tone &amp; illumination before segmenting
+            <span style="color:var(--text3);font-size:11px">— per-image white balance;
+            recommended for faint or unevenly lit slides. Does not rescale DAB, so it
+            cannot shift positivity by itself.</span></span>
+          <div class="toggle" id="q-normalize-toggle" onclick="toggleEl('q-normalize-toggle')"></div>
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px">
+          Segmentation is cached. Re-running with the same images and the same pixel size
+          reuses it instead of segmenting again.</div>
+      </div>
+      </div><!-- /q-step-3 -->
+
+      <!-- STEP 4: Classification. Which cells are positive. -->
+      <div class="wizard-step" id="q-step-4" data-step="4">
+      <div class="card">
+        <div class="card-title">Call the positives</div>
+        <div class="info-box amber" style="margin-bottom:12px">These settings decide only
+          how a segmented cell is called <b>positive</b>. In batch you can still adjust the
+          cutoff per image, against each image's own histogram, after segmentation.</div>
         <div class="field"><label>Stain / biomarker <b>(required)</b></label>
             <select id="q-stain" onchange="quantStainChanged()">
               <option value="">— Select stain —</option>
@@ -892,12 +973,9 @@ td.muted { color: var(--text3); font-size: 11px; }
           <label>DAB threshold (optical density) — <b id="q-thresh-display">0.20</b> OD</label>
           <input type="range" id="q-thresh" min="5" max="50" value="20"
             oninput="document.getElementById('q-thresh-display').textContent=(this.value/100).toFixed(2)">
-          <div style="font-size:11px;color:var(--text3);margin-top:6px">One cutoff for the
-            whole cohort. Per-image exceptions can be set after segmentation.</div>
-        </div>
-        <div class="toggle-row">
-          <span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— recommended for faint / variable stains</span></span>
-          <div class="toggle" id="q-normalize-toggle" onclick="toggleEl('q-normalize-toggle')"></div>
+          <div style="font-size:11px;color:var(--text3);margin-top:6px">A starting value for
+            the whole cohort. After segmentation you see every image's DAB histogram and can
+            move this, or set an exception for a single image, before anything is written.</div>
         </div>
         <div class="toggle-row">
           <span>Membranous marker <span class="beta-tag">BETA</span> <span style="color:var(--text3);font-size:11px">— measure DAB in the cytoplasmic ring (CD8 / TIM-3); uses calibrated completeness cutoffs (Calibrate tab). Reliable only on well-stained tissue: faint membrane staining is a contrast limit, not a threshold to tune.</span></span>
@@ -938,29 +1016,49 @@ td.muted { color: var(--text3); font-size: 11px; }
           <button class="btn sm" onclick="addQuantBiomarker()">Add</button>
         </div>
       </div>
-      </div><!-- /q-step-3 -->
+      </div><!-- /q-step-4 -->
 
-      <!-- STEP 4: Review & run -->
-      <div class="wizard-step" id="q-step-4" data-step="4">
+      <!-- STEP 5: What to keep, then run. Output selection was previously two toggles
+           whose names described implementation artefacts ("keep working files") rather
+           than what the researcher gets. Presets first, per-file control behind them. -->
+      <div class="wizard-step" id="q-step-5" data-step="5">
       <div class="card">
-        <div class="card-title">Output options</div>
-        <div class="info-box amber" style="margin-bottom:12px">A run keeps only the results you need: <b>overlays</b>, the <b>dashboard + Excel</b>, and per-image <b>summary.json</b>. Working/debug files (per-cell CSV, GeoJSON, segmentation logs) are cleaned up automatically — turn the toggle on to keep them (needed to reuse this segmentation in the Spatial tab).</div>
-        <div class="toggle-row">
-          <span>Generate cell boundary overlays</span>
-          <div class="toggle on" id="q-overlay-toggle" onclick="toggleEl('q-overlay-toggle')"></div>
+        <div class="card-title">What to save</div>
+        <div class="info-box" style="margin-bottom:12px">Everything is written to the output
+          folder from step 1. Pick a preset, or choose file by file.</div>
+        <div class="seg-tabs" id="q-out-preset-tabs">
+          <button class="seg-tab active" id="q-out-preset-standard" onclick="quantSetOutputPreset('standard')">Standard</button>
+          <button class="seg-tab" id="q-out-preset-everything" onclick="quantSetOutputPreset('everything')">Everything</button>
+          <button class="seg-tab" id="q-out-preset-custom" onclick="quantSetOutputPreset('custom')">Choose files…</button>
         </div>
-        <div class="toggle-row">
-          <span>Keep working files <span style="color:var(--text3);font-size:11px">— per-cell CSV, GeoJSON, logs; needed for Spatial reuse / membrane re-measure</span></span>
-          <div class="toggle" id="q-keep-working-toggle" onclick="toggleEl('q-keep-working-toggle')"></div>
+        <div id="q-out-preset-note" style="font-size:11px;color:var(--text3);margin-top:8px"></div>
+
+        <div id="q-out-files" style="display:none;margin-top:12px;border-top:1px solid var(--border);padding-top:10px">
+          <div class="toggle-row">
+            <span>Results table &amp; dashboard <span style="color:var(--text3);font-size:11px">— the Excel workbook and HTML dashboard</span></span>
+            <div class="toggle on" id="q-out-dashboard" onclick="toggleEl('q-out-dashboard'); quantOutputTouched()"></div>
+          </div>
+          <div class="toggle-row">
+            <span>Per-image summary JSON <span style="color:var(--text3);font-size:11px">— counts, positivity, the exact settings used</span></span>
+            <div class="toggle on" id="q-out-summary" onclick="toggleEl('q-out-summary'); quantOutputTouched()"></div>
+          </div>
+          <div class="toggle-row">
+            <span>Cell boundary overlays <span style="color:var(--text3);font-size:11px">— the images with called cells drawn on them</span></span>
+            <div class="toggle on" id="q-overlay-toggle" onclick="toggleEl('q-overlay-toggle'); quantOutputTouched()"></div>
+          </div>
+          <div class="toggle-row">
+            <span>Per-cell measurements <span style="color:var(--text3);font-size:11px">— CSV and GeoJSON, one row per cell. <b>Required to reuse this segmentation in the Spatial tab</b> or to re-measure membrane.</span></span>
+            <div class="toggle" id="q-keep-working-toggle" onclick="toggleEl('q-keep-working-toggle'); quantOutputTouched()"></div>
+          </div>
         </div>
       </div>
 
       <div class="card" id="q-review-card">
-        <div class="card-title">Review</div>
+        <div class="card-title">Check before running</div>
         <div id="q-review-summary" style="font-size:12px;line-height:1.7"></div>
-        <div style="font-size:11px;color:var(--text3);margin-top:10px">Segmentation is cached and reused — the parameters above are locked in when the run starts. Press <b>Run Analysis</b> below to start.</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:10px">Press <b>Run Analysis</b> below to start.</div>
       </div>
-      </div><!-- /q-step-4 -->
+      </div><!-- /q-step-5 -->
 
       <div class="wizard-nav" id="quant-wizard-nav">
         <button type="button" class="btn" id="quant-wizard-back" onclick="quantWizardGoTo(quantWizardStep - 1)">← Back</button>
@@ -1510,7 +1608,12 @@ td.muted { color: var(--text3); font-size: 11px; }
     </div>
 
     <div class="card">
-      <div class="card-title">Default pixel calibration</div>
+      <div class="card-title">Cohort pixel size</div>
+      <div class="info-box amber" style="margin-bottom:12px">
+        The µm/px for a cohort acquired on <b>one scope at one magnification</b>. Set it
+        once here and every run can take it without retyping. It is the weakest of the
+        three sources and is used only when nothing better is available.
+      </div>
       <div class="row3">
         <div class="field"><label>Pixel size X (µm/px)</label>
           <input type="number" id="s-px-x" value="0.50" step="0.01" min="0.01">
@@ -1518,16 +1621,32 @@ td.muted { color: var(--text3); font-size: 11px; }
         <div class="field"><label>Pixel size Y (µm/px)</label>
           <input type="number" id="s-px-y" value="0.50" step="0.01" min="0.01">
         </div>
-        <div class="field"><label>Default objective</label>
+        <div class="field"><label>Objective this was measured at</label>
           <select id="s-objective">
             <option>4x</option><option selected>10x</option>
             <option>20x</option><option>40x</option><option>60x</option><option>100x</option>
           </select>
         </div>
       </div>
-      <div class="info-box">
-        Enter the calibrated pixel size from your microscope or scanner software.
-        Used as the default for all analyses unless overridden per-image or per-run.
+
+      <!-- Precedence, stated once, in the order the resolver applies it. Users were
+           previously left to infer this from four sibling radio buttons on the Quant
+           step and a separate overrides card. -->
+      <div class="section-label" style="margin-top:14px">Which pixel size wins</div>
+      <table style="width:100%;border-collapse:collapse;font-size:12px">
+        <tbody>
+          <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>1.</b> Per-image exception</td>
+              <td style="color:var(--text2)">Set by hand for one image in the Quant pixel-size step. Always wins.</td></tr>
+          <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>2.</b> Matched scale bar</td>
+              <td style="color:var(--text2)">Measured from that image's own 100 µm bar. Best evidence — scale varies between images even at one magnification.</td></tr>
+          <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>3.</b> This run's value</td>
+              <td style="color:var(--text2)">A single scale bar, or a number typed on the Quant step.</td></tr>
+          <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>4.</b> Cohort pixel size</td>
+              <td style="color:var(--text2)">The value above, when a run explicitly asks for it. Never applied silently.</td></tr>
+        </tbody>
+      </table>
+      <div style="font-size:11px;color:var(--text3);margin-top:8px">
+        A run is blocked rather than guessing: if none of these is available, nothing is measured.
       </div>
     </div>
 
@@ -2258,6 +2377,8 @@ async function loadSetup() {
   quantGlobalPx = s.pixel_size_x || 0.5;
   const gv = document.getElementById('q-px-global-val');
   if (gv) gv.textContent = quantGlobalPx;
+  const gv2 = document.getElementById('q-px-cohort-val2');
+  if (gv2) gv2.textContent = `${quantGlobalPx} µm/px`;
   const spx = document.getElementById('spatial-session-px-val');
   if (spx) spx.value = s.pixel_size_x || 0.5;
 
@@ -2637,6 +2758,7 @@ function onQuantPxChange() {
   document.getElementById('q-px-scale').style.display = v === 'scale' ? 'block' : 'none';
   const sm = document.getElementById('q-px-scalematch');
   if (sm) sm.style.display = v === 'scale_match' ? 'block' : 'none';
+  if (v === 'scale_match') onQuantUnmatchedChange();
   // Selecting "take from scale images" runs the match preview for the current folder.
   if (v === 'scale_match') {
     const folder = document.getElementById('q-input').value.trim();
@@ -2651,6 +2773,116 @@ function onQuantPxChange() {
 function quantPxTouched() {
   const w = document.getElementById('q-px-warn');
   if (w) w.style.display = 'none';
+}
+
+// ── Images the scale-bar matcher could not cover ────────────────────────────
+// Two honest choices, and no third silent one: give them all the same number, or set
+// each. Whichever is chosen, the value is explicit and appears in the run's settings.
+function onQuantUnmatchedChange() {
+  const v = document.querySelector('input[name="q-px-unmatched"]:checked')?.value || 'one';
+  const one = document.getElementById('q-px-unmatched-one');
+  const each = document.getElementById('q-px-unmatched-each');
+  if (one)  one.style.display  = v === 'one'  ? 'flex' : 'none';
+  if (each) each.style.display = v === 'each' ? 'block' : 'none';
+  if (v === 'each') renderQuantUnmatchedList();
+  quantPxTouched();
+}
+
+// Per-image rows for the "set each one individually" choice. These write into the same
+// quantOverrides map the exceptions card uses, so there is one source of truth for a
+// per-image pixel size no matter which screen set it.
+function renderQuantUnmatchedList() {
+  const host = document.getElementById('q-px-unmatched-list');
+  if (!host) return;
+  const items = quantScaleFallbackItems();
+  if (!items.length) {
+    host.innerHTML = '<div style="color:var(--text3);font-size:11px">Every image matched a scale bar — nothing to set.</div>';
+    return;
+  }
+  host.innerHTML = items.map((item, i) => {
+    const cur = quantOverrides[item.filename];
+    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span style="flex:1;min-width:150px;font-size:11px">${esc(item.filename)}</span>
+      <input type="number" step="0.01" min="0.01" style="width:96px"
+             placeholder="µm/px" value="${cur != null ? cur : ''}"
+             oninput="quantSetUnmatchedPx(${i}, this.value)">
+      <span style="font-size:11px;color:${cur != null ? 'var(--ok,#166534)' : 'var(--text3)'}">
+        ${cur != null ? 'set' : 'not set'}</span>
+    </div>`;
+  }).join('');
+}
+
+function quantSetUnmatchedPx(i, val) {
+  const item = quantScaleFallbackItems()[i];
+  if (!item) return;
+  const px = parseFloat(val);
+  if (px > 0) quantOverrides[item.filename] = px;
+  else delete quantOverrides[item.filename];
+  renderQuantOverrides();
+  quantPxTouched();
+}
+
+// Copy the cohort pixel size from Settings into the unmatched-images box. It is copied,
+// not referenced, so the run records the number that was actually used even if the
+// cohort setting changes later.
+function quantUseCohortPx() {
+  const box = document.getElementById('q-px-scalematch-default');
+  if (box && quantGlobalPx > 0) { box.value = quantGlobalPx; quantPxTouched(); }
+  else showToast('No cohort pixel size is set in Settings');
+}
+
+// ── What to save ────────────────────────────────────────────────────────────
+// Presets name the OUTCOME ("everything", "standard"), the file list names the FILES.
+// The old UI had only two toggles, one of which was called "keep working files" — a
+// description of an implementation detail rather than of anything a researcher wants.
+let quantOutputPreset = 'standard';
+const QUANT_OUTPUT_PRESETS = {
+  standard:   { dashboard: true, summary: true, overlay: true,  working: false },
+  everything: { dashboard: true, summary: true, overlay: true,  working: true  },
+};
+const QUANT_OUTPUT_NOTES = {
+  standard:   'Results table, dashboard, per-image summary and overlays. Per-cell files are discarded.',
+  everything: 'All of the above plus per-cell CSV and GeoJSON — needed to reuse this segmentation in the Spatial tab.',
+  custom:     'Choose file by file below.',
+};
+function quantSetOutputPreset(p) {
+  quantOutputPreset = p;
+  for (const k of ['standard', 'everything', 'custom']) {
+    const b = document.getElementById('q-out-preset-' + k);
+    if (b) b.classList.toggle('active', k === p);
+  }
+  const files = document.getElementById('q-out-files');
+  if (files) files.style.display = p === 'custom' ? 'block' : 'none';
+  const note = document.getElementById('q-out-preset-note');
+  if (note) note.textContent = QUANT_OUTPUT_NOTES[p] || '';
+  const preset = QUANT_OUTPUT_PRESETS[p];
+  if (preset) {
+    setToggle('q-out-dashboard', preset.dashboard);
+    setToggle('q-out-summary', preset.summary);
+    setToggle('q-overlay-toggle', preset.overlay);
+    setToggle('q-keep-working-toggle', preset.working);
+  }
+}
+// Touching an individual file switches the preset to custom, so the label can never
+// claim "Standard" while the selection says otherwise.
+function quantOutputTouched() {
+  if (quantOutputPreset !== 'custom') quantSetOutputPreset('custom');
+}
+function setToggle(id, on) {
+  const el = document.getElementById(id);
+  if (el) el.classList.toggle('on', !!on);
+}
+// Plain-language list of what this run will leave behind, for the pre-run check.
+function quantOutputSummaryText() {
+  const parts = [];
+  if (isOn('q-out-dashboard'))       parts.push('dashboard + Excel');
+  if (isOn('q-out-summary'))         parts.push('summary JSON');
+  if (isOn('q-overlay-toggle'))      parts.push('overlays');
+  if (isOn('q-keep-working-toggle')) parts.push('per-cell CSV/GeoJSON');
+  const label = quantOutputPreset === 'custom' ? 'chosen files' : quantOutputPreset;
+  if (!parts.length) return `${label} — nothing (results shown in-app only)`;
+  const reuse = isOn('q-keep-working-toggle') ? '' : ' · not reusable in Spatial';
+  return `${label} — ${parts.join(', ')}${reuse}`;
 }
 
 function quantStainChanged() {
@@ -2683,6 +2915,20 @@ async function onQuantFolderPicked(folder) {
     : 'No images found in this folder';
   quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
   renderQuantScaleMatches();
+  // SCALE MATCHING IS THE DEFAULT WHEN IT IS POSSIBLE. Pixel size can differ between
+  // images acquired at the same nominal magnification, so a per-image bar is strictly
+  // better evidence than one number for the folder. The user previously had to know the
+  // option existed and select it; now it is chosen for them when the folder actually
+  // contains scale images, and they can still pick something else.
+  if (quantMode === 'batch' && !isQuantScaleMatchingOn()) {
+    const probe = await previewQuantScaleMatches({ silent: true });
+    if (probe && (probe.pairs || []).length) {
+      const r = document.querySelector('input[name="q-px"][value="scale_match"]');
+      if (r) { r.checked = true; onQuantPxChange(); }
+      showToast(`Matched ${probe.pairs.length} scale image(s) — using per-image pixel sizes`);
+      return;
+    }
+  }
   if (isQuantScaleMatchingOn()) await previewQuantScaleMatches();
 }
 
@@ -2725,6 +2971,16 @@ function renderQuantScaleMatches() {
 
   const pairs = quantScaleMatches.pairs || [];
   const fallback = quantScaleFallbackItems();
+  // Surface the unmatched-images decision only when there ARE unmatched images. An
+  // always-visible "default for unmatched" box invited a value that never applied.
+  const blk = document.getElementById('q-px-unmatched-block');
+  if (blk) blk.style.display = fallback.length ? 'block' : 'none';
+  const cnt = document.getElementById('q-px-unmatched-count');
+  if (cnt) cnt.textContent = String(fallback.length);
+  if (fallback.length &&
+      document.querySelector('input[name="q-px-unmatched"]:checked')?.value === 'each') {
+    renderQuantUnmatchedList();
+  }
   const pairRows = pairs.length ? pairs.map(p => `
     <tr>
       <td>${esc(p.filename)}</td>
@@ -2759,18 +3015,22 @@ function renderQuantScaleMatches() {
   `;
 }
 
-async function previewQuantScaleMatches() {
+// `silent` probes the folder to decide whether scale matching is even available, without
+// shouting at a user who never asked for it. It returns the result instead of a boolean so
+// the caller can count the pairs it found.
+async function previewQuantScaleMatches(opts) {
+  const silent = !!(opts && opts.silent);
   const folder = document.getElementById('q-input').value.trim();
-  if (!folder) { showToast('Select an input folder first'); return false; }
+  if (!folder) { if (!silent) showToast('Select an input folder first'); return silent ? null : false; }
   const res = await window.pywebview.api.preview_quant_scale_matches(folder);
-  if (res.status !== 'ok') {
-    showToast('Scale match preview failed: ' + (res.error || 'unknown error'));
-    return false;
+  if (!res || res.status !== 'ok') {
+    if (!silent) showToast('Scale match preview failed: ' + ((res && res.error) || 'unknown error'));
+    return silent ? null : false;
   }
   quantScaleMatches = res;
   setQuantOverrideOptions((res.analysis_images || []).map(x => x.filename));
-  renderQuantScaleMatches();
-  return true;
+  if (!silent) renderQuantScaleMatches();
+  return silent ? res : true;
 }
 
 function quantApplyScaleManual(i) {
@@ -2867,15 +3127,13 @@ function quantSetMode(m) {
   document.getElementById('q-batch-config').style.display  = batch ? 'block' : 'none';
   document.getElementById('q-overrides-card').style.display  = batch ? 'block' : 'none';
   document.getElementById('q-biomarkers-card').style.display = batch ? 'block' : 'none';
-  // Pixel-size options are mode-specific: single reads from ONE scale-bar image; batch
-  // takes µm/px from MATCHED scale images across the folder (reference-only). The other
-  // (manual/global) choice is the default for images without a match.
+  // Pixel-size sources are mode-specific: single reads ONE scale-bar image; batch matches
+  // a scale image per analysis image. Scale matching is offered first in batch and is
+  // selected automatically once a folder is found to contain scale images.
   const scaleOpt = document.getElementById('q-px-scale-opt');
   if (scaleOpt) scaleOpt.style.display = batch ? 'none' : 'flex';
   const smOpt = document.getElementById('q-px-scalematch-opt');
   if (smOpt) smOpt.style.display = batch ? 'flex' : 'none';
-  const bhint = document.getElementById('q-px-batch-hint');
-  if (bhint) bhint.style.display = batch ? 'inline' : 'none';
   // Leaving a mode cancels a now-hidden pixel-size choice → fall back to manual.
   const picked = document.querySelector('input[name="q-px"]:checked')?.value;
   if ((batch && picked === 'scale') || (!batch && picked === 'scale_match')) {
@@ -2964,6 +3222,12 @@ async function runQuantAnalysis() {
     review_threshold:      !isOn('q-membrane-toggle') && !document.getElementById('q-classifier').value,
     preprocess_normalize:  isOn('q-normalize-toggle'),
     generate_overlays:     isOn('q-overlay-toggle'),
+    // Output selection (step 5). The dashboard/Excel is genuinely optional; the summary
+    // JSON is always written because the results table is built from it, and this flag
+    // only decides whether it survives cleanup.
+    generate_dashboard:    isOn('q-out-dashboard'),
+    keep_summary_json:     isOn('q-out-summary'),
+    output_preset:         quantOutputPreset,
     // Results-only by default: working/debug files (CSV, GeoJSON, logs, Groovy) are
     // cleaned up unless the user opts to keep them (e.g. to reuse in the Spatial tab).
     cleanup_intermediates: !isOn('q-keep-working-toggle'),
@@ -3529,13 +3793,14 @@ function spatialWizardGoTo(n) {
 }
 
 // ── Quant guided wizard (mirrors the Spatial wizard; presentational only) ──
-const QUANT_WIZARD_STEPS = 4;
+const QUANT_WIZARD_STEPS = 5;
 let quantWizardStep = 1;
 const QUANT_WIZARD_HINTS = {
-  1: 'Load the image (or a batch folder) and choose where results go. In batch you can auto-match scale-bar images that live in the same folder.',
-  2: 'Set the pixel size — the physical scale every measurement depends on. Use the global default, enter it for this run, or detect it from a 100 µm scale-bar image; override per image if needed.',
-  3: 'Choose the marker and how positivity is called: a fixed nuclear DAB cutoff applied across the cohort, or the membranous cytoplasm-ring compartment. Segmentation is InstanSeg — these choices shape classification only.',
-  4: 'Review the resolved settings and output options, then Run. Segmentation is cached and reused, so the parameters above are locked in when the run starts.',
+  1: 'Say what to analyse and where results should go. In batch, drop the scale-bar images in the same folder and they are matched automatically.',
+  2: 'Establish the physical scale. In batch each image can take its own matched scale bar; anything unmatched is handled explicitly rather than silently.',
+  3: 'Find the cells. InstanSeg segments every nucleus and takes no tuning — the only choice is whether to correct the image first.',
+  4: 'Decide which segmented cells count as positive. In batch you can still adjust this per image against its own histogram after segmentation.',
+  5: 'Choose what to keep, check the settings, and run.',
 };
 function quantWizardGoTo(n) {
   n = Math.max(1, Math.min(QUANT_WIZARD_STEPS, Number(n) || 1));
@@ -3595,6 +3860,10 @@ function quantBuildReview() {
     ['Compartment', membrane ? 'Membranous (cytoplasm ring)' : 'Nuclear'],
     ['Positivity', esc(thrTxt)],
     ['Stain normalization', isOn('q-normalize-toggle') ? 'on' : 'off'],
+    // Say what will actually land on disk. The preset name alone does not tell the user
+    // whether per-cell files survive, and that decides whether this run can be reused in
+    // the Spatial tab later.
+    ['Saving', esc(quantOutputSummaryText())],
   ];
   if (mode === 'batch') {
     rows.push(['Scale-image auto-match', isQuantScaleMatchingOn() ? 'on' : 'off']);
@@ -5649,6 +5918,7 @@ window.addEventListener('pywebviewready', async () => {
   renderQuantOverrides();
   renderQuantBiomarkers();
   quantSetMode('single');
+  quantSetOutputPreset('standard');
   quantWizardGoTo(1);
   spatialAssocSetMode('single');
   spatialAssocSetFolderMode('two_folder');
