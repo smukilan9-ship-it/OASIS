@@ -2925,12 +2925,12 @@ function renderQuantUnmatchedList() {
   }
   host.innerHTML = items.map((item, i) => {
     const cur = quantOverrides[item.filename];
-    return `<div class="q-fbrow">
+    return `<div class="q-fbrow" title="${esc(item.reason || '')}">
       <span class="q-fbname" title="${esc(item.filename)}">${esc(item.filename)}</span>
       <input type="number" step="0.01" min="0.01" placeholder="µm/px"
              value="${cur != null ? cur : ''}"
              oninput="quantSetUnmatchedPx(${i}, this.value)">
-      <span class="q-fbstate${cur != null ? ' ok' : ''}">${cur != null ? 'set' : 'not set'}</span>
+      <span class="q-fbstate${cur != null ? ' ok' : ''}" id="q-fbstate-${i}">${cur != null ? 'set' : 'not set'}</span>
     </div>`;
   }).join('');
 }
@@ -2941,9 +2941,13 @@ function quantSetUnmatchedPx(i, val) {
   const px = parseFloat(val);
   if (px > 0) quantOverrides[item.filename] = px;
   else delete quantOverrides[item.filename];
+  // Patch this row's state in place. Re-rendering the list would take the focus and the
+  // caret out of the box being typed into, so the row used to keep saying "not set" while
+  // the value was in fact accepted — the control disagreeing with itself.
+  const st = document.getElementById('q-fbstate-' + i);
+  if (st) { st.textContent = px > 0 ? 'set' : 'not set'; st.classList.toggle('ok', px > 0); }
   renderQuantOverrides();
   quantPxTouched();
-  quantUpdateUnmatchedState();
 }
 
 // Copy the cohort pixel size from Settings into the unmatched-images box. It is copied,
