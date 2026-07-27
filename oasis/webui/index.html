@@ -1174,9 +1174,13 @@ td.muted { color: var(--text3); font-size: 11px; }
             more brown. <span id="q-od-nuclear-plain">A cell is positive when the DAB optical
             density inside its nucleus is above this value.</span><span id="q-od-membrane-plain"
             style="display:none">In membranous mode this is a <b>per-pixel</b> value: a pixel
-            of the ring counts as stained when its DAB optical density is above it. It is
-            measured on the same scale as the nuclear cutoff, so a number that separates
-            positive from negative nuclei is a sensible starting point here too.</span></div>
+            of the ring counts as stained when its DAB optical density is above it. It is in
+            the same OD units as the nuclear cutoff — the ring channel is calibrated onto the
+            nuclear scale before the comparison — but it is <b>not the same number</b>: the
+            nuclear cutoff is compared against an average over a whole nucleus, this against
+            single pixels, and per-pixel optical density spreads far wider than an average of
+            it does. Cutoffs fitted on labelled cells have landed between 0.08 and 0.30 across
+            cohorts, so a nuclear value carried across will not generally hold.</span></div>
           <input type="range" id="q-thresh" min="5" max="50" value="20"
             oninput="document.getElementById('q-thresh-display').textContent=(this.value/100).toFixed(2)">
           <div class="q-note" style="margin-top:6px" id="q-od-note">A starting value for the
@@ -1194,10 +1198,14 @@ td.muted { color: var(--text3); font-size: 11px; }
             rim and reject speckle. The two numbers together are the entire rule.</div>
           <input type="range" id="q-ringfrac" min="2" max="60" value="15"
             oninput="document.getElementById('q-ringfrac-display').textContent=(this.value/100).toFixed(2)">
-          <div class="q-note" style="margin-top:6px">Starting value 0.15, from the cutoffs
-            fitted on the public CRC-ICM TIM-3 set (held-out AUC 0.93). A membrane classifier
-            trained on your own labelled cells in the <b>Classifier</b> tab fits both numbers
-            to your staining and fills them in here.</div>
+          <div class="q-note" style="margin-top:6px"><b>Both numbers are worth fitting rather
+            than guessing.</b> What has been validated here is the completeness rule, using
+            cutoffs fitted on labelled cells — not cutoffs chosen by eye. Labelling in the
+            <b>Classifier</b> tab derives the pixel threshold from the ring pixels of cells you
+            marked negative, picks the ring fraction that best separates your labels, and
+            reports a leave-one-cell-out score so you can see whether the marker is callable on
+            your staining at all. The values above are a starting point: 0.15 and 0.10 come
+            from the public CRC-ICM TIM-3 set, whose own fitted pixel threshold was 0.30.</div>
           <div class="q-inline" style="margin-top:12px">
             <span class="q-fbname" style="flex:none">Load cutoffs from a saved calibration</span>
             <select id="q-calib-profile" style="flex:1;min-width:260px;max-width:420px"
