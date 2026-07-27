@@ -5,7 +5,11 @@ Method list: `^    def <name>(self` in `oasis/webui/api.py` (+ `restained_api.at
 Call sites: `pywebview.api.<name>` in `oasis/webui/index.html` and `restained_coexpression.js`.
 
 **56 public API methods · 41 unique UI call sites · 0 UI calls with no backend · 15 backend
-methods the UI never calls.**
+methods the UI never calls _through_ `pywebview.api`.**
+
+That last count is an upper bound, not a verdict: the API also pushes results to the UI as
+events (`self._emit`), so a method can be fully wired and still never appear in a call-site
+grep. `get_review_data` is exactly that case and is listed under A, not B.
 
 Zero missing backends is the good news: nothing in the interface calls something that
 does not exist. The 15 below are the real finding, and they are *not* all dead code —
@@ -18,6 +22,7 @@ three distinct things are mixed together, and they need opposite treatment.
 | `set_window` | `app.py`, `serve.py` (host wiring) |
 | `get_home` | `oasis/webui/restained_coexpression.js` |
 | `certify_expert_landmarks` | validation harnesses; the UI import button was deliberately removed (see the note at `index.html` ~4850) |
+| `get_review_data` | `api.py:677` — pushed to the UI as a `review` event after segmentation, not fetched by the UI. A `pywebview.api.*` grep cannot see server-push endpoints; this one is fully wired and drives the threshold-review screen. |
 
 ## B. Features that exist in the backend but were never given a control — WIRE THESE
 
@@ -26,8 +31,7 @@ cannot reach.
 
 | method | what it does | rebuild action |
 |---|---|---|
-| `preview_threshold` | what a candidate cutoff would call positive, writing nothing | **Quant.** This is the backend for the live-threshold-with-zoom feature; it already exists. |
-| `get_review_data` | per-image DAB distributions for the images just segmented | **Quant.** Feeds the same review step. |
+| `preview_threshold` | what a candidate cutoff would call positive, writing nothing | **Quant.** The backend for a live cutoff preview, already written and never surfaced. The review screen currently re-renders from cached per-cell OD values instead. |
 | `delete_classifier` | removes a saved classifier | **Classifier.** Tab can save but not delete. |
 | `delete_calibration` | removes a saved calibration | Folds into Classifier when Calibrate retires. |
 | `auto_certify_regions` | tile the tissue and certify each region automatically | **Spatial.** Confirm whether `certify_spatial_auto` superseded it; if so it belongs in D, not here. |
