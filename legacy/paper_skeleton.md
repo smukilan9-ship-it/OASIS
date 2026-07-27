@@ -1,4 +1,4 @@
-# OASIS — Paper Skeleton (JPI methods/tools paper)
+# OASIS — Paper Skeleton (methods/tools paper)
 
 **How to use this file:** each section gives (a) its PURPOSE, (b) the POINTS/FACTS to cover
 (these are *your* real results — verify each against the current code/JSON before you rely on
@@ -153,5 +153,5 @@ Pull rows from validation/registry.py. Numbers to include (VERIFY each before us
 - [ ] Every abstract claim traces to a row in §5 (the claims-vs-evidence spine).
 - [ ] "No single-cell co-expression / no biological finding" stated in abstract, intro, discussion.
 - [ ] Every statistical sentence and every citation independently verified (models hallucinate both).
-- [ ] AI-use disclosed per JPI policy.
+- [ ] AI-use disclosed per the target journal's policy.
 - [ ] Authorship + data permission settled with the data provider before preprinting.

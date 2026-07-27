@@ -225,7 +225,7 @@ and step 1 is the honest test of whether the membranous classifier is worth buil
   rather than after the tab is built.
 - **This is parity with QuPath**, which has had trained object classifiers since 0.2. That
   is fine — it is the right design and being second to it does not make it wrong — but it
-  should not be presented as the novel contribution in the JPI paper. The novel contribution
+  should not be presented as the novel contribution in the paper. The novel contribution
   is the spatial association pipeline.
 - **Labelling burden is real** and falls on the user, per cohort, per marker. The tab should
   be honest that this is the cost of a defensible answer, and that the fixed cutoff plus the
