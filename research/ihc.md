@@ -265,10 +265,54 @@ decides *whether*:
 
 **LL477 CD8↔TIM-3 under the new gate = `LOCALLY_CERTIFIED`** (67 % of field, cell-error
 p90 2.85 µm; a drawn central ROI re-certifies at 1.8–3.5 µm). Honest caveats: the LoFTR
-confidence threshold is not yet a-priori-calibrated on H-DAB, a local ROI is itself a
-residual-based selection, and the current **pywebview desktop shell is not an HTTP server,
-so an automated browser agent cannot drive/validate the UI** (motivates the browser-served
-rebuild).
+confidence threshold is not yet a-priori-calibrated on H-DAB, and a local ROI is itself a
+residual-based selection. (The desktop shell being undriveable by an agent is fixed:
+`serve.py` serves the identical frontend and the identical validated API over HTTP.)
+
+### 3.5a Does a certifying ROI hold up when you move the window? (2026-07-28)
+
+A local certification's fit and its residual come from the same correspondences, so the
+claim is not checkable from inside the ROI. It **is** checkable by moving the window:
+deformation is smooth, so a genuine local alignment must certify across a patch of
+overlapping windows whose independently-refitted transforms agree.
+
+Neither prior sweep could see this, both by construction — the coarse tiling (`batch.py`)
+skips any candidate within `1.8R` of a region it already kept, and the exhaustive search
+`break`s on the first window that certifies. **Both therefore report "one region per pair"
+for reasons that have nothing to do with the tissue**, and earlier readings of those counts
+as evidence of isolation were wrong.
+
+Measured (`validation/roi_certification_neighbourhood.py`, full grid, windows at `R/2` so
+neighbours share most of their tissue, no early exit; 13 CD8↔TIM-3 pairs):
+
+| group | certifying windows | with a certifying neighbour |
+|---|---|---|
+| A — found a path only under exhaustive search (8 pairs) | **9 / 289** (3 %) | **0 / 9** |
+| B — certified on the first coarse tiling (5 pairs) | **97 / 242** (40 %) | **93 / 97** |
+
+- **The certification test is not broken.** Where tissue genuinely aligns it says so
+  broadly, and the contrast between the groups is not explained by how many windows were
+  searched. This retires the multiple-comparisons objection to group A on other grounds:
+  every one of group A's nine passes is a lone window with no certifying neighbour.
+- **Contiguity and agreement are separable, and agreement is weaker.** `LL477_Liver_4X_1`
+  certifies 20 *contiguous* windows whose transforms disagree by 74 µm median / 171 µm max.
+  `LL479_Liver_10X_2` sits at 28 µm median but reaches 190 µm at its worst pair. Windows can
+  certify beside each other while describing measurably different alignments — worse than
+  not certifying, because the verdict reads identically.
+- **Passing the shipped gate does not imply a neighbourhood.** `LL480_Junction_10X_2` is a
+  group-B pair and still certifies only 2 of 40 windows, non-adjacent, 334 µm apart. The
+  property has to be measured; it cannot be inferred from a verdict.
+- Agreement is better at 4× (17–74 µm median) than at 10× (28 µm, and one failure), but no
+  block was imaged at more than one objective, so magnification and tissue are confounded.
+
+**Consequence for what may be claimed.** A single certified ROI is not sufficient evidence
+of registration for a downstream spatial statistic. What the gate currently licenses is
+*this window passed*, not *this alignment is stable here*. Group A's eight pairs should be
+treated as unregistered. Open work is in § 8.
+
+Cohort bookkeeping: `LL477_x4_2_scale` is the same field as `LL477_Liver_4X_2` with the
+scale bar burnt in, and reproduced its numbers exactly — the cohort is **75** independent
+pairs, not 76, and the pipeline is confirmed deterministic on identical tissue.
 
 ---
 
@@ -667,6 +711,14 @@ distance-preserving registration with held-out TRE certification and fail-closed
 honest compartment-vs-engagement separation.
 
 **Open / not defensible**:
+- **A certified ROI is not yet evidence of a stable local alignment (§ 3.5a).** The gate
+  licenses *this window passed*, not *this alignment holds here*. A group-B pair certifies
+  on 2 of 40 windows 334 µm apart; contiguous certifying windows have disagreed by up to
+  171 µm. Until a stability requirement exists — certify a *patch*, and gate on the spread
+  between its windows' transforms rather than on any single window's residual — the
+  downstream statistic inherits a registration whose stability was never checked. This is
+  the first thing to fix before Spatial ships; the harness that measures it already exists
+  (`validation/roi_certification_neighbourhood.py`).
 - No cross-marker DAB ground truth for the targets → CD8/TIM-3 biological claim is
   underpowered (3 pairs, one cohort, nothing survives cohort FDR).
 - Certs are single-annotator LOO, n=8 provisional; one annotator-independent number only.
