@@ -2367,6 +2367,29 @@ function certificationWindow(c) {
   return { label:'Full field', source };
 }
 
+
+// What certified this pair, and with what numbers. Two engines write DIFFERENT keys, and
+// the banner used to hardcode the landmark ones: a LoFTR-in-ROI pair (which places no
+// landmarks at all) was announced as "certified by anatomical landmarks" over a row of
+// em-dashes, while the 2.4 µm cell error it DID measure was on screen two panels up.
+function certProvenance(cert) {
+  const engine = String(cert.engine || '');
+  if (engine.startsWith('loftr')) return 'by LoFTR correspondences in the analysis region (no landmarks)';
+  return 'by anatomical landmarks';
+}
+function certNumbers(cert) {
+  const bits = [];
+  if (cert.cell_error_um != null) bits.push(`cell error ${Number(cert.cell_error_um).toFixed(2)} µm`);
+  if (cert.tre_median_um != null) bits.push(`TRE ${cert.tre_median_um} µm`);
+  if (cert.tre_p90_um != null) bits.push(`p90 ${cert.tre_p90_um} µm`);
+  if (cert.n_correspondences != null) bits.push(`${cert.n_correspondences} correspondences`);
+  else if (cert.n_landmarks != null) bits.push(`${cert.n_landmarks} landmarks`);
+  if (cert.coverage_frac != null) bits.push(`coverage ${(cert.coverage_frac*100).toFixed(0)}%`);
+  // Say nothing rather than a row of dashes: an empty metric reads as a missing
+  // measurement, not as a metric this engine does not produce.
+  return bits.length ? esc(bits.join(' · ')) : 'See the certification panel for this region\u2019s numbers.';
+}
+
 function renderWindowChip(c) {
   const w = certificationWindow(c);
   return `<span class="window-chip" title="Spatial statistics, null simulations, overlays, and included cell counts are restricted to this certified analysis window.">${esc(w.label)}</span>`;
@@ -6337,9 +6360,8 @@ function spatialAssocShowResults(data) {
       const certBanner = (cert.is_certified === true) ? `
         <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid #16a34a;background:#f0fdf4;color:#166534">
-          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong>✓ ${esc(cert.status || 'CERTIFIED')} by anatomical landmarks</strong>${renderWindowChip(cert)}</div>
-          TRE ${cert.tre_median_um ?? '—'} µm · p90 ${cert.tre_p90_um ?? '—'} µm ·
-          coverage ${cert.coverage_frac != null ? (cert.coverage_frac*100).toFixed(0)+'%' : '—'}
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong>✓ ${esc(cert.status || 'CERTIFIED')} ${esc(certProvenance(cert))}</strong>${renderWindowChip(cert)}</div>
+          ${certNumbers(cert)}
         </div>` : `
         <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid #d97706;background:#fffbeb;color:#92400e">

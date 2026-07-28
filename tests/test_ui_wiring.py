@@ -78,6 +78,24 @@ def test_every_backend_call_names_a_real_api_method(ui):
     assert not missing, f"UI calls API methods that do not exist: {missing}"
 
 
+def test_the_page_script_parses(ui):
+    """The frontend is one HTML file with no build step, so nothing else catches a syntax
+    error until the app is launched and the whole UI is blank. Cheap gate; skipped where
+    node is unavailable rather than silently passing."""
+    import shutil
+    import subprocess
+    import tempfile
+
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("node not installed")
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
+        fh.write(ui["script"])
+        path = fh.name
+    r = subprocess.run([node, "--check", path], capture_output=True, text=True)
+    assert r.returncode == 0, f"page script does not parse:\n{r.stderr[:2000]}"
+
+
 def test_functions_reachable_from_the_ui_are_actually_reachable(ui):
     """A handler-less function that the UI's own copy tells the user to use is a dead end.
 
