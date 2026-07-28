@@ -449,6 +449,20 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
           f"(was {was_pos} with nuclear), expansion {expansion} µm")
 
 
+def classifier_for_image(cfg, img_path):
+    """The classifier that applies to THIS image: per-image override, else the global one.
+
+    Spatial Association runs two images of DIFFERENT markers in one job (CD8 and TIM-3),
+    so one cohort-wide classifier cannot serve both — a model fitted on CD8 rings reads
+    a TIM-3 ring as an out-of-range slide and refuses it. Per-image entries mirror
+    `membrane_overrides`, which already had to be per-image for the same reason.
+    """
+    per = (cfg.get("classifier_overrides") or {}).get(os.path.basename(img_path))
+    if per and per.get("classifier"):
+        return per["classifier"], per.get("classifier_name")
+    return cfg.get("classifier"), cfg.get("classifier_name")
+
+
 def _apply_classifier(img_path, json_path, cfg):
     """Call this image with the cohort's trained classifier, or fall back to the cutoff.
 
@@ -464,8 +478,11 @@ def _apply_classifier(img_path, json_path, cfg):
     if not geojson:
         print("  Classifier: GeoJSON not found — skipping")
         return
-    model = CL.CellClassifier.from_dict(cfg["classifier"])
-    model.name = cfg.get("classifier_name")
+    spec, spec_name = classifier_for_image(cfg, img_path)
+    if not spec:
+        return
+    model = CL.CellClassifier.from_dict(spec)
+    model.name = spec_name
 
     n = len(json.load(open(geojson)).get("features", []))
     cells = calibration.cells_for_classifier(
@@ -634,7 +651,7 @@ def _finish_single_image(img_path, img_filename, json_path, cfg,
         except Exception as e:
             print(f"  Cytoplasm measurement failed: {e} — keeping nuclear classification")
 
-    if cfg.get("classifier"):
+    if classifier_for_image(cfg, img_path)[0]:
         try:
             _apply_classifier(img_path, json_path, cfg)
         except Exception as e:

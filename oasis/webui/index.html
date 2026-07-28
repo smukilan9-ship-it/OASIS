@@ -126,10 +126,18 @@ html, body {
 /* One column of a fixed, readable width, centred — not a card stretched across a
    1440 px window. Without this the prose wrapped at its own 68ch while the tables
    and controls beside it ran the full width, so nothing on the page shared an edge
-   and a two-column table put its columns 700 px apart. */
-#quant-config .scroll > *, #quant-review .scroll > *, #quant-results .scroll > *,
-#page-classifier .scroll > * {
-  max-width: 1000px; margin-left: auto; margin-right: auto;
+   and a two-column table put its columns 700 px apart.
+
+   MEASURED (13 px body): the cards were 1000 px and every paragraph inside them
+   stopped at 68ch = 557 px, so 443 px of each card was empty — and Settings and
+   Spatial never got the cap at all, ran the full 1156 px, and were worse. The column
+   is now sized TO the prose instead of the prose being capped inside a wider column,
+   which is what made everything look shoved against the left edge. */
+:root { --col: 760px; --col-wide: 1120px; }
+.scroll > * { max-width: var(--col); margin-left: auto; margin-right: auto; }
+/* Views that are mostly canvas or table earn the wider column. */
+#quant-review .scroll > *, #quant-results .scroll > *, #spatial-results .scroll > * {
+  max-width: var(--col-wide);
 }
 .scroll::-webkit-scrollbar { width: 8px; }
 .scroll::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 4px; }
@@ -259,7 +267,7 @@ select option { background: #ffffff; color: var(--text); }
    Stretched edge to edge on a wide window it read as a page-level banner rather than as
    the last control of the form above it. */
 .run-area { padding: 0 24px 22px; flex-shrink: 0; }
-.run-area > .run-btn { max-width: 1000px; margin: 0 auto; }
+.run-area > .run-btn { max-width: var(--col); margin: 0 auto; }
 
 /* ── Toggle switch ─────────────────────────────────────── */
 .toggle-row { display: flex; align-items: center; justify-content: space-between; padding: 6px 0; }
@@ -385,7 +393,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   font-size: 15px; font-weight: 600; letter-spacing: -.015em;
   color: var(--text); margin-bottom: 5px;
 }
-.q-step-head p { font-size: 12px; line-height: 1.6; color: var(--text2); max-width: 68ch; }
+.q-step-head p { font-size: 12px; line-height: 1.6; color: var(--text2); }
 .q-group { padding: 16px 0; border-top: 1px solid var(--border); }
 .q-group:first-of-type { border-top: 0; padding-top: 0; }
 .q-group > .q-glabel {
@@ -393,7 +401,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 }
 .q-group > .q-gplain {
   font-size: 11.5px; line-height: 1.55; color: var(--text2);
-  margin-bottom: 12px; max-width: 68ch;
+  margin-bottom: 12px;
 }
 /* A selectable option: term on the line, plain explanation beneath it. */
 .q-opt { display: flex; gap: 10px; padding: 9px 10px; border-radius: var(--r-sm);
@@ -402,16 +410,16 @@ td.muted { color: var(--text3); font-size: 11px; }
 .q-opt input[type="radio"] { margin-top: 2px; flex: none; }
 .q-opt .q-term  { font-size: 12.5px; font-weight: 600; color: var(--text); }
 .q-opt .q-plain { display: block; font-size: 11.5px; line-height: 1.5;
-                  color: var(--text2); margin-top: 3px; max-width: 62ch; }
+                  color: var(--text2); margin-top: 3px; }
 .q-opt.sel { background: var(--bg3); }
 /* Indented body belonging to the option above it. */
 .q-sub { padding: 4px 0 8px 34px; }
-.q-note { font-size: 11.5px; line-height: 1.6; color: var(--text2); max-width: 68ch; }
+.q-note { font-size: 11.5px; line-height: 1.6; color: var(--text2); }
 /* Controls share the measure of the text that explains them. A slider running the full
    1000 px card while its explanation wrapped at 68ch left the two unrelated on the page,
    and put the useful end of the range 500 px from the sentence describing it. */
 .q-group input[type="range"], .q-group > select, .q-group > input[type="text"],
-.q-group > .input-with-btn { max-width: 68ch; }
+.q-group > .input-with-btn { max-width: 100%; }
 .q-note b { color: var(--text); font-weight: 600; }
 /* A switch with an explanation. .toggle-row is a flex row, so a long description
    shoved the control far from its own label and left a ragged right edge. Here the
@@ -424,7 +432,6 @@ td.muted { color: var(--text3); font-size: 11px; }
   /* Bounded to the same measure as the text inside it. Left to span the full 1000 px
      card, the `auto` column parked the switch at the far right — 700 px from the label
      it belongs to, which is the exact failure this grid replaced .toggle-row to avoid. */
-  max-width: 68ch;
 }
 .q-switch:first-child { border-top: 0; padding-top: 0; }
 .q-switch .q-sw-title { font-size: 12.5px; font-weight: 600; color: var(--text); }
@@ -432,7 +439,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 .q-switch .toggle { grid-column: 2; grid-row: 1; margin-top: 1px; }
 .q-switch .q-sw-plain {
   grid-column: 1 / -1; font-size: 11.5px; line-height: 1.55;
-  color: var(--text2); max-width: 68ch;
+  color: var(--text2);
 }
 
 /* Stepper: five steps have to fit without becoming a paragraph. */
@@ -539,7 +546,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   padding: 22px 28px 34px;
   background: linear-gradient(180deg, #fafafa 0%, #ffffff 220px);
 }
-.validation-shell { width: min(1120px, 100%); margin: 0 auto; }
+.validation-shell { width: 100%; margin: 0 auto; }
 .validation-hero {
   display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px;
   align-items: start; margin-bottom: 16px;
@@ -756,7 +763,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   background: #fafafa; color: var(--text2); font-size: 11px; line-height: 1.55;
 }
 .science-summary strong { color: var(--text); font-size: 12px; }
-.science-summary-copy { max-width: 980px; }
+.science-summary-copy { max-width: 100%; }
 .help-tip {
   display: inline-flex; align-items: center; justify-content: center;
   width: 15px; height: 15px; margin-left: 4px; border: 1px solid var(--border2);
@@ -1258,7 +1265,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 
         <div class="q-group">
           <div class="q-glabel">Before you run</div>
-          <div id="q-review-summary" style="font-size:12px;line-height:1.7;margin-top:8px;max-width:68ch"></div>
+          <div id="q-review-summary" style="font-size:12px;line-height:1.7;margin-top:8px"></div>
         </div>
       </div>
       </div><!-- /q-step-5 -->
@@ -1426,7 +1433,8 @@ td.muted { color: var(--text3); font-size: 11px; }
         </div>
         <div id="spatial-session-manual">
           <div class="field"><label>Pixel size (µm/px)</label>
-            <input type="number" id="spatial-session-px-val" value="0.5" step="0.01" min="0.01" onchange="spatialCertInvalidate()">
+            <input type="number" id="spatial-session-px-val" value="0.5" step="0.01" min="0.01"
+                   onchange="spatialCertInvalidate(); spatialAssocRefreshOverrideDefaults()">
           </div>
         </div>
         <div id="spatial-session-scale" style="display:none">
@@ -1446,7 +1454,8 @@ td.muted { color: var(--text3); font-size: 11px; }
             </div>
             <div class="field"><label>Analysis image</label>
               <div class="input-with-btn">
-                <input type="text" id="spatial-image-a" placeholder="select image…" readonly>
+                <input type="text" id="spatial-image-a" placeholder="select image… (paste a path or Browse)"
+                       onchange="spatialAssocImageTyped('a', this.value)">
                 <button class="btn sm" onclick="spatialAssocPickImage('a')">Browse</button>
               </div>
               <div id="spatial-image-err-a" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
@@ -1474,7 +1483,8 @@ td.muted { color: var(--text3); font-size: 11px; }
             </div>
             <div class="field"><label>Analysis image</label>
               <div class="input-with-btn">
-                <input type="text" id="spatial-image-b" placeholder="select image…" readonly>
+                <input type="text" id="spatial-image-b" placeholder="select image… (paste a path or Browse)"
+                       onchange="spatialAssocImageTyped('b', this.value)">
                 <button class="btn sm" onclick="spatialAssocPickImage('b')">Browse</button>
               </div>
               <div id="spatial-image-err-b" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
@@ -1646,6 +1656,23 @@ td.muted { color: var(--text3); font-size: 11px; }
           </div>
           <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
+            <!-- Guided suggestions could be ACCEPTED by clicking a candidate spot but never
+                 rejected: spatialCertRejectGuide() existed with nothing to call it, and a
+                 toast told the operator to "reject the suggestion" with no control to do
+                 it. Both buttons stay hidden until a candidate is actually pending. -->
+            <button class="btn sm cyan" id="spatial-cert-guide-accept" style="display:none"
+                    onclick="spatialCertAcceptGuide()"
+                    title="Accept the highlighted suggested landmark pair">✓ Accept suggestion</button>
+            <button class="btn sm" id="spatial-cert-guide-reject" style="display:none"
+                    onclick="spatialCertRejectGuide()"
+                    title="Discard the highlighted suggestion and place this landmark yourself">✕ Reject</button>
+            <button class="btn sm" id="spatial-cert-guide-next" onclick="spatialCertGuideRequestNext(true)"
+                    title="Search for the next landmark that would most improve certification coverage">Guide next</button>
+            <!-- Auto-propose is a working backend path (propose_landmarks) that had no way
+                 in, and spatialCertPropose() wrote to this id — so calling it at all threw
+                 on a null button. -->
+            <button class="btn sm" id="spatial-cert-propose" onclick="spatialCertPropose()"
+                    title="Propose a full landmark set automatically, then check and adjust it by hand before certifying">Auto-propose landmarks</button>
             <button class="btn sm" onclick="spatialCertUndo()" title="Remove the most recently accepted landmark pair">Undo</button>
             <button class="btn sm" onclick="spatialCertClear()" title="Remove all landmarks and restart guided certification for this pair">Clear</button>
             <button class="btn amber" onclick="spatialCertRun()" title="Fit the landmark transform, calculate TRE and coverage, and issue the strongest defensible certificate">Fit transform & certify</button>
@@ -1688,18 +1715,23 @@ td.muted { color: var(--text3); font-size: 11px; }
         <div style="margin-top:8px">
           <div class="toggle-row"><span>Membranous quantification</span>
             <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">Measures DAB in a cytoplasmic ring (not the nucleus), using each marker's calibrated membrane-completeness cutoffs — the correct compartment for membranous markers.</div>
+          <div style="font-size:11px;color:var(--text3);margin-top:2px">Measures DAB in a cytoplasmic ring (not the nucleus), called by a trained membrane classifier for that marker — the correct compartment for membranous markers, and the only ring rule measured to beat a nuclear cutoff.</div>
         </div>
         <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
-          <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the cytoplasmic ring using each marker's <b>calibrated completeness cutoffs</b> instead of nuclear DAB — the correct compartment for membranous markers. Needs a calibration per marker; without one it falls back to the weaker ring-mean rule.</div>
+          <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the
+            cytoplasmic ring instead of the nucleus, called by a <b>trained membrane classifier</b>
+            for that marker — the same rule Quant uses, and the only one measured to beat a nuclear
+            cutoff on a membranous marker (research/ihc.md § 11.7b). Each image needs its own
+            classifier because the two markers differ. Without one, that image is measured in the
+            <b>nucleus</b>; OASIS will not fall back to a ring rule it cannot stand behind.</div>
           <div class="row2">
-            <div class="field"><label>Image A cutoff profile</label>
-              <select id="spatial-calib-a"><option value="">Auto (match marker)</option></select>
+            <div class="field"><label>Image A membrane classifier</label>
+              <select id="spatial-cls-a"><option value="">Auto (match marker)</option></select>
               <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image A</span>
                 <div class="toggle on" id="spatial-cyto-a-toggle" onclick="toggleEl('spatial-cyto-a-toggle')"></div></div>
             </div>
-            <div class="field"><label>Image B cutoff profile</label>
-              <select id="spatial-calib-b"><option value="">Auto (match marker)</option></select>
+            <div class="field"><label>Image B membrane classifier</label>
+              <select id="spatial-cls-b"><option value="">Auto (match marker)</option></select>
               <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image B</span>
                 <div class="toggle on" id="spatial-cyto-b-toggle" onclick="toggleEl('spatial-cyto-b-toggle')"></div></div>
             </div>
@@ -2152,22 +2184,38 @@ function quantApplyCompartment() {
     : 'A starting value for the whole cohort. You will see every image\'s histogram '
       + 'before anything is written.';
 }
-async function loadCalibIntoSelect(selId) {
+// Membranous in Spatial is classifier-only, exactly as in Quant. This replaced a
+// calibration-profile picker that offered hand-set completeness cutoffs and fell back to
+// the ring MEAN — the two arms measured WORST in research/ihc.md § 11.7b.
+async function loadMembraneClassifiers(selId) {
+  const sel = document.getElementById(selId); if (!sel) return;
+  const cur = sel.value;
+  let saved = [], minAuc = 0.75;
   try {
-    const r = await window.pywebview.api.list_calibrations();
-    const sel = document.getElementById(selId); if (!sel) return;
-    const cur = sel.value;
-    const opts = ['<option value="">Auto (match marker)</option>'];
-    (r.builtin || []).forEach(c => opts.push(`<option value="${esc(c.name)}">${esc(c.name)} · preset</option>`));
-    (r.saved || []).forEach(c => opts.push(`<option value="${esc(c.name)}">${esc(c.name)} · ${esc(c.marker)} (AUC ${(c.auc||0).toFixed(2)})</option>`));
-    sel.innerHTML = opts.join(''); sel.value = cur;
-  } catch(e){}
+    saved = ((await window.pywebview.api.list_classifiers()).saved || [])
+              .filter(c => (c.kind || 'nuclear') === 'membrane');
+    const req = await window.pywebview.api.classifier_requirements();
+    minAuc = (req && req.min_auc) || minAuc;
+  } catch (e) { saved = []; }
+  const opts = ['<option value="">Auto (match marker)</option>'];
+  saved.forEach(c => {
+    const weak = c.auc == null || c.auc < minAuc;
+    const spread = c.fold_f1_min != null ? `, worst slide F1 ${Number(c.fold_f1_min).toFixed(2)}` : '';
+    opts.push(`<option value="${esc(c.name)}"${weak ? ' disabled' : ''}>${esc(c.name)} · `
+      + `${esc(c.marker || '')} — held-out AUC ${c.auc == null ? 'n/a' : Number(c.auc).toFixed(2)}`
+      + `${spread}${weak ? ' (below the bar)' : ''}</option>`);
+  });
+  if (!saved.length) {
+    opts.push('<option value="" disabled>no membrane classifier trained yet — '
+            + 'these images will be measured in the nucleus</option>');
+  }
+  sel.innerHTML = opts.join(''); sel.value = cur;
 }
 function spatialToggleMembrane() {
   toggleEl('spatial-membrane-toggle');
   const on = isOn('spatial-membrane-toggle');
   document.getElementById('spatial-membrane-opts').style.display = on ? 'block' : 'none';
-  if (on) { loadCalibIntoSelect('spatial-calib-a'); loadCalibIntoSelect('spatial-calib-b'); }
+  if (on) { loadMembraneClassifiers('spatial-cls-a'); loadMembraneClassifiers('spatial-cls-b'); }
 }
 function setToggle(id, on) {
   const el = document.getElementById(id);
@@ -2595,8 +2643,6 @@ async function loadSetup() {
   quantGlobalPx = s.pixel_size_x || 0.5;
   const gv = document.getElementById('q-px-global-val');
   if (gv) gv.textContent = quantGlobalPx;
-  const gv2 = document.getElementById('q-px-cohort-val2');
-  if (gv2) gv2.textContent = `${quantGlobalPx} µm/px`;
   const spx = document.getElementById('spatial-session-px-val');
   if (spx) spx.value = s.pixel_size_x || 0.5;
 
@@ -4604,6 +4650,38 @@ function spatialAssocIsScaled(path) {
 async function spatialAssocPickImage(side) {
   const p = await window.pywebview.api.pick_file();
   if (!p) return;
+  spatialAssocSetImage(side, p);
+}
+
+// Quant accepts a pasted path; Spatial's image boxes were readonly, so a path on the
+// clipboard could only be used by walking a native file dialog to it. Same destination,
+// so route both through here rather than duplicating the scale-image guard.
+async function spatialAssocImageTyped(side, value) {
+  const errEl = document.getElementById('spatial-image-err-' + side);
+  const p = (value || '').trim().replace(/^file:\/\//, '');
+  if (!p) {
+    spatialImage[side] = '';
+    if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+    spatialAssocUpdateRunBtn();
+    return;
+  }
+  // Browse can only hand back a path that exists; a typed one cannot. Without this a
+  // misspelling was accepted in silence and surfaced minutes later inside segmentation.
+  let chk = { ok: true, path: p };
+  try { chk = await window.pywebview.api.check_image_path(p); } catch (e) {}
+  if (!chk.ok) {
+    spatialImage[side] = '';
+    if (errEl) {
+      errEl.textContent = chk.msg || 'That path could not be used.';
+      errEl.style.display = 'block';
+    }
+    spatialAssocUpdateRunBtn();
+    return;
+  }
+  spatialAssocSetImage(side, chk.path || p);
+}
+
+function spatialAssocSetImage(side, p) {
   const errEl = document.getElementById('spatial-image-err-' + side);
   if (spatialAssocIsScaled(p)) {
     // Scaled calibration image — reject as an analysis image
@@ -5795,8 +5873,8 @@ function spatialBuildConfig(forceMode) {
     // Membranous (cytoplasmic-ring) quantification with per-marker calibrated cutoffs.
     use_cytoplasm_a:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-a-toggle'),
     use_cytoplasm_b:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-b-toggle'),
-    calib_profile_a:       document.getElementById('spatial-calib-a')?.value || '',
-    calib_profile_b:       document.getElementById('spatial-calib-b')?.value || '',
+    membrane_classifier_a: document.getElementById('spatial-cls-a')?.value || '',
+    membrane_classifier_b: document.getElementById('spatial-cls-b')?.value || '',
     cleanup_intermediates: isOn('spatial-cleanup-toggle'),
     output_dir:            document.getElementById('spatial-output').value.trim() || '~/Desktop/ihc_spatial_results',
     certifications:        spatialCertifications,

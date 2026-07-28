@@ -60,6 +60,10 @@ STANDARD_PIXEL_SIZE = {
 PROJECT_DIR = Path(__file__).resolve().parent.parent.parent
 
 # Preloaded calibration presets (data-backed defaults; user calibrations add to these).
+# What counts as an analysable image. Shared so `list_images` and `check_image_path`
+# cannot drift into disagreeing about whether a file is one.
+IMAGE_EXTS = {".tif", ".tiff", ".png", ".jpg", ".jpeg", ".svs", ".ndpi"}
+
 BUILTIN_CALIBRATIONS = [
     {"name": "CRC-ICM (TIM-3)", "marker": "tim-3",
      "membrane_pix_thr": 0.30, "membrane_frac_min": 0.14, "auc": 0.93, "builtin": True},
@@ -394,6 +398,23 @@ class API:
         return {"ok": True, "classifiers": [{k: v for k, v in c.items() if k != "model"}
                                             for c in saved]}
 
+    def _resolve_membrane_classifier(self, name, marker):
+        """A trained membrane classifier for this marker, by name or by marker.
+
+        Applies the same bar the Quant dropdown applies: a model below MIN_CLASSIFIER_AUC
+        is not offered there and must not be reachable here either, or Spatial would score
+        membranous with a model Quant refuses. Returns None when nothing qualifies, which
+        the caller turns into a nuclear measurement rather than a weaker ring rule.
+        """
+        pool = [c for c in (self.get_setup().get("classifiers") or [])
+                if (c.get("kind") or "nuclear") == "membrane"
+                and c.get("model")
+                and (c.get("auc") is None or c["auc"] >= self.MIN_CLASSIFIER_AUC)]
+        if name:
+            return next((c for c in pool if c.get("name") == name), None)
+        m = str(marker or "").strip().lower()
+        return next((c for c in reversed(pool) if str(c.get("marker", "")).lower() == m), None)
+
     def _resolve_calibration(self, name, marker):
         """Find a calibration by explicit name, else by marker (newest user save wins)."""
         pool = BUILTIN_CALIBRATIONS + (self.get_setup().get("calibrations") or [])
@@ -426,7 +447,7 @@ class API:
     def list_images(self, folder):
         if not folder or not os.path.exists(os.path.expanduser(folder)):
             return []
-        exts = {".tif", ".tiff", ".png", ".jpg", ".jpeg", ".svs", ".ndpi"}
+        exts = IMAGE_EXTS
         folder = os.path.expanduser(folder)
         try:
             return sorted([
@@ -435,6 +456,30 @@ class API:
             ])
         except Exception:
             return []
+
+    def check_image_path(self, path):
+        """Does this path point at a readable image? Answered before a run, not during one.
+
+        A typed or pasted path is the one input nothing else validates: Browse can only
+        return something that exists, so the typed route was accepting misspellings
+        silently and the operator found out minutes later, inside segmentation, as a
+        failure with no obvious cause.
+        """
+        p = os.path.expanduser(str(path or "").strip())
+        if not p:
+            return {"ok": False, "reason": "empty"}
+        if not os.path.exists(p):
+            return {"ok": False, "reason": "missing", "msg": "No file at that path."}
+        if os.path.isdir(p):
+            return {"ok": False, "reason": "directory",
+                    "msg": "That is a folder. Select the image file itself, "
+                           "or switch to Batch mode."}
+        ext = os.path.splitext(p)[1].lower()
+        if ext not in IMAGE_EXTS:
+            return {"ok": False, "reason": "not_an_image",
+                    "msg": f"{ext or 'That file'} is not a supported image "
+                           f"({', '.join(sorted(IMAGE_EXTS))})."}
+        return {"ok": True, "path": p}
 
     def list_folder_images(self, folder):
         """The folder split into what will be analysed and what is calibration evidence.
@@ -623,30 +668,15 @@ class API:
         os.makedirs(cfg.get("output_dir",""), exist_ok=True)
         os.makedirs(cfg.get("dashboard_dir",""), exist_ok=True)
 
-        # Membrane cutoffs. A membranous cell is positive when enough of its ring is
-        # stained, which takes exactly two numbers: the OD above which a ring pixel counts
-        # as stained, and the fraction of the ring that must clear it. Both now come from
-        # the Quant screen, where the operator can see them.
-        #
-        # They used to be resolved HERE instead, from a saved profile matched against the
-        # marker NAME. That had two failure modes the operator could not see: analysing
-        # TIM-3 silently swapped in the built-in CRC-ICM cutoffs over whatever was on
-        # screen, and analysing a marker with no matching profile silently fell back to a
-        # different rule entirely (ring MEAN > nuclear cutoff), so two runs that looked
-        # identical were scored by different statistics. A saved profile now only applies
-        # when the operator picks it by name, and picking it fills the two numbers in.
-        if settings.get("use_cytoplasm_measurement"):
-            pix = settings.get("membrane_pix_thr")
-            frac = settings.get("membrane_frac_min")
-            if pix is None or frac is None:
-                cal = self._resolve_calibration(settings.get("calibration_name"),
-                                                settings.get("stain_name"))
-                if cal:
-                    pix = cal["membrane_pix_thr"] if pix is None else pix
-                    frac = cal["membrane_frac_min"] if frac is None else frac
-            if pix is not None and frac is not None:
-                cfg["membrane_pix_thr"] = float(pix)
-                cfg["membrane_frac_min"] = float(frac)
+        # Membranous is CLASSIFIER-ONLY (research/ihc.md § 11.7b). Completeness cutoffs
+        # used to be resolved here from a saved profile matched on the marker NAME, and
+        # that path outlived the cutoffs themselves: with the Quant sliders gone, `pix` and
+        # `frac` were always None, so every membranous TIM-3 run silently picked up the
+        # built-in CRC-ICM preset and was scored by a rule the operator could not see and
+        # the UI no longer offers. Measured, that rule loses to a plain nuclear cutoff
+        # (AUC 0.637 carried across slides, vs 0.933). Nothing sets these now; a membranous
+        # run is called by its trained classifier, and an image without one is measured in
+        # the nucleus.
 
         # Review gate. A nuclear run stops once cells are measured so the operator can set
         # the cutoff against the real distribution before any output exists. Membrane runs
@@ -2338,28 +2368,38 @@ class API:
         preprocess_normalize = bool(config.get("preprocess_normalize", False))
         match_scale_images   = bool(config.get("match_scale_images", False))
         pixel_overrides, threshold_overrides, cytoplasm_overrides = {}, {}, {}
-        membrane_overrides = {}          # per-image calibrated membrane cutoffs
+        classifier_overrides = {}        # per-image trained membrane classifier
         pairs, unmatched = [], []
 
-        def _membrane_cutoffs(filename, profile_name, marker, use_cyto):
-            """Resolve the calibrated membrane cutoffs for one image and stash them so
-            the pipeline applies the RIGHT per-marker completeness thresholds (CD8 and
-            TIM-3 differ). Warns if membrane mode was asked for but no calibration
-            exists — the pipeline then falls back to the weaker ring-mean rule."""
+        def _membrane_classifier(filename, classifier_name, marker, use_cyto):
+            """Resolve the trained MEMBRANE CLASSIFIER for one image.
+
+            Spatial used to resolve hand-set completeness cutoffs from a calibration
+            profile here, and fall back to the ring MEAN when none existed. Quant retired
+            both: § 11.7b measured ring-mean as the WORST arm on hand-labelled TIM-3
+            (AUC 0.757) — below even a plain nuclear cutoff (0.933) — and hand-set
+            completeness cutoffs carried across slides scored 0.637. Membranous is
+            classifier-only, and Spatial has to mean the same thing by it as Quant does.
+
+            Two images, two markers, so this is per-image: a CD8 model refuses a TIM-3
+            ring as out-of-range. No classifier for this marker → membranous is DROPPED
+            for that image and it is measured in the nucleus, which is the documented
+            fallback rather than a silently weaker ring rule.
+            """
             if not use_cyto:
-                return
-            cal = self._resolve_calibration(profile_name, marker)
-            if cal and cal.get("membrane_pix_thr") is not None \
-                    and cal.get("membrane_frac_min") is not None:
-                membrane_overrides[os.path.basename(filename)] = {
-                    "membrane_pix_thr": float(cal["membrane_pix_thr"]),
-                    "membrane_frac_min": float(cal["membrane_frac_min"]),
-                }
-            else:
-                self._emit("log", {"msg": f"Membrane mode requested for {marker} but no "
-                                   f"calibration found — falling back to ring-mean "
-                                   f"(weaker). Calibrate {marker} in the Calibrate tab.",
+                return True
+            base = os.path.basename(filename)
+            model = self._resolve_membrane_classifier(classifier_name, marker)
+            if not model:
+                cytoplasm_overrides[base] = False
+                self._emit("log", {"msg": f"Membranous requested for {marker} but no trained "
+                                   f"membrane classifier exists for it — measuring {base} in "
+                                   f"the nucleus instead. Train one in the Classifier tab.",
                                    "level": "warn"})
+                return False
+            classifier_overrides[base] = {"classifier": model.get("model") or model,
+                                          "classifier_name": model.get("name")}
+            return True
 
         # Resolve the session calibration to ONE concrete value up front, so it
         # flows to every image as the default (priority step 3) unless that image
@@ -2392,8 +2432,8 @@ class API:
                 threshold_overrides[os.path.basename(ib)] = dab_threshold_b
             cytoplasm_overrides[os.path.basename(ia)] = use_cyto_a
             cytoplasm_overrides[os.path.basename(ib)] = use_cyto_b
-            _membrane_cutoffs(ia, config.get("calib_profile_a"), la, use_cyto_a)
-            _membrane_cutoffs(ib, config.get("calib_profile_b"), lb, use_cyto_b)
+            _membrane_classifier(ia, config.get("membrane_classifier_a"), la, use_cyto_a)
+            _membrane_classifier(ib, config.get("membrane_classifier_b"), lb, use_cyto_b)
             ref_px = pa
             sid = os.path.splitext(os.path.basename(ia))[0] or "pair"
             pairs = [{"sample_id": sid, "stain_a": la, "stain_b": lb,
@@ -2446,10 +2486,10 @@ class API:
                     threshold_overrides[fb] = dab_threshold_b
                 cytoplasm_overrides[os.path.basename(p["path_a"])] = use_cyto_a
                 cytoplasm_overrides[os.path.basename(p["path_b"])] = use_cyto_b
-                _membrane_cutoffs(p["path_a"], config.get("calib_profile_a"),
-                                  p.get("stain_a"), use_cyto_a)
-                _membrane_cutoffs(p["path_b"], config.get("calib_profile_b"),
-                                  p.get("stain_b"), use_cyto_b)
+                _membrane_classifier(p["path_a"], config.get("membrane_classifier_a"),
+                                     p.get("stain_a"), use_cyto_a)
+                _membrane_classifier(p["path_b"], config.get("membrane_classifier_b"),
+                                     p.get("stain_b"), use_cyto_b)
 
         # ── Phase 2: per-ROI fan-out ──────────────────────────────────────────────
         # A pair whose certification carries multiple user-drawn ROIs (from
@@ -2515,7 +2555,7 @@ class API:
             "pixel_overrides":     pixel_overrides,
             "threshold_overrides": threshold_overrides,
             "cytoplasm_overrides": cytoplasm_overrides,
-            "membrane_overrides":  membrane_overrides,
+            "classifier_overrides": classifier_overrides,
             "adaptive_threshold":  adaptive_threshold,
             "preprocess_normalize": preprocess_normalize,
             "cell_expansion_um":   cell_expansion_um,
