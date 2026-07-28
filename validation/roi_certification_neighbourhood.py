@@ -20,12 +20,15 @@ no early exit, and reports
 
     n_certifying        how many windows certify
     n_with_a_neighbour  how many of those have a certifying window adjacent to them
-    disagree_um         spread between the certifying windows' transforms, evaluated at a
-                        common set of probe points -- the max over probes for each pair of
-                        windows, then the median and max over pairs
+    overlap_disagree    for window pairs that OVERLAP, how far apart their two transforms
+                        place the midpoint between them -- the fit failing to reproduce
+                        itself on tissue both windows saw
+    distant_disagree    the same for window pairs that do not overlap. This is NOT error:
+                        two locally-fitted transforms a slide apart are supposed to differ,
+                        and the size of that difference is the deformation field
 
-Read the last two together. Contiguity without agreement means the windows certify next to
-each other while describing different alignments, which is worse than not certifying.
+Only `overlap_disagree` is a quality signal. An earlier version of this pooled the two and
+reported 171-334 um, which was the deformation field wearing the label "disagreement".
 
 Usage:
   .venv/bin/python validation/roi_certification_neighbourhood.py \\
@@ -142,16 +145,37 @@ def sweep_pair(src, objective, radius_um, arm, ref_marker="CD8", mov_marker="Tim
         # 8-neighbourhood on a step-spaced grid: the diagonal is step*sqrt(2) ~ 1.41*step.
         rec["n_with_a_neighbour"] = int(((d <= step * 1.45).sum(1) > 0).sum())
         rec["nearest_neighbour_um"] = round(float(d.min() * px), 1)
-        mapped = [apply_similarity(h["matrix"], P) for h in hits]
-        pairwise = [float((np.linalg.norm(mapped[i] - mapped[j], axis=1) * px).max())
-                    for i in range(len(hits)) for j in range(i + 1, len(hits))]
-        rec["disagree_um_median"] = round(float(np.median(pairwise)), 2)
-        rec["disagree_um_max"] = round(float(max(pairwise)), 2)
+
+        # Disagreement is only meaningful where the two windows describe the SAME tissue,
+        # and only at a point both of them saw. A first version of this evaluated every
+        # window's transform at every certifying centre across the slide and reported
+        # 171-334 um; that was measuring the deformation field -- two locally-fitted
+        # transforms a slide apart are SUPPOSED to differ, which is the entire premise of
+        # local certification -- and not error. Evaluate at the midpoint, and split by
+        # whether the windows overlap at all.
+        overlap, distant = [], []
+        for i in range(len(hits)):
+            for j in range(i + 1, len(hits)):
+                mid = 0.5 * (P[i] + P[j])
+                sep_um = float(np.linalg.norm(P[i] - P[j]) * px)
+                e = float(np.linalg.norm(apply_similarity(hits[i]["matrix"], mid)
+                                         - apply_similarity(hits[j]["matrix"], mid)) * px)
+                (overlap if sep_um <= radius_um else distant).append(e)
+
+        def stat(v, key):
+            return {f"{key}_n": len(v),
+                    f"{key}_median_um": round(float(np.median(v)), 2) if v else None,
+                    f"{key}_max_um": round(float(max(v)), 2) if v else None}
+        # overlapping: how well the fit reproduces itself. distant: the deformation field.
+        rec.update(stat(overlap, "overlap_disagree"))
+        rec.update(stat(distant, "distant_disagree"))
     else:
         # One window certifying cannot corroborate itself; that is the finding, not a gap.
         rec["n_with_a_neighbour"] = 0
         rec["nearest_neighbour_um"] = None
-        rec["disagree_um_median"] = rec["disagree_um_max"] = None
+        for key in ("overlap_disagree", "distant_disagree"):
+            rec[f"{key}_n"] = 0
+            rec[f"{key}_median_um"] = rec[f"{key}_max_um"] = None
     return rec
 
 
@@ -169,7 +193,8 @@ def main():
 
     index = index_pairs(os.path.expanduser(args.root))
     out, t0 = [], time.time()
-    print(f"{'pair':<24}{'obj':>4}{'R µm':>7}{'certify':>10}{'nbr':>5}{'dis med':>9}{'dis max':>9}")
+    print(f"{'pair':<24}{'obj':>4}{'R µm':>7}{'certify':>10}{'nbr':>5}"
+          f"{'overlap µm':>13}{'distant µm':>13}")
     for pair in [p for p in args.pairs.split(",") if p]:
         src = index.get(pair)
         if not src:
@@ -182,13 +207,13 @@ def main():
             continue
         rec["pair"] = pair
         out.append(rec)
-        med = rec["disagree_um_median"]
-        mx = rec["disagree_um_max"]
+        def fmt(key):
+            m, x = rec[f"{key}_median_um"], rec[f"{key}_max_um"]
+            return "—" if m is None else f"{m:.1f} / {x:.1f}"
         print(f"{pair:<24}{rec['objective']:>4}{rec['radius_um']:>7.0f}"
               f"{str(rec['n_certifying']) + '/' + str(rec['n_windows']):>10}"
               f"{rec['n_with_a_neighbour']:>5}"
-              f"{('-' if med is None else format(med, '.1f')):>9}"
-              f"{('-' if mx is None else format(mx, '.1f')):>9}", flush=True)
+              f"{fmt('overlap_disagree'):>13}{fmt('distant_disagree'):>13}", flush=True)
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
         Path(args.out).write_text(json.dumps(out, indent=1))
 

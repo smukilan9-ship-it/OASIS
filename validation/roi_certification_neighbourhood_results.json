@@ -18,8 +18,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": 1016.7,
-  "disagree_um_median": 201.48,
-  "disagree_um_max": 201.48,
   "windows": [
    {
     "cx": 316.5314536507514,
@@ -61,7 +59,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 1,
+  "overlap_disagree_median_um": 21.51,
+  "overlap_disagree_max_um": 21.51,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL478_Tumor_10X_3",
@@ -82,8 +86,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 633.0629073015027,
@@ -105,7 +107,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL478_liver_10X_3",
@@ -126,8 +134,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 554.5950259342998,
@@ -149,7 +155,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL480_Tumor_10X_1",
@@ -170,8 +182,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 474.7971804761271,
@@ -193,7 +203,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL478_junction_20X_1",
@@ -214,8 +230,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 1109.1900518685995,
@@ -237,7 +251,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL478_junction_20X_2",
@@ -258,8 +278,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 1478.9200691581327,
@@ -281,7 +299,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL480_Liver_20X_2",
@@ -302,8 +326,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 554.5950259342998,
@@ -325,7 +347,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL480_Tumor_20X_3",
@@ -346,8 +374,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": null,
-  "disagree_um_median": null,
-  "disagree_um_max": null,
   "windows": [
    {
     "cx": 952.2542891341933,
@@ -369,7 +395,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  },
  {
   "pair": "LL477_Liver_4X_3",
@@ -389,8 +421,6 @@
   },
   "n_with_a_neighbour": 45,
   "nearest_neighbour_um": 300.0,
-  "disagree_um_median": 16.98,
-  "disagree_um_max": 67.67,
   "windows": [
    {
     "cx": 319.1828917969997,
@@ -1292,7 +1322,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 175,
+  "overlap_disagree_median_um": 1.67,
+  "overlap_disagree_max_um": 12.5,
+  "distant_disagree_n": 815,
+  "distant_disagree_median_um": 6.72,
+  "distant_disagree_max_um": 35.35
  },
  {
   "pair": "LL477_Liver_4X_2",
@@ -1313,8 +1349,6 @@
   },
   "n_with_a_neighbour": 16,
   "nearest_neighbour_um": 300.0,
-  "disagree_um_median": 25.28,
-  "disagree_um_max": 74.83,
   "windows": [
    {
     "cx": 319.1828917969997,
@@ -1656,7 +1690,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 36,
+  "overlap_disagree_median_um": 3.57,
+  "overlap_disagree_max_um": 13.13,
+  "distant_disagree_n": 100,
+  "distant_disagree_median_um": 9.75,
+  "distant_disagree_max_um": 39.44
  },
  {
   "pair": "LL477_x4_2_scale",
@@ -1677,8 +1717,6 @@
   },
   "n_with_a_neighbour": 16,
   "nearest_neighbour_um": 300.0,
-  "disagree_um_median": 25.28,
-  "disagree_um_max": 74.83,
   "windows": [
    {
     "cx": 319.1828917969997,
@@ -2020,7 +2058,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 36,
+  "overlap_disagree_median_um": 3.57,
+  "overlap_disagree_max_um": 13.13,
+  "distant_disagree_n": 100,
+  "distant_disagree_median_um": 9.75,
+  "distant_disagree_max_um": 39.44
  },
  {
   "pair": "LL477_Liver_4X_1",
@@ -2041,8 +2085,6 @@
   },
   "n_with_a_neighbour": 20,
   "nearest_neighbour_um": 300.0,
-  "disagree_um_median": 73.81,
-  "disagree_um_max": 170.64,
   "windows": [
    {
     "cx": 1117.140121289499,
@@ -2444,7 +2486,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 42,
+  "overlap_disagree_median_um": 7.13,
+  "overlap_disagree_max_um": 45.85,
+  "distant_disagree_n": 148,
+  "distant_disagree_median_um": 30.94,
+  "distant_disagree_max_um": 105.12
  },
  {
   "pair": "LL479_Liver_10X_2",
@@ -2466,8 +2514,6 @@
   },
   "n_with_a_neighbour": 12,
   "nearest_neighbour_um": 130.0,
-  "disagree_um_median": 28.1,
-  "disagree_um_max": 189.72,
   "windows": [
    {
     "cx": 345.7906636520814,
@@ -2729,7 +2775,13 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 31,
+  "overlap_disagree_median_um": 4.14,
+  "overlap_disagree_max_um": 22.77,
+  "distant_disagree_n": 47,
+  "distant_disagree_median_um": 9.27,
+  "distant_disagree_max_um": 129.94
  },
  {
   "pair": "LL480_Junction_10X_2",
@@ -2750,8 +2802,6 @@
   },
   "n_with_a_neighbour": 0,
   "nearest_neighbour_um": 822.2,
-  "disagree_um_median": 333.62,
-  "disagree_um_max": 333.62,
   "windows": [
    {
     "cx": 1383.1626546083257,
@@ -2793,6 +2843,12 @@
      ]
     ]
    }
-  ]
+  ],
+  "overlap_disagree_n": 1,
+  "overlap_disagree_median_um": 46.72,
+  "overlap_disagree_max_um": 46.72,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null
  }
 ]

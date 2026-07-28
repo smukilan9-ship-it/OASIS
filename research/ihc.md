@@ -292,23 +292,31 @@ neighbours share most of their tissue, no early exit; 13 CD8↔TIM-3 pairs):
 
 - **The certification test is not broken.** Where tissue genuinely aligns it says so
   broadly, and the contrast between the groups is not explained by how many windows were
-  searched. This retires the multiple-comparisons objection to group A on other grounds:
-  every one of group A's nine passes is a lone window with no certifying neighbour.
-- **Contiguity and agreement are separable, and agreement is weaker.** `LL477_Liver_4X_1`
-  certifies 20 *contiguous* windows whose transforms disagree by 74 µm median / 171 µm max.
-  `LL479_Liver_10X_2` sits at 28 µm median but reaches 190 µm at its worst pair. Windows can
-  certify beside each other while describing measurably different alignments — worse than
-  not certifying, because the verdict reads identically.
-- **Passing the shipped gate does not imply a neighbourhood.** `LL480_Junction_10X_2` is a
-  group-B pair and still certifies only 2 of 40 windows, non-adjacent, 334 µm apart. The
-  property has to be measured; it cannot be inferred from a verdict.
-- Agreement is better at 4× (17–74 µm median) than at 10× (28 µm, and one failure), but no
-  block was imaged at more than one objective, so magnification and tissue are confounded.
+  searched.
+- **Where windows overlap, the fit reproduces itself.** Evaluated at the midpoint between
+  two *overlapping* certifying windows — tissue both of them saw — four of five group-B
+  pairs agree to **1.7–7.1 µm median**, at or inside the 5 µm cell-error budget.
+- **Disagreement between DISTANT windows is the deformation field, not error.** It rises
+  from 1.7–7.1 µm (overlapping) to 6.7–30.9 µm median and 130 µm at slide scale. Two
+  locally-fitted transforms a slide apart are *supposed* to differ — that is the premise of
+  certifying locally. A first version of this harness evaluated every transform at every
+  certifying centre and reported 171–334 µm; those figures were the deformation field
+  mislabelled as disagreement and are **retracted**.
+- **One group-B pair is genuinely out of family**: `LL480_Junction_10X_2`, 2 of 40 windows,
+  non-adjacent, overlapping-window disagreement **46.7 µm** against 1.7–7.1 for its peers.
 
-**Consequence for what may be claimed.** A single certified ROI is not sufficient evidence
-of registration for a downstream spatial statistic. What the gate currently licenses is
-*this window passed*, not *this alignment is stable here*. Group A's eight pairs should be
-treated as unregistered. Open work is in § 8.
+**Isolation is not evidence of a bad fit, and must not become a gate.** A researcher who
+finds the one well-preserved island on a deformed section and draws around it produces
+group A's exact signature: one certifying window, failing neighbours — because the
+neighbours reach into the deformed tissue they deliberately excluded. Nothing measured here
+separates that from an underdetermined fit, so `n_with_a_neighbour` is a **diagnostic to
+report, never a veto**. Gating on it would reject precisely the use the ROI workflow exists
+for.
+
+**Consequence for what may be claimed.** Certification behaves as designed and needs no new
+gate before Spatial. The residual honest caveats are unchanged from § 3.5: the fit and its
+residual still come from the same correspondences, and there are no independent landmarks
+in this cohort, so `overlap_disagree` shows two windows agreeing — not that they are right.
 
 Cohort bookkeeping: `LL477_x4_2_scale` is the same field as `LL477_Liver_4X_2` with the
 scale bar burnt in, and reproduced its numbers exactly — the cohort is **75** independent
@@ -711,14 +719,10 @@ distance-preserving registration with held-out TRE certification and fail-closed
 honest compartment-vs-engagement separation.
 
 **Open / not defensible**:
-- **A certified ROI is not yet evidence of a stable local alignment (§ 3.5a).** The gate
-  licenses *this window passed*, not *this alignment holds here*. A group-B pair certifies
-  on 2 of 40 windows 334 µm apart; contiguous certifying windows have disagreed by up to
-  171 µm. Until a stability requirement exists — certify a *patch*, and gate on the spread
-  between its windows' transforms rather than on any single window's residual — the
-  downstream statistic inherits a registration whose stability was never checked. This is
-  the first thing to fix before Spatial ships; the harness that measures it already exists
-  (`validation/roi_certification_neighbourhood.py`).
+- Certification reproduces itself where windows overlap (1.7–7.1 µm, § 3.5a), but the fit
+  and its residual still come from the same correspondences and this cohort has no
+  independent landmarks — so that number shows two windows *agreeing*, not being right.
+  `LL480_Junction_10X_2` is an unexplained outlier at 46.7 µm.
 - No cross-marker DAB ground truth for the targets → CD8/TIM-3 biological claim is
   underpowered (3 pairs, one cohort, nothing survives cohort FDR).
 - Certs are single-annotator LOO, n=8 provisional; one annotator-independent number only.
