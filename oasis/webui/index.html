@@ -134,10 +134,17 @@ html, body {
    is now sized TO the prose instead of the prose being capped inside a wider column,
    which is what made everything look shoved against the left edge. */
 :root { --col: 760px; --col-wide: 1120px; }
-.scroll > * { max-width: var(--col); margin-left: auto; margin-right: auto; }
+/* Centre with GRID, not auto margins. Auto margins are set by a shorthand-free rule here,
+   but any later rule using the `margin` shorthand silently resets margin-left/right to 0 —
+   `.wizard-nav { margin: 6px 0 4px }` did exactly that, so the Back/Next row rendered at
+   the correct WIDTH but shoved 278 px left of the card it belongs under. Grid placement
+   cannot be clobbered that way. */
+.scroll { display: grid; grid-template-columns: minmax(0, 1fr);
+          justify-items: center; align-content: start; }
+.scroll > * { width: min(var(--col), 100%); }
 /* Views that are mostly canvas or table earn the wider column. */
 #quant-review .scroll > *, #quant-results .scroll > *, #spatial-results .scroll > * {
-  max-width: var(--col-wide);
+  width: min(var(--col-wide), 100%);
 }
 .scroll::-webkit-scrollbar { width: 8px; }
 .scroll::-webkit-scrollbar-thumb { background: #e4e4e7; border-radius: 4px; }
