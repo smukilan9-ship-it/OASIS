@@ -337,12 +337,18 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
             p90  = res.get("cytoplasm_dab_p90")
             is_pos = (frac is not None and frac >= float(frac_min)
                       and (p90_thr is None or (p90 is not None and p90 > float(p90_thr))))
-        else:
-            is_pos = res["cytoplasm_dab_mean"] > threshold
-        props["classification"] = {
-            "name":  "Positive" if is_pos else "Negative",
-            "color": [255, 0, 0] if is_pos else [0, 200, 0],
-        }
+            props["classification"] = {
+                "name":  "Positive" if is_pos else "Negative",
+                "color": [255, 0, 0] if is_pos else [0, 200, 0],
+            }
+        # With no calibrated cutoffs this used to fall back to `ring mean > threshold`.
+        # That rule is measurably WORSE than the nuclear call it was overwriting -- held-out
+        # AUC 0.757 against 0.933 on 599 hand-labelled TIM-3 cells
+        # (validation/nuclear_vs_membrane_tim3.py) -- so it degraded every membranous run
+        # that had no calibration, silently, while looking like the more careful choice.
+        # The ring measurements are still written for the classifier and the report; the
+        # classification is left alone, which means an uncalibrated membranous run keeps
+        # the nuclear call and a trained classifier overwrites it a moment later.
         meas = props.get("measurements")
         if not isinstance(meas, dict):
             meas = {}
@@ -402,10 +408,13 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
     if total:
         summ["total_cells"]    = total
         summ["positivity_pct"] = round(pos * 100.0 / total, 2)
-    summ["measurement_compartment"] = "cytoplasm"
+    # Only claim the cytoplasm compartment when the cytoplasm actually decided the calls.
+    # Without cutoffs this pass measures the ring and leaves the nuclear classification in
+    # place, so the cells were called on the nucleus and the record has to say nucleus.
+    summ["measurement_compartment"] = "cytoplasm" if use_completeness else "nucleus"
     summ["cell_expansion_um"]       = expansion
     summ["cytoplasm_dab_calibrated"] = True
-    summ["membrane_classifier"] = "completeness" if use_completeness else "ring_mean"
+    summ["membrane_classifier"] = "completeness" if use_completeness else None
     if use_completeness:
         summ["membrane_pix_thr"]  = float(pix_thr)
         summ["membrane_frac_min"] = float(frac_min)

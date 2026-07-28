@@ -1010,19 +1010,83 @@ none, because it reads as a check that passed. The band is now built from **per-
 medians** (5th–95th percentile of cells when image identity is unknown), and the regression
 is pinned in `tests/test_classifier.py`.
 
+### 11.7b Nuclear vs membrane, measured (2026-07-28)
+
+The membranous path rests on a compartment argument: a surface marker is not in the
+nucleus, so measuring the nucleus reads the wrong thing. That argument had never been
+tested, and it turns out to overstate the case badly.
+
+**Harness:** `validation/nuclear_vs_membrane_tim3.py`, results in
+`validation/nuclear_vs_membrane_tim3_RESULTS.md`. 599 hand-labelled cells (281 positive /
+318 negative) across four CRC-ICM TIM-3 fields, held out **by image**. Single-number rules
+get their cutoff from the training images and apply it to the held-out one, so every arm is
+scored the same way.
+
+| arm | AUC | F1 |
+|---|---|---|
+| 1. nuclear cutoff — *Membranous OFF* | 0.933 | 0.808 |
+| 2. ring-mean cutoff | 0.757 | 0.701 |
+| 3. completeness, **auto** pixel threshold | 0.876 | 0.790 |
+| 4. nuclear classifier (6 features) | 0.925 | 0.848 |
+| **5. membrane classifier (9 features)** | **0.948** | **0.881** |
+| 6. completeness, threshold fitted on labels | 0.637 | 0.635 |
+
+Per-image held-out F1 — `92290_IM` is the visibly faint slide:
+
+| arm | 9212046_CT | **92290_IM** | 92625_CT | 92658_IM |
+|---|---|---|---|---|
+| 1. nuclear cutoff | 0.943 | 0.525 | 0.892 | 0.898 |
+| 3. completeness (auto) | 0.920 | 0.458 | 0.904 | 0.889 |
+| 5. membrane classifier | 0.960 | 0.667 | 0.941 | 0.900 |
+
+**Four findings, and what each changed.**
+
+1. **A nuclear cutoff on a membranous marker beats every single-number ring rule**, ring
+   completeness included (0.933 vs 0.876). Bleed-through is the likely mechanism: strong
+   membrane staining spills across the nuclear mask, so nuclear OD tracks membrane
+   positivity by side effect. The UI claimed measuring a membrane marker in the nucleus
+   "reads mostly background" — false on this data, and removed.
+
+2. **The ring wins only as the fitted nine-feature combination**, and only just: +0.017,
+   +0.049 and +0.002 F1 against the nuclear cutoff on the three well-stained slides, and
+   +0.033 F1 / +0.023 AUC against the nuclear *classifier* pooled. So **hand-set membranous
+   cutoffs were deleted from the UI entirely.** Offering them offered a rule measurably
+   worse than the nuclear cutoff it replaced, dressed as the more careful choice. Membranous
+   is now classifier-or-nothing; the nuclear cutoff below it is the fallback for refused
+   slides. `_apply_cytoplasm_measurement` no longer applies `ring mean > threshold` when it
+   has no cutoffs — it measures and leaves the nuclear classification standing.
+
+3. **The self-calibrating pixel threshold is the better estimator, not a compromise.**
+   Deriving "stained" per image from that image's own ring pixels (median + 3·MAD) reaches
+   AUC 0.876; fitting it on labelled negatives and carrying it to another image — the
+   original `tune_membrane_threshold.py` approach — reaches **0.637**. A threshold fitted on
+   one slide's staining is a constant applied to a different slide's. Pinned in
+   `tests/test_auto_pixel_threshold.py`, which also documents why a high percentile of
+   pooled ring pixels is the wrong estimator: the stained pixels are in the distribution, so
+   the threshold climbs with the positivity rate and a slide with more signal is called less
+   positive (0.078 → 0.438 across 0–80 % positivity, against 0.086 → 0.110 for MAD).
+
+4. **Nothing works on the faint slide.** Best arm F1 0.667; single-number rules 0.38–0.53.
+   This is the contrast floor of § 11.5 restated on labels: where the stain does not clear
+   the ring background, no rule separates the classes. It is why the classifier's
+   applicability gate hands such slides back to the cutoff.
+
+**Caveats.** Four images, one cohort, one scanner; the per-slide spread (F1 0.46–0.96) is
+wider than every difference between arms. Labels are one person's calls on DAB morphology,
+not an orthogonal truth such as immunofluorescence. The arms are comparable to each other
+and not to the earlier `tune_membrane_threshold.py` figure, which used a different decision
+rule and fold protocol.
+
 ### 11.8 Open — pending decision
 
 Not yet settled, deliberately left unwritten rather than guessed:
 
 1. **TIM-3 cutoff.** 0.10 is unsupported by this cohort's Otsu values. Provenance to be
    established before it is either kept or moved.
-2. **Cohort-wide trained classifier** as an opt-in tier above the fixed cutoff. Design
-   constraint already identified: it must be **blocked until a leave-one-image-out report
-   exists**, because cells within a slide are not independent and a random cell-level split
-   will report inflated accuracy (measured LOIO F1 0.83; 0.30 on the faint image). The
-   quality/abstain gate must apply to the classifier path too. A classifier does not solve
-   membranous markers on its own — it can only combine the features it is given, and § 11.2
-   shows the current ring features add little on this tissue.
+2. ~~**Cohort-wide trained classifier** as an opt-in tier above the fixed cutoff.~~
+   **Settled** — shipped, gated on a leave-one-image-out report, and measured in § 11.7b.
+   For membranous markers it is not an opt-in tier but the only option: § 11.7b removed the
+   hand-set membranous cutoffs after measuring them below the nuclear cutoff they replaced.
 3. **Replacing GMM valley selection with a noise-tail rule** (median + k·MAD, or
    triangle/Rosin) validated against the existing DeepLIIF-derived labels.
 4. **Negative-control-derived thresholds** (DAB-quant pattern). The most defensible option
