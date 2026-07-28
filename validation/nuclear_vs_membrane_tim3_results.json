@@ -1,0 +1,437 @@
+{
+  "n_cells": 599,
+  "n_positive": 281,
+  "images": [
+    {
+      "image": "9212046_TIM3_CT",
+      "n_pos": 108,
+      "n_neg": 60,
+      "n_measured": 168
+    },
+    {
+      "image": "92290_TIM3_IM",
+      "n_pos": 47,
+      "n_neg": 141,
+      "n_measured": 188
+    },
+    {
+      "image": "92625_TIM3_CT",
+      "n_pos": 72,
+      "n_neg": 54,
+      "n_measured": 126
+    },
+    {
+      "image": "92658_TIM3_IM",
+      "n_pos": 54,
+      "n_neg": 63,
+      "n_measured": 117
+    }
+  ],
+  "pixel_size_um": 0.5,
+  "arms": {
+    "1. nuclear cutoff (Membranous OFF)": {
+      "ok": true,
+      "pooled": {
+        "precision": 0.7252,
+        "recall": 0.911,
+        "f1": 0.8076,
+        "tp": 256,
+        "fp": 97,
+        "fn": 25,
+        "auc": 0.9333
+      },
+      "folds": [
+        {
+          "image": "9212046_TIM3_CT",
+          "n": 168,
+          "n_positive": 108,
+          "threshold": 0.40606,
+          "auc": 0.9824,
+          "precision": 0.8992,
+          "recall": 0.9907,
+          "f1": 0.9427,
+          "tp": 107,
+          "fp": 12,
+          "fn": 1
+        },
+        {
+          "image": "92290_TIM3_IM",
+          "n": 188,
+          "n_positive": 47,
+          "threshold": 0.36404,
+          "auc": 0.8476,
+          "precision": 0.3561,
+          "recall": 1.0,
+          "f1": 0.5251,
+          "tp": 47,
+          "fp": 85,
+          "fn": 0
+        },
+        {
+          "image": "92625_TIM3_CT",
+          "n": 126,
+          "n_positive": 72,
+          "threshold": 0.44728,
+          "auc": 0.9887,
+          "precision": 1.0,
+          "recall": 0.8056,
+          "f1": 0.8923,
+          "tp": 58,
+          "fp": 0,
+          "fn": 14
+        },
+        {
+          "image": "92658_TIM3_IM",
+          "n": 117,
+          "n_positive": 54,
+          "threshold": 0.44728,
+          "auc": 0.9862,
+          "precision": 1.0,
+          "recall": 0.8148,
+          "f1": 0.898,
+          "tp": 44,
+          "fp": 0,
+          "fn": 10
+        }
+      ]
+    },
+    "2. ring-mean cutoff": {
+      "ok": true,
+      "pooled": {
+        "precision": 0.5921,
+        "recall": 0.8577,
+        "f1": 0.7006,
+        "tp": 241,
+        "fp": 166,
+        "fn": 40,
+        "auc": 0.7568
+      },
+      "folds": [
+        {
+          "image": "9212046_TIM3_CT",
+          "n": 168,
+          "n_positive": 108,
+          "threshold": 0.27167,
+          "auc": 0.9165,
+          "precision": 0.7609,
+          "recall": 0.9722,
+          "f1": 0.8537,
+          "tp": 105,
+          "fp": 33,
+          "fn": 3
+        },
+        {
+          "image": "92290_TIM3_IM",
+          "n": 188,
+          "n_positive": 47,
+          "threshold": 0.29454,
+          "auc": 0.5307,
+          "precision": 0.2517,
+          "recall": 0.8085,
+          "f1": 0.3838,
+          "tp": 38,
+          "fp": 113,
+          "fn": 9
+        },
+        {
+          "image": "92625_TIM3_CT",
+          "n": 126,
+          "n_positive": 72,
+          "threshold": 0.2704,
+          "auc": 0.8992,
+          "precision": 0.7711,
+          "recall": 0.8889,
+          "f1": 0.8258,
+          "tp": 64,
+          "fp": 19,
+          "fn": 8
+        },
+        {
+          "image": "92658_TIM3_IM",
+          "n": 117,
+          "n_positive": 54,
+          "threshold": 0.30842,
+          "auc": 0.9847,
+          "precision": 0.9714,
+          "recall": 0.6296,
+          "f1": 0.764,
+          "tp": 34,
+          "fp": 1,
+          "fn": 20
+        }
+      ]
+    },
+    "3. completeness, auto pixel threshold": {
+      "ok": true,
+      "pooled": {
+        "precision": 0.7102,
+        "recall": 0.8897,
+        "f1": 0.7899,
+        "tp": 250,
+        "fp": 102,
+        "fn": 31,
+        "auc": 0.8763
+      },
+      "folds": [
+        {
+          "image": "9212046_TIM3_CT",
+          "n": 168,
+          "n_positive": 108,
+          "threshold": 0.02484,
+          "auc": 0.9404,
+          "precision": 0.8879,
+          "recall": 0.9537,
+          "f1": 0.9196,
+          "tp": 103,
+          "fp": 13,
+          "fn": 5
+        },
+        {
+          "image": "92290_TIM3_IM",
+          "n": 188,
+          "n_positive": 47,
+          "threshold": 0.0125,
+          "auc": 0.6603,
+          "precision": 0.3193,
+          "recall": 0.8085,
+          "f1": 0.4578,
+          "tp": 38,
+          "fp": 81,
+          "fn": 9
+        },
+        {
+          "image": "92625_TIM3_CT",
+          "n": 126,
+          "n_positive": 72,
+          "threshold": 0.05333,
+          "auc": 0.9604,
+          "precision": 0.9683,
+          "recall": 0.8472,
+          "f1": 0.9037,
+          "tp": 61,
+          "fp": 2,
+          "fn": 11
+        },
+        {
+          "image": "92658_TIM3_IM",
+          "n": 117,
+          "n_positive": 54,
+          "threshold": 0.02597,
+          "auc": 0.9653,
+          "precision": 0.8889,
+          "recall": 0.8889,
+          "f1": 0.8889,
+          "tp": 48,
+          "fp": 6,
+          "fn": 6
+        }
+      ]
+    },
+    "4. nuclear classifier (6 features)": {
+      "ok": true,
+      "n_images": 4,
+      "n_cells": 599,
+      "pooled": {
+        "precision": 0.8249,
+        "recall": 0.8719,
+        "f1": 0.8478,
+        "tp": 245,
+        "fp": 52,
+        "fn": 36,
+        "auc": 0.9254
+      },
+      "fold_f1_min": 0.662,
+      "fold_f1_max": 0.9577,
+      "fold_f1_mean": 0.8287,
+      "fold_f1_std": 0.1171,
+      "folds": [
+        {
+          "image": "9212046_TIM3_CT",
+          "n": 168,
+          "n_positive": 108,
+          "auc": 0.9915,
+          "precision": 0.9714,
+          "recall": 0.9444,
+          "f1": 0.9577,
+          "tp": 102,
+          "fp": 3,
+          "fn": 6
+        },
+        {
+          "image": "92290_TIM3_IM",
+          "n": 188,
+          "n_positive": 47,
+          "auc": 0.8923,
+          "precision": 0.4947,
+          "recall": 1.0,
+          "f1": 0.662,
+          "tp": 47,
+          "fp": 48,
+          "fn": 0
+        },
+        {
+          "image": "92625_TIM3_CT",
+          "n": 126,
+          "n_positive": 72,
+          "auc": 0.992,
+          "precision": 1.0,
+          "recall": 0.8472,
+          "f1": 0.9173,
+          "tp": 61,
+          "fp": 0,
+          "fn": 11
+        },
+        {
+          "image": "92658_TIM3_IM",
+          "n": 117,
+          "n_positive": 54,
+          "auc": 0.9868,
+          "precision": 0.9722,
+          "recall": 0.6481,
+          "f1": 0.7778,
+          "tp": 35,
+          "fp": 1,
+          "fn": 19
+        }
+      ]
+    },
+    "5. membrane classifier (9 features)": {
+      "ok": true,
+      "n_images": 4,
+      "n_cells": 599,
+      "pooled": {
+        "precision": 0.8414,
+        "recall": 0.9253,
+        "f1": 0.8814,
+        "tp": 260,
+        "fp": 49,
+        "fn": 21,
+        "auc": 0.948
+      },
+      "fold_f1_min": 0.6667,
+      "fold_f1_max": 0.96,
+      "fold_f1_mean": 0.867,
+      "fold_f1_std": 0.1176,
+      "folds": [
+        {
+          "image": "9212046_TIM3_CT",
+          "n": 168,
+          "n_positive": 108,
+          "auc": 0.9892,
+          "precision": 0.9231,
+          "recall": 1.0,
+          "f1": 0.96,
+          "tp": 108,
+          "fp": 9,
+          "fn": 0
+        },
+        {
+          "image": "92290_TIM3_IM",
+          "n": 188,
+          "n_positive": 47,
+          "auc": 0.892,
+          "precision": 0.5244,
+          "recall": 0.9149,
+          "f1": 0.6667,
+          "tp": 43,
+          "fp": 39,
+          "fn": 4
+        },
+        {
+          "image": "92625_TIM3_CT",
+          "n": 126,
+          "n_positive": 72,
+          "auc": 0.9982,
+          "precision": 1.0,
+          "recall": 0.8889,
+          "f1": 0.9412,
+          "tp": 64,
+          "fp": 0,
+          "fn": 8
+        },
+        {
+          "image": "92658_TIM3_IM",
+          "n": 117,
+          "n_positive": 54,
+          "auc": 0.9777,
+          "precision": 0.9783,
+          "recall": 0.8333,
+          "f1": 0.9,
+          "tp": 45,
+          "fp": 1,
+          "fn": 9
+        }
+      ]
+    },
+    "6. completeness, threshold fitted on labels": {
+      "ok": true,
+      "pooled": {
+        "precision": 0.6357,
+        "recall": 0.6335,
+        "f1": 0.6346,
+        "tp": 178,
+        "fp": 102,
+        "fn": 103,
+        "auc": 0.6366
+      },
+      "folds": [
+        {
+          "image": "9212046_TIM3_CT",
+          "n": 168,
+          "n_positive": 108,
+          "pix_thr": 0.69919,
+          "frac_cut": 0.00433,
+          "auc": 0.8213,
+          "precision": 0.9605,
+          "recall": 0.6759,
+          "f1": 0.7935,
+          "tp": 73,
+          "fp": 3,
+          "fn": 35
+        },
+        {
+          "image": "92290_TIM3_IM",
+          "n": 188,
+          "n_positive": 47,
+          "pix_thr": 0.49909,
+          "frac_cut": 0.00581,
+          "auc": 0.6465,
+          "precision": 0.3,
+          "recall": 0.8936,
+          "f1": 0.4492,
+          "tp": 42,
+          "fp": 98,
+          "fn": 5
+        },
+        {
+          "image": "92625_TIM3_CT",
+          "n": 126,
+          "n_positive": 72,
+          "pix_thr": 0.70762,
+          "frac_cut": 0.0,
+          "auc": 0.7847,
+          "precision": 1.0,
+          "recall": 0.5694,
+          "f1": 0.7257,
+          "tp": 41,
+          "fp": 0,
+          "fn": 31
+        },
+        {
+          "image": "92658_TIM3_IM",
+          "n": 117,
+          "n_positive": 54,
+          "pix_thr": 0.70997,
+          "frac_cut": 0.0,
+          "auc": 0.6964,
+          "precision": 0.9565,
+          "recall": 0.4074,
+          "f1": 0.5714,
+          "tp": 22,
+          "fp": 1,
+          "fn": 32
+        }
+      ]
+    }
+  }
+}

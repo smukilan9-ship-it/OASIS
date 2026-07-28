@@ -1153,8 +1153,13 @@ td.muted { color: var(--text3); font-size: 11px; }
         <div class="q-group">
           <div class="q-glabel">Compartment <span style="font-weight:400;color:var(--text3)">— where the stain is measured</span></div>
           <div class="q-gplain">DAB is measured either inside the segmented nucleus, or in a
-            ring of cytoplasm just outside it. Choose the one the antibody actually stains:
-            measuring a membrane marker in the nucleus reads mostly background.</div>
+            ring of cytoplasm just outside it. The ring is the right compartment for a
+            surface marker — but measured on 599 hand-labelled TIM-3 cells, a plain nuclear
+            cutoff is <b>close behind</b>: held-out F1 0.808 against 0.881 for a trained
+            membrane classifier, and on the three well-stained slides the gap was 0.017,
+            0.049 and 0.002. Strong membrane staining spills over the nuclear mask, so
+            nuclear optical density tracks it. Turning this on is worth the labelling pass;
+            leaving it off is not the disaster the compartment argument suggests.</div>
           <div class="q-switch">
             <div class="q-sw-title">Membranous <span class="q-sw-sub">— measure the cytoplasmic ring</span></div>
             <div class="toggle" id="q-membrane-toggle" onclick="toggleQuantMembrane()"></div>
@@ -1168,24 +1173,26 @@ td.muted { color: var(--text3); font-size: 11px; }
           </div>
           <div class="info-box amber" id="q-membrane-req" style="display:none;margin-top:12px">
             <b>Only usable on well-stained tissue, and only with a trained membrane
-            classifier.</b>
+            classifier</b> — the ring beats the nucleus only as a fitted combination of its
+            nine measurements, never as any single ring number.
             <div style="margin-top:6px">Ring completeness needs the stain to stand clear of
               the ring background. Where it does not, positive and negative cells overlap in
-              every ring measurement and <b>no pair of cutoffs separates them</b> — measured
-              here: held-out F1 <b>0.83</b> across slides that stained well, and <b>0.30</b>
-              on the one faint slide in the same set. That is a staining outcome, not a
-              setting you can tune your way out of.</div>
+              every ring measurement and <b>no rule separates them</b> — measured on 599
+              hand-labelled TIM-3 cells, the best arm reached held-out F1 <b>0.96, 0.94 and
+              0.90</b> on the three well-stained slides and <b>0.67</b> on the one faint
+              slide in the same set, where the single-number rules fell to 0.38–0.53. That
+              is a staining outcome, not a setting you can tune your way out of.</div>
             <div style="margin-top:6px">So the rule has to be fitted on your own cells rather
               than guessed. In the <b>Classifier</b> tab, label positive and negative cells on
               <b>at least 3 slides</b> (5 or more preferred) with <b>50 of each class</b>; the
               fit is refused unless its leave-one-image-out <b>AUC reaches 0.75</b>. A run
               cannot use membranous scoring until one exists.</div>
             <div style="margin-top:6px"><b>On faint or low-contrast slides use the nuclear
-              fixed-OD cutoff instead</b> — turn this off. It measures the wrong compartment
-              for a surface marker, so it is a weaker claim, but it is a measurement rather
-              than a coin toss. A trained classifier already does this per image: a slide
-              outside its training range is refused, handed back to the cutoff, and named in
-              the results.</div>
+              fixed-OD cutoff instead</b> — turn this off. It was the best single-number rule
+              in that same comparison (held-out AUC 0.933, ahead of every rule computed on
+              the ring), and it costs no labelling. A trained classifier already does this
+              per image: a slide outside its training range is refused, handed back to the
+              cutoff, and named in the results.</div>
           </div>
         </div>
 
@@ -1239,11 +1246,11 @@ td.muted { color: var(--text3); font-size: 11px; }
             oninput="document.getElementById('q-ringfrac-display').textContent=(this.value/100).toFixed(2)">
           <div class="q-note" style="margin-top:6px">These two numbers are the <b>fallback</b>,
             not the rule this mode is meant to run on. They apply to any image the trained
-            classifier refuses, and to a run that has no classifier — which is not a validated
-            configuration. Treat them as a starting point: 0.10 and 0.15 come from the public
-            CRC-ICM TIM-3 set, whose own fitted pixel threshold was in fact 0.30, and fitted
-            values across cohorts have ranged from 0.08 to 0.30. Nothing here has been measured
-            against ground truth with cutoffs chosen by hand.</div>
+            classifier refuses. Ring completeness on its own is a <b>weak</b> rule: against
+            599 hand-labelled TIM-3 cells it reached held-out AUC 0.876, <i>below</i> the
+            plain nuclear cutoff's 0.933 and well below the membrane classifier's 0.948. Set
+            them as a floor for refused images, not as a way to run this mode without a
+            classifier.</div>
           <div class="q-inline" style="margin-top:12px">
             <span class="q-fbname" style="flex:none">Load cutoffs from a saved calibration</span>
             <select id="q-calib-profile" style="flex:1;min-width:260px;max-width:420px"
