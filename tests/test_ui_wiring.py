@@ -61,6 +61,21 @@ def test_every_inline_handler_calls_a_function_that_exists(ui):
     assert not missing, f"handlers call undefined functions: {missing}"
 
 
+def test_no_element_id_is_used_twice(ui):
+    """Two elements sharing an id is a silent half-broken control.
+
+    `getElementById` returns the first one, so the second renders, accepts clicks and is
+    read by nothing. Introduced while restructuring the Spatial wizard: a lifted card
+    already contained the cleanup toggle and a second copy was written into the new final
+    step, leaving a switch on screen that no run ever consulted.
+    """
+    import collections
+
+    counts = collections.Counter(re.findall(r'\bid="([^"]+)"', ui["markup"]))
+    dupes = {k: v for k, v in counts.items() if v > 1}
+    assert not dupes, f"duplicate element ids: {dupes}"
+
+
 def test_every_element_id_read_by_js_exists_in_the_markup(ui):
     read = set(re.findall(r"""getElementById\(\s*['"]([^'"]+)['"]\s*\)""", ui["script"]))
     read |= set(re.findall(r"""querySelector\(\s*['"]#([A-Za-z0-9_-]+)['"]""", ui["script"]))

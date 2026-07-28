@@ -1405,13 +1405,17 @@ td.muted { color: var(--text3); font-size: 11px; }
            is wrapped in a .wizard-step; only the active one is shown. -->
       <div class="card" style="padding:14px">
         <div class="wizard-stepper" id="spatial-wizard-stepper">
-          <button type="button" class="wstep active" data-step="1" onclick="spatialWizardGoTo(1)"><span class="wstep-n">1</span> Inputs</button>
-          <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="2" onclick="spatialWizardGoTo(2)"><span class="wstep-n">2</span> Certify registration</button>
-          <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="3" onclick="spatialWizardGoTo(3)"><span class="wstep-n">3</span> Settings</button>
-          <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="4" onclick="spatialWizardGoTo(4)"><span class="wstep-n">4</span> Validation check &amp; run</button>
+          <button type="button" class="wstep active" data-step="1" onclick="spatialWizardGoTo(1)"><span class="wstep-n">1</span> Inputs &amp; outputs</button>
+          <span class="wstep-sep">&rarr;</span>
+          <button type="button" class="wstep" data-step="2" onclick="spatialWizardGoTo(2)"><span class="wstep-n">2</span> Pixel size</button>
+          <span class="wstep-sep">&rarr;</span>
+          <button type="button" class="wstep" data-step="3" onclick="spatialWizardGoTo(3)"><span class="wstep-n">3</span> Certify registration</button>
+          <span class="wstep-sep">&rarr;</span>
+          <button type="button" class="wstep" data-step="4" onclick="spatialWizardGoTo(4)"><span class="wstep-n">4</span> Segmentation</button>
+          <span class="wstep-sep">&rarr;</span>
+          <button type="button" class="wstep" data-step="5" onclick="spatialWizardGoTo(5)"><span class="wstep-n">5</span> Classification</button>
+          <span class="wstep-sep">&rarr;</span>
+          <button type="button" class="wstep" data-step="6" onclick="spatialWizardGoTo(6)"><span class="wstep-n">6</span> Save &amp; run</button>
         </div>
         <div class="wstep-hint" id="spatial-wizard-hint"></div>
       </div>
@@ -1427,28 +1431,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       </div>
 
       <!-- Session pixel size calibration -->
-      <div class="card">
-        <div class="card-title">Pixel Size Calibration <span style="font-weight:500;color:var(--text3);font-size:12px">— optional default</span></div>
-        <div class="info-box amber" style="margin-bottom:12px">A <b>default</b> for the whole run — you can change it per image below (or per pair in batch). If an image has its own <b>scale image</b>, that scale bar is measured and used for that image instead. Leave a per-image override blank to fall back to this default.</div>
-        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="radio" name="spatial-session-px" value="manual" checked onchange="spatialAssocSetSessionPxMode('manual')"> Enter manually
-          </label>
-          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
-            <input type="radio" name="spatial-session-px" value="scale" onchange="spatialAssocSetSessionPxMode('scale')"> Use scale image
-          </label>
-        </div>
-        <div id="spatial-session-manual">
-          <div class="field"><label>Pixel size (µm/px)</label>
-            <input type="number" id="spatial-session-px-val" value="0.5" step="0.01" min="0.01"
-                   onchange="spatialCertInvalidate(); spatialAssocRefreshOverrideDefaults()">
-          </div>
-        </div>
-        <div id="spatial-session-scale" style="display:none">
-          <button class="btn" id="spatial-session-scale-btn" onclick="spatialAssocPickSessionScale()">Select scale image…</button>
-          <div id="spatial-session-scale-result" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
-        </div>
-      </div>
+      
 
       <!-- SINGLE PAIR config -->
       <div id="spatial-single-config">
@@ -1457,7 +1440,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div class="card">
             <div class="card-title">Image A</div>
             <div class="field"><label>Stain name</label>
-              <input type="text" id="spatial-label-a" placeholder="e.g. CD8" value="CD8">
+              <input type="text" id="spatial-label-a" oninput="spatialPxSyncLabels()" placeholder="e.g. CD8" value="CD8">
             </div>
             <div class="field"><label>Analysis image</label>
               <div class="input-with-btn">
@@ -1467,26 +1450,13 @@ td.muted { color: var(--text3); font-size: 11px; }
               </div>
               <div id="spatial-image-err-a" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
             </div>
-            <div id="spatial-ov-a" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
-              <div class="section-label" style="margin:0 0 6px">Pixel size for this image <span style="font-weight:500;color:var(--text3)">— optional, overrides the default</span></div>
-              <div id="spatial-ov-default-a" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
-              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="manual" checked onchange="spatialAssocSetOverrideMode('a','manual')"> Enter manually</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="scale" onchange="spatialAssocSetOverrideMode('a','scale')"> Use scale image (measure its bar)</label>
-              </div>
-              <div id="spatial-ov-manual-a"><input type="number" id="spatial-ov-px-a" placeholder="blank = use default" step="0.01" min="0.01" onchange="spatialOvManualChanged('a')"></div>
-              <div id="spatial-ov-scale-a" style="display:none">
-                <button class="btn sm" onclick="spatialAssocPickOverrideScale('a')">Select scale image…</button>
-                <div id="spatial-ov-scale-result-a" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
-              </div>
-              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('a')">× Reset to default</button>
-            </div>
+            
           </div>
           <!-- Image B -->
           <div class="card">
             <div class="card-title">Image B</div>
             <div class="field"><label>Stain name</label>
-              <input type="text" id="spatial-label-b" placeholder="e.g. TIM-3" value="TIM-3">
+              <input type="text" id="spatial-label-b" oninput="spatialPxSyncLabels()" placeholder="e.g. TIM-3" value="TIM-3">
             </div>
             <div class="field"><label>Analysis image</label>
               <div class="input-with-btn">
@@ -1496,20 +1466,7 @@ td.muted { color: var(--text3); font-size: 11px; }
               </div>
               <div id="spatial-image-err-b" style="display:none;color:#dc2626;font-size:11px;margin-top:6px;line-height:1.5"></div>
             </div>
-            <div id="spatial-ov-b" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
-              <div class="section-label" style="margin:0 0 6px">Pixel size for this image <span style="font-weight:500;color:var(--text3)">— optional, overrides the default</span></div>
-              <div id="spatial-ov-default-b" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
-              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="manual" checked onchange="spatialAssocSetOverrideMode('b','manual')"> Enter manually</label>
-                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="scale" onchange="spatialAssocSetOverrideMode('b','scale')"> Use scale image (measure its bar)</label>
-              </div>
-              <div id="spatial-ov-manual-b"><input type="number" id="spatial-ov-px-b" placeholder="blank = use default" step="0.01" min="0.01" onchange="spatialOvManualChanged('b')"></div>
-              <div id="spatial-ov-scale-b" style="display:none">
-                <button class="btn sm" onclick="spatialAssocPickOverrideScale('b')">Select scale image…</button>
-                <div id="spatial-ov-scale-result-b" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
-              </div>
-              <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('b')">× Reset to default</button>
-            </div>
+            
           </div>
         </div>
       </div>
@@ -1544,10 +1501,7 @@ td.muted { color: var(--text3); font-size: 11px; }
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
             Preview Matches
           </button>
-          <div class="toggle-row" style="margin-top:10px">
-            <span>Match scale images in these folders <span style="color:var(--text3);font-size:11px">— calibrate each image from its own <b>_scale</b> sibling's bar (falls back to the session pixel size)</span></span>
-            <div class="toggle" id="spatial-scale-match-toggle" onclick="spatialScaleMatchToggle()"></div>
-          </div>
+          
         </div>
         <div id="spatial-preview-card" style="display:none">
           <div class="card">
@@ -1565,9 +1519,116 @@ td.muted { color: var(--text3); font-size: 11px; }
         </div>
       </div>
 
+
+      <!-- Where results go. On the FIRST step, because the step is called inputs AND
+           outputs; this card used to sit under "settings", three screens from the inputs. -->
+      <div class="card">
+              <div class="card-title">Output options</div>
+              <div class="field"><label>Output folder</label>
+                <div class="input-with-btn"><input type="text" id="spatial-output" placeholder="~/Desktop/ihc_spatial_results"><button class="btn sm" onclick="pickInto('spatial-output', null)">Browse</button></div>
+                <div style="font-size:11px;color:var(--text3);margin-top:4px">Receives per-pair JSON, segmentation overlays, consolidated density maps, association plots, and reproducibility metadata.</div>
+              </div>
+              <div class="toggle-row">
+                <span>Delete intermediate files after run</span>
+                <div class="toggle" id="spatial-cleanup-toggle" onclick="toggleEl('spatial-cleanup-toggle')"></div>
+              </div>
+            </div>
       </div><!-- /sp-step-1 -->
 
       <div class="wizard-step" id="sp-step-2" data-step="2">
+      <div class="card">
+        <div class="q-step-head">
+          <h2>Pixel size</h2>
+          <p>How many microns one pixel covers. Every distance in the association statistic
+             is measured in microns, so nothing below this step means anything without it.</p>
+        </div>
+      </div>
+
+      <div class="card">
+              <div class="card-title">Pixel Size Calibration <span style="font-weight:500;color:var(--text3);font-size:12px">— optional default</span></div>
+              <div class="info-box amber" style="margin-bottom:12px">A <b>default</b> for the whole run — you can change it per image below (or per pair in batch). If an image has its own <b>scale image</b>, that scale bar is measured and used for that image instead. Leave a per-image override blank to fall back to this default.</div>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="spatial-session-px" value="manual" checked onchange="spatialAssocSetSessionPxMode('manual')"> Enter manually
+                </label>
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer">
+                  <input type="radio" name="spatial-session-px" value="scale" onchange="spatialAssocSetSessionPxMode('scale')"> Use scale image
+                </label>
+              </div>
+              <div id="spatial-session-manual">
+                <div class="field"><label>Pixel size (µm/px)</label>
+                  <input type="number" id="spatial-session-px-val" value="0.5" step="0.01" min="0.01"
+                         onchange="spatialCertInvalidate(); spatialAssocRefreshOverrideDefaults()">
+                </div>
+              </div>
+              <div id="spatial-session-scale" style="display:none">
+                <button class="btn" id="spatial-session-scale-btn" onclick="spatialAssocPickSessionScale()">Select scale image…</button>
+                <div id="spatial-session-scale-result" style="font-size:11px;color:var(--text2);margin-top:8px"></div>
+              </div>
+            </div>
+
+      <!-- The two markers of a pair are stacked, marker over marker, so the eye reads one
+           PAIR rather than two unrelated columns. -->
+      <div class="card" id="spatial-px-pair-card">
+        <div class="q-step-head">
+          <h2>This pair</h2>
+          <p>Leave a row blank to use the run default above. A row with its own scale image
+             is measured from that image's bar instead.</p>
+        </div>
+        <div class="q-group">
+          <div class="q-glabel">Image A — <span id="spatial-px-label-a">CD8</span></div>
+          <div class="q-gplain" id="spatial-px-name-a">no image selected yet</div>
+          <div id="spatial-ov-a" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+                        <div class="section-label" style="margin:0 0 6px">Pixel size for this image <span style="font-weight:500;color:var(--text3)">— optional, overrides the default</span></div>
+                        <div id="spatial-ov-default-a" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+                          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="manual" checked onchange="spatialAssocSetOverrideMode('a','manual')"> Enter manually</label>
+                          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-a" value="scale" onchange="spatialAssocSetOverrideMode('a','scale')"> Use scale image (measure its bar)</label>
+                        </div>
+                        <div id="spatial-ov-manual-a"><input type="number" id="spatial-ov-px-a" placeholder="blank = use default" step="0.01" min="0.01" onchange="spatialOvManualChanged('a')"></div>
+                        <div id="spatial-ov-scale-a" style="display:none">
+                          <button class="btn sm" onclick="spatialAssocPickOverrideScale('a')">Select scale image…</button>
+                          <div id="spatial-ov-scale-result-a" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
+                        </div>
+                        <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('a')">× Reset to default</button>
+                      </div>
+        </div>
+        <div class="q-group">
+          <div class="q-glabel">Image B — <span id="spatial-px-label-b">TIM-3</span></div>
+          <div class="q-gplain" id="spatial-px-name-b">no image selected yet</div>
+          <div id="spatial-ov-b" style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border)">
+                        <div class="section-label" style="margin:0 0 6px">Pixel size for this image <span style="font-weight:500;color:var(--text3)">— optional, overrides the default</span></div>
+                        <div id="spatial-ov-default-b" style="font-size:11px;color:var(--text3);margin-bottom:8px"></div>
+                        <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px">
+                          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="manual" checked onchange="spatialAssocSetOverrideMode('b','manual')"> Enter manually</label>
+                          <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer"><input type="radio" name="spatial-ov-mode-b" value="scale" onchange="spatialAssocSetOverrideMode('b','scale')"> Use scale image (measure its bar)</label>
+                        </div>
+                        <div id="spatial-ov-manual-b"><input type="number" id="spatial-ov-px-b" placeholder="blank = use default" step="0.01" min="0.01" onchange="spatialOvManualChanged('b')"></div>
+                        <div id="spatial-ov-scale-b" style="display:none">
+                          <button class="btn sm" onclick="spatialAssocPickOverrideScale('b')">Select scale image…</button>
+                          <div id="spatial-ov-scale-result-b" style="font-size:11px;color:var(--text2);margin-top:6px"></div>
+                        </div>
+                        <button class="btn sm" style="margin-top:8px" onclick="spatialAssocClearOverride('b')">× Reset to default</button>
+                      </div>
+        </div>
+      </div>
+
+      <div class="card" id="spatial-px-batch-card" style="display:none">
+        <div class="q-step-head">
+          <h2>Batch calibration</h2>
+          <p>Each image can carry its own scale-bar sibling. Matched images are calibrated
+             from their own bar; the rest fall back to the run default above.</p>
+        </div>
+        <div class="q-group">
+          <div class="toggle-row" style="margin-top:10px">
+                      <span>Match scale images in these folders <span style="color:var(--text3);font-size:11px">— calibrate each image from its own <b>_scale</b> sibling's bar (falls back to the session pixel size)</span></span>
+                      <div class="toggle" id="spatial-scale-match-toggle" onclick="spatialScaleMatchToggle()"></div>
+                    </div>
+        </div>
+      </div>
+      </div><!-- /sp-step-2 -->
+
+      <div class="wizard-step" id="sp-step-3" data-step="3">
       <!-- Mandatory landmark certification -->
       <div class="card" id="spatial-cert-card">
         <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
@@ -1689,96 +1750,126 @@ td.muted { color: var(--text3); font-size: 11px; }
         </div>
       </div>
 
-      </div><!-- /sp-step-2 -->
-
-      <div class="wizard-step" id="sp-step-3" data-step="3">
-      <!-- Matching parameters -->
-      <div class="card">
-        <div class="card-title">Analysis parameters</div>
-        <div class="field"><label>Proximity highlight distance (µm)</label>
-          <input type="number" id="spatial-max-dist" value="10.0" step="0.5" min="1" max="200">
-          <div style="font-size:11px;color:var(--text3);margin-top:4px">Illustrative only: cells within this distance of an opposite-type cell are outlined in the cell map. It does <b>not</b> define the statistic — that is the Ripley cross-K curve, not a cell count.</div>
-        </div>
-        <div class="row2">
-          <div class="field"><label>DAB threshold — Image A (OD)</label>
-            <input type="number" id="spatial-thresh-a" value="0.20" step="0.01" min="0.01" max="1.0">
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">Minimum brown-DAB optical density to call a cell positive (higher = stricter). Recommended 0.20 for CD8.</div>
-          </div>
-          <div class="field"><label>DAB threshold — Image B (OD)</label>
-            <input type="number" id="spatial-thresh-b" value="0.10" step="0.01" min="0.01" max="1.0">
-            <div style="font-size:11px;color:var(--text3);margin-top:4px">Minimum brown-DAB optical density to call a cell positive (higher = stricter). Recommended 0.10 for TIM-3.</div>
-          </div>
-        </div>
-        <div style="margin-top:8px">
-          <div class="toggle-row"><span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
-            <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">White-balances each image to its own estimated background before measuring DAB. Reduces slide-to-slide stain variation; does not move cell coordinates.</div>
-        </div>
-        <div style="margin-top:8px">
-          <div class="toggle-row"><span>Enable image registration</span>
-            <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Landmark certification is still the required quality gate for serial-section claims.</div>
-        </div>
-        <div style="margin-top:8px">
-          <div class="toggle-row"><span>Membranous quantification</span>
-            <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:2px">Measures DAB in a cytoplasmic ring (not the nucleus), called by a trained membrane classifier for that marker — the correct compartment for membranous markers, and the only ring rule measured to beat a nuclear cutoff.</div>
-        </div>
-        <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
-          <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the
-            cytoplasmic ring instead of the nucleus, called by a <b>trained membrane classifier</b>
-            for that marker — the same rule Quant uses, and the only one measured to beat a nuclear
-            cutoff on a membranous marker (research/ihc.md § 11.7b). Each image needs its own
-            classifier because the two markers differ. Without one, that image is measured in the
-            <b>nucleus</b>; OASIS will not fall back to a ring rule it cannot stand behind.</div>
-          <div class="row2">
-            <div class="field"><label>Image A membrane classifier</label>
-              <select id="spatial-cls-a"><option value="">Auto (match marker)</option></select>
-              <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image A</span>
-                <div class="toggle on" id="spatial-cyto-a-toggle" onclick="toggleEl('spatial-cyto-a-toggle')"></div></div>
-            </div>
-            <div class="field"><label>Image B membrane classifier</label>
-              <select id="spatial-cls-b"><option value="">Auto (match marker)</option></select>
-              <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image B</span>
-                <div class="toggle on" id="spatial-cyto-b-toggle" onclick="toggleEl('spatial-cyto-b-toggle')"></div></div>
-            </div>
-          </div>
-        </div>
-        <div class="info-box amber" style="margin-top:10px">
-          Cross-type analysis reports two distinct findings — <b>short-range colocalization</b> (10–20 µm) and <b>co-infiltration</b> (20–50 µm) — each as attraction or segregation on the calibrated primary null. OASIS uses the 75 µm intensity-reweighted primary when its architecture check passes; if the tissue is fine/dense it switches to the dense morphology-conditioned null, and if one marker is sparse it runs on the all-cell support null (flagged UNDERPOWERED) so segregation is still reported. This is a population-level serial-section statistic; it does not imply single-cell co-expression, which requires multiplex imaging on the same section.
-        </div>
       </div>
-
-      <!-- Output options -->
-      <div class="card">
-        <div class="card-title">Output options</div>
-        <div class="field"><label>Output folder</label>
-          <div class="input-with-btn"><input type="text" id="spatial-output" placeholder="~/Desktop/ihc_spatial_results"><button class="btn sm" onclick="pickInto('spatial-output', null)">Browse</button></div>
-          <div style="font-size:11px;color:var(--text3);margin-top:4px">Receives per-pair JSON, segmentation overlays, consolidated density maps, association plots, and reproducibility metadata.</div>
-        </div>
-        <div class="toggle-row">
-          <span>Delete intermediate files after run</span>
-          <div class="toggle" id="spatial-cleanup-toggle" onclick="toggleEl('spatial-cleanup-toggle')"></div>
-        </div>
-      </div>
-      </div><!-- /sp-step-3 -->
 
       <div class="wizard-step" id="sp-step-4" data-step="4">
-      <!-- 75 µm bandwidth validity — the validation check, run AFTER settings so the
-           cached segmentation reflects the chosen parameters -->
-      <div class="card" id="spatial-bandwidth-card">
-        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-          <span>Bandwidth (75 µm) validity — within certified analysis window</span>
-          <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
+      <div class="card">
+        <div class="q-step-head">
+          <h2>Nuclear segmentation</h2>
+          <p>Both sections are segmented with <b>InstanSeg</b> — the same model, in-process,
+             that Quant uses. It is fixed and has nothing to tune. Nothing on this step
+             decides which cells are positive.</p>
         </div>
-        <div class="science-summary" style="margin-bottom:12px">
-          <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Measures tissue architecture — from all cells, independent of either marker — only inside the certified window, and names the null OASIS will use: <b>75 µm reweighted</b> (coarse tissue), the <b>dense/all-cell support null</b> (fine tissue, or when one marker is sparse → reported UNDERPOWERED), or an <b>abundance/absence finding</b> when a marker is (near-)absent. Otherwise it fails closed. Registration certification is unaffected by this check.</div>
-          <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. Architecture is estimated from all cells, so segregation can be reported even when one marker has few positives. This check does not change registration certification.">Window-specific check</span>
+        <div class="q-group">
+          <div style="margin-top:8px">
+                    <div class="toggle-row"><span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
+                      <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div></div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px">White-balances each image to its own estimated background before measuring DAB. Reduces slide-to-slide stain variation; does not move cell coordinates.</div>
+                  </div>
+          <div id="spatial-norm-preview-wrap" style="margin-top:12px">
+            <button class="btn sm" type="button" onclick="spatialPreviewNormalization()">Show me what this does</button>
+            <div id="spatial-norm-preview"></div>
+          </div>
         </div>
-        <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
-        <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
+        <div class="q-group">
+          <div style="margin-top:8px">
+                    <div class="toggle-row"><span>Enable image registration</span>
+                      <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div></div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Landmark certification is still the required quality gate for serial-section claims.</div>
+                  </div>
+        </div>
+        <div class="q-group">
+          <div class="q-note">Segmentation is cached and shared: the same cells feed the
+            certified analysis window, the null-model check on step 6, and the association
+            statistic. They are never segmented twice.</div>
+        </div>
       </div>
       </div><!-- /sp-step-4 -->
+
+      <div class="wizard-step" id="sp-step-5" data-step="5">
+      <div class="card">
+        <div class="q-step-head">
+          <h2>Classification</h2>
+          <p>Which segmented cells count as positive. The two sections carry different
+             markers, so each gets its own cutoff.</p>
+        </div>
+        <div class="q-group">
+          <div class="row2">
+                    <div class="field"><label>DAB threshold — Image A (OD)</label>
+                      <input type="number" id="spatial-thresh-a" value="0.20" step="0.01" min="0.01" max="1.0">
+                      <div style="font-size:11px;color:var(--text3);margin-top:4px">Minimum brown-DAB optical density to call a cell positive (higher = stricter). Recommended 0.20 for CD8.</div>
+                    </div>
+                    <div class="field"><label>DAB threshold — Image B (OD)</label>
+                      <input type="number" id="spatial-thresh-b" value="0.10" step="0.01" min="0.01" max="1.0">
+                      <div style="font-size:11px;color:var(--text3);margin-top:4px">Minimum brown-DAB optical density to call a cell positive (higher = stricter). Recommended 0.10 for TIM-3.</div>
+                    </div>
+                  </div>
+        </div>
+        <div class="q-group">
+          <div style="margin-top:8px">
+                    <div class="toggle-row"><span>Membranous quantification</span>
+                      <div class="toggle" id="spatial-membrane-toggle" onclick="spatialToggleMembrane()"></div></div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px">Measures DAB in a cytoplasmic ring (not the nucleus), called by a trained membrane classifier for that marker — the correct compartment for membranous markers, and the only ring rule measured to beat a nuclear cutoff.</div>
+                  </div>
+          <div id="spatial-membrane-opts" style="display:none;margin-top:8px">
+                    <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the
+                      cytoplasmic ring instead of the nucleus, called by a <b>trained membrane classifier</b>
+                      for that marker — the same rule Quant uses, and the only one measured to beat a nuclear
+                      cutoff on a membranous marker (research/ihc.md § 11.7b). Each image needs its own
+                      classifier because the two markers differ. Without one, that image is measured in the
+                      <b>nucleus</b>; OASIS will not fall back to a ring rule it cannot stand behind.</div>
+                    <div class="row2">
+                      <div class="field"><label>Image A membrane classifier</label>
+                        <select id="spatial-cls-a"><option value="">Auto (match marker)</option></select>
+                        <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image A</span>
+                          <div class="toggle on" id="spatial-cyto-a-toggle" onclick="toggleEl('spatial-cyto-a-toggle')"></div></div>
+                      </div>
+                      <div class="field"><label>Image B membrane classifier</label>
+                        <select id="spatial-cls-b"><option value="">Auto (match marker)</option></select>
+                        <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image B</span>
+                          <div class="toggle on" id="spatial-cyto-b-toggle" onclick="toggleEl('spatial-cyto-b-toggle')"></div></div>
+                      </div>
+                    </div>
+                  </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="info-box amber" style="margin-top:10px">
+                  Cross-type analysis reports two distinct findings — <b>short-range colocalization</b> (10–20 µm) and <b>co-infiltration</b> (20–50 µm) — each as attraction or segregation on the calibrated primary null. OASIS uses the 75 µm intensity-reweighted primary when its architecture check passes; if the tissue is fine/dense it switches to the dense morphology-conditioned null, and if one marker is sparse it runs on the all-cell support null (flagged UNDERPOWERED) so segregation is still reported. This is a population-level serial-section statistic; it does not imply single-cell co-expression, which requires multiplex imaging on the same section.
+                </div>
+      </div>
+      </div><!-- /sp-step-5 -->
+
+      <div class="wizard-step" id="sp-step-6" data-step="6">
+      <div class="card">
+        <div class="q-step-head">
+          <h2>Save and run</h2>
+          <p>Confirm the null model fits this tissue, then run. The association statistic is
+             only reported inside the certified window.</p>
+        </div>
+        <div class="q-group">
+          <div class="field"><label>Proximity highlight distance (µm)</label>
+                    <input type="number" id="spatial-max-dist" value="10.0" step="0.5" min="1" max="200">
+                    <div style="font-size:11px;color:var(--text3);margin-top:4px">Illustrative only: cells within this distance of an opposite-type cell are outlined in the cell map. It does <b>not</b> define the statistic — that is the Ripley cross-K curve, not a cell count.</div>
+                  </div>
+        </div>
+      </div>
+
+      <div class="card" id="spatial-bandwidth-card">
+              <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+                <span>Bandwidth (75 µm) validity — within certified analysis window</span>
+                <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
+              </div>
+              <div class="science-summary" style="margin-bottom:12px">
+                <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Measures tissue architecture — from all cells, independent of either marker — only inside the certified window, and names the null OASIS will use: <b>75 µm reweighted</b> (coarse tissue), the <b>dense/all-cell support null</b> (fine tissue, or when one marker is sparse → reported UNDERPOWERED), or an <b>abundance/absence finding</b> when a marker is (near-)absent. Otherwise it fails closed. Registration certification is unaffected by this check.</div>
+                <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. Architecture is estimated from all cells, so segregation can be reported even when one marker has few positives. This check does not change registration certification.">Window-specific check</span>
+              </div>
+              <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
+              <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
+            </div>
+      </div><!-- /sp-step-6 -->
+
 
       <div class="wizard-nav" id="spatial-wizard-nav">
         <button type="button" class="btn" id="spatial-wizard-back" onclick="spatialWizardGoTo(spatialWizardStep - 1)">← Back</button>
@@ -4453,12 +4544,17 @@ function exportQuantCSV() {
 
 // ── Spatial guided wizard (layout only — the science is unchanged) ──────────
 let spatialWizardStep = 1;
-const SPATIAL_WIZARD_STEPS = 4;
+const SPATIAL_WIZARD_STEPS = 6;
+// The order things actually happen to an image, matching Quant, plus the one step Quant
+// does not need: two serial sections have to be SHOWN to be aligned before any distance
+// measured between them means anything.
 const SPATIAL_WIZARD_HINTS = {
-  1: 'Load the two serial-section images (or batch folders) and set the pixel size. These define what OASIS measures — nothing downstream is valid without them.',
-  2: 'Certify that the two sections are aligned. A biological finding is only trustworthy inside a certified analysis window; uncertified pairs are flagged, never reported as findings.',
-  3: 'Set positivity thresholds, compartment, and output options. Fix these before running: segmentation is cached and reused, so the parameters that shape it must be chosen before any cells are detected.',
-  4: 'Validation check, then Run. Confirm the 75 µm architecture bandwidth is valid for this tissue — OASIS names the null model (75 µm reweighted, dense/support, or sparse-underpowered) or fails closed. The segmentation this check builds is reused by the run; results open automatically.',
+  1: 'What to analyse and where the results go — one pair, or a folder of pairs.',
+  2: 'The physical scale. Every distance in the association statistic is in microns, so nothing downstream is valid without it.',
+  3: 'Show that the two sections are aligned. A finding is only trustworthy inside a certified window; uncertified pairs are flagged, never reported as findings.',
+  4: 'Find the cells. InstanSeg segments both sections and takes no tuning — the only choice is whether to correct the image first. This segmentation is reused by the null check and the run.',
+  5: 'Decide which cells are positive, per marker. The two sections carry different markers, so each gets its own cutoff.',
+  6: 'Confirm the null model fits this tissue, then run. OASIS names the null (75 µm reweighted, dense/support, or sparse-underpowered) or fails closed.',
 };
 function spatialWizardGoTo(n) {
   n = Math.max(1, Math.min(SPATIAL_WIZARD_STEPS, Number(n) || 1));
@@ -4479,8 +4575,16 @@ function spatialWizardGoTo(n) {
   if (next) next.style.display = n === SPATIAL_WIZARD_STEPS ? 'none' : 'inline-flex';
   const prog = document.getElementById('spatial-wizard-progress-txt');
   if (prog) prog.textContent = `Step ${n} of ${SPATIAL_WIZARD_STEPS}`;
-  const sc = document.querySelector('#spatial-config .scroll');
-  if (sc) sc.scrollTop = 0;
+  // Land on the top of the STEP, not the top of the document. scrollTop = 0 threw the
+  // view back past the stepper on every press, so "Next" read as the page jumping rather
+  // than advancing. Only move if the new step is not already in view.
+  requestAnimationFrame(() => {
+    const sc = document.querySelector('#spatial-config .scroll');
+    const step = document.querySelector('#spatial-config .wizard-step.active');
+    if (!sc || !step) return;
+    const top = Math.max(0, step.offsetTop - sc.offsetTop - 12);
+    if (sc.scrollTop > top + 4 || sc.scrollTop + sc.clientHeight < top) sc.scrollTop = top;
+  });
 }
 
 // ── Quant guided wizard (mirrors the Spatial wizard; presentational only) ──
@@ -4513,8 +4617,16 @@ function quantWizardGoTo(n) {
   const prog = document.getElementById('quant-wizard-progress-txt');
   if (prog) prog.textContent = `Step ${n} of ${QUANT_WIZARD_STEPS}`;
   if (n === QUANT_WIZARD_STEPS) quantBuildReview();
-  const sc = document.querySelector('#quant-config .scroll');
-  if (sc) sc.scrollTop = 0;
+  // Land on the top of the STEP, not the top of the document. scrollTop = 0 threw the
+  // view back past the stepper on every press, so "Next" read as the page jumping rather
+  // than advancing. Only move if the new step is not already in view.
+  requestAnimationFrame(() => {
+    const sc = document.querySelector('#quant-config .scroll');
+    const step = document.querySelector('#quant-config .wizard-step.active');
+    if (!sc || !step) return;
+    const top = Math.max(0, step.offsetTop - sc.offsetTop - 12);
+    if (sc.scrollTop > top + 4 || sc.scrollTop + sc.clientHeight < top) sc.scrollTop = top;
+  });
 }
 
 // Read-only summary of the resolved run settings on the final wizard step.
@@ -4594,9 +4706,115 @@ function spatialAssocSetMode(mode) {
   document.getElementById('spatial-mode-batch-btn').classList.toggle('active', mode === 'batch');
   document.getElementById('spatial-cert-pair-row').style.display =
     mode === 'batch' && spatialPairs.length ? 'block' : 'none';
+  // Step 2 shows per-PAIR rows in single mode and the scale-match control in batch —
+  // the same decision expressed at two different scales.
+  const pairCard  = document.getElementById('spatial-px-pair-card');
+  const batchCard = document.getElementById('spatial-px-batch-card');
+  if (pairCard)  pairCard.style.display  = mode === 'single' ? 'block' : 'none';
+  if (batchCard) batchCard.style.display = mode === 'batch'  ? 'block' : 'none';
+  spatialPxSyncLabels();
   spatialCertifications = {};
   spatialCertResetView();
   spatialAssocUpdateRunBtn();
+}
+
+// ── Step 2: name the pixel-size rows after what step 1 actually holds ───────────
+// The rows used to read "Image A" / "Image B" with no indication of WHICH image, so on a
+// batch of near-identically named files there was nothing to check an override against.
+function spatialPxSyncLabels() {
+  [['a', 'spatial-label-a', 'spatial-image-a'],
+   ['b', 'spatial-label-b', 'spatial-image-b']].forEach(([side, labelId, imgId]) => {
+    const lab = document.getElementById('spatial-px-label-' + side);
+    const nam = document.getElementById('spatial-px-name-' + side);
+    const src = document.getElementById(labelId);
+    const img = document.getElementById(imgId);
+    if (lab && src) lab.textContent = (src.value || '').trim() || ('Marker ' + side.toUpperCase());
+    if (nam && img) {
+      const v = (img.value || '').trim();
+      nam.textContent = v ? v.split('/').pop() : 'no image selected yet';
+      nam.style.opacity = v ? 1 : 0.55;
+    }
+  });
+  if (typeof spatialAssocRefreshOverrideDefaults === 'function') spatialAssocRefreshOverrideDefaults();
+}
+
+// ── Step 4: Quant's normalization preview, but PAIRED ──────────────────────────
+// One pair per page, marker A above marker B, so "next" advances the PAIR. A flat list
+// would put the two sections of one pair nowhere near each other, which is the one
+// comparison this preview exists to support.
+const spatialNormState = { pairs: [], i: 0 };
+
+function spatialNormPairs() {
+  if (spatialMode === 'batch') {
+    return (spatialPairs || []).map(pr => ({ a: pr.path_a, b: pr.path_b,
+                                             la: pr.stain_a || 'A', lb: pr.stain_b || 'B' }));
+  }
+  if (!spatialImage.a || !spatialImage.b) return [];
+  return [{ a: spatialImage.a, b: spatialImage.b,
+            la: (document.getElementById('spatial-label-a').value || 'A').trim(),
+            lb: (document.getElementById('spatial-label-b').value || 'B').trim() }];
+}
+
+async function spatialPreviewNormalization() {
+  spatialNormState.pairs = spatialNormPairs();
+  if (!spatialNormState.pairs.length) {
+    showToast(spatialMode === 'batch' ? 'Preview the folder matches on step 1 first'
+                                      : 'Choose both images on step 1 first');
+    return;
+  }
+  spatialNormState.i = Math.min(spatialNormState.i, spatialNormState.pairs.length - 1);
+  await spatialRenderNorm();
+}
+
+async function spatialRenderNorm() {
+  const host = document.getElementById('spatial-norm-preview');
+  const st = spatialNormState, pr = st.pairs[st.i];
+  if (!host || !pr) return;
+  host.innerHTML = `<div class="q-note" style="margin-top:10px">Rendering pair ${st.i + 1} of ${st.pairs.length}…</div>`;
+  const [ra, rb] = await Promise.all([
+    window.pywebview.api.preview_normalization(pr.a),
+    window.pywebview.api.preview_normalization(pr.b),
+  ]);
+  const row = (r, label, path) => {
+    const name = String(path).split('/').pop();
+    if (!r || !r.ok) {
+      return `<div class="info-box warn" style="margin-top:8px">${esc(label)} — could not render `
+           + `${esc(name)}: ${esc((r && r.msg) || 'unknown error')}</div>`;
+    }
+    const wp = (r.white_point || []).join(', ');
+    return `<div style="margin-top:12px">
+        <div class="q-glabel">${esc(label)} <span style="font-weight:400;color:var(--text3)">— ${esc(name)}</span></div>
+        <div class="q-prev">
+          <figure><img src="${r.original}" alt="original"><figcaption>Original</figcaption></figure>
+          <figure><img src="${r.normalized}" alt="normalized"><figcaption>${r.is_noop ? 'After — identical' : 'After normalization'}</figcaption></figure>
+        </div>
+        <div class="q-note" style="margin-top:6px">${r.is_noop
+          ? `<b>No change on this image.</b> Its background is already white (white point ${esc(wp)}).`
+          : `White point ${esc(wp)} → pixels move ${esc(String(r.mean_shift))} on average, ${esc(String(r.max_shift))} at most (0–255).`}</div>
+      </div>`;
+  };
+  const many = st.pairs.length > 1;
+  host.innerHTML = `
+    ${many ? `<div class="q-normnav">
+      <button class="btn sm" ${st.i === 0 ? 'disabled' : ''} onclick="spatialNormStep(-1)">← Previous pair</button>
+      <span class="q-normpos">Pair ${st.i + 1} of ${st.pairs.length}</span>
+      <button class="btn sm" ${st.i >= st.pairs.length - 1 ? 'disabled' : ''} onclick="spatialNormStep(1)">Next pair →</button>
+    </div>` : ''}
+    ${row(ra, pr.la, pr.a)}
+    ${row(rb, pr.lb, pr.b)}
+    <div class="q-note" style="margin-top:10px">This is the image the segmentation model would
+      receive. Normalization does not move cell coordinates, so it cannot affect registration
+      or the certified window.</div>`;
+}
+
+// Advancing the pair must NOT throw the page back to the top: the pager sits halfway down
+// the step, and comparing one pair against the next in place is the entire point.
+function spatialNormStep(d) {
+  const st = spatialNormState;
+  const sc = document.querySelector('#spatial-config .scroll');
+  const keep = sc ? sc.scrollTop : 0;
+  st.i = Math.max(0, Math.min(st.pairs.length - 1, st.i + d));
+  spatialRenderNorm().then(() => { if (sc) sc.scrollTop = keep; });
 }
 
 function spatialAssocSetFolderMode(mode) {
@@ -4713,6 +4931,7 @@ async function spatialAssocImageTyped(side, value) {
 
 function spatialAssocSetImage(side, p) {
   const errEl = document.getElementById('spatial-image-err-' + side);
+  setTimeout(spatialPxSyncLabels, 0);   // step 2 names its rows after what step 1 holds
   if (spatialAssocIsScaled(p)) {
     // Scaled calibration image — reject as an analysis image
     spatialImage[side] = '';
