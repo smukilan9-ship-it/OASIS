@@ -963,7 +963,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div id="q-single-config" style="margin-top:14px">
             <div class="field"><label>Image file</label>
               <div class="input-with-btn">
-                <input type="text" id="q-single-image" placeholder="select an image…" readonly>
+                <input type="text" id="q-single-image" placeholder="select an image…  (paste or Browse)">
                 <button class="btn sm" onclick="quantPickSingleImage()">Browse</button>
               </div>
             </div>
@@ -972,7 +972,12 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div id="q-batch-config" style="margin-top:14px;display:none">
             <div class="field"><label>Image folder</label>
               <div class="input-with-btn">
-                <input type="text" id="q-input" placeholder="/path/to/images">
+                <!-- A typed path has to scan the folder too. Only `Browse` did, so pasting
+                     a path -- the fastest way in, and the only way when the native dialog
+                     is unavailable -- left the folder unread: no image count, no scale-bar
+                     matching, and a run that then found nothing. -->
+                <input type="text" id="q-input" placeholder="/path/to/images  (paste or Browse)"
+                       onchange="onQuantFolderPicked(this.value.trim())">
                 <button class="btn sm" onclick="pickInto('q-input', onQuantFolderPicked)">Browse</button>
               </div>
               <div class="q-note" style="margin-top:6px">Scale-bar images can live in this
