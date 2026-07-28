@@ -2941,11 +2941,18 @@ function calibZoom(f){ f=calibClampF(f); const st=document.getElementById('calib
   s.addEventListener('wheel',e=>{e.preventDefault(); let f=calibClampF(e.deltaY<0?1.12:0.89);
     const r=s.getBoundingClientRect(); const mx=e.clientX-r.left,my=e.clientY-r.top;
     calib.tx=mx-(mx-calib.tx)*f; calib.ty=my-(my-calib.ty)*f; calib.sc*=f; calibApply();},{passive:false});
-  s.addEventListener('pointerdown',e=>{drag=true;moved=0;px=e.clientX;py=e.clientY;});
+  // Pan on the PRIMARY button only. Without the button test a right-click started a pan,
+  // so marking a cell negative dragged the field out from under the cursor and the
+  // move-guard below then swallowed the label — labelling negatives moved the slide and
+  // mostly did not register. Measured: 3 of 15 right-clicks landed.
+  s.addEventListener('pointerdown',e=>{if(e.button!==0)return; drag=true;moved=0;px=e.clientX;py=e.clientY;});
   s.addEventListener('pointermove',e=>{if(!drag)return; const dx=e.clientX-px,dy=e.clientY-py; moved+=Math.abs(dx)+Math.abs(dy);
     calib.tx+=dx;calib.ty+=dy;px=e.clientX;py=e.clientY;calibApply();});
   addEventListener('pointerup',()=>{drag=false;});
-  document.getElementById('calib-ov').addEventListener('click',e=>{if(moved>4)e.stopImmediatePropagation();},true);
+  // The guard belongs on both ways of labelling, not just the left one.
+  const _guard = e => { if (moved > 4) e.stopImmediatePropagation(); };
+  document.getElementById('calib-ov').addEventListener('click', _guard, true);
+  document.getElementById('calib-ov').addEventListener('contextmenu', _guard, true);
 })();
 function calibRelabel(){ calibShow('label'); calibBuild(); }
 function calibBack(){ calibShow('config'); }   // the Classifier tab owns its own slide list
@@ -3421,9 +3428,9 @@ async function runQuantAnalysis() {
   // Membranous scoring requires a membrane classifier fitted on this cohort's own cells.
   // Ring completeness only separates positive from negative where the stain stands clear
   // of the ring background, and the ONLY thing that establishes that for a given cohort is
-  // a held-out score on labelled cells from it. Hand-set cutoffs have never been measured
-  // against ground truth; the two sliders exist as the per-image fallback the classifier
-  // hands faint slides back to, not as a way to run the mode without one.
+  // a held-out score on labelled cells from it. The hand-set membranous cutoffs are gone;
+  // what remains is the NUCLEAR OD cutoff, which is where the classifier hands back a slide
+  // it refuses — not a way to run the mode without one.
   if (isOn('q-membrane-toggle') && !document.getElementById('q-classifier').value) {
     quantWizardGoTo(4);
     showToast('Membranous scoring needs a trained membrane classifier — label at least '
@@ -3585,8 +3592,11 @@ async function loadQuantClassifiers() {
   const sel = document.getElementById('q-classifier');
   if (!sel) return;
   const minAuc = (req && req.min_auc) || 0.75;
+  // In membranous mode the empty entry is not an alternative rule — the hand-set membranous
+  // cutoffs were removed and the run refuses without a classifier. Say that, rather than
+  // naming a control that no longer exists.
   const first = wantKind === 'membrane'
-    ? '<option value="">Hand-set cutoffs above — not a validated configuration</option>'
+    ? '<option value="">— no classifier selected — membranous cannot run —</option>'
     : '<option value="">Fixed optical-density (OD) cutoff — recommended</option>';
   sel.innerHTML = first
     + quantClassifiers.map((c, i) => {
@@ -3626,13 +3636,27 @@ function quantGoTrainClassifier() {
 // Back to Quant with the classifier just saved already selected, so the round trip ends
 // where it started rather than on a dropdown the user has to hunt through again.
 async function clsUseInQuant() {
+  showPage('quant');
+  quantWizardGoTo(4);
+  // Set the COMPARTMENT first. The classifier list is filtered by it, so arriving with
+  // Membranous still off meant looking for a membrane classifier among the nuclear ones
+  // and finding nothing — the round trip landed the user on an unset form with the model
+  // they had just spent an hour labelling nowhere in sight.
+  const wantMembrane = cls.kind === 'membrane';
+  if (isOn('q-membrane-toggle') !== wantMembrane) toggleQuantMembrane();
+  // And carry the marker back, the same way it was carried over.
+  const stain = document.getElementById('q-stain');
+  const known = [...stain.options].some(o => o.value === cls.savedName);
+  if (cls.savedName && stain.value !== cls.savedName) {
+    if (known) { stain.value = cls.savedName; }
+    else { stain.value = 'Other'; document.getElementById('q-stain-other').value = cls.savedName; }
+    quantStainChanged();
+  }
   await loadQuantClassifiers();
   const sel = document.getElementById('q-classifier');
   const i = quantClassifiers.findIndex(c => c.name === (cls.savedName || ''));
   if (sel && i >= 0) { sel.value = String(i); quantClassifierChanged(); }
-  showPage('quant');
-  quantWizardGoTo(4);
-  showToast(i >= 0 ? `${cls.savedName} selected in Quant`
+  showToast(i >= 0 ? `${cls.savedName} selected — ${wantMembrane ? 'membranous' : 'nuclear'}`
                    : 'Saved — pick it under Positivity rule');
 }
 
