@@ -127,7 +127,8 @@ html, body {
    1440 px window. Without this the prose wrapped at its own 68ch while the tables
    and controls beside it ran the full width, so nothing on the page shared an edge
    and a two-column table put its columns 700 px apart. */
-#quant-config .scroll > *, #quant-review .scroll > *, #quant-results .scroll > * {
+#quant-config .scroll > *, #quant-review .scroll > *, #quant-results .scroll > *,
+#page-classifier .scroll > * {
   max-width: 1000px; margin-left: auto; margin-right: auto;
 }
 .scroll::-webkit-scrollbar { width: 8px; }
@@ -873,7 +874,16 @@ td.muted { color: var(--text3); font-size: 11px; }
     Spatial
   </button>
   <button class="nav-btn" id="nav-classifier" onclick="showPage('classifier')">
-    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 10v6M4.2 4.2l4.3 4.3m7 7l4.3 4.3M1 12h6m10 0h6M4.2 19.8l4.3-4.3m7-7l4.3-4.3"/></svg>
+    <!-- Labelled cells either side of a decision boundary: filled = positive, hollow =
+         negative. The old icon was a sun/gear starburst, which read as brightness or
+         settings and looked like nothing this tab does. -->
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3.5 19.5L20.5 5.5"/>
+      <circle cx="7.5" cy="7.5" r="2.1" fill="currentColor" stroke="none"/>
+      <circle cx="13.5" cy="4.5" r="2.1" fill="currentColor" stroke="none"/>
+      <circle cx="10.5" cy="19.5" r="2.1" stroke-width="1.6"/>
+      <circle cx="16.5" cy="16.5" r="2.1" stroke-width="1.6"/>
+    </svg>
     <span>Classifier</span>
   </button>
   <button class="nav-btn bottom" id="nav-validation" onclick="showPage('validation'); loadValidations()">
@@ -1912,46 +1922,79 @@ td.muted { color: var(--text3); font-size: 11px; }
 </div>
 
 <!-- ═══════════════════════════════════════════════════════
-     PAGE: CALIBRATE
+     PAGE: CLASSIFIER
 ═══════════════════════════════════════════════════════════ -->
 <div class="page" id="page-classifier">
   <div class="page-header"><h1>Train a classifier</h1>
     <p class="sub">Fit positivity to this cohort's own labelled cells</p></div>
   <div class="scroll">
-    <div class="info-box" style="margin-bottom:14px">
-      <b>When this is worth doing.</b> Measured against DeepLIIF's immunofluorescence-derived
-      labels (6,663 cells, 149 images): on clean, consistently stained material a trained
-      classifier does <b>not</b> beat a well-chosen fixed cutoff — held-out F1 0.771 against
-      0.781, and the fixed cutoff is already within 0.012 of the best any single threshold
-      can do. It wins when <b>staining varies across the cohort</b>: under simulated
-      batch-to-batch drift the classifier holds at 0.765 while every fixed cutoff collapses
-      (0.20 OD falls to 0.484). The crossover is around 0.08 OD of per-slide drift.
-      <div style="margin-top:8px">So: if your slides were stained in one run and look
-      consistent, the fixed cutoff plus the review step is the better tool and costs no
-      labelling. Reach for this when slides came from different runs, lots or scanners —
-      and typically once you have <b id="cls-recommend">20</b>+ slides, below which you can
-      still check every slide by eye.</div>
+    <div class="card">
+      <div class="q-step-head">
+        <h2>What you are about to build</h2>
+        <p>A rule that decides positive from negative, fitted on cells you label yourself
+           and scored on slides it has never seen. It replaces the fixed cutoff for every
+           image it accepts.</p>
+      </div>
+
+      <div class="q-group">
+        <div class="q-glabel">When this is worth the labelling</div>
+        <div class="q-gplain">Measured against DeepLIIF's immunofluorescence-derived labels
+          (6,663 cells, 149 images): on clean, consistently stained material a trained
+          classifier does <b>not</b> beat a well-chosen fixed cutoff — held-out F1 0.771
+          against 0.781, and the fixed cutoff is already within 0.012 of the best any single
+          threshold can do. It wins when <b>staining varies across the cohort</b>: under
+          simulated batch-to-batch drift the classifier holds at 0.765 while every fixed
+          cutoff collapses (0.20 OD falls to 0.484). The crossover is about 0.08 OD of
+          per-slide drift.</div>
+        <div class="q-note">If your slides were stained in one run and look consistent, the
+          fixed cutoff plus the review step is the better tool and costs no labelling. Reach
+          for this when slides came from different runs, lots or scanners — and typically
+          once you have <b id="cls-recommend">20</b>+ slides, below which you can still check
+          every slide by eye. <b>A membranous marker is the exception: it requires one.</b></div>
+      </div>
     </div>
 
     <div class="card">
-      <div class="card-title">1 · Cohort</div>
-      <div class="field"><label>Marker name <b>(required)</b></label>
-        <input id="cls-marker" placeholder="e.g. CD8"></div>
-      <div class="field"><label>Marker type</label>
-        <select id="cls-kind">
-          <option value="nuclear">Nuclear — DAB inside the nucleus</option>
-          <option value="membrane">Membranous — DAB in the cytoplasmic ring</option>
-        </select>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="cls-kind-note"></div>
+      <div class="q-step-head">
+        <h2>The cohort to label</h2>
       </div>
-      <div class="field"><label>Default pixel size (µm/px)</label>
-        <input type="number" id="cls-px" value="0.5" step="0.01" min="0.01"></div>
-      <div class="field"><label>Labelled slides <b>(required)</b></label>
-        <div id="cls-image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:8px"></div>
+
+      <div class="q-group">
+        <div class="q-glabel">Marker <span style="font-weight:400;color:var(--text3)">— required</span></div>
+        <div class="q-gplain">Named in the saved classifier, and matched against the marker
+          chosen in Quant.</div>
+        <div class="q-inline">
+          <input id="cls-marker" placeholder="e.g. CD8" style="width:220px">
+          <select id="cls-kind" style="flex:1;min-width:280px;max-width:420px" onchange="clsKindNote()">
+            <option value="nuclear">Nuclear — DAB inside the nucleus</option>
+            <option value="membrane">Membranous — DAB in the cytoplasmic ring</option>
+          </select>
+        </div>
+        <div class="q-note" style="margin-top:8px" id="cls-kind-note"></div>
+      </div>
+
+      <div class="q-group">
+        <div class="q-glabel">Pixel size <span style="font-weight:400;color:var(--text3)">— µm per pixel</span></div>
+        <div class="q-gplain">Used for every slide below unless one carries its own. The ring
+          width of a membranous marker is measured in microns, so this changes what gets
+          measured, not just what gets reported.</div>
+        <input type="number" id="cls-px" value="0.5" step="0.01" min="0.01" style="width:140px">
+      </div>
+
+      <div class="q-group">
+        <div class="q-glabel">Labelled slides <span style="font-weight:400;color:var(--text3)">— required</span></div>
+        <div class="q-gplain">Held-out scoring works by leaving one slide out at a time, so
+          the slides are the folds: cells within a slide share a staining run, and holding out
+          cells instead would score a model that had already seen the slide.</div>
+        <div id="cls-image-list" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
         <button class="btn sm" onclick="clsAddImage()">+ Add slide</button>
-        <div style="font-size:11px;color:var(--text3);margin-top:6px" id="cls-req"></div>
+        <div class="q-note" style="margin-top:8px" id="cls-req"></div>
       </div>
-      <button class="run-btn cyan" id="cls-seg-btn" onclick="clsSegment()">Segment &amp; label →</button>
+
+      <div class="q-group">
+        <button class="btn amber" id="cls-seg-btn" onclick="clsSegment()"
+                style="height:38px;padding:0 20px">Segment &amp; label →</button>
+      </div>
     </div>
 
     <div id="cls-results"></div>
@@ -1966,15 +2009,15 @@ td.muted { color: var(--text3); font-size: 11px; }
     <div id="calib-bar" style="position:absolute;top:0;left:0;right:0;height:46px;background:#1b1b1f;border-bottom:1px solid #333;display:flex;align-items:center;gap:12px;padding:0 14px;z-index:5;font-size:12px">
       <span id="calib-imgnav" style="display:flex;align-items:center;gap:6px"></span>
       <b id="calib-name" style="color:#fff;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></b>
-      <span>Positive <b style="color:#ff5a5a" id="calib-np">0</b></span>
-      <span>Negative <b style="color:#4aa3ff" id="calib-nn">0</b></span>
+      <span>Positive <b style="color:#f87171" id="calib-np">0</b></span>
+      <span>Negative <b style="color:#4ade80" id="calib-nn">0</b></span>
       <span id="calib-pooled" style="color:#888"></span>
       <button class="btn sm" onclick="calibZoom(1.25)">+</button>
       <button class="btn sm" onclick="calibZoom(0.8)">−</button>
       <button class="btn sm" id="calib-viewbtn" onclick="calibCycleView()">View: Normalized</button>
       <button class="btn sm" onclick="clsFit()">Fit →</button>
       <button class="btn sm" onclick="calibBack()">Cancel</button>
-      <span style="margin-left:auto;color:#888">Left-click = <span style="color:#ff5a5a">positive</span> · Right-click = <span style="color:#4aa3ff">negative</span> · wheel = zoom · drag = pan · aim for ~50 of each</span>
+      <span style="margin-left:auto;color:#888">Left-click = <span style="color:#f87171">positive</span> · Right-click = <span style="color:#4ade80">negative</span> · wheel = zoom · drag = pan · aim for ~50 of each<span id="calib-ringhint" style="display:none"> · <b style="color:#ddd">the outlined shape is the cytoplasmic ring being measured; the dashed line inside is the nucleus</b></span></span>
     </div>
     <div id="calib-stage" style="position:absolute;top:46px;left:0;right:0;bottom:0;overflow:hidden;cursor:grab;background:#111">
       <div id="calib-world" style="position:absolute;transform-origin:0 0"><img id="calib-im" style="display:block;position:absolute;top:0;left:0"><svg id="calib-ov" style="position:absolute;top:0;left:0"></svg></div>
@@ -2677,10 +2720,16 @@ async function clsLoadRequirements() {
 
 function clsKindNote() {
   const k = document.getElementById('cls-kind').value;
-  document.getElementById('cls-kind-note').textContent = k === 'membrane'
-    ? 'Ring features including contiguity. Built and unit-tested, but not yet validated '
-    + 'against labelled membranous cells — your own held-out report is the evidence.'
-    : 'Validated against immunofluorescence-derived labels (research/ihc.md § 11.6).';
+  document.getElementById('cls-kind-note').innerHTML = k === 'membrane'
+    ? 'Reads nine measurements of the <b>cytoplasmic ring</b>: its mean and brightest arc, '
+    + 'how it compares to the cell\'s own nucleus and to its neighbours, and — the part an '
+    + 'intensity cutoff cannot express — <b>how much of the ring is stained, how much of '
+    + 'that is one continuous arc, and how many separate arcs there are</b>. You will label '
+    + 'on the ring itself, not on the nucleus. Not yet validated against labelled '
+    + 'membranous cells; your own held-out report is the evidence.'
+    : 'Reads six measurements inside the nucleus, including its DAB against the median of '
+    + 'its neighbours — which is what lets one rule survive a staining gradient across a '
+    + 'section. Validated against immunofluorescence-derived labels (research/ihc.md § 11.6).';
 }
 
 async function clsAddImage() {
@@ -2720,8 +2769,11 @@ async function clsSegment() {
   btn.disabled = true;
   for (let i = 0; i < calib.images.length; i++) {
     const im = calib.images[i];
-    btn.textContent = `Segmenting ${i + 1}/${calib.images.length}… (InstanSeg, ~1 min each)`;
-    const r = await window.pywebview.api.calibration_prepare(im.path, im.px);
+    btn.textContent = `Segmenting ${i + 1}/${calib.images.length}… (InstanSeg, ~1 min each)`
+      + (cls.kind === 'membrane' ? ' + measuring rings' : '');
+    // The kind decides what comes back: a membranous marker also gets each cell's
+    // cytoplasmic ring, so the labeller sees the region their label will be fitted on.
+    const r = await window.pywebview.api.calibration_prepare(im.path, im.px, cls.kind);
     if (!r || !r.ok) {
       btn.disabled = false; btn.textContent = 'Segment & label →';
       showToast(`Segmentation failed on ${im.path.split('/').pop()}: ${(r && r.msg) || ''}`);
@@ -2816,7 +2868,24 @@ async function clsSave() {
   if (!cls.fit) return;
   const r = await window.pywebview.api.save_classifier(
     cls.marker, cls.marker, cls.fit.model, cls.fit.report);
-  showToast(r && r.ok ? `Saved classifier for ${cls.marker}` : 'Save failed');
+  if (!(r && r.ok)) { showToast('Save failed'); return; }
+  cls.savedName = cls.marker;
+  // Saving is the end of the labelling errand, not the end of the task — the reason this
+  // classifier exists is a run waiting on it. Offer the way back rather than leaving the
+  // user to remember where they came from.
+  const host = document.getElementById('cls-results');
+  if (host && !document.getElementById('cls-use-btn')) {
+    const d = document.createElement('div');
+    d.className = 'card';
+    d.innerHTML = `<div class="q-glabel">Saved as ${esc(cls.marker)}</div>
+      <div class="q-gplain">It is now selectable under <b>Positivity rule</b> in Quant, for
+        ${cls.kind === 'membrane' ? 'membranous' : 'nuclear'} markers.</div>
+      <button class="btn amber" id="cls-use-btn" onclick="clsUseInQuant()"
+              style="height:36px;padding:0 18px">Use it in Quant →</button>`;
+    host.appendChild(d);
+    d.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }
+  showToast(`Saved classifier for ${cls.marker}`);
 }
 
 function calibBuild() {
@@ -2826,19 +2895,33 @@ function calibBuild() {
   im.width = d.w; im.height = d.h;
   ov.setAttribute('width', d.w); ov.setAttribute('height', d.h); ov.setAttribute('viewBox','0 0 '+d.w+' '+d.h);
   const frag = document.createDocumentFragment(); calib.polys = {};
+  const NS = 'http://www.w3.org/2000/svg';
   d.cells.forEach(c => {
-    const p = document.createElementNS('http://www.w3.org/2000/svg','polygon');
-    p.setAttribute('points', c.points.map(pt=>pt[0]+','+pt[1]).join(' '));
-    const s = calib.state[c.i]||0;
-    p.setAttribute('stroke', s===1?'#ff3b3b':s===2?'#2f8dff':'#888');
-    p.setAttribute('stroke-opacity', s?'1':'.35'); p.setAttribute('stroke-width', s?'2':'1');
-    p.setAttribute('fill', s===1?'rgba(255,60,60,.28)':s===2?'rgba(50,140,255,.25)':'transparent');
+    // For a membranous marker the CLICKABLE, coloured shape is the ring — the region the
+    // measurement is taken from — with the nucleus drawn inside it as a faint reference.
+    // The ring is also the easier target: rings are Voronoi-clipped so they never overlap.
+    const ringPts = c.ring && c.ring.length > 2 ? c.ring : null;
+    const p = document.createElementNS(NS,'polygon');
+    p.setAttribute('points', (ringPts || c.points).map(pt=>pt[0]+','+pt[1]).join(' '));
     p.setAttribute('vector-effect','non-scaling-stroke'); p.style.cursor='pointer';
     p.addEventListener('click', e=>{e.preventDefault(); calibSet(c.i,1);});
     p.addEventListener('contextmenu', e=>{e.preventDefault(); calibSet(c.i,2);});
     frag.appendChild(p); calib.polys[c.i]=p;
+    if (ringPts) {
+      const n = document.createElementNS(NS,'polygon');
+      n.setAttribute('points', c.points.map(pt=>pt[0]+','+pt[1]).join(' '));
+      n.setAttribute('fill','none'); n.setAttribute('stroke','#111');
+      n.setAttribute('stroke-opacity','.30'); n.setAttribute('stroke-width','1');
+      n.setAttribute('stroke-dasharray','2,2');
+      n.setAttribute('vector-effect','non-scaling-stroke');
+      n.style.pointerEvents = 'none';
+      frag.appendChild(n); calib.nuc[c.i]=n;
+    }
+    calibPaintCell(c.i);
   });
   ov.innerHTML=''; ov.appendChild(frag);
+  const hint = document.getElementById('calib-ringhint');
+  if (hint) hint.style.display = d.kind === 'membrane' ? 'inline' : 'none';
   calibRenderImgNav(); calibUpdateCounts();
   calib.views = Object.keys(d.views); calib.view = 1; calibSetView();
   calibFitView();
@@ -2866,12 +2949,16 @@ function calibUpdateCounts(){ const c=calibCounts();
   document.getElementById('calib-nn').textContent=c.cn;
   document.getElementById('calib-pooled').textContent =
     calib.images.length>1 ? `· pooled ${c.tp}+ / ${c.tn}−` : ''; }
-function calibSet(i,v){ calib.state[i] = (calib.state[i]===v)?0:v; const p=calib.polys[i];
-  const s=calib.state[i];
-  p.setAttribute('stroke', s===1?'#ff3b3b':s===2?'#2f8dff':'#888');
+// One place that decides how a cell looks, so the initial draw and every later click
+// cannot disagree — they used to be two copies of the same five attribute writes.
+// Red = positive, green = negative, matching the review viewer and the exported overlays.
+function calibPaintCell(i){ const p=calib.polys[i]; if(!p) return;
+  const s=calib.state[i]||0;
+  p.setAttribute('stroke', s===1?'#dc2626':s===2?'#16a34a':'#888');
   p.setAttribute('stroke-opacity', s?'1':'.35'); p.setAttribute('stroke-width', s?'2':'1');
-  p.setAttribute('fill', s===1?'rgba(255,60,60,.28)':s===2?'rgba(50,140,255,.25)':'transparent');
-  calibUpdateCounts(); }
+  p.setAttribute('fill', s===1?'rgba(220,38,38,.26)':s===2?'rgba(22,163,74,.20)':'transparent'); }
+function calibSet(i,v){ calib.state[i] = (calib.state[i]===v)?0:v;
+  calibPaintCell(i); calibUpdateCounts(); }
 function calibApply(){ const w=document.getElementById('calib-world');
   w.style.transform='translate('+calib.tx+'px,'+calib.ty+'px) scale('+calib.sc+')'; }
 function calibFitView(){ const st=document.getElementById('calib-stage'); const r=st.getBoundingClientRect();
@@ -3548,12 +3635,47 @@ async function loadQuantClassifiers() {
     + `<option value="__train">＋ Train a ${wantKind} classifier… (opens the Classifier tab)</option>`;
 }
 
+// Carry the decision across instead of dropping the user on an empty form. The marker and
+// the compartment were both just chosen in Quant; asking for them again is asking the same
+// question twice, and getting a different answer the second time is how a nuclear
+// classifier ends up fitted for a membranous run.
+function quantGoTrainClassifier() {
+  const stainSel = document.getElementById('q-stain').value;
+  const marker = stainSel === 'Other'
+    ? document.getElementById('q-stain-other').value.trim() : stainSel;
+  const membrane = isOn('q-membrane-toggle');
+  showPage('classifier');
+  const m = document.getElementById('cls-marker');
+  if (m && marker && !m.value.trim()) m.value = marker;
+  const k = document.getElementById('cls-kind');
+  if (k) { k.value = membrane ? 'membrane' : 'nuclear'; clsKindNote(); }
+  const px = parseFloat(document.getElementById('q-px-x').value);
+  const cpx = document.getElementById('cls-px');
+  if (cpx && px > 0) cpx.value = px;
+  showToast(membrane
+    ? `Training a membranous classifier for ${marker || 'this marker'} — add at least 3 slides`
+    : `Training a nuclear classifier for ${marker || 'this marker'}`);
+}
+
+// Back to Quant with the classifier just saved already selected, so the round trip ends
+// where it started rather than on a dropdown the user has to hunt through again.
+async function clsUseInQuant() {
+  await loadQuantClassifiers();
+  const sel = document.getElementById('q-classifier');
+  const i = quantClassifiers.findIndex(c => c.name === (cls.savedName || ''));
+  if (sel && i >= 0) { sel.value = String(i); quantClassifierChanged(); }
+  showPage('quant');
+  quantWizardGoTo(4);
+  showToast(i >= 0 ? `${cls.savedName} selected in Quant`
+                   : 'Saved — pick it under Positivity rule');
+}
+
 function quantClassifierChanged() {
   const sel0 = document.getElementById('q-classifier');
   if (sel0.value === '__train') {      // navigate, don't select a non-existent classifier
     sel0.value = '';
     quantClassifierChanged();
-    showPage('classifier');
+    quantGoTrainClassifier();
     return;
   }
   const v = sel0.value;

@@ -150,6 +150,10 @@ def parse_summary_json(json_path):
             "Positivity_Method": data.get("positivity_method", "fixed cutoff"),
             "Classifier_Name": data.get("classifier_name"),
             "Classifier_Fingerprint": data.get("classifier_fingerprint"),
+            # A classifier can be NAMED on an image it refused to call. Without this the
+            # results table credited the classifier for calls the fixed cutoff made.
+            "Classifier_Applied": data.get("classifier_applied"),
+            "Classifier_Refused_Reason": data.get("classifier_refused_reason"),
             "Pixel_Size_um": data.get("pixel_size_um", 0.5),
             "Pixel_Size_Source": data.get("pixel_size_source", "unknown"),
             "Cells_Per_mm2": data.get("cells_per_mm2"),

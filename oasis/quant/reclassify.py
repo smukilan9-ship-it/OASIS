@@ -203,11 +203,21 @@ def apply_classifier(geojson_path, summary_path, model, cells, *, fixed_threshol
         res = apply_threshold(geojson_path, summary_path, fixed_threshold,
                               cohort_threshold=fixed_threshold,
                               output_dir=output_dir, img_stem=img_stem)
+        # `apply_threshold` re-calls every cell on NUCLEAR DAB (DAB_KEYS is nuclear), so
+        # after a refusal this image was not scored on the ring at all. The summary was
+        # already stamped `cytoplasm` by the ring pass that ran before this, and left that
+        # way it reported a compartment and a ring rule for calls that came from a nuclear
+        # cutoff — the two columns a reader looks at, both wrong, on exactly the faint
+        # slides where it matters most. Correct the record to what actually happened.
         _stamp(summary_path, {"classifier_name": getattr(model, "name", None),
                               "classifier_fingerprint": model.fingerprint(),
                               "classifier_applied": False,
                               "classifier_refused_reason": reason,
                               "staining_quality": "low",
+                              "measurement_compartment": "nucleus",
+                              "membrane_classifier": None,
+                              "membrane_pix_thr": None,
+                              "membrane_frac_min": None,
                               "positivity_method": "fixed cutoff (classifier refused)"})
         return {**res, "applied": False, "reason": reason}
 

@@ -81,10 +81,30 @@ def test_membrane_run_records_both_numbers_of_its_rule(tmp_path):
 
 
 def test_classifier_run_names_the_classifier(tmp_path):
-    m = parse_summary_json(_summary(tmp_path, classifier_name="CD8 cohort v2"))
+    m = parse_summary_json(_summary(tmp_path, classifier_name="CD8 cohort v2",
+                                    classifier_applied=True))
     row = _rows(tmp_path, [m], {"stain_name": "CD8"})[0]
     assert row["Positivity rule"] == "classifier: CD8 cohort v2"
     assert row["Cutoff source"] == "trained classifier"
+
+
+def test_refused_image_does_not_credit_the_classifier(tmp_path):
+    """A refused image was called by the cutoff on nuclear DAB. The table must say so.
+
+    This is the faint-slide case: the classifier declines, `apply_threshold` re-calls every
+    cell on nuclear DAB, and the row used to read 'classifier: X' over a cytoplasm
+    compartment for calls neither of them made.
+    """
+    m = parse_summary_json(_summary(
+        tmp_path, classifier_name="TIM-3 cohort", classifier_applied=False,
+        classifier_refused_reason="ring_mean below training range",
+        measurement_compartment="nucleus"))
+    row = _rows(tmp_path, [m], {"stain_name": "TIM-3"})[0]
+    assert row["Positivity rule"].startswith("nuclear DAB above cutoff — TIM-3 cohort refused")
+    assert "ring_mean below training range" in row["Positivity rule"]
+    assert row["Cutoff source"] == "cohort (classifier refused)"
+    assert row["Compartment"] == "nucleus"
+    assert row["Ring fraction"] == ""
 
 
 def test_no_column_is_silently_absent(tmp_path):

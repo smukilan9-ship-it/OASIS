@@ -91,14 +91,33 @@ def segment(image_path, pixel_size, setup):
     return geo[0] if geo else None
 
 
-def prepare(image_path, pixel_size, setup):
-    """Segment + build views + cells for the labeling canvas."""
+def prepare(image_path, pixel_size, setup, kind="nuclear"):
+    """Segment + build views + cells for the labeling canvas.
+
+    For a membranous marker the canvas must show the CYTOPLASMIC RING, not just the
+    nucleus. The ring is the region the measurement is taken from, and it is not something
+    the labeller can infer: it is grown outward by a fixed micron distance and then clipped
+    against the neighbouring cells' rings, so its shape depends on how crowded that patch
+    of tissue is. Labelling nuclei and fitting on rings meant deciding "positive" from a
+    region nobody had seen -- a cell whose own membrane is clean can sit inside a ring that
+    catches a neighbour's stain, and from a nucleus outline there is no way to tell.
+    """
     geojson = segment(image_path, pixel_size, setup)
     if not geojson:
         return {"ok": False, "msg": "Segmentation produced no cells"}
     W, H, views = _views(image_path)
-    return {"ok": True, "geojson": geojson, "w": W, "h": H,
-            "views": views, "cells": _cells(geojson)}
+    cells = _cells(geojson)
+    if kind == "membrane":
+        from oasis.quant.cell_expansion import measure_cytoplasm_dab
+        res = measure_cytoplasm_dab(image_path, geojson, float(pixel_size),
+                                    membrane_pix_thr="auto")
+        rings = {i: (r or {}).get("cell_polygon") for i, r in enumerate(res)}
+        for c in cells:
+            poly = rings.get(c["i"])
+            if poly:
+                c["ring"] = [[round(float(x), 1), round(float(y), 1)] for x, y in poly]
+    return {"ok": True, "geojson": geojson, "w": W, "h": H, "kind": kind,
+            "views": views, "cells": cells}
 
 
 # ── fit cutoffs (same statistic as tune_membrane_threshold + the DAB>H gate) ─────
@@ -160,7 +179,15 @@ def cells_for_classifier(image_path, geojson_path, pixel_size, pos_idx, neg_idx,
     ring = {}
     if kind == "membrane":
         from oasis.quant.cell_expansion import measure_cytoplasm_dab
-        res = measure_cytoplasm_dab(image_path, geojson_path, float(pixel_size))
+        # `membrane_pix_thr="auto"` is REQUIRED here, not an option. Without a pixel
+        # threshold `cell_expansion` leaves membrane_pos_frac, membrane_connectivity and
+        # membrane_arc_count as None -- and this call used to omit it, so all three came
+        # back NaN and were imputed away at fit and at apply time alike. The membrane
+        # classifier was silently running on ring INTENSITY alone: no completeness, no
+        # contiguity, no arc count. Those three are the entire reason the membranous path
+        # exists, so the model was a ring-mean classifier wearing their names.
+        res = measure_cytoplasm_dab(image_path, geojson_path, float(pixel_size),
+                                    membrane_pix_thr="auto")
         ring = {i: r for i, r in enumerate(res) if r}
 
     out = []

@@ -186,12 +186,17 @@ class API:
         return not SETUP_FILE.exists()
 
     # ── Calibration (native cutoff fitting) ────────────────────────────────
-    def calibration_prepare(self, image_path, pixel_size):
-        """Segment an image and return views + clickable cells for labeling."""
+    def calibration_prepare(self, image_path, pixel_size, kind="nuclear"):
+        """Segment an image and return views + clickable cells for labeling.
+
+        `kind` decides what the labeller is shown: a membranous marker gets the
+        cytoplasmic ring drawn, because that is the region its label will be fitted on.
+        """
         try:
             from oasis.webui import calibration
             return calibration.prepare(os.path.expanduser(image_path),
-                                       float(pixel_size), self.get_setup())
+                                       float(pixel_size), self.get_setup(),
+                                       kind=str(kind or "nuclear"))
         except Exception as e:
             return {"ok": False, "msg": str(e)}
 

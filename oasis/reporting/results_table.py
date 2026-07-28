@@ -27,9 +27,18 @@ def _pct(m):
 
 
 def _rule(m, cfg):
-    """How this image's cells were called, in one cell of a spreadsheet."""
-    if m.get("Classifier_Name"):
+    """How this image's cells were called, in one cell of a spreadsheet.
+
+    A named classifier is not necessarily the classifier that called this image: one that
+    judges an image outside its training range refuses it and hands it back to the fixed
+    cutoff. Reading the name alone credited the model for the cutoff's calls.
+    """
+    if m.get("Classifier_Name") and m.get("Classifier_Applied") is not False:
         return f"classifier: {m['Classifier_Name']}"
+    if m.get("Classifier_Name"):
+        return (f"nuclear DAB above cutoff — {m['Classifier_Name']} refused this image"
+                + (f" ({m['Classifier_Refused_Reason']})"
+                   if m.get("Classifier_Refused_Reason") else ""))
     if m.get("Compartment") == "cytoplasm":
         pix, frac = m.get("Membrane_Pix_Thr"), m.get("Membrane_Frac_Min")
         if pix is not None and frac is not None:
@@ -47,8 +56,10 @@ def _cutoff(m):
 
 
 def _cutoff_source(m):
-    if m.get("Classifier_Name"):
+    if m.get("Classifier_Name") and m.get("Classifier_Applied") is not False:
         return "trained classifier"
+    if m.get("Classifier_Name"):
+        return "cohort (classifier refused)"
     if m.get("Threshold_Override") is not None:
         return "per-image override"
     return "cohort"

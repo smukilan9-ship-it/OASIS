@@ -287,6 +287,46 @@ def ring_connectivity(xy, vals, centroid, thr, hvals=None, *, n_sectors=72,
     return float(longest) / float(n_sectors), len(runs), covered
 
 
+def auto_pixel_threshold(ring_value_arrays, k=3.0):
+    """The OD above which a ring pixel is unusual FOR THIS IMAGE, from its own ring pixels.
+
+    Returned in the raw channel's units, i.e. directly comparable to the values in
+    `ring_value_arrays` (the caller maps it to calibrated OD for the record).
+
+    Why an estimator rather than a number. A membranous cell is positive when enough of
+    its ring is stained, which needs a definition of "stained" -- and that definition has
+    to exist at APPLY time, on an unlabelled image, not just at fit time. A fitted
+    constant cannot: cutoffs fitted on labelled cells have ranged from 0.08 to 0.30 across
+    cohorts, so any single number is wrong for most slides, and carrying one from a
+    different cohort silently mis-scales every completeness measurement made with it.
+
+    median + k·MAD, not a high percentile. The pooled ring distribution is mostly
+    background, so its median and MAD describe the background and are unmoved by the
+    stained tail -- which is exactly the property required, because that tail's size is
+    the positivity rate and must not feed back into the threshold. A 99th percentile of
+    pooled pixels does the opposite: on a marker with many positive cells it lands inside
+    the positive tail and pushes the threshold up, so a slide with more positive cells
+    gets a stricter definition of positive. 1.4826 makes MAD a standard-deviation estimate
+    for a Gaussian background, so k is in familiar units; k=3 is the usual outlier bar.
+
+    This is the same principle as `local_background` in the classifier: judge a
+    measurement against its own surroundings rather than a constant chosen elsewhere.
+    """
+    vals = [np.asarray(v, dtype=np.float64).ravel()
+            for v in ring_value_arrays if v is not None and len(v)]
+    if not vals:
+        return float("inf")            # nothing measurable: no pixel counts as stained
+    pooled = np.concatenate(vals)
+    pooled = pooled[np.isfinite(pooled)]
+    if pooled.size == 0:
+        return float("inf")
+    med = float(np.median(pooled))
+    mad = float(np.median(np.abs(pooled - med)))
+    if mad <= 0:                       # a flat ring channel has no scale to speak of
+        return med
+    return med + k * 1.4826 * mad
+
+
 def _mask_stats(geoms, dab_od, x0, y0, w, h, want_values=None, aux_od=None):
     """
     Rasterize each geometry over the [x0:x0+w, y0:y0+h] window using shapely's
@@ -608,7 +648,10 @@ def measure_cytoplasm_dab(
     # the raw channel by the inverse affine (slope>0 enforced above), so we count
     # in raw space without re-applying the calibration per pixel.
     if membrane_pix_thr is not None:
-        raw_thr = (float(membrane_pix_thr) - intercept) / slope
+        if isinstance(membrane_pix_thr, str) and membrane_pix_thr == "auto":
+            raw_thr = auto_pixel_threshold(raw_ring_vals.values())
+        else:
+            raw_thr = (float(membrane_pix_thr) - intercept) / slope
         for i, r in enumerate(results):
             vals = raw_ring_vals.get(i)
             if r and vals is not None and len(vals):
@@ -628,6 +671,16 @@ def measure_cytoplasm_dab(
                     dab_dominance_gate=dab_dominance_gate)
                 r["membrane_connectivity"] = round(conn, 5)
                 r["membrane_arc_count"] = int(arcs)
+        # Record the threshold these three features were computed against, in calibrated
+        # OD. With "auto" it is a property of the image, not of any setting, so nothing
+        # downstream can reconstruct it and it has to travel with the measurement.
+        _cal_thr = round(float(raw_thr) * slope + intercept, 5)
+        for r in results:
+            if r:
+                r["membrane_pix_thr_used"] = _cal_thr
+        print(f"  Membrane pixel threshold: {_cal_thr:.4f} OD"
+              + (" (auto, from this image's own ring pixels)"
+                 if isinstance(membrane_pix_thr, str) else ""))
     if keep_ring_values:
         for i, r in enumerate(results):
             vals = raw_ring_vals.get(i)
