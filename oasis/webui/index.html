@@ -136,7 +136,11 @@ html, body {
 :root { --col: 760px; --col-wide: 1120px; }
 /* Centre with GRID, not auto margins. Auto margins are set by a shorthand-free rule here,
    but any later rule using the `margin` shorthand silently resets margin-left/right to 0 —
-   `.wizard-nav { margin: 6px 0 4px }` did exactly that, so the Back/Next row rendered at
+   `/* The step rail stays put. It scrolled away with the content, so on a long step — batch
+   preview, the certification canvas — there was no way to see which step you were on or
+   jump to another without scrolling back to the top first. */
+.wizard-stepper-card { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(6px); }
+.wizard-nav { margin: 6px 0 4px }` did exactly that, so the Back/Next row rendered at
    the correct WIDTH but shoved 278 px left of the card it belongs under. Grid placement
    cannot be clobbered that way. */
 .scroll { display: grid; grid-template-columns: minmax(0, 1fr);
@@ -756,7 +760,11 @@ td.muted { color: var(--text3); font-size: 11px; }
 .lm-world svg { position: absolute; top: 0; left: 0; pointer-events: none; }
 #spatial-cert-work.lm-fullscreen { position: fixed; inset: 0; z-index: 2000; margin: 0;
   padding: 14px 18px; background: var(--bg); overflow: auto; }
-#spatial-cert-work.lm-fullscreen .lm-stage { height: calc(100vh - 210px); }
+#spatial-cert-work.lm-fullscreen .lm-stage { height: calc(100vh - 190px); }
+/* Fullscreen exists to put the two sections side by side at a usable size, so the pair grid
+   takes the whole width and everything that is not the images gets out of the way. */
+#spatial-cert-work.lm-fullscreen .lm-pair { grid-template-columns: 1fr 1fr; gap: 10px; }
+#spatial-cert-work.lm-fullscreen .cert-hide-fs { display: none !important; }
 
 /* ── Image lightbox (results overlays) ────────────────────── */
 .lightbox { position: fixed; inset: 0; z-index: 3000; background: rgba(8,8,10,.92);
@@ -953,7 +961,7 @@ td.muted { color: var(--text3); font-size: 11px; }
            step, which put the DAB cutoff on the same screen as "nuclei are segmented
            with InstanSeg" and made the cutoff look like a segmentation parameter.
            They are separate concerns and are now separate steps. -->
-      <div class="card" style="padding:14px">
+      <div class="card wizard-stepper-card" style="padding:14px">
         <div class="wizard-stepper" id="quant-wizard-stepper">
           <button type="button" class="wstep active" data-step="1" onclick="quantWizardGoTo(1)"><span class="wstep-n">1</span> Inputs &amp; outputs</button>
           <button type="button" class="wstep" data-step="2" onclick="quantWizardGoTo(2)"><span class="wstep-n">2</span> Pixel size</button>
@@ -1409,7 +1417,7 @@ td.muted { color: var(--text3); font-size: 11px; }
       <!-- Guided wizard: 4 config steps. The decorative pipeline stepper was
            replaced by this functional one (spatialWizardGoTo). Each step below
            is wrapped in a .wizard-step; only the active one is shown. -->
-      <div class="card" style="padding:14px">
+      <div class="card wizard-stepper-card" style="padding:14px">
         <div class="wizard-stepper" id="spatial-wizard-stepper">
           <button type="button" class="wstep active" data-step="1" onclick="spatialWizardGoTo(1)"><span class="wstep-n">1</span> Inputs &amp; outputs</button>
           <span class="wstep-sep">&rarr;</span>
@@ -1674,12 +1682,16 @@ td.muted { color: var(--text3); font-size: 11px; }
             <button class="btn sm" onclick="lmZoomBy(1/1.4)" title="Zoom out">−</button>
             <span id="spatial-cert-zoom-label" style="font-size:11px;color:var(--text2);min-width:44px;text-align:center">100%</span>
             <button class="btn sm" onclick="lmZoomBy(1.4)" title="Zoom in">+</button>
-            <button class="btn sm active" id="spatial-cert-link-btn" onclick="lmToggleLink()" title="Zoom and pan both sections together — the point is to compare the same structure on each">Panes linked</button>
+            <button class="btn sm active" id="spatial-cert-matchzoom-btn" onclick="lmToggleMatchZoom()"
+                    title="Keep both sections at the same magnification. On by default — comparing structures at different magnifications is misleading.">Match magnification</button>
+            <button class="btn sm" id="spatial-cert-syncpan-btn" onclick="lmToggleSyncPan()"
+                    title="Also move both sections together. Leave OFF when the sections are shifted, so each pane can sit on its own copy of the same structure.">Sync position</button>
+            <span id="spatial-cert-cursor" style="font-size:11px;color:var(--text3);margin-left:auto;font-variant-numeric:tabular-nums"></span>
             <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both tissue images to their viewing panes">Reset zoom</button>
             <span class="cert-only-landmark" style="font-size:11px;color:var(--text2)"><b>Click the fixed section, then the matching structure on the moving section.</b> OASIS never places the matching point for you — the verdict is re-measured after every pair.</span>
-            <span class="cert-only-loftr" style="font-size:11px;color:var(--text2)"><b>No landmarks needed.</b> Use <b>Certify (auto)</b> to try the whole field first, then disjoint local regions — or draw your own regions (polygon or freehand) on the fixed section, each certified independently by the selected engine.</span>
+            <span class="cert-only-loftr cert-hide-fs" style="font-size:11px;color:var(--text2)"><b>No landmarks needed.</b> Press <b>Certify</b> — the whole field is tried first, then local regions.</span>
           </div>
-          <div class="row2">
+          <div class="row2 lm-pair">
             <div><div class="section-label">Reference — click first</div>
               <div class="lm-stage" id="lm-stage-ref"><div class="lm-world" id="lm-world-ref"><img id="spatial-cert-ref"><svg id="spatial-cert-ref-ov"></svg></div></div></div>
             <div><div class="section-label">Moving — matching point</div>
@@ -1691,10 +1703,14 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;padding:8px;border:1px dashed var(--border);border-radius:8px">
             <span class="section-label" style="margin:0">Certification ROI</span>
             <span id="spatial-cert-roi-badge" class="badge gray">none</span>
-            <button class="btn sm" id="spatial-cert-roi-draw" onclick="spatialCertRoiToggle()" title="Click vertices on the REFERENCE image to outline the sub-field where the sections truly correspond. Proposal + certification are restricted here.">Draw certification ROI</button>
-            <button class="btn sm" onclick="spatialCertRoiFinish()" title="Close the polygon and burn this fixed-tissue window into certification and spatial analysis">Finish ROI</button>
-            <button class="btn sm" onclick="spatialCertRoiClear()" title="Remove the current certification ROI and return to the full landmark-supported window">Clear ROI</button>
-            <span style="font-size:11px;color:var(--text3)">Restricts proposal + certification to the region you trust; becomes the certified analysis window.</span>
+            <button class="btn sm" data-draw-tool="roi" data-draw-side="ref"
+                    onclick="certSetTool('roi','ref')"
+                    title="Outline the sub-field on the FIXED section where the two truly correspond. Click points and double-click to close, or hold and drag to sketch.">✎ On reference</button>
+            <button class="btn sm" data-draw-tool="roi" data-draw-side="mov"
+                    onclick="certSetTool('roi','mov')"
+                    title="Place the matching window on the MOVING section. Seeded as the same PHYSICAL area as the reference window, so you only move it — never resize it.">✎ On moving</button>
+            <button class="btn sm" onclick="spatialCertRoiClear()" title="Remove both windows and return to the full landmark-supported area">Clear</button>
+            <span style="font-size:11px;color:var(--text3)">The reference window becomes the certified analysis window. The moving one is a check that your landmarks put it on the same tissue — it never feeds the transform.</span>
           </div>
           <!-- LoFTR automatic certification: fully-automatic region finder + draw-your-own
                analysis regions (polygon or freehand). Each region is certified INDEPENDENTLY
@@ -1727,16 +1743,16 @@ td.muted { color: var(--text3); font-size: 11px; }
             <details class="output-details" id="spatial-loftr-advanced">
               <summary>Draw regions yourself, or change the matcher</summary>
               <div class="q-group" style="border-top:0">
-                <div class="q-gplain"><b>Polygon:</b> click vertices on the reference, then
-                  Finish. <b>Freehand:</b> hold and drag. Each region is certified on its own —
-                  the gate is never relaxed for a region you drew.</div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
-                  <button class="btn sm" id="spatial-loftr-draw" onclick="loftrRoiToggle()">Polygon</button>
-                  <button class="btn sm" id="spatial-loftr-freehand" onclick="loftrFreehandToggle()">Freehand</button>
-                  <button class="btn sm" onclick="loftrRoiFinish()">Finish region</button>
+                <div class="q-gplain">One tool, two gestures: <b>click points and double-click
+                  to close</b>, or <b>hold and drag to sketch freehand</b>. Esc cancels. Each
+                  region is certified on its own — the gate is never relaxed for one you drew.</div>
+                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+                  <button class="btn sm" data-draw-tool="region" data-draw-side="ref"
+                          onclick="certSetTool('region','ref')">✎ Draw region</button>
                   <button class="btn sm" onclick="loftrRoiClearAll()">Clear all</button>
                   <button class="btn sm" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()">Certify drawn regions</button>
                 </div>
+                <div id="spatial-draw-hint" style="font-size:11px;color:var(--text2);min-height:15px;margin-bottom:8px"></div>
                 <div id="spatial-loftr-only-opts" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text2)">
                   <label>Match tolerance
                     <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:56px"> µm
@@ -1834,12 +1850,12 @@ td.muted { color: var(--text3); font-size: 11px; }
                       <b>nucleus</b>; OASIS will not fall back to a ring rule it cannot stand behind.</div>
                     <div class="row2">
                       <div class="field"><label>Image A membrane classifier</label>
-                        <select id="spatial-cls-a"><option value="">Auto (match marker)</option></select>
+                        <select id="spatial-cls-a" onchange="spatialClassifierChanged('spatial-cls-a')"><option value="">Auto (match marker)</option></select>
                         <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image A</span>
                           <div class="toggle on" id="spatial-cyto-a-toggle" onclick="toggleEl('spatial-cyto-a-toggle')"></div></div>
                       </div>
                       <div class="field"><label>Image B membrane classifier</label>
-                        <select id="spatial-cls-b"><option value="">Auto (match marker)</option></select>
+                        <select id="spatial-cls-b" onchange="spatialClassifierChanged('spatial-cls-b')"><option value="">Auto (match marker)</option></select>
                         <div class="toggle-row" style="margin-top:6px"><span style="font-size:11px">Use membrane for Image B</span>
                           <div class="toggle on" id="spatial-cyto-b-toggle" onclick="toggleEl('spatial-cyto-b-toggle')"></div></div>
                       </div>
@@ -2340,6 +2356,8 @@ async function loadMembraneClassifiers(selId) {
     opts.push('<option value="" disabled>no membrane classifier trained yet — '
             + 'these images will be measured in the nucleus</option>');
   }
+  // The same route Quant offers: discover you need one, go make one, from here.
+  opts.push('<option value="__train">＋ Train a membrane classifier… (opens the Classifier tab)</option>');
   sel.innerHTML = opts.join(''); sel.value = cur;
 }
 function spatialToggleMembrane() {
@@ -4733,6 +4751,18 @@ function quantBuildReview() {
     + (bad ? '<div class="info-box amber" style="margin-top:10px">Some required inputs are still missing — Run will prompt for them.</div>' : '');
 }
 
+// Selecting the "train one" entry navigates instead of selecting a classifier that is not
+// there — the same behaviour Quant's dropdown has.
+function spatialClassifierChanged(selId) {
+  const sel = document.getElementById(selId);
+  if (!sel || sel.value !== '__train') return;
+  sel.value = '';
+  showPage('classifier');
+  const kind = document.getElementById('cls-kind');
+  if (kind) { kind.value = 'membrane'; if (typeof clsKindNote === 'function') clsKindNote(); }
+  showToast('Train a membrane classifier, then come back to Spatial');
+}
+
 function spatialAssocSetMode(mode) {
   spatialMode = mode;
   document.getElementById('spatial-single-config').style.display = mode === 'single' ? 'block' : 'none';
@@ -4864,13 +4894,24 @@ function spatialAssocSetFolderMode(mode) {
   spatialAssocUpdateRunBtn();
 }
 
-function spatialScaleMatchToggle() {
+async function spatialScaleMatchToggle() {
   toggleEl('spatial-scale-match-toggle');
   spatialBatchScale = { px: null, count: 0, map: {} };
-  spatialPairs = [];
-  document.getElementById('spatial-preview-card').style.display = 'none';
   spatialCertInvalidate();
-  showToast('Preview matches again so scale calibration is applied before landmarking');
+  // Re-measure IN PLACE. This used to throw away the matched pairs and tell the operator to
+  // go back a step and press Preview again — and once the pixel size moved to its own step,
+  // that meant setting the scale silently destroyed the work done on the previous one.
+  const fa = (document.getElementById('spatial-folder-a')?.value || '').trim();
+  const fb = (document.getElementById('spatial-folder-b')?.value || '').trim();
+  const fs = (document.getElementById('spatial-folder-single')?.value || '').trim();
+  if (!(spatialFolderMode === 'two_folder' ? (fa && fb) : fs)) {
+    showToast('Choose the folders on step 1 first');
+    return;
+  }
+  await spatialAssocPreview();
+  showToast(isOn('spatial-scale-match-toggle')
+    ? `Calibrated from each image's own scale bar`
+    : 'Scale matching off — the run default applies to every image');
 }
 
 function spatialAssocSetSessionPxMode(mode) {
@@ -5072,13 +5113,28 @@ async function spatialAssocPreview() {
   const scaled    = res.scaled_excluded || [];
 
   document.getElementById('spatial-preview-badge').textContent = `${spatialPairs.length} pairs`;
-  const pxSrc = isOn('spatial-scale-match-toggle')
-    ? (spatialBatchScale.px
-      ? `folder scale-match · global ${spatialBatchScale.px.toFixed(4)} µm/px before landmarks`
-      : 'folder scale-match requested · no readable scale yet')
-    : 'session · ' + spatialAssocSessionPxText();
+  // Each pair's OWN measured scale, per image. This column used to print the same global
+  // string on every row — the one number that is not used for any individual pair — while
+  // the per-file values were already known and simply not shown.
+  const matching = isOn('spatial-scale-match-toggle');
+  const pxFor = fn => {
+    if (!matching) return null;
+    const v = spatialBatchScale.map && spatialBatchScale.map[fn];
+    return v > 0 ? Number(v) : null;
+  };
+  const pxCell = p => {
+    if (!matching) return `<span class="muted">session · ${esc(spatialAssocSessionPxText())}</span>`;
+    const a = pxFor(p.filename_a), b = pxFor(p.filename_b);
+    const one = v => v == null
+      ? `<span style="color:#b45309">no bar — session default</span>`
+      : `${v.toFixed(4)}`;
+    const same = a != null && b != null && Math.abs(a - b) / Math.max(a, 1e-9) < 0.02;
+    return same
+      ? `<span>${a.toFixed(4)} µm/px <span class="muted">· both, from their own bars</span></span>`
+      : `<span>A ${one(a)} · B ${one(b)} <span class="muted">µm/px</span></span>`;
+  };
   document.getElementById('spatial-preview-tbody').innerHTML = spatialPairs.length
-    ? spatialPairs.map(p => `<tr><td>${esc(p.filename_a)}</td><td>${esc(p.filename_b)}</td><td class="muted">${esc(pxSrc)}</td></tr>`).join('')
+    ? spatialPairs.map(p => `<tr><td>${esc(p.filename_a)}</td><td>${esc(p.filename_b)}</td><td>${pxCell(p)}</td></tr>`).join('')
     : '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">No pairs found</td></tr>';
 
   const warn = document.getElementById('spatial-preview-warn');
@@ -5227,9 +5283,14 @@ function spatialCertRender() {
   if (w.ref) {
     const ro = document.getElementById('spatial-cert-ref-ov'), mo = document.getElementById('spatial-cert-mov-ov');
     ro.setAttribute('viewBox', `0 0 ${w.ref.width} ${w.ref.height}`); mo.setAttribute('viewBox', `0 0 ${w.mov.width} ${w.mov.height}`);
-    const roiClosed = !w.roiMode && (w.roiPoints||[]).length >= 3;
-    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', roiClosed) + loftrRoiLayerSvg('ref') + dots(w.refPoints, w.ref, 'ref', w.pending);
-    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3) + loftrRoiLayerSvg('mov') + dots(w.movPoints, w.mov, 'mov', null);
+    const d = certDraw();
+    // The shape being drawn right now, on whichever pane owns the gesture.
+    const draft = side => (d.tool && d.side === side && d.pts.length)
+      ? roiSvg(d.pts, side === 'ref' ? w.ref : w.mov, side, false) : '';
+    ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', (w.roiPoints||[]).length >= 3)
+                 + loftrRoiLayerSvg('ref') + dots(w.refPoints, w.ref, 'ref', w.pending) + draft('ref');
+    mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3)
+                 + loftrRoiLayerSvg('mov') + dots(w.movPoints, w.mov, 'mov', null) + draft('mov');
   }
   document.getElementById('spatial-cert-count').textContent =
     (w.roiMode ? `ROI draw mode · ${(w.roiPoints||[]).length} vertices · click reference to add`
@@ -5239,32 +5300,110 @@ function spatialCertRender() {
 
 function spatialCertRoiUpdateBadge() {
   const w = spatialCertWork, b = document.getElementById('spatial-cert-roi-badge');
-  const draw = document.getElementById('spatial-cert-roi-draw');
   if (!b) return;
-  const n = (w.roiPoints||[]).length;
-  if (w.roiMode) { b.textContent = `drawing (${n})`; b.className = 'badge amber'; }
-  else if (n >= 3) { b.textContent = `ROI set (${n} pts)`; b.className = 'badge cyan'; }
+  const n = (w.roiPoints||[]).length, m = (w.movRoi||[]).length;
+  if (n >= 3) { b.textContent = m >= 3 ? 'both windows set' : `reference set (${n} pts)`;
+                b.className = 'badge cyan'; }
   else { b.textContent = 'none'; b.className = 'badge gray'; }
-  if (draw) draw.textContent = w.roiMode ? 'Drawing… click reference' : 'Draw certification ROI';
-}
-function spatialCertRoiToggle() {
-  const w = spatialCertWork;
-  if (!w.ref) { showToast('Load images for landmarking first'); return; }
-  w.roiMode = !w.roiMode;
-  if (w.roiMode) { w.roiPoints = []; w.movRoi = null; w.pending = null; }
-  spatialCertRoiUpdateBadge(); spatialCertRender();
-}
-function spatialCertRoiFinish() {
-  const w = spatialCertWork;
-  if ((w.roiPoints||[]).length < 3) { showToast('Click at least 3 points on the reference to close the ROI'); return; }
-  w.roiMode = false; spatialCertRoiUpdateBadge(); spatialCertRender();
-  showToast('Certification ROI set — proposal & certification will be restricted to it');
 }
 function spatialCertRoiClear() {
   const w = spatialCertWork;
   w.roiPoints = []; w.movRoi = null; w.roiMode = false;
   spatialCertRoiUpdateBadge(); spatialCertRender();
 }
+
+// ══ Drawing: ONE tool, two gestures, either pane ══════════════════════════════
+// Modelled on QuPath's polygon tool, whose tooltip is the whole spec: "click individual
+// points (with double-click to end) or click and drag (and release the mouse button to
+// end)". OASIS had that as THREE buttons — Polygon, Freehand, Finish region — plus a
+// separate ROI trio, so four ways to draw a closed shape with four different endings.
+//
+// `spatialCertWork.draw` is the only drawing state:
+//     tool  'region' (LoFTR analysis region) | 'roi' (certification window) | null
+//     side  which pane the in-progress shape belongs to
+//     pts   the shape so far, in that image's full-resolution pixels
+//     drag  whether this gesture has become a freehand stroke
+const DRAW_FREEHAND_PX = 4;          // pointer travel that turns a click into a stroke
+
+function certDraw() { return spatialCertWork.draw || (spatialCertWork.draw = {tool:null, side:null, pts:[], drag:false, moved:0}); }
+
+function certSetTool(tool, side) {
+  const w = spatialCertWork;
+  if (!w.ref) { showToast('Load the images first'); return; }
+  const d = certDraw();
+  const same = d.tool === tool && d.side === side;
+  d.tool = same ? null : tool;
+  d.side = same ? null : (side || 'ref');
+  d.pts = []; d.drag = false; d.moved = 0;
+  w.pending = null;                                  // drawing and landmarking are exclusive
+  certSyncToolButtons();
+  spatialCertRender();
+}
+
+function certSyncToolButtons() {
+  const d = certDraw();
+  document.querySelectorAll('[data-draw-tool]').forEach(b => {
+    const on = d.tool === b.dataset.drawTool && d.side === b.dataset.drawSide;
+    b.classList.toggle('active', on);
+  });
+  const hint = document.getElementById('spatial-draw-hint');
+  if (hint) {
+    hint.textContent = d.tool
+      ? (d.pts.length
+         ? `${d.pts.length} point${d.pts.length===1?'':'s'} — double-click to close, Esc to cancel`
+         : 'Click points and double-click to close, or hold and drag to sketch freehand')
+      : '';
+  }
+}
+
+// Where a finished shape goes.
+function certCommitShape(pts, tool, side) {
+  const w = spatialCertWork;
+  if ((pts || []).length < 3) return false;
+  if (tool === 'region') {
+    w.loftrRois.push({ points: pts.slice(), cert: null });
+    loftrRoiSync();
+    showToast(`Region ${w.loftrRois.length} drawn — Certify drawn regions when ready`);
+  } else if (side === 'mov') {
+    w.movRoi = pts.slice();
+    spatialCertRoiUpdateBadge(); spatialCertRender();
+    showToast('Moving-section window placed');
+  } else {
+    w.roiPoints = pts.slice();
+    certSeedMovingRoi();                             // give the operator the matching shape
+    spatialCertRoiUpdateBadge(); spatialCertRender();
+    showToast('Certification ROI set');
+  }
+  return true;
+}
+
+// The matching window on the moving section.
+//
+// Sized in MICRONS, not pixels. The two sections can sit at slightly different µm/px, and a
+// pixel-for-pixel copy would then cover a different physical area — 250 px is 188 µm at
+// 0.7519 but 160 µm at 0.641. Scaling by ref_px/mov_px makes the copy the same PHYSICAL
+// window, so the operator only ever translates it, never resizes it.
+//
+// This is a drawing aid and a visual check. It never feeds the transform: that comes only
+// from landmark pairs the operator placed by hand.
+function certSeedMovingRoi() {
+  const w = spatialCertWork;
+  if (!w.ref || !w.mov || (w.roiPoints || []).length < 3) return;
+  const k = spatialCertPixelSize() / Math.max(spatialCertMovPixelSize(), 1e-9);
+  const cx = w.roiPoints.reduce((a, p) => a + p[0], 0) / w.roiPoints.length;
+  const cy = w.roiPoints.reduce((a, p) => a + p[1], 0) / w.roiPoints.length;
+  const tx = w.mov.width / 2, ty = w.mov.height / 2;
+  w.movRoi = w.roiPoints.map(p => [tx + (p[0] - cx) * k, ty + (p[1] - cy) * k]);
+}
+
+function certCancelDraw() {
+  const d = certDraw();
+  d.tool = null; d.side = null; d.pts = []; d.drag = false;
+  certSyncToolButtons(); spatialCertRender();
+}
+addEventListener('keydown', e => {
+  if (e.key === 'Escape' && certDraw().tool) { certCancelDraw(); }
+});
 
 // ── Multi-ROI LoFTR analysis regions ─────────────────────────────────────────
 // Draw one or more regions on the fixed section; each is certified INDEPENDENTLY by a
@@ -5278,29 +5417,10 @@ function loftrRoiColor(c) {
   if (c.verdict === 'LOCALLY_CERTIFIED' || c.verdict === 'RADIUS_LIMITED') return '#f59e0b';
   return '#ef4444';                                                // deformed / refused — red
 }
-function loftrRoiToggle() {
-  const w = spatialCertWork;
-  if (!w.ref) { showToast('Load images for landmarking first'); return; }
-  w.loftrMode = !w.loftrMode;
-  if (w.loftrMode) { w.loftrDraft = []; w.pending = null; w.roiMode = false; }
-  const b = document.getElementById('spatial-loftr-draw');
-  if (b) b.textContent = w.loftrMode ? 'Drawing… click reference' : 'Draw region';
-  loftrRoiSync();
-}
-function loftrRoiFinish() {
-  const w = spatialCertWork;
-  if (!w.loftrMode) { showToast('Press “Draw region” first'); return; }
-  if ((w.loftrDraft || []).length < 3) { showToast('Click at least 3 points on the reference to close the region'); return; }
-  w.loftrRois.push({ points: w.loftrDraft.slice(), cert: null });
-  w.loftrDraft = []; w.loftrMode = false;
-  const b = document.getElementById('spatial-loftr-draw'); if (b) b.textContent = 'Draw region';
-  loftrRoiSync();
-  showToast(`Region ${w.loftrRois.length} added — draw another or Certify all regions`);
-}
 function loftrRoiClearAll() {
   const w = spatialCertWork;
   w.loftrRois = []; w.loftrDraft = []; w.loftrMode = false;
-  const b = document.getElementById('spatial-loftr-draw'); if (b) b.textContent = 'Draw region';
+  certCancelDraw();          // clearing regions also drops any half-drawn shape
   const prev = w.pair && spatialCertifications[w.pair.sample_id];
   if (prev && prev.method === 'user_roi_loftr_local') spatialCertForgetCurrentCertification();
   loftrRoiSync();
@@ -5391,6 +5511,19 @@ function spatialEngineLabel(source) {
   if (source === 'landmark_fallback') return 'landmark fallback';
   return 'LoFTR-in-ROI (no landmarks)';
 }
+// Polygon area in µm², by the shoelace formula, using the REFERENCE pixel size (regions are
+// drawn and certified in the reference frame).
+function loftrRoiAreaUm2(pts) {
+  if (!pts || pts.length < 3) return '—';
+  let a = 0;
+  for (let i = 0, n = pts.length; i < n; i++) {
+    const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % n];
+    a += x1 * y2 - x2 * y1;
+  }
+  const px = spatialCertPixelSize();
+  const um2 = Math.abs(a) / 2 * px * px;
+  return um2 >= 1e6 ? `${(um2 / 1e6).toFixed(2)} mm²` : `${Math.round(um2).toLocaleString()} µm²`;
+}
 function loftrRoiRenderList() {
   const w = spatialCertWork;
   const el = document.getElementById('spatial-loftr-list');
@@ -5402,9 +5535,13 @@ function loftrRoiRenderList() {
     const cell = (c && c.cell_error_um != null) ? ` · ${Number(c.cell_error_um).toFixed(1)} µm` : '';
     const nc = (c && c.n_correspondences != null) ? ` · ${c.n_correspondences} matches` : '';
     const xflag = (c && c.is_intersection) ? ` <span style="color:#a855f7">∩ intersection</span>` : '';
+    // Area in µm², like QuPath puts on every annotation. A region is an analysis WINDOW, and
+    // its size is what decides whether the statistic inside it can mean anything — a reader
+    // who cannot see it has to guess from the outline.
+    const area = ` · ${loftrRoiAreaUm2(r.points)}`;
     return `<div style="display:flex;align-items:center;gap:8px;font-size:12px">`
       + `<span style="width:10px;height:10px;border-radius:50%;background:${col};display:inline-block;flex:0 0 auto"></span>`
-      + `<b>Region ${i + 1}</b><span style="color:var(--text2)">${esc(status)}${cell}${nc}</span>${xflag}`
+      + `<b>Region ${i + 1}</b><span style="color:var(--text2)">${esc(status)}${cell}${nc}${area}</span>${xflag}`
       + `<button class="btn sm" style="margin-left:auto;padding:2px 8px" onclick="loftrRoiRemove(${i})">Remove</button></div>`;
   }).join('');
   el.innerHTML = rows || `<span style="font-size:11px;color:var(--text3)">No regions drawn yet.</span>`;
@@ -5564,15 +5701,6 @@ async function loftrAutoFind() {
 }
 
 // Freehand region drawing: hold + drag on the reference to sketch, release to finish.
-function loftrFreehandToggle() {
-  const w = spatialCertWork;
-  if (!w.ref) { showToast('Load images for landmarking first'); return; }
-  w.freehand = !w.freehand;
-  if (w.freehand) { w.loftrMode = false; w.loftrDraft = []; w.pending = null; w.roiMode = false; }
-  const b = document.getElementById('spatial-loftr-freehand');
-  if (b) b.textContent = w.freehand ? 'Freehand… drag on reference' : 'Freehand';
-  loftrRoiSync();
-}
 
 document.getElementById('spatial-cert-ref').addEventListener('click', e => {
   spatialCertHandleRefClick(e);
@@ -5666,6 +5794,19 @@ function lmClamp(side) {
   p.tx = Math.min(Math.max(p.tx, -iw + (r.width - slackX)), slackX);
   p.ty = Math.min(Math.max(p.ty, -ih + (r.height - slackY)), slackY);
 }
+// Where the pointer is, in microns — QuPath shows this permanently and it is the fastest
+// way to sanity-check that the pixel size is right: a 10x field should read a few hundred
+// microns across, not a few hundred thousand.
+function lmCursorReadout(side, e) {
+  const el = document.getElementById('spatial-cert-cursor');
+  const w = spatialCertWork;
+  const meta = side === 'ref' ? w.ref : w.mov;
+  if (!el || !meta) return;
+  const img = document.getElementById('spatial-cert-' + side);
+  const pt = spatialCertPoint(e, img, meta);
+  const px = side === 'ref' ? spatialCertPixelSize() : spatialCertMovPixelSize();
+  el.textContent = `${(pt[0]*px).toFixed(0)}, ${(pt[1]*px).toFixed(0)} µm · ${side}`;
+}
 function lmZoomLabel() {
   const el = document.getElementById('spatial-cert-zoom-label');
   if (!el) return;
@@ -5674,20 +5815,30 @@ function lmZoomLabel() {
 }
 // Both panes move together. Comparing the same structure on two serial sections is the whole
 // task; zooming one and hunting for the matching spot in the other is the failure mode.
-let lmLinked = true;
-function lmToggleLink() {
-  lmLinked = !lmLinked;
-  const b = document.getElementById('spatial-cert-link-btn');
-  if (b) { b.classList.toggle('active', lmLinked); b.textContent = lmLinked ? 'Panes linked' : 'Panes independent'; }
-  if (lmLinked) lmMirror('ref');
+// QuPath keeps these SEPARATE, and it is right to: "Synchronize viewers" shares pan and
+// zoom, "Match viewer resolutions" only equalises magnification. Collapsing them into one
+// "linked" toggle breaks the common case — serial sections are usually SHIFTED, so you want
+// the same magnification while panning each pane onto its own copy of the same structure.
+// Matching magnification is on by default; sharing position is not.
+let lmMatchZoom = true, lmSyncPan = false;
+function lmToggleMatchZoom() {
+  lmMatchZoom = !lmMatchZoom;
+  const b = document.getElementById('spatial-cert-matchzoom-btn');
+  if (b) b.classList.toggle('active', lmMatchZoom);
+  if (lmMatchZoom) lmMirror('ref');
+}
+function lmToggleSyncPan() {
+  lmSyncPan = !lmSyncPan;
+  const b = document.getElementById('spatial-cert-syncpan-btn');
+  if (b) b.classList.toggle('active', lmSyncPan);
+  if (lmSyncPan) lmMirror('ref');
 }
 function lmMirror(from) {
-  if (!lmLinked) return;
+  if (!lmMatchZoom && !lmSyncPan) return;
   const to = from === 'ref' ? 'mov' : 'ref';
   const a = lmPanes[from], b = lmPanes[to];
-  const rel = a.scale / (a.fit || 1);
-  b.scale = (b.fit || 1) * rel;
-  b.tx = a.tx; b.ty = a.ty;
+  if (lmMatchZoom) b.scale = (b.fit || 1) * (a.scale / (a.fit || 1));
+  if (lmSyncPan)   { b.tx = a.tx; b.ty = a.ty; }
   lmClamp(to); lmApply(to);
 }
 function lmZoomBy(f, side) {
@@ -5716,13 +5867,39 @@ function lmWheel(side,e){ e.preventDefault();
   f = Math.min(Math.max(f, 0.6), 1.6);
   lmZoomAt(side, e.clientX-r.left, e.clientY-r.top, f); }
 function lmDown(side,e){
+  if (e.button !== 0) return;
   // Capture the pointer so a drag/draw keeps sending events even after it leaves the
   // stage — combined with the edge-clamp in spatialCertPoint, drawing continues and
   // snaps to the image boundary instead of stopping at the edge.
   try { document.getElementById('lm-stage-'+side).setPointerCapture(e.pointerId); } catch(_){}
-  if(side==='ref' && spatialCertWork.freehand){ loftrFreehandDown(e); return; }
+  const d = certDraw();
+  if (d.tool && d.side === side) {          // a draw tool owns the drag; pan is suspended
+    d.down = true; d.moved = 0; d.drag = false;
+    d.px = e.clientX; d.py = e.clientY;
+    d.startPt = spatialCertPoint(e, document.getElementById('spatial-cert-'+side),
+                                 side === 'ref' ? spatialCertWork.ref : spatialCertWork.mov);
+    return;
+  }
   const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
-function lmMove(side,e){ if(side==='ref' && spatialCertWork.freehand){ loftrFreehandMove(e); return; }
+function lmMove(side,e){
+  const d = certDraw();
+  if (d.tool && d.side === side && d.down) {
+    d.moved += Math.abs(e.clientX - d.px) + Math.abs(e.clientY - d.py);
+    d.px = e.clientX; d.py = e.clientY;
+    if (d.moved > DRAW_FREEHAND_PX) {         // the gesture has become a freehand stroke
+      if (!d.drag) { d.drag = true; d.pts = [d.startPt]; }
+      const meta = side === 'ref' ? spatialCertWork.ref : spatialCertWork.mov;
+      const pt = spatialCertPoint(e, document.getElementById('spatial-cert-'+side), meta);
+      const last = d.pts[d.pts.length - 1];
+      // Sample every ~3 on-screen px, converted to full-res units, so the stroke stays
+      // even at any zoom instead of dense when zoomed in and sparse when zoomed out.
+      const sc = (lmPanes[side] && lmPanes[side].scale) || 1;
+      const iw = document.getElementById('spatial-cert-'+side).naturalWidth || meta.width;
+      const thresh = Math.max(1, 3 * (meta.width / iw) / sc);
+      if (!last || Math.hypot(pt[0]-last[0], pt[1]-last[1]) > thresh) { d.pts.push(pt); lmScheduleRender(); }
+    }
+    return;
+  }
   const p=lmPanes[side]; if(!p.drag) return;
   const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
   p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY;
@@ -5739,33 +5916,35 @@ function lmUp(side){ lmPanes[side].drag=false; }
              (e.altKey || e.shiftKey) ? 1/1.8 : 1.8);
   });
 });
-// Freehand region sketching on the reference (active only when w.freehand is on; pan is
-// suppressed above). Hold + drag samples points ~every 6 full-res px; release finishes.
-let _loftrFhDrawing = false;
-function loftrFreehandDown(e){ const w=spatialCertWork; if(!w.ref) return;
-  _loftrFhDrawing=true; w.loftrDraft=[ spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref) ]; loftrRoiSync(); }
-function loftrFreehandMove(e){ const w=spatialCertWork; if(!_loftrFhDrawing) return;
-  const pt=spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref);
-  const last=w.loftrDraft[w.loftrDraft.length-1];
-  // Sample ~every 3 on-screen px (converted to full-res units via the pane scale) so the
-  // stroke stays smooth and consistent at any zoom; coalesce the redraw to one per frame.
-  const sc=(lmPanes.ref&&lmPanes.ref.scale)||1;
-  const iw=document.getElementById('spatial-cert-ref').naturalWidth||w.ref.width;
-  const thresh=Math.max(1, 3*(w.ref.width/iw)/sc);
-  if(!last || Math.hypot(pt[0]-last[0], pt[1]-last[1]) > thresh){ w.loftrDraft.push(pt); lmScheduleRender(); } }
-function loftrFreehandUp(){ const w=spatialCertWork; if(!_loftrFhDrawing) return; _loftrFhDrawing=false;
-  if((w.loftrDraft||[]).length >= 3){ w.loftrRois.push({points:w.loftrDraft.slice(), cert:null});
-    showToast(`Region ${w.loftrRois.length} sketched — Certify all regions when ready`); }
-  w.loftrDraft=[]; w.freehand=false;
-  const b=document.getElementById('spatial-loftr-freehand'); if(b) b.textContent='Freehand';
-  loftrRoiSync(); }
 ['ref','mov'].forEach(side=>{
   const st=document.getElementById('lm-stage-'+side); if(!st) return;
   st.addEventListener('wheel', e=>lmWheel(side,e), {passive:false});
   st.addEventListener('pointerdown', e=>lmDown(side,e));
-  st.addEventListener('pointermove', e=>lmMove(side,e));
+  st.addEventListener('pointermove', e=>{ lmMove(side,e); lmCursorReadout(side,e); });
 });
-addEventListener('pointerup', ()=>{ loftrFreehandUp(); lmUp('ref'); lmUp('mov'); });
+addEventListener('pointerup', e => {
+  const d = certDraw();
+  if (d.tool && d.down) {
+    d.down = false;
+    if (d.drag) { certCommitShape(d.pts, d.tool, d.side); d.pts = []; d.drag = false;
+                  d.tool = null; d.side = null; certSyncToolButtons(); }
+    else { d.pts.push(d.startPt); certSyncToolButtons(); spatialCertRender(); }  // a click adds a vertex
+    return;
+  }
+  lmUp('ref'); lmUp('mov');
+});
+// Double-click closes a click-built polygon — the other half of QuPath's gesture pair.
+['ref','mov'].forEach(side => {
+  const st = document.getElementById('lm-stage-'+side);
+  if (!st) return;
+  st.addEventListener('dblclick', e => {
+    const d = certDraw();
+    if (!d.tool || d.side !== side || d.pts.length < 3) return;
+    e.preventDefault(); e.stopPropagation();
+    certCommitShape(d.pts, d.tool, d.side);
+    d.pts = []; d.tool = null; d.side = null; certSyncToolButtons();
+  }, true);
+});
 function spatialCertToggleFullscreen(){
   const work=document.getElementById('spatial-cert-work');
   const on=work.classList.toggle('lm-fullscreen');
