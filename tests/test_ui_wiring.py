@@ -129,3 +129,25 @@ def test_the_manual_landmark_path_offers_no_suggestions(ui):
     assert not present, f"retired suggestion helpers are back in the UI: {present}"
     wired = [fn for fn in retired if re.search(rf'onclick="{fn}\(', ui["markup"])]
     assert not wired, f"retired suggestion helpers have controls again: {wired}"
+
+
+def test_no_micro_sign_is_left_inside_an_uppercased_heading(ui):
+    """`text-transform: uppercase` turns µ into Greek capital Mu, which looks like M.
+
+    "Bandwidth (75 µm) validity" therefore rendered as "BANDWIDTH (75 MM)" — millimetres,
+    a 1000x error in a science label, produced purely by CSS. Units inside an uppercased
+    heading must be wrapped in `.unit`, which opts back out of the transform.
+    """
+    uppercased = re.findall(r"^\.([a-z-]+)\s*\{[^}]*text-transform:\s*uppercase",
+                            ui["script"] + ui["markup"], re.M)
+    caps = set(uppercased) | {"card-title", "section-label", "metric-label",
+                              "parameter-name", "terminal-title"}
+    offenders = []
+    for cls in caps:
+        for m in re.finditer(rf'<div class="[^"]*\b{re.escape(cls)}\b[^"]*"[^>]*>', ui["markup"]):
+            tail = ui["markup"][m.end():m.end() + 600]
+            block = tail.split("</div>")[0]
+            stripped = re.sub(r'<span class="unit">.*?</span>', "", block, flags=re.S)
+            if "µ" in re.sub(r"<[^>]+>", "", stripped):
+                offenders.append((cls, " ".join(re.sub(r"<[^>]+>", "", block).split())[:70]))
+    assert not offenders, f"micro sign inside an uppercased heading: {offenders}"

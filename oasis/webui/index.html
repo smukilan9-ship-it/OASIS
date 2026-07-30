@@ -180,6 +180,12 @@ html, body {
   font-size: 10px; font-weight: 600; color: var(--text3);
   text-transform: uppercase; letter-spacing: .08em; margin-bottom: 14px;
 }
+/* Units keep their own case inside an uppercased heading. `text-transform: uppercase` maps
+   the MICRO SIGN (U+00B5) to Greek capital Mu (U+039C), which is visually identical to a
+   Latin M — so "Bandwidth (75 µm) validity" rendered on screen as "BANDWIDTH (75 MM)".
+   That is a 1000x error in a scientific label, produced entirely by a CSS transform. */
+.card-title .unit, .section-label .unit, .metric-label .unit,
+.parameter-name .unit, .terminal-title .unit { text-transform: none; }
 
 /* ── Form elements ─────────────────────────────────────── */
 .field { margin-bottom: 12px; }
@@ -1866,7 +1872,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 
       <div class="card" id="spatial-bandwidth-card">
               <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-                <span>Bandwidth (75 µm) validity — within certified analysis window</span>
+                <span>Bandwidth (<span class="unit">75 µm</span>) validity — within certified analysis window</span>
                 <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
               </div>
               <div class="science-summary" style="margin-bottom:12px">
