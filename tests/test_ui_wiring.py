@@ -111,14 +111,21 @@ def test_the_page_script_parses(ui):
     assert r.returncode == 0, f"page script does not parse:\n{r.stderr[:2000]}"
 
 
-def test_functions_reachable_from_the_ui_are_actually_reachable(ui):
-    """A handler-less function that the UI's own copy tells the user to use is a dead end.
+def test_the_manual_landmark_path_offers_no_suggestions(ui):
+    """The manual path's entire claim is that OASIS does not guess the correspondence.
 
-    Narrow on purpose: only the certification helpers whose absence produced a hard
-    dead-end state (a toast instructing the operator to press a control that did not
-    exist). Not a general dead-code check -- plenty of functions are called from JS only.
+    "Auto-propose landmarks" and "Guide next" contradicted that from inside it, and once
+    LoFTR-in-ROI became the primary automatic engine they were a second, weaker automatic
+    path living in the manual one. They are retired to legacy/webui_guided_landmarks.js;
+    this keeps them from creeping back into the shipped UI.
+
+    (An earlier version of this test asserted the opposite — that these functions must have
+    buttons — because a wiring audit reported "function with no control". The audit was
+    right that something was inconsistent; the correct repair was to remove the functions.)
     """
-    for fn in ("spatialCertAcceptGuide", "spatialCertRejectGuide", "spatialCertPropose"):
-        assert fn in ui["defined"], f"{fn} is gone; remove its button too"
-        assert re.search(rf'onclick="{fn}\(', ui["markup"]), \
-            f"{fn} has no control that invokes it"
+    retired = ("spatialCertPropose", "spatialCertGuideRequestNext", "spatialCertAcceptGuide",
+               "spatialCertRejectGuide", "spatialCertAcceptCandidate", "spatialCertGuideContinue")
+    present = [fn for fn in retired if fn in ui["defined"]]
+    assert not present, f"retired suggestion helpers are back in the UI: {present}"
+    wired = [fn for fn in retired if re.search(rf'onclick="{fn}\(', ui["markup"])]
+    assert not wired, f"retired suggestion helpers have controls again: {wired}"
