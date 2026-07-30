@@ -1961,6 +1961,25 @@ td.muted { color: var(--text3); font-size: 11px; }
     </div>
 
     <div class="card">
+      <div class="card-title">Scale bar</div>
+      <div class="q-step-head">
+        <h2>What the burned-in bar represents</h2>
+        <p>OASIS measures the drawn bar in an image's <b>_scale</b> sibling and divides this
+           length by it to get µm/px. That makes this the single most load-bearing number in
+           the app: every distance the spatial statistic reports — the 10–20 µm and 20–50 µm
+           bands, the 75 µm architecture bandwidth, the certified cell error — is derived
+           from it. It is a property of the microscope's export preset, so it is set once
+           per cohort here rather than per image.</p>
+      </div>
+      <div class="q-group">
+        <div class="q-glabel">Bar length (µm)</div>
+        <div class="q-gplain">Read the label printed beside the bar on your slides and enter
+          it here. Almost every export draws 100 µm.</div>
+        <input type="number" id="s-scale-bar-um" value="100" step="1" min="1" style="max-width:180px">
+      </div>
+    </div>
+
+    <div class="card">
       <div class="card-title">Cohort pixel size</div>
       <div class="info-box amber" style="margin-bottom:12px">
         The µm/px for a cohort acquired on <b>one scope at one magnification</b>. Set it
@@ -2761,6 +2780,7 @@ async function loadSetup() {
   document.getElementById('s-microscope').value = s.microscope     || '';
   document.getElementById('s-camera').value     = s.camera         || '';
   document.getElementById('s-scanner').value    = s.scanner        || '';
+  document.getElementById('s-scale-bar-um').value = s.scale_bar_um  || 100;
   document.getElementById('s-px-x').value       = s.pixel_size_x   || 0.5;
   document.getElementById('s-px-y').value       = s.pixel_size_y   || 0.5;
   document.getElementById('s-model').value      = s.instanseg_model|| '';
@@ -2797,6 +2817,7 @@ async function saveSetup() {
     microscope:        document.getElementById('s-microscope').value,
     camera:            document.getElementById('s-camera').value,
     scanner:           document.getElementById('s-scanner').value,
+    scale_bar_um:      parseFloat(document.getElementById('s-scale-bar-um').value) || 100,
     pixel_size_x:      parseFloat(document.getElementById('s-px-x').value) || 0.5,
     pixel_size_y:      parseFloat(document.getElementById('s-px-y').value) || 0.5,
     default_objective: document.getElementById('s-objective').value,

@@ -38,19 +38,62 @@ def is_scaled_image(filename: str) -> bool:
     return Path(filename).stem.lower().endswith("_scale")
 
 
-def _detect_scale_bar(image_path: str):
+# How many microns the burned-in bar represents. Constant for a given microscope/export
+# preset, so it is a setting rather than an argument every caller has to thread through.
+DEFAULT_SCALE_BAR_UM = 100.0
+
+
+def _bar_candidates(crop, image_width):
+    """Components in `crop` that are shaped like a drawn scale bar.
+
+    Shape, not darkness ranking. The previous version Otsu-thresholded the strip, opened it
+    with a horizontal kernel, accepted anything up to 25% of the crop HEIGHT as "line-like"
+    (54 px on a 1440 px image) and then took the WIDEST survivor. On real slides a tissue
+    edge is wider than the bar, so it won, silently:
+
+        measured on the LL477 cohort, true bar 133 px in all six scale images
+            CD8_x10_1  156 px (+17%)   Tim3_10X_3  165 px (+24%)
+            CD8_x10_2  139 px  (+5%)   Tim3_x10_1  174 px (+31%)
+
+    A 31% error in um/px scales EVERY distance the spatial statistic reports -- the 10-20 um
+    colocalization band, the 20-50 um co-infiltration band, the 75 um architecture bandwidth,
+    and the certified cell error. So the test is now what a drawn bar actually looks like:
+    near-black, solid, thin in absolute terms, much wider than tall, and the same length on
+    every one of its rows.
     """
-    Detect the burned-in scale bar in the bottom strip of an image and measure
-    its length in pixels.
+    import cv2
+    import numpy as np
 
-    Returns (pixel_size_um, bar_length_px) on a confident detection, else
-    (None, None). The public wrapper extract_pixel_size_from_scale_bar() returns
-    only the pixel size; the API uses this richer form to surface the bar length
-    for user confidence display.
+    ch, cw = crop.shape
+    mask = (crop < 100).astype(np.uint8)          # drawn black, not merely "darker than Otsu"
+    n, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
+    out = []
+    for i in range(1, n):
+        x, y, bw, bh, area = (int(v) for v in stats[i])
+        if bw < 40 or bw > 0.40 * image_width:
+            continue                              # too short to measure, or not a bar
+        if bh < 2 or bh > 0.10 * ch:
+            continue                              # a bar is thin in ABSOLUTE terms
+        if area / float(bw * bh) < 0.80:
+            continue                              # solid rectangle, not a texture
+        if bw / float(bh) < 6:
+            continue                              # wide and thin
+        rows = (labels[y:y + bh, x:x + bw] == i).sum(axis=1)
+        if rows.std() / max(rows.mean(), 1.0) > 0.08:
+            continue                              # same length on every row
+        out.append({"length_px": bw, "thickness_px": bh, "x": x, "y": y,
+                    "fill": round(area / float(bw * bh), 3)})
+    out.sort(key=lambda c: -c["length_px"])
+    return out
 
-    Assumes the bar represents 100 µm (constant across this dataset).
-    Confidence: longest horizontal segment must be > 50 px and < 40% of the
-    image width.
+
+def _detect_scale_bar(image_path: str, bar_um: float = None):
+    """Measure the burned-in scale bar. Returns (pixel_size_um, bar_length_px).
+
+    FAILS CLOSED. If no component in the bottom strip is shaped like a bar, this returns
+    (None, None) and the caller falls back to a value the user typed. That is the right
+    trade: a missing number is visible and gets corrected, whereas a wrong one is invisible
+    and rescales the whole analysis.
     """
     try:
         import cv2
@@ -59,7 +102,7 @@ def _detect_scale_bar(image_path: str):
         print("  Scale bar: opencv-python / numpy not available")
         return None, None
 
-    # Load with PIL, fall back to cv2
+    bar_um = float(bar_um if bar_um else DEFAULT_SCALE_BAR_UM)
     arr = None
     try:
         from PIL import Image
@@ -73,47 +116,23 @@ def _detect_scale_bar(image_path: str):
         return None, None
 
     h, w = arr.shape[:2]
-    crop = arr[int(h * 0.85):, :]                      # bottom 15%
-    gray = cv2.cvtColor(crop, cv2.COLOR_RGB2GRAY)
-
-    # Otsu — bar is dark on light background, so invert to make the bar white
-    _, binary = cv2.threshold(gray, 0, 255,
-                              cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-
-    # Isolate horizontal segments: open with a horizontal kernel (erodes away
-    # vertical/short structures like text, keeps long horizontal runs).
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (25, 1))
-    horiz  = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
-
-    n, _labels, stats, _ = cv2.connectedComponentsWithStats(horiz, connectivity=8)
-    max_h_for_line = max(0.25 * crop.shape[0], 10)
-
-    # Collect line-like candidate segments (short enough to be a bar), longest first
-    candidates = []
-    for i in range(1, n):                              # skip background label 0
-        cw = int(stats[i, cv2.CC_STAT_WIDTH])
-        ch = int(stats[i, cv2.CC_STAT_HEIGHT])
-        if ch <= max_h_for_line:                       # line-like: wide & short
-            candidates.append((cw, ch))
-    candidates.sort(key=lambda c: c[0], reverse=True)
-    bar_len = candidates[0][0] if candidates else 0
-
-    if bar_len <= 50 or bar_len >= 0.40 * w:
-        print(f"  Scale bar: no confident detection "
-              f"(longest segment {bar_len}px, image width {w}px)")
+    crop = cv2.cvtColor(arr[int(h * 0.85):, :], cv2.COLOR_RGB2GRAY)
+    cands = _bar_candidates(crop, w)
+    if not cands:
+        print(f"  Scale bar: no bar-shaped segment found in "
+              f"{os.path.basename(image_path)} — enter the pixel size by hand")
         return None, None
 
-    pixel_size = 100.0 / bar_len
-    print(f"  Scale bar: {bar_len}px → {pixel_size:.4f} µm/px (assuming 100 µm bar)")
+    bar_len = cands[0]["length_px"]
+    pixel_size = bar_um / bar_len
+    extra = ""
+    if len(cands) > 1:
+        # More than one bar-shaped object is not fatal, but it is worth seeing: the widest
+        # is taken and the runners-up are named so a wrong pick is noticeable.
+        extra = (" · also matched " +
+                 ", ".join(str(c["length_px"]) + "px" for c in cands[1:4]))
+    print(f"  Scale bar: {bar_len}px = {bar_um:g} µm → {pixel_size:.4f} µm/px{extra}")
     return pixel_size, bar_len
-
-
-def extract_pixel_size_from_scale_bar(image_path: str):
-    """
-    Extract pixel size (µm/px) from a burned-in 100 µm scale bar.
-    Returns a float, or None if no scale bar is confidently detected.
-    """
-    return _detect_scale_bar(image_path)[0]
 
 
 def from_tiff_metadata(image_path: str):

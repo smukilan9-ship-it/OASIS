@@ -398,6 +398,18 @@ class API:
         return {"ok": True, "classifiers": [{k: v for k, v in c.items() if k != "model"}
                                             for c in saved]}
 
+    def _scale_bar_um(self):
+        """How many microns the burned-in bar represents, for this cohort.
+
+        A property of the microscope's export preset, not of any one image, so it is a
+        setting rather than an argument threaded through every call. Default 100.
+        """
+        try:
+            v = float(self.get_setup().get("scale_bar_um") or 0)
+            return v if v > 0 else 100.0
+        except Exception:
+            return 100.0
+
     def _resolve_membrane_classifier(self, name, marker):
         """A trained membrane classifier for this marker, by name or by marker.
 
@@ -1087,7 +1099,8 @@ class API:
         try:
             sys.path.insert(0, str(PROJECT_DIR))
             from oasis.common.pixel_size_util import _detect_scale_bar
-            px, bar = _detect_scale_bar(os.path.expanduser(image_path))
+            px, bar = _detect_scale_bar(os.path.expanduser(image_path),
+                                        self._scale_bar_um())
             if px is None:
                 return {"status": "error", "error": "could not detect scale bar"}
             return {"status": "ok", "pixel_size": round(float(px), 4),
@@ -2410,7 +2423,8 @@ class API:
         if session_px and float(session_px) > 0:
             session_value = float(session_px)
         elif session_scale:
-            session_value = extract_pixel_size_from_scale_bar(session_scale)
+            session_value = extract_pixel_size_from_scale_bar(session_scale,
+                                                              self._scale_bar_um())
         if session_value:
             self._emit("log", {"msg": f"Session pixel size: {session_value:.4f} µm/px "
                                       f"(default for all images unless overridden)",

@@ -1011,7 +1011,8 @@ def build_provenance(cfg, assoc_result, reg_method, ref_px, ref_px_source):
     }
 
 
-def resolve_pixel_size(session_pixel_size, image_path, scale_image_path, manual_override):
+def resolve_pixel_size(session_pixel_size, image_path, scale_image_path, manual_override,
+                       bar_um=None):
     """
     Resolve the pixel size (µm/px) for one image, highest priority first:
 
@@ -1033,7 +1034,7 @@ def resolve_pixel_size(session_pixel_size, image_path, scale_image_path, manual_
         return val
 
     if scale_image_path:
-        val = extract_pixel_size_from_scale_bar(scale_image_path)
+        val = extract_pixel_size_from_scale_bar(scale_image_path, bar_um)
         if val:
             print(f"  Pixel size [{name}]: {val:.4f} µm/px (scale image)")
             return float(val)
@@ -1044,7 +1045,7 @@ def resolve_pixel_size(session_pixel_size, image_path, scale_image_path, manual_
         return val
 
     if image_path:
-        val = extract_pixel_size_from_scale_bar(image_path)
+        val = extract_pixel_size_from_scale_bar(image_path, bar_um)
         if val:
             print(f"  Pixel size [{name}]: {val:.4f} µm/px (scale bar in image)")
             return float(val)
