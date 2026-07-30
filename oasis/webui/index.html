@@ -5770,14 +5770,25 @@ function spatialCertClear() {
 
 // Which pixel size certification is using, and whose it is.
 //
-// It reported a single unlabelled "Certification pixel size", which is ambiguous on a tab
-// that offers a pixel size PER IMAGE. The single number is right for the units — the fit maps
-// moving onto reference, so the residual lives in the reference frame and converts to microns
-// with the REFERENCE scale. But it is not only a label: loftr_matcher._prep resamples BOTH
-// patches with that one value, so if the two images genuinely differ in µm/px they reach the
-// matcher at different PHYSICAL resolutions, which costs correspondences. Within a pair of
-// this cohort the two bars measure the same, so it is benign here — but it must be said, and
-// a real mismatch must be visible rather than silently absorbed by the fit's scale term.
+// It reported a single unlabelled "Certification pixel size", which is ambiguous on a tab that
+// offers a pixel size PER IMAGE. One number is nevertheless CORRECT, and differing pixel sizes
+// are handled properly:
+//
+//   * the fit maps moving onto reference and a similarity has isotropic scale, so a
+//     pixel-size ratio between the two images is exactly representable — the fit finds it;
+//   * `pixel_size_um` is used in exactly two places, both reference-frame quantities:
+//     tol_px = tol_um / pixel_size_um (match tolerance) and landmark_register_and_verify
+//     (residuals -> µm). Both belong to the reference, which is what is named below;
+//   * loftr_matcher._prep downscales each image by a RELATIVE factor of its own dimensions
+//     (int(H * scale)) and ignores the pixel size it is handed, so the two patches are never
+//     brought to mismatched physical resolutions;
+//   * the analysis downstream already uses each image's own size — pixel_overrides is
+//     per-image through run_spatial_association.
+//
+// So this is a labelling job, not a correctness one: say whose scale it is, and show the other
+// so a mistyped override is visible. (An earlier version of this claimed _prep resampled both
+// patches with the reference value and warned about "different physical resolutions". That was
+// wrong — _prep never reads the argument.)
 function spatialCertPixelSizeNote() {
   const ref = spatialCertPixelSize();
   const mov = spatialCertMovPixelSize();
@@ -5788,14 +5799,18 @@ function spatialCertPixelSizeNote() {
           + `size: ${ref.toFixed(4)} µm/px — registration error is measured in the reference `
           + `frame${matched ? ', from this pair’s own matched scale bar' : ''}. `
           + `Moving section (${esc(lb)}): ${mov.toFixed(4)} µm/px.</span>`;
+  // Not a correctness warning — certification handles differing scales. But two sections of
+  // the SAME field at the same magnification should measure the same, so a gap here is
+  // usually a mistyped override on step 2, and that would be wrong for the analysis even
+  // though certification survives it.
   const rel = Math.abs(mov - ref) / Math.max(ref, 1e-9);
   if (rel > 0.02) {
-    out += `<div class="info-box warn" style="margin-top:8px">The two sections differ in scale by `
-         + `<b>${(rel * 100).toFixed(1)}%</b>. The similarity fit can absorb that as its scale `
-         + `term, so the error figure stays valid — but the matcher brings both patches to a `
-         + `working resolution derived from the reference alone, so at this difference they are `
-         + `compared at different physical scales and correspondences are lost. Check the two `
-         + `pixel sizes on step 2 before trusting a failed certification here.</div>`;
+    out += `<div class="info-box warn" style="margin-top:8px">The two sections differ in scale `
+         + `by <b>${(rel * 100).toFixed(1)}%</b>. Certification is unaffected — the fit absorbs `
+         + `a scale ratio and the error above is measured in the reference frame either way. `
+         + `But two sections of the same field at one magnification should measure the same, so `
+         + `check the per-image values on step 2: the analysis uses each image's own size, and a `
+         + `mistyped one puts that section's cells at the wrong scale.</div>`;
   }
   return out;
 }
