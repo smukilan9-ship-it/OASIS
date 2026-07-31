@@ -22,9 +22,13 @@ import numpy as np
 import pytest
 from PIL import Image
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT))
 
-from oasis.common.pixel_size_util import _detect_scale_bar  # noqa: E402
+from oasis.common.pixel_size_util import (  # noqa: E402
+    _detect_scale_bar,
+    extract_pixel_size_from_scale_bar,
+)
 
 W, H = 1920, 1440
 
@@ -95,3 +99,51 @@ def test_the_length_scales_the_answer(tmp_path):
     a = _detect_scale_bar(_slide(tmp_path, "a.png", bar_len=100))[0]
     b = _detect_scale_bar(_slide(tmp_path, "b.png", bar_len=200))[0]
     assert a == pytest.approx(2 * b, rel=1e-6)
+
+
+def test_the_public_entry_point_exists_and_returns_a_scalar(tmp_path):
+    """Both real callers import this by name, and neither is reachable from a test.
+
+    Rewriting the detector dropped this wrapper and kept only `_detect_scale_bar`, which
+    returns (pixel_size, bar_length). Nothing failed: every test here called the private
+    function directly, so the suite stayed green while both
+    `run_pipeline.resolve_pixel_size` and the scale matcher in `webui.api` imported a name
+    that no longer existed — inside a function body, so it raised only when a pipeline
+    actually ran. Every spatial and quant run died on its first step with "import failed".
+
+    Asserts the two things the callers rely on: that the name is importable, and that it
+    yields a bare number they can compare against zero and format as %.4f.
+    """
+    import importlib
+
+    mod = importlib.import_module("oasis.common.pixel_size_util")
+    fn = getattr(mod, "extract_pixel_size_from_scale_bar", None)
+    assert callable(fn), "run_pipeline and webui.api both import this name at call time"
+
+    px = fn(_slide(tmp_path, "public.png", bar_len=133))
+    assert isinstance(px, float), f"callers expect a scalar, got {type(px).__name__}"
+    assert px == pytest.approx(100.0 / 133, rel=1e-6)
+    assert fn(_slide(tmp_path, "public_cfg.png", bar_len=133), 250.0) == \
+        pytest.approx(250.0 / 133, rel=1e-6)
+    assert fn(_slide(tmp_path, "public_none.png", bar_len=0)) is None
+
+
+def test_every_name_the_pipeline_imports_from_this_module_exists():
+    """A guard for the whole module surface, not just the one name that broke.
+
+    These imports live inside function bodies in both callers, so a missing name is invisible
+    until a run reaches that line. Reads the actual import statements out of the source so
+    the list cannot drift from what the code really does.
+    """
+    import importlib
+    import re
+
+    mod = importlib.import_module("oasis.common.pixel_size_util")
+    wanted = set()
+    for src in (ROOT / "run_pipeline.py", ROOT / "oasis/webui/api.py"):
+        for m in re.finditer(r"from oasis\.common\.pixel_size_util import ([^\n(]+)",
+                             src.read_text()):
+            wanted |= {n.strip() for n in m.group(1).split(",") if n.strip()}
+    assert wanted, "no imports found — the callers or this regex have moved"
+    missing = sorted(n for n in wanted if not hasattr(mod, n))
+    assert not missing, f"imported by the pipeline but absent from the module: {missing}"

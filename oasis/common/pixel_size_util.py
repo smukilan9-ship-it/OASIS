@@ -135,6 +135,22 @@ def _detect_scale_bar(image_path: str, bar_um: float = None):
     return pixel_size, bar_len
 
 
+def extract_pixel_size_from_scale_bar(image_path: str, bar_um: float = None):
+    """Pixel size (µm/px) from a burned-in scale bar, or None if none was found.
+
+    The public entry point: `_detect_scale_bar` also returns the measured bar length, which
+    only the calibration UI wants. Callers here want the scale or nothing.
+
+    This wrapper was dropped when the detector was rewritten in 88b52b8, and both callers —
+    run_pipeline.resolve_pixel_size and the Quant/Spatial scale matcher in webui.api — import
+    it by name at call time. So the import raised only when a pipeline actually ran, the whole
+    test suite stayed green, and every run died at the first step with
+    "import failed: cannot import name extract_pixel_size_from_scale_bar". See
+    tests/test_scale_bar.py::test_the_public_entry_point_exists_and_returns_a_scalar.
+    """
+    return _detect_scale_bar(image_path, bar_um)[0]
+
+
 def from_tiff_metadata(image_path: str):
     try:
         import tifffile
