@@ -45,7 +45,24 @@ APP="$ROOT/dist/OASIS.app"
 # the vendored model) and would catch a missing hidden import that the build itself does not.
 echo "==> smoke test (frozen, headless)"
 BIN="$APP/Contents/MacOS/OASIS"
-"$BIN" --oasis-worker oasis.common.paths 2>/dev/null || true
+
+# Run the REAL pipeline, and let it fail the build. What stood here was
+#     "$BIN" --oasis-worker oasis.common.paths 2>/dev/null || true
+# which discarded the output and swallowed the exit code, so it could not fail; the only
+# thing that could was the file-existence check below, and "bundle contents OK" then read
+# like the app had been exercised. packaging/smoke_test.py — which segments real tissue and
+# asserts a plausible cell count — existed the whole time and was wired only into the
+# release workflow, so a locally built bundle never ran it.
+#
+# That gap is not theoretical: deleting a public function from pixel_size_util left every
+# spatial and quant run dying on "import failed", and a bundle built from that source would
+# have passed this step. The failure is exactly the kind the docstring in smoke_test.py
+# describes — invisible from source, green build, broken app.
+SMOKE_WD="$(mktemp -d)"
+trap 'rm -rf "$SMOKE_WD"' EXIT
+"$PY" "$ROOT/packaging/smoke_test.py" prepare --dir "$SMOKE_WD"
+"$BIN" --oasis-worker run_pipeline --config "$SMOKE_WD/config.yaml"
+"$PY" "$ROOT/packaging/smoke_test.py" check --dir "$SMOKE_WD"
 "$PY" - "$APP" <<'PY'
 import os, sys
 app = sys.argv[1]
