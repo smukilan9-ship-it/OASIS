@@ -128,22 +128,5 @@ def test_the_public_entry_point_exists_and_returns_a_scalar(tmp_path):
     assert fn(_slide(tmp_path, "public_none.png", bar_len=0)) is None
 
 
-def test_every_name_the_pipeline_imports_from_this_module_exists():
-    """A guard for the whole module surface, not just the one name that broke.
-
-    These imports live inside function bodies in both callers, so a missing name is invisible
-    until a run reaches that line. Reads the actual import statements out of the source so
-    the list cannot drift from what the code really does.
-    """
-    import importlib
-    import re
-
-    mod = importlib.import_module("oasis.common.pixel_size_util")
-    wanted = set()
-    for src in (ROOT / "run_pipeline.py", ROOT / "oasis/webui/api.py"):
-        for m in re.finditer(r"from oasis\.common\.pixel_size_util import ([^\n(]+)",
-                             src.read_text()):
-            wanted |= {n.strip() for n in m.group(1).split(",") if n.strip()}
-    assert wanted, "no imports found — the callers or this regex have moved"
-    missing = sorted(n for n in wanted if not hasattr(mod, n))
-    assert not missing, f"imported by the pipeline but absent from the module: {missing}"
+# The general form of that failure — every first-party import in the tree, not just this
+# module's — is tests/test_imports_resolve.py.
