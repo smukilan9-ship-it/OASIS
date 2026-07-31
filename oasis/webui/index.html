@@ -2259,6 +2259,11 @@ let spatialFolderMode    = 'two_folder';    // 'two_folder' | 'single_folder'
 let spatialSessionPxMode = 'manual';        // 'manual' | 'scale'
 let spatialSessionScale  = { path: '', px: null };
 let spatialBatchScale    = { px: null, count: 0, map: {} };
+// Whether the scale-match default has been settled — by the preview switching it on because
+// it found "_scale" siblings, or by the operator setting it themselves. Either way it is
+// settled once, so the auto-default is a starting position and not a policy that overrides
+// the operator every time they press Preview.
+let spatialScaleAutoArmed = false;
 let spatialImage         = { a: '', b: '' };
 let spatialOverride      = { a: null, b: null };  // {mode, px?, scalePath?, scalePx?}
 let spatialPairs         = [];
@@ -4904,6 +4909,7 @@ function spatialAssocSetFolderMode(mode) {
 
 async function spatialScaleMatchToggle() {
   toggleEl('spatial-scale-match-toggle');
+  spatialScaleAutoArmed = true;   // operator has decided; stop applying the auto-default
   spatialBatchScale = { px: null, count: 0, map: {} };
   spatialCertInvalidate();
   // Re-measure IN PLACE. This used to throw away the matched pairs and tell the operator to
@@ -5095,6 +5101,19 @@ async function spatialAssocPreview() {
   spatialPairs = res.pairs || [];
   spatialCertifications = {};
   spatialBatchScale = { px: null, count: 0, map: {} };
+  // Scale siblings in the folder mean the true pixel size is sitting right there, measured.
+  // Leaving them unused was a silent 33% error on the cohort this was built for: the six
+  // LL477 bars read 0.7519 µm/px and the run default is 0.5, and the preview's only mention
+  // of them was "excluded from matching" — true, but it reads as housekeeping rather than as
+  // "your calibration is here and switched off". Since every distance the statistic reports
+  // is in microns, and the certified TRE is too, the default has to be to measure them.
+  // Switched on here rather than in the toggle handler so it cannot recurse; the operator can
+  // still turn it off, and the pixel-size column states which of the two happened per row.
+  if ((res.scaled_excluded || []).length && !isOn('spatial-scale-match-toggle')
+      && !spatialScaleAutoArmed) {
+    spatialScaleAutoArmed = true;
+    document.getElementById('spatial-scale-match-toggle').classList.add('on');
+  }
   if (isOn('spatial-scale-match-toggle')) {
     const sr = await window.pywebview.api.preview_spatial_scale_matches(folder_a, folder_b || null, spatialFolderMode);
     if (sr && sr.status === 'ok' && sr.global_pixel_size) {
@@ -5156,7 +5175,14 @@ async function spatialAssocPreview() {
   const scaledEl = document.getElementById('spatial-preview-scaled');
   if (scaled.length) {
     scaledEl.style.display = 'block';
-    scaledEl.textContent = `${scaled.length} scale image(s) excluded from matching: ${scaled.join(', ')}`;
+    // "excluded from matching" was the whole message, which is true — they are not analysed —
+    // but it reads as housekeeping and said nothing about whether their bars were measured.
+    // Whether the run is calibrated or running on a typed guess is the more important fact.
+    scaledEl.textContent = matching
+      ? `${scaled.length} scale image(s) measured for calibration, not analysed: ${scaled.join(', ')}`
+      : `${scaled.length} scale image(s) found but NOT measured — every image uses the run `
+        + `default of ${spatialAssocSessionPxText()}. Turn on "Match scale images" above to `
+        + `calibrate each from its own bar: ${scaled.join(', ')}`;
   } else { scaledEl.style.display = 'none'; }
 
   document.getElementById('spatial-preview-summary').textContent =
