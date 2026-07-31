@@ -136,15 +136,23 @@ html, body {
 :root { --col: 760px; --col-wide: 1120px; }
 /* Centre with GRID, not auto margins. Auto margins are set by a shorthand-free rule here,
    but any later rule using the `margin` shorthand silently resets margin-left/right to 0 —
-   `/* The step rail stays put. It scrolled away with the content, so on a long step — batch
+   ".wizard-nav { margin: 6px 0 4px }" did exactly that, so the Back/Next row rendered at
+   the correct WIDTH but shoved 278 px left of the card it belongs under. Grid placement
+   cannot be clobbered that way.
+
+   This rule has now been killed TWICE. The second time, the sticky-stepper rule below was
+   written INSIDE this comment. CSS comments do not nest, so the first close-delimiter
+   ended it early, the remaining prose parsed as a selector, and error recovery discarded
+   the next real rule — this one. The width rule below still applied, so every tab rendered
+   a correctly sized 760 px column jammed against the left edge with 750 px of dead space
+   beside it. Keep prose and declarations apart, and never write a comment delimiter inside
+   a comment — that is the same mistake a third time. */
+.scroll { display: grid; grid-template-columns: minmax(0, 1fr);
+          justify-items: center; align-content: start; }
+/* The step rail stays put. It scrolled away with the content, so on a long step — batch
    preview, the certification canvas — there was no way to see which step you were on or
    jump to another without scrolling back to the top first. */
 .wizard-stepper-card { position: sticky; top: 0; z-index: 20; backdrop-filter: blur(6px); }
-.wizard-nav { margin: 6px 0 4px }` did exactly that, so the Back/Next row rendered at
-   the correct WIDTH but shoved 278 px left of the card it belongs under. Grid placement
-   cannot be clobbered that way. */
-.scroll { display: grid; grid-template-columns: minmax(0, 1fr);
-          justify-items: center; align-content: start; }
 .scroll > * { width: min(var(--col), 100%); }
 /* Views that are mostly canvas or table earn the wider column. */
 #quant-review .scroll > *, #quant-results .scroll > *, #spatial-results .scroll > * {
