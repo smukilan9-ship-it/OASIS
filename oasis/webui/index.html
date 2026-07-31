@@ -394,11 +394,17 @@ td.muted { color: var(--text3); font-size: 11px; }
 .cert-mode-tab.active { background: #ecfeff; color: #0e7490; border-color: #06b6d4; }
 .cert-mode-sub { color: var(--text3); font-weight: 400; }
 .cert-mode-tab.active .cert-mode-sub { color: #0e7490; opacity: .8; }
-.badge.cyan, .badge.amber, .badge.gray {
+.badge.cyan, .badge.gray {
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
 .badge.green  { background: var(--green-dim); color: #007a33; border: 1px solid var(--green); }
 .badge.red    { background: var(--red-dim); color: #c4002f; border: 1px solid var(--red); }
+/* Amber was grouped with cyan and gray, so three class names rendered as one neutral grey
+   and every site that chose between them got nothing for it. Ten of those are warnings —
+   NOT CERTIFIED, CERT REQUIRED, N FAIL-CLOSED, RADIUS_LIMITED — reading as "not started"
+   rather than "attention". Same amber as `.wizard-stepper .wstep.active`, at 4.82:1. Gray
+   keeps the neutral: NOT STARTED is genuinely not a warning. */
+.badge.amber  { background: #fffbeb; color: #b45309; border: 1px solid #d97706; }
 
 /* ── Info box ──────────────────────────────────────────── */
 .info-box {
