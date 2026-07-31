@@ -253,6 +253,12 @@ select option { background: #ffffff; color: var(--text); }
 .btn.danger { color: var(--text); border-color: var(--border2); background: #ffffff; }
 .btn.danger:hover { background: var(--bg3); border-color: #18181b; }
 .btn.sm { height: 28px; padding: 0 10px; font-size: 11px; }
+/* The button beside a path field is `.btn.sm` (28 px) against a 36 px input, so every
+   "… Browse" row in the app — Quant, Spatial, Classifier and Settings alike — sat 8 px
+   short of the field it belongs to, misaligned 4 px top and bottom. The pair reads as one
+   control and should measure as one. Placed after `.btn.sm` deliberately: it carries the
+   same specificity (two classes), so order is what decides it. */
+.input-with-btn > .btn.sm { height: 36px; }
 
 /* Segmented tab control */
 .seg-tabs {
@@ -5561,8 +5567,42 @@ function loftrRoiCommitCertifications() {
     `<div class="science-summary"><div class="science-summary-copy"><strong>`
     + `${esc(certs.length > 1 ? certs.length + ' regions certified' : certs[0].verdict)}</strong>`
     + ` · ${esc(engLabel)}<br>Each certified region is analysed separately with its `
-    + `own local rigid transform. Deformed regions are excluded from analysis.</div></div>`;
+    + `own local rigid transform. Deformed regions are excluded from analysis.</div></div>`
+    + loftrRoiTable(certs);
   spatialAssocUpdateRunBtn();
+}
+
+// Each certified region, with its own numbers.
+//
+// This panel printed the verdict and nothing else, while cell_error_um, n_correspondences
+// and the polygon were already in scope. The registration error is the single number that
+// says whether a verdict can be leaned on — a region certified to 2 µm and one certified to
+// 9 µm are both "LOCALLY_CERTIFIED" and mean very different things for a 10-20 µm contact
+// band — and it was the automatic path, the default one, that was hiding it. The manual
+// path has shown its numbers via renderParameterDetails all along.
+//
+// Listed per region rather than summarised because each region carries its own transform and
+// is analysed separately, and because that is what QuPath does with annotations: an object
+// per row, with its area in µm².
+function loftrRoiTable(certs) {
+  if (!certs || !certs.length) return '';
+  const num = (v, d, unit) => (v == null || !isFinite(Number(v)))
+    ? '<span class="muted">—</span>'
+    : esc(Number(v).toFixed(d)) + (unit ? ' <span class="unit">' + unit + '</span>' : '');
+  const rows = certs.map((c, i) => {
+    const ok = c.verdict === 'CERTIFIED' || c.verdict === 'LOCALLY_CERTIFIED';
+    return `<tr>
+      <td>${esc(c.is_intersection ? 'A∩B ' : '')}Region ${i + 1}</td>
+      <td><span class="badge ${ok ? 'green' : 'red'}">${esc(c.verdict || '—')}</span></td>
+      <td>${num(c.cell_error_um, 2, 'µm')}</td>
+      <td>${num(c.fle_um, 2, 'µm')}</td>
+      <td>${c.n_correspondences == null ? '<span class="muted">—</span>' : esc(String(c.n_correspondences))}</td>
+      <td>${esc(loftrRoiAreaUm2(c.roi_polygon))}</td>
+    </tr>`;
+  }).join('');
+  return `<table style="margin-top:10px">
+      <thead><tr><th>Region</th><th>Verdict</th><th>Cell error</th><th>FLE</th>
+      <th>Corresp.</th><th>Area</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 // Human-readable provenance for which engine produced a certified region.
 function spatialEngineLabel(source) {
@@ -6426,7 +6466,7 @@ async function spatialAssocRun() {
     : (spatialSessionPxMode === 'scale' ? 'session scale image' : 'entered manually');
   appendLog('spatial-log', `Pixel size: ${spPx ?? '—'} µm/px (${spPxSrc}, applied to all images unless a per-image override is set)`, 'normal');
   if (Number(spPx) === 0.5 && !config.match_scale_images && spatialSessionPxMode === 'manual') {
-    appendLog('spatial-log', '⚠ Pixel size is 0.5 µm/px — the DEFAULT. If you did not set this deliberately, the spatial statistics will be mis-scaled. Verify it in step 1 (Inputs).', 'warn');
+    appendLog('spatial-log', '⚠ Pixel size is 0.5 µm/px — the DEFAULT. If you did not set this deliberately, the spatial statistics will be mis-scaled. Verify it in step 2 (Pixel size).', 'warn');
     showToast('Pixel size is the default 0.5 µm/px — verify it is correct for your images');
   }
 
