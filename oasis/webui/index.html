@@ -1838,7 +1838,7 @@ td.muted { color: var(--text3); font-size: 11px; }
           <div style="margin-top:8px">
                     <div class="toggle-row"><span>Enable image registration</span>
                       <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div></div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Landmark certification is still the required quality gate for serial-section claims.</div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Certification on step 3 is still the required quality gate for serial-section claims, by either path.</div>
                   </div>
         </div>
         <div class="q-group">
@@ -5239,7 +5239,11 @@ function spatialAssocUpdateRunBtn() {
   const required = spatialMode === 'single' ? (spatialImage.a && spatialImage.b ? 1 : 0) : spatialPairs.length;
   const certified = Object.values(spatialCertifications).filter(c => c && c.is_certified).length;
   btn.disabled = !required || certified < required;
-  btn.title = btn.disabled ? 'Complete landmark certification for every pair first' : '';
+  // "landmark certification" named the manual path only, while the default path is LoFTR —
+  // so the reason the run was blocked pointed at a workflow the operator was not using.
+  btn.title = btn.disabled
+    ? `Certify every pair on step 3 first — ${certified} of ${required} done`
+    : '';
 }
 
 function spatialCertCurrentPair() {
@@ -5609,10 +5613,20 @@ function loftrRoiTable(certs) {
     ? '<span class="muted">—</span>'
     : esc(Number(v).toFixed(d)) + (unit ? ' <span class="unit">' + unit + '</span>' : '');
   const rows = certs.map((c, i) => {
-    const ok = c.verdict === 'CERTIFIED' || c.verdict === 'LOCALLY_CERTIFIED';
+    // Three states, not two. RADIUS_LIMITED is a PASS with a floor: the backend counts it in
+    // is_certified, the region is analysed, and the curve is reported from its minimum
+    // interpretable radius upwards. Painting it red said "excluded" about a region that is
+    // in the analysis — the opposite of what it means — so it gets amber, between the
+    // unqualified pass and a genuine failure.
+    const floor = c.min_interpretable_radius_um;
+    const tone = c.verdict === 'CERTIFIED' || c.verdict === 'LOCALLY_CERTIFIED' ? 'green'
+               : c.is_certified ? 'amber' : 'red';
     return `<tr>
       <td>${esc(c.is_intersection ? 'A∩B ' : '')}Region ${i + 1}</td>
-      <td><span class="badge ${ok ? 'green' : 'red'}">${esc(c.verdict || '—')}</span></td>
+      <td><span class="badge ${tone}">${esc(c.verdict || '—')}</span>${
+        c.verdict === 'RADIUS_LIMITED' && floor
+          ? `<div class="muted" style="font-size:10px;margin-top:2px">reported from ${esc(Number(floor).toFixed(1))} <span class="unit">µm</span> up</div>`
+          : ''}</td>
       <td>${num(c.cell_error_um, 2, 'µm')}</td>
       <td>${num(c.fle_um, 2, 'µm')}</td>
       <td>${c.n_correspondences == null ? '<span class="muted">—</span>' : esc(String(c.n_correspondences))}</td>
@@ -6604,7 +6618,7 @@ async function spatialBandwidthCheck() {
   }
   if (uncertified.length) {
     badge.textContent = 'CERT REQUIRED'; badge.className = 'badge amber';
-    out.innerHTML = `<span style="color:#b45309">The 75 µm bandwidth is only meaningful inside a <b>certified</b> analysis window, so this runs only after every pair is <b>CERTIFIED</b> or <b>LOCALLY_CERTIFIED</b> — never on DEFORMED / uncertified pairs. ${uncertified.length} of ${pairs.length} pair(s) not yet certified: ${uncertified.map(esc).join(', ')}. Complete landmark certification in step 2, then re-run.</span>`;
+    out.innerHTML = `<span style="color:#b45309">The 75 µm bandwidth is only meaningful inside a <b>certified</b> analysis window, so this runs only after every pair is <b>CERTIFIED</b> or <b>LOCALLY_CERTIFIED</b> — never on DEFORMED / uncertified pairs. ${uncertified.length} of ${pairs.length} pair(s) not yet certified: ${uncertified.map(esc).join(', ')}. Certify them on step 3, then re-run.</span>`;
     showToast(`Certify all pairs first — ${uncertified.length} not certified/locally-certified`);
     return;
   }

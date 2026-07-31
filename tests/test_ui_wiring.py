@@ -151,3 +151,71 @@ def test_no_micro_sign_is_left_inside_an_uppercased_heading(ui):
             if "µ" in re.sub(r"<[^>]+>", "", stripped):
                 offenders.append((cls, " ".join(re.sub(r"<[^>]+>", "", block).split())[:70]))
     assert not offenders, f"micro sign inside an uppercased heading: {offenders}"
+
+
+# What each wizard step is actually called, so copy that cites a step number can be checked
+# against the markup rather than against memory.
+WIZARDS = {
+    "q":  ["Inputs & outputs", "Pixel size", "Segmentation", "Classification", "Save & run"],
+    "sp": ["Inputs & outputs", "Pixel size", "Certify registration", "Segmentation",
+           "Classification", "Save & run"],
+}
+# The instruction shapes that send an operator somewhere: "<topic> ... in/on step N".
+# Deliberately narrow. An earlier, looser version keyed on the topic word appearing anywhere
+# within 90 characters and flagged three correct sentences — "the null-model check on step 6"
+# was caught because "certified analysis window" sat nearby. A step-reference test that cries
+# wolf is worse than none, because the next person learns to skip it.
+# "certify"/"certification" only, never "certified": the latter is an adjective on a noun
+# phrase ("inside a certified analysis window"), not an instruction to go anywhere, and it
+# put the correct sentence "the null-model check on step 6" on the offenders list.
+STEP_TOPIC = {
+    r"pixel size":                "Pixel size",
+    r"certif(?:y|ication)\w*":    "Certify registration",
+    r"(?:input |image )folder":   "Inputs & outputs",
+}
+
+
+def _messages(ui):
+    """Each self-contained piece of user-facing copy, one per element.
+
+    Comments are dropped: they legitimately discuss step numbers from the code's point of
+    view ("Step 2: name the pixel-size rows after what step 1 holds") and instruct nobody.
+    Only literals long enough to be prose are kept, so identifiers and CSS selectors that
+    happen to contain a digit cannot look like a step reference.
+    """
+    script = re.sub(r"/\*.*?\*/", " ", ui["script"], flags=re.S)
+    script = re.sub(r"(?m)^\s*//.*$", " ", script)
+    script = re.sub(r"(?m)\s//\s.*$", " ", script)
+    out = [re.sub(r"<[^>]+>", " ", block)
+           for block in re.split(r"</(?:div|p|span|li|td|h\d)>", ui["markup"])]
+    for quote in ("'", '"', "`"):
+        out += [lit for lit in re.findall(rf"{quote}([^{quote}\\\n]{{25,400}}){quote}", script)]
+    return [u for u in out if re.search(r"\bstep \d", u, re.I)]
+
+
+def test_copy_that_sends_you_to_a_step_names_the_right_one(ui):
+    """Telling the operator to go to the wrong step is worse than not telling them.
+
+    Both wizards were renumbered when Spatial grew a Pixel size step and a Certify step, and
+    the prose did not move with them. Two survived: a run-time warning about the default
+    pixel size said "Verify it in step 1 (Inputs)" when pixel size is step 2, and the
+    bandwidth pre-flight said "Complete landmark certification in step 2" when certification
+    is step 3. Both are dead ends — the operator arrives at a step with no such control.
+    """
+    offenders = []
+    # Scoped to one message at a time, not to a sliding character window. The pixel-size
+    # warning put its topic two sentences before its pointer — "Pixel size is 0.5 µm/px …
+    # Verify it in step 1 (Inputs)" — which no same-clause window can span, and its
+    # parenthesised title was self-consistent (step 1 IS "Inputs & outputs"), so only the
+    # topic gives it away. A message is the right unit: it is what the operator reads at once.
+    for unit in _messages(ui):
+        for m in re.finditer(r"\bstep (\d)\b", unit, re.I):
+            n = int(m.group(1))
+            for topic, want in STEP_TOPIC.items():
+                if not re.search(topic, unit, re.I):
+                    continue
+                if not any(n <= len(s) and s[n - 1] == want for s in WIZARDS.values()):
+                    offenders.append(f"'step {n}' should be the '{want}' step: "
+                                     f"{' '.join(unit.split())[:120]}")
+                break
+    assert not offenders, "copy points at the wrong wizard step:\n  " + "\n  ".join(offenders)
