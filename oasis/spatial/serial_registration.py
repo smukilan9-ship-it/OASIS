@@ -388,7 +388,7 @@ def _mi_eval(fixed, moving, tf):
         return float("inf")
 
 
-def register_similarity(ref_rgb, mov_rgb, pixel_size_um):
+def register_similarity(ref_rgb, mov_rgb, pixel_size_um, work_scale=0.5):
     """
     Register mov→ref (similarity) on the structural channel, then SELECT the transform
     by the Normalized Gradient Field (NGF) edge-alignment score — not by the optimiser
@@ -411,6 +411,41 @@ def register_similarity(ref_rgb, mov_rgb, pixel_size_um):
     """
     import cv2
     import SimpleITK as sitk
+
+    # RUN THIS AT HALF RESOLUTION, because it is a LOCATOR and not the answer.
+    #
+    # This function was 76 s of a 147 s certification — 52 %, more than every LoFTR pass
+    # combined — and it uses 0.5 of a core while nine others idle (SimpleITK holds the GIL, so
+    # threading it gains nothing: measured 1.04x). But its output is only used to find the
+    # corresponding patch on the moving image so LoFTR has something to match;
+    # `certify_local_roi` says so explicitly and re-fits locally without trusting it. That
+    # crop is padded by 80 µm on every side, so the provisional has an 80 µm error budget.
+    #
+    # Measured on LL477 CD8 <-> TIM-3, worst corner displacement against the full-resolution
+    # transform:
+    #
+    #     scale   seconds   speedup   disagreement
+    #      1.00      81.0     1.00x     —
+    #      0.75      41.9     1.93x     1.1 µm
+    #      0.50      25.7     3.15x     0.6 µm
+    #      0.35      12.0     6.74x     2.5 µm
+    #      0.25       5.0    16.18x     3.5 µm
+    #
+    # 0.5 is 3.15x faster and lands 0.6 µm from the full-resolution answer — inside a 80 µm
+    # budget by a factor of 130. 0.25 is far faster still and probably also fine, but that is
+    # one pair's evidence and the margin is what makes this safe, so the default keeps the
+    # margin. Pass work_scale=1.0 to reproduce a pre-existing result exactly.
+    if work_scale and work_scale < 1.0:
+        f = float(work_scale)
+        ref_rgb = cv2.resize(ref_rgb, (max(int(ref_rgb.shape[1] * f), 8),
+                                       max(int(ref_rgb.shape[0] * f), 8)),
+                             interpolation=cv2.INTER_AREA)
+        mov_rgb = cv2.resize(mov_rgb, (max(int(mov_rgb.shape[1] * f), 8),
+                                       max(int(mov_rgb.shape[0] * f), 8)),
+                             interpolation=cv2.INTER_AREA)
+        pixel_size_um = float(pixel_size_um) / f
+    else:
+        f = 1.0
 
     ref_struct = structural_channel(ref_rgb, pixel_size_um)
     mov_struct = structural_channel(mov_rgb, pixel_size_um)
@@ -476,9 +511,15 @@ def register_similarity(ref_rgb, mov_rgb, pixel_size_um):
         if overlap.sum() > 10 else 0.0
     dice = 2.0 * overlap.sum() / float((ref_mask > 0).sum() + (wmask > 0).sum())
     recs = patch_residual_flow(ref_struct, warped, overlap, pixel_size_um)
+    M = np.asarray(M, dtype=np.float64).copy()
+    if f != 1.0:
+        # Back to the caller's full-resolution pixels. Rotation and scale are dimensionless
+        # and unchanged; only the translation column carries units.
+        M[:, 2] /= f
     return {
         "matrix": np.asarray(M, dtype=np.float32),
         "scale_ref": 1.0, "scale_mov": 1.0,
+        "work_scale": f,
         "method": method, "success": method != "identity",
         "est_scale": round(best["est_scale"], 4),
         "mi_value": round(best["opt"], 5),
