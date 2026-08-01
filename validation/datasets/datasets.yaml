@@ -48,6 +48,32 @@ datasets:
     used_by:
     - anhir_landmarks
     - phase_b_certified
+  hyreco:
+    title: HyReCo - hybrid re-stained and consecutive histological serial sections
+    dir: HyReCo
+    key_path: inputs
+    checksum_kind: none
+    checksum: null
+    size_hint: '233 GB (HyReCo.zip only; the two Additional archives are H&E+PHH3 and are not needed here)'
+    source_url: https://ieee-dataport.org/open-access/hyreco-hybrid-re-stained-and-consecutive-histological-serial-sections
+    license: CC BY-SA 4.0
+    redistributable: false
+    citation: 'Van Zon M, Stathonikos N, et al. Comparison of consecutive and restained
+      sections for image registration in histopathology. J. Med. Imaging 10(6):067501
+      (2023). Landmarks by Fraunhofer MEVIS. Hosted on IEEE DataPort.'
+    what: 'The calibration OASIS has been missing. Nine cases, five stains each (H&E,
+      CD8, CD45, Ki67, PHH3) on CONSECUTIVE sections, with 11-19 expert landmarks per
+      section (690 total) placed manually and verified by two researchers. CD8 on serial
+      sections with held-out expert landmarks is exactly what research/registration.md
+      could not obtain. Every FLE and TRE number so far comes either from a synthetic
+      warp, which has no biological difference between the two images, or from ANHIR,
+      which is lung/mammary/kidney and largely cross-stain. This is the target modality.'
+    structure: "inputs/\n  <case>/          # 29, 108, 361, 464, 533, 611, 628, 644, 679\n    *.tif          # BigTIFF WSI, one per stain\n    *.csv          # landmarks, world coordinates in MM (not pixels)\n"
+    notes: 'Landmarks are in millimetre world coordinates, so they need the slide
+      microns-per-pixel and origin from the BigTIFF metadata before they can be compared
+      with anything OASIS computes. Verify that conversion against a real file before
+      trusting any TRE from it - do not assume it.'
+    used_by: []
   deepliif:
     title: DeepLIIF — registered IHC + inferred multiplex IF
     dir: DeepLIIF
