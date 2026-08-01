@@ -253,7 +253,7 @@ def _local_smoothness(src, dst, tol_px, k=8):
 
 def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
                           scales=(0.75, 0.5), tol_um=4.0, conf_floor=0.2,
-                          noise=0.0, rng=None, local_k=8):
+                          noise=0.0, rng=None, local_k=8, scale_tol_stride=0.0):
     """Cycle-, scale- and locally-smooth LoFTR correspondences. No RANSAC, no residuals.
 
     `noise`/`rng` perturb both images identically-in-distribution; used by `loftr_fle` to
@@ -292,7 +292,27 @@ def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
     if len(scales) > 1:
         gk0, gk1, _, stride1 = _raw(ref_rgb, mov_rgb, scales[1], pixel_size_um,
                                     weights, conf_floor, noise, rng)
-        keep = _disp_agree(fk0, fk1, gk0, gk1, tol_px, stride1)
+        # THE TOLERANCE AND THE GRID IT IS APPLIED TO. `tol_px` is an absolute distance
+        # derived from tol_um, but the coarse pass matches on a stride1 = 8/scale grid — 16
+        # full-resolution pixels at scale 0.5. Requiring it to agree to a fraction of its own
+        # cell is a demand it structurally cannot meet, and it shows: measured on real
+        # 270 µm ROIs, 224 cycle-consistent matches fall to 46 here, and 5 survive inside the
+        # polygon, which the UI then reports as NO_MATCHES on a region that had 283 raw
+        # matches.
+        #
+        # `scale_tol_stride` floors the tolerance at a multiple of the coarse stride, which
+        # keeps the filter's PURPOSE (a match whose displacement the coarse pass contradicts
+        # beyond what that pass can resolve is aliasing) while dropping a precision demand
+        # that was never justified. 0.0 keeps the shipped absolute-only behaviour exactly;
+        # any change of the default must be earned against expert landmarks first, since
+        # relaxing a filter is the over-certifying direction — see
+        # validation/validate_scale_filter_anhir.py.
+        tol_scale_px = tol_px
+        if scale_tol_stride:
+            tol_scale_px = max(tol_px, float(scale_tol_stride) * float(stride1))
+        out["tol_scale_px"] = round(float(tol_scale_px), 3)
+        out["coarse_stride_px"] = round(float(stride1), 3)
+        keep = _disp_agree(fk0, fk1, gk0, gk1, tol_scale_px, stride1)
         fk0, fk1, fcf = fk0[keep], fk1[keep], fcf[keep]
     out["n_after_scale"] = int(len(fk0))
 

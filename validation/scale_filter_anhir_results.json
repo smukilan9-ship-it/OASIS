@@ -1,0 +1,1011 @@
+{
+  "pairs": [
+    {
+      "pair": "COAD_09 S6.jpg\u2192S2.jpg",
+      "n_landmarks": 72,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1337,
+        "n_after_scale": 1447,
+        "tol_scale_px": 4.0,
+        "med": 5.104866631370825,
+        "p90": 16.495790777995083
+      },
+      "B": {
+        "n": 1783,
+        "n_after_scale": 2047,
+        "tol_scale_px": null,
+        "med": 5.201375248505435,
+        "p90": 16.241990794518543
+      },
+      "C": {
+        "n": 1604,
+        "n_after_scale": 1777,
+        "tol_scale_px": 8.0,
+        "med": 5.179753933568552,
+        "p90": 16.411083326950525
+      },
+      "D": {
+        "n": 1684,
+        "n_after_scale": 1905,
+        "tol_scale_px": 16.0,
+        "med": 5.207979780423456,
+        "p90": 16.48037288175807
+      }
+    },
+    {
+      "pair": "mice-kidney_1 8_CD31.jpg\u21922_aSMA.jpg",
+      "n_landmarks": 132,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 95,
+        "n_after_scale": 121,
+        "tol_scale_px": 4.0,
+        "med": 2.6886595662539747,
+        "p90": 6.294652576975248
+      },
+      "B": {
+        "n": 335,
+        "n_after_scale": 420,
+        "tol_scale_px": null,
+        "med": 36.42588701540498,
+        "p90": 62.99604638034882
+      },
+      "C": {
+        "n": 149,
+        "n_after_scale": 187,
+        "tol_scale_px": 8.0,
+        "med": 2.722170571755863,
+        "p90": 6.775655043429675
+      },
+      "D": {
+        "n": 174,
+        "n_after_scale": 214,
+        "tol_scale_px": 16.0,
+        "med": 4.328697053025925,
+        "p90": 9.746697001579996
+      }
+    },
+    {
+      "pair": "kidney_2 PAS.jpg\u2192MAS.jpg",
+      "n_landmarks": 15,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 59,
+        "n_after_scale": 64,
+        "tol_scale_px": 4.0,
+        "med": 8.439635384178251,
+        "p90": 14.929455337870694
+      },
+      "B": {
+        "n": 248,
+        "n_after_scale": 295,
+        "tol_scale_px": null,
+        "med": 6.18339410923072,
+        "p90": 9.506404353905497
+      },
+      "C": {
+        "n": 109,
+        "n_after_scale": 133,
+        "tol_scale_px": 8.0,
+        "med": 4.628838880868192,
+        "p90": 8.989144049751475
+      },
+      "D": {
+        "n": 134,
+        "n_after_scale": 157,
+        "tol_scale_px": 16.0,
+        "med": 4.641642509084275,
+        "p90": 9.19060832183262
+      }
+    },
+    {
+      "pair": "lung-lobes_3 29-040-U-35W-Izd1-3-Pro-SPC.png\u219229-040-U-35W-Izd1-2-cd31.png",
+      "n_landmarks": 80,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1716,
+        "n_after_scale": 1771,
+        "tol_scale_px": 4.0,
+        "med": 2.6906501957977556,
+        "p90": 6.193331950724017
+      },
+      "B": {
+        "n": 2032,
+        "n_after_scale": 2192,
+        "tol_scale_px": null,
+        "med": 2.6366063891404306,
+        "p90": 6.247727379817287
+      },
+      "C": {
+        "n": 1811,
+        "n_after_scale": 1901,
+        "tol_scale_px": 8.0,
+        "med": 2.718463430440381,
+        "p90": 6.087983629608897
+      },
+      "D": {
+        "n": 1860,
+        "n_after_scale": 1952,
+        "tol_scale_px": 16.0,
+        "med": 2.720012537298911,
+        "p90": 6.106517984626031
+      }
+    },
+    {
+      "pair": "breast_1 HER2.jpg\u2192HE.jpg",
+      "n_landmarks": 79,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 35,
+        "n_after_scale": 36,
+        "tol_scale_px": 4.0,
+        "med": 522.3685969746413,
+        "p90": 751.5281738231091
+      },
+      "B": {
+        "n": 293,
+        "n_after_scale": 320,
+        "tol_scale_px": null,
+        "med": 544.6286852589177,
+        "p90": 792.9039344400917
+      },
+      "C": {
+        "n": 47,
+        "n_after_scale": 56,
+        "tol_scale_px": 8.0,
+        "med": 522.0976420390529,
+        "p90": 760.4021866525185
+      },
+      "D": {
+        "n": 61,
+        "n_after_scale": 67,
+        "tol_scale_px": 16.0,
+        "med": 532.1316960308329,
+        "p90": 777.524807695541
+      }
+    },
+    {
+      "pair": "mice-kidney_1 8_CD31.jpg\u21926_CD31.jpg",
+      "n_landmarks": 132,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 505,
+        "n_after_scale": 533,
+        "tol_scale_px": 4.0,
+        "med": 2.2071397311056975,
+        "p90": 5.827187968027234
+      },
+      "B": {
+        "n": 1011,
+        "n_after_scale": 1201,
+        "tol_scale_px": null,
+        "med": 2.1817989880325372,
+        "p90": 5.870511563546609
+      },
+      "C": {
+        "n": 747,
+        "n_after_scale": 841,
+        "tol_scale_px": 8.0,
+        "med": 2.163286163221691,
+        "p90": 5.724428896998768
+      },
+      "D": {
+        "n": 776,
+        "n_after_scale": 881,
+        "tol_scale_px": 16.0,
+        "med": 2.15441220049295,
+        "p90": 5.718706284213654
+      }
+    },
+    {
+      "pair": "gastric_6 EBV.jpg\u2192CD68.jpg",
+      "n_landmarks": 115,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1979,
+        "n_after_scale": 2057,
+        "tol_scale_px": 4.0,
+        "med": 1.9582639942880737,
+        "p90": 3.386731767194675
+      },
+      "B": {
+        "n": 2376,
+        "n_after_scale": 2631,
+        "tol_scale_px": null,
+        "med": 1.9659161985822993,
+        "p90": 3.2720227358540526
+      },
+      "C": {
+        "n": 2183,
+        "n_after_scale": 2306,
+        "tol_scale_px": 8.0,
+        "med": 1.9609804242588829,
+        "p90": 3.2974388224034774
+      },
+      "D": {
+        "n": 2213,
+        "n_after_scale": 2365,
+        "tol_scale_px": 16.0,
+        "med": 1.9517167011236518,
+        "p90": 3.3051121011751285
+      }
+    },
+    {
+      "pair": "COAD_01 S3.jpg\u2192S1.jpg",
+      "n_landmarks": 61,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 27,
+        "n_after_scale": 48,
+        "tol_scale_px": 4.0,
+        "med": 53.68098080469188,
+        "p90": 70.06940358234634
+      },
+      "B": {
+        "n": 202,
+        "n_after_scale": 229,
+        "tol_scale_px": null,
+        "med": 72.62655101519505,
+        "p90": 106.36136120621552
+      },
+      "C": {
+        "n": 56,
+        "n_after_scale": 64,
+        "tol_scale_px": 8.0,
+        "med": 51.43646238516303,
+        "p90": 68.01948006698248
+      },
+      "D": {
+        "n": 53,
+        "n_after_scale": 78,
+        "tol_scale_px": 16.0,
+        "med": 78.94776350538984,
+        "p90": 107.50921548156546
+      }
+    },
+    {
+      "pair": "mice-kidney_1 6_CD31.jpg\u21922_aSMA.jpg",
+      "n_landmarks": 132,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 49,
+        "n_after_scale": 53,
+        "tol_scale_px": 4.0,
+        "med": 118.41854237108842,
+        "p90": 180.12059170139878
+      },
+      "B": {
+        "n": 241,
+        "n_after_scale": 251,
+        "tol_scale_px": null,
+        "med": 102.1111770312666,
+        "p90": 163.30724156690198
+      },
+      "C": {
+        "n": 75,
+        "n_after_scale": 79,
+        "tol_scale_px": 8.0,
+        "med": 120.5460231679968,
+        "p90": 182.4833103596452
+      },
+      "D": {
+        "n": 89,
+        "n_after_scale": 89,
+        "tol_scale_px": 16.0,
+        "med": 121.39884592328258,
+        "p90": 185.13355512372183
+      }
+    },
+    {
+      "pair": "lung-lesion_2 29-041-Izd2-w35-Ki67-7-les2.jpg\u219229-041-Izd2-w35-CD31-3-les2.jpg",
+      "n_landmarks": 96,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 161,
+        "n_after_scale": 179,
+        "tol_scale_px": 4.0,
+        "med": 8.953756239383935,
+        "p90": 22.36586059990686
+      },
+      "B": {
+        "n": 535,
+        "n_after_scale": 706,
+        "tol_scale_px": null,
+        "med": 9.215005003521288,
+        "p90": 19.868341126845948
+      },
+      "C": {
+        "n": 290,
+        "n_after_scale": 320,
+        "tol_scale_px": 8.0,
+        "med": 8.982040099618892,
+        "p90": 20.889513469276583
+      },
+      "D": {
+        "n": 392,
+        "n_after_scale": 431,
+        "tol_scale_px": 16.0,
+        "med": 8.764508977352145,
+        "p90": 20.276692600650126
+      }
+    },
+    {
+      "pair": "COAD_18 S7.jpg\u2192S5.jpg",
+      "n_landmarks": 103,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1302,
+        "n_after_scale": 1435,
+        "tol_scale_px": 4.0,
+        "med": 3.9552833110277517,
+        "p90": 14.781798535510905
+      },
+      "B": {
+        "n": 1802,
+        "n_after_scale": 2129,
+        "tol_scale_px": null,
+        "med": 3.8372739836921674,
+        "p90": 15.137879065767091
+      },
+      "C": {
+        "n": 1574,
+        "n_after_scale": 1795,
+        "tol_scale_px": 8.0,
+        "med": 3.872738723070017,
+        "p90": 15.077776477627987
+      },
+      "D": {
+        "n": 1670,
+        "n_after_scale": 1947,
+        "tol_scale_px": 16.0,
+        "med": 3.916356785927226,
+        "p90": 15.220832725053276
+      }
+    },
+    {
+      "pair": "COAD_19 S5.jpg\u2192S3.jpg",
+      "n_landmarks": 124,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1260,
+        "n_after_scale": 1372,
+        "tol_scale_px": 4.0,
+        "med": 3.932658109321253,
+        "p90": 10.507099401983805
+      },
+      "B": {
+        "n": 1873,
+        "n_after_scale": 2131,
+        "tol_scale_px": null,
+        "med": 3.8207972865191815,
+        "p90": 10.947118943638603
+      },
+      "C": {
+        "n": 1589,
+        "n_after_scale": 1750,
+        "tol_scale_px": 8.0,
+        "med": 3.786100400480272,
+        "p90": 10.802323275301013
+      },
+      "D": {
+        "n": 1709,
+        "n_after_scale": 1914,
+        "tol_scale_px": 16.0,
+        "med": 3.8592689797370094,
+        "p90": 10.778229461326212
+      }
+    },
+    {
+      "pair": "COAD_17 S5.jpg\u2192S2.jpg",
+      "n_landmarks": 139,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 427,
+        "n_after_scale": 468,
+        "tol_scale_px": 4.0,
+        "med": 3.3250069105569464,
+        "p90": 7.218978354354405
+      },
+      "B": {
+        "n": 949,
+        "n_after_scale": 1087,
+        "tol_scale_px": null,
+        "med": 3.0368116459358077,
+        "p90": 7.124688349976136
+      },
+      "C": {
+        "n": 706,
+        "n_after_scale": 792,
+        "tol_scale_px": 8.0,
+        "med": 3.061521440612409,
+        "p90": 7.137210333804179
+      },
+      "D": {
+        "n": 826,
+        "n_after_scale": 930,
+        "tol_scale_px": 16.0,
+        "med": 3.0912895367269497,
+        "p90": 6.892428492108597
+      }
+    },
+    {
+      "pair": "COAD_02 S3.jpg\u2192S2.jpg",
+      "n_landmarks": 64,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1919,
+        "n_after_scale": 2035,
+        "tol_scale_px": 4.0,
+        "med": 11.39817294748719,
+        "p90": 18.548935074655827
+      },
+      "B": {
+        "n": 2721,
+        "n_after_scale": 2961,
+        "tol_scale_px": null,
+        "med": 11.245470986091346,
+        "p90": 18.03298186596267
+      },
+      "C": {
+        "n": 2425,
+        "n_after_scale": 2617,
+        "tol_scale_px": 8.0,
+        "med": 11.432950475521707,
+        "p90": 18.394815266821983
+      },
+      "D": {
+        "n": 2547,
+        "n_after_scale": 2759,
+        "tol_scale_px": 16.0,
+        "med": 11.344771682797465,
+        "p90": 18.295912027646683
+      }
+    },
+    {
+      "pair": "mice-kidney_1 3_PAS.jpg\u21922_aSMA.jpg",
+      "n_landmarks": 132,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 40,
+        "n_after_scale": 40,
+        "tol_scale_px": 4.0,
+        "med": 99.82657635535321,
+        "p90": 178.99005672302545
+      },
+      "B": {
+        "n": 168,
+        "n_after_scale": 178,
+        "tol_scale_px": null,
+        "med": 102.36308062436102,
+        "p90": 173.42482497954995
+      },
+      "C": {
+        "n": 64,
+        "n_after_scale": 64,
+        "tol_scale_px": 8.0,
+        "med": 100.82726536652191,
+        "p90": 176.26570930082315
+      },
+      "D": {
+        "n": 66,
+        "n_after_scale": 72,
+        "tol_scale_px": 16.0,
+        "med": 104.58874583884608,
+        "p90": 181.17333463560294
+      }
+    },
+    {
+      "pair": "kidney_1 PAS.jpg\u2192MAS.jpg",
+      "n_landmarks": 13,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 204,
+        "n_after_scale": 246,
+        "tol_scale_px": 4.0,
+        "med": 4.080645782263883,
+        "p90": 7.309434506312646
+      },
+      "B": {
+        "n": 416,
+        "n_after_scale": 549,
+        "tol_scale_px": null,
+        "med": 3.98293781632901,
+        "p90": 7.4713461534847445
+      },
+      "C": {
+        "n": 292,
+        "n_after_scale": 354,
+        "tol_scale_px": 8.0,
+        "med": 4.289044619819884,
+        "p90": 7.6173226701508705
+      },
+      "D": {
+        "n": 326,
+        "n_after_scale": 405,
+        "tol_scale_px": 16.0,
+        "med": 4.227047741857442,
+        "p90": 7.62715640440232
+      }
+    },
+    {
+      "pair": "mammary-gland_2 s2_70-PR_A4926-4L.jpg\u2192s2_63-HE_A4926-4L.jpg",
+      "n_landmarks": 76,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 375,
+        "n_after_scale": 424,
+        "tol_scale_px": 4.0,
+        "med": 4.773652250291537,
+        "p90": 11.480382868463566
+      },
+      "B": {
+        "n": 595,
+        "n_after_scale": 707,
+        "tol_scale_px": null,
+        "med": 4.87527479709148,
+        "p90": 11.047982073162444
+      },
+      "C": {
+        "n": 505,
+        "n_after_scale": 571,
+        "tol_scale_px": 8.0,
+        "med": 4.729125069160933,
+        "p90": 11.226494440324727
+      },
+      "D": {
+        "n": 535,
+        "n_after_scale": 619,
+        "tol_scale_px": 16.0,
+        "med": 4.759037746307571,
+        "p90": 11.112385722747968
+      }
+    },
+    {
+      "pair": "lung-lesion_3 29-041-Izd2-w35-proSPC-4-les3.jpg\u219229-041-Izd2-w35-He-les3.jpg",
+      "n_landmarks": 80,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 137,
+        "n_after_scale": 163,
+        "tol_scale_px": 4.0,
+        "med": 13.142211903483647,
+        "p90": 33.32114906757587
+      },
+      "B": {
+        "n": 560,
+        "n_after_scale": 773,
+        "tol_scale_px": null,
+        "med": 13.787281017991049,
+        "p90": 28.242077121350302
+      },
+      "C": {
+        "n": 230,
+        "n_after_scale": 283,
+        "tol_scale_px": 8.0,
+        "med": 12.091006064823379,
+        "p90": 34.96183581639846
+      },
+      "D": {
+        "n": 312,
+        "n_after_scale": 371,
+        "tol_scale_px": 16.0,
+        "med": 12.641232518442536,
+        "p90": 31.927676490420808
+      }
+    },
+    {
+      "pair": "mice-kidney_1 5_PAS.jpg\u21923_PAS.jpg",
+      "n_landmarks": 132,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 284,
+        "n_after_scale": 310,
+        "tol_scale_px": 4.0,
+        "med": 3.781830282889616,
+        "p90": 6.216668496492623
+      },
+      "B": {
+        "n": 726,
+        "n_after_scale": 853,
+        "tol_scale_px": null,
+        "med": 4.814968363916218,
+        "p90": 8.397417964756094
+      },
+      "C": {
+        "n": 506,
+        "n_after_scale": 549,
+        "tol_scale_px": 8.0,
+        "med": 3.7336433366787367,
+        "p90": 6.2097264797404454
+      },
+      "D": {
+        "n": 548,
+        "n_after_scale": 588,
+        "tol_scale_px": 16.0,
+        "med": 3.847833815680077,
+        "p90": 6.469104747700578
+      }
+    },
+    {
+      "pair": "COAD_15 S5.jpg\u2192S2.jpg",
+      "n_landmarks": 163,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1033,
+        "n_after_scale": 1139,
+        "tol_scale_px": 4.0,
+        "med": 5.609461182282894,
+        "p90": 21.176634438756246
+      },
+      "B": {
+        "n": 1703,
+        "n_after_scale": 1959,
+        "tol_scale_px": null,
+        "med": 5.458687966809233,
+        "p90": 21.162986502595793
+      },
+      "C": {
+        "n": 1440,
+        "n_after_scale": 1608,
+        "tol_scale_px": 8.0,
+        "med": 5.616870815823248,
+        "p90": 20.73956341871168
+      },
+      "D": {
+        "n": 1550,
+        "n_after_scale": 1756,
+        "tol_scale_px": 16.0,
+        "med": 5.573760510193103,
+        "p90": 20.884252125213788
+      }
+    },
+    {
+      "pair": "COAD_12 S6.jpg\u2192S1.jpg",
+      "n_landmarks": 71,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1080,
+        "n_after_scale": 1178,
+        "tol_scale_px": 4.0,
+        "med": 3.505221221031869,
+        "p90": 10.377333467268059
+      },
+      "B": {
+        "n": 1722,
+        "n_after_scale": 1975,
+        "tol_scale_px": null,
+        "med": 3.4510256715005143,
+        "p90": 10.35732895193148
+      },
+      "C": {
+        "n": 1463,
+        "n_after_scale": 1614,
+        "tol_scale_px": 8.0,
+        "med": 3.5142566615727486,
+        "p90": 10.49272406570028
+      },
+      "D": {
+        "n": 1555,
+        "n_after_scale": 1726,
+        "tol_scale_px": 16.0,
+        "med": 3.533909112553464,
+        "p90": 10.53595517933892
+      }
+    },
+    {
+      "pair": "lung-lobes_1 29-039-U-35W-Izd1-4-cc10.png\u219229-039-U-35W-Izd1-2-cd31.png",
+      "n_landmarks": 98,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1412,
+        "n_after_scale": 1499,
+        "tol_scale_px": 4.0,
+        "med": 5.328065298870955,
+        "p90": 13.28689883148591
+      },
+      "B": {
+        "n": 1859,
+        "n_after_scale": 2103,
+        "tol_scale_px": null,
+        "med": 5.176800058273534,
+        "p90": 12.754399676270946
+      },
+      "C": {
+        "n": 1567,
+        "n_after_scale": 1693,
+        "tol_scale_px": 8.0,
+        "med": 5.113558756094356,
+        "p90": 12.903426912596311
+      },
+      "D": {
+        "n": 1616,
+        "n_after_scale": 1747,
+        "tol_scale_px": 16.0,
+        "med": 5.0560037668622915,
+        "p90": 12.51319572261028
+      }
+    },
+    {
+      "pair": "COAD_07 S7.jpg\u2192S5.jpg",
+      "n_landmarks": 68,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1454,
+        "n_after_scale": 1599,
+        "tol_scale_px": 4.0,
+        "med": 9.431310200948992,
+        "p90": 23.57954892820726
+      },
+      "B": {
+        "n": 2071,
+        "n_after_scale": 2386,
+        "tol_scale_px": null,
+        "med": 9.731804444709175,
+        "p90": 23.51945301285422
+      },
+      "C": {
+        "n": 1808,
+        "n_after_scale": 1993,
+        "tol_scale_px": 8.0,
+        "med": 9.529393678590154,
+        "p90": 23.513012907849934
+      },
+      "D": {
+        "n": 1894,
+        "n_after_scale": 2117,
+        "tol_scale_px": 16.0,
+        "med": 9.442039328321957,
+        "p90": 23.50327891111544
+      }
+    },
+    {
+      "pair": "COAD_19 S8.jpg\u2192S1.jpg",
+      "n_landmarks": 124,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 207,
+        "n_after_scale": 224,
+        "tol_scale_px": 4.0,
+        "med": 7.808121110339343,
+        "p90": 12.988449427841791
+      },
+      "B": {
+        "n": 696,
+        "n_after_scale": 802,
+        "tol_scale_px": null,
+        "med": 7.9092311003385625,
+        "p90": 13.553837445359779
+      },
+      "C": {
+        "n": 358,
+        "n_after_scale": 394,
+        "tol_scale_px": 8.0,
+        "med": 7.901640786992676,
+        "p90": 12.804135403364254
+      },
+      "D": {
+        "n": 443,
+        "n_after_scale": 487,
+        "tol_scale_px": 16.0,
+        "med": 8.022127050407345,
+        "p90": 13.114485584090664
+      }
+    },
+    {
+      "pair": "gastric_5 CD68.jpg\u2192CD4.jpg",
+      "n_landmarks": 79,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 28,
+        "n_after_scale": 29,
+        "tol_scale_px": 4.0,
+        "med": 521.3938955226537,
+        "p90": 953.6664773168918
+      },
+      "B": {
+        "n": 251,
+        "n_after_scale": 256,
+        "tol_scale_px": null,
+        "med": 502.1181590648398,
+        "p90": 865.8110817411902
+      },
+      "C": {
+        "n": 49,
+        "n_after_scale": 49,
+        "tol_scale_px": 8.0,
+        "med": 502.56658526396154,
+        "p90": 918.5479222426312
+      },
+      "D": {
+        "n": 52,
+        "n_after_scale": 52,
+        "tol_scale_px": 16.0,
+        "med": 501.0494482118133,
+        "p90": 916.8332275273525
+      }
+    },
+    {
+      "pair": "COAD_18 S5.jpg\u2192S2.jpg",
+      "n_landmarks": 103,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 633,
+        "n_after_scale": 727,
+        "tol_scale_px": 4.0,
+        "med": 8.15445750319395,
+        "p90": 19.763980510321872
+      },
+      "B": {
+        "n": 1189,
+        "n_after_scale": 1484,
+        "tol_scale_px": null,
+        "med": 8.69949884647488,
+        "p90": 19.57759544851367
+      },
+      "C": {
+        "n": 913,
+        "n_after_scale": 1098,
+        "tol_scale_px": 8.0,
+        "med": 8.32798297673945,
+        "p90": 19.726306785304118
+      },
+      "D": {
+        "n": 1061,
+        "n_after_scale": 1275,
+        "tol_scale_px": 16.0,
+        "med": 8.565697336067066,
+        "p90": 19.76396552693529
+      }
+    },
+    {
+      "pair": "COAD_10 S6.jpg\u2192S1.jpg",
+      "n_landmarks": 77,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 69,
+        "n_after_scale": 86,
+        "tol_scale_px": 4.0,
+        "med": 21.576626472549204,
+        "p90": 30.401073962882734
+      },
+      "B": {
+        "n": 275,
+        "n_after_scale": 352,
+        "tol_scale_px": null,
+        "med": 69.55613751869507,
+        "p90": 101.19541653092139
+      },
+      "C": {
+        "n": 85,
+        "n_after_scale": 113,
+        "tol_scale_px": 8.0,
+        "med": 20.642914451918596,
+        "p90": 28.142047897958268
+      },
+      "D": {
+        "n": 98,
+        "n_after_scale": 128,
+        "tol_scale_px": 16.0,
+        "med": 19.7017161898574,
+        "p90": 26.570655709410193
+      }
+    },
+    {
+      "pair": "COAD_05 S6.jpg\u2192S5-v1.jpg",
+      "n_landmarks": 92,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1195,
+        "n_after_scale": 1309,
+        "tol_scale_px": 4.0,
+        "med": 5.0069578375475885,
+        "p90": 13.315834567314491
+      },
+      "B": {
+        "n": 1926,
+        "n_after_scale": 2198,
+        "tol_scale_px": null,
+        "med": 5.060485902420837,
+        "p90": 13.687416380024603
+      },
+      "C": {
+        "n": 1637,
+        "n_after_scale": 1813,
+        "tol_scale_px": 8.0,
+        "med": 5.1030093195671515,
+        "p90": 13.598790202657367
+      },
+      "D": {
+        "n": 1810,
+        "n_after_scale": 2045,
+        "tol_scale_px": 16.0,
+        "med": 5.211378364396907,
+        "p90": 13.518765383691042
+      }
+    },
+    {
+      "pair": "lung-lobes_2 29-039-U-35W-Izd2-2-cd31.png\u219229-039-U-35W-Izd2-1-HE.png",
+      "n_landmarks": 107,
+      "coarse_stride_px": 16.0,
+      "A": {
+        "n": 1933,
+        "n_after_scale": 1999,
+        "tol_scale_px": 4.0,
+        "med": 6.588031146288099,
+        "p90": 15.130097415666118
+      },
+      "B": {
+        "n": 2183,
+        "n_after_scale": 2370,
+        "tol_scale_px": null,
+        "med": 6.529994331865174,
+        "p90": 15.163903238654447
+      },
+      "C": {
+        "n": 2077,
+        "n_after_scale": 2185,
+        "tol_scale_px": 8.0,
+        "med": 6.5769519601272215,
+        "p90": 15.319887610233485
+      },
+      "D": {
+        "n": 2103,
+        "n_after_scale": 2234,
+        "tol_scale_px": 16.0,
+        "med": 6.566458707585995,
+        "p90": 15.30424215688645
+      }
+    }
+  ],
+  "summary": {
+    "n_pairs": 29,
+    "coarse_stride_px": 16.0,
+    "arms": {
+      "A": {
+        "label": "shipped (absolute tol)",
+        "pairs": 29,
+        "n_median": 427.0,
+        "tre_median_px": 5.609,
+        "tre_p90_px": 14.929,
+        "delta_median_vs_A": 0.0,
+        "better": 0,
+        "worse": 0,
+        "wilcoxon_p": null
+      },
+      "B": {
+        "label": "scale filter OFF",
+        "pairs": 29,
+        "n_median": 949.0,
+        "tre_median_px": 6.183,
+        "tre_p90_px": 15.164,
+        "delta_median_vs_A": 0.008,
+        "better": 14,
+        "worse": 15,
+        "wilcoxon_p": 0.41691966354846954
+      },
+      "C": {
+        "label": "stride-aware 0.5x",
+        "pairs": 29,
+        "n_median": 706.0,
+        "tre_median_px": 5.18,
+        "tre_p90_px": 15.078,
+        "delta_median_vs_A": 0.003,
+        "better": 14,
+        "worse": 15,
+        "wilcoxon_p": 0.38083895295858383
+      },
+      "D": {
+        "label": "stride-aware 1.0x",
+        "pairs": 29,
+        "n_median": 776.0,
+        "tre_median_px": 5.211,
+        "tre_p90_px": 15.221,
+        "delta_median_vs_A": -0.007,
+        "better": 15,
+        "worse": 14,
+        "wilcoxon_p": 0.7655419819056988
+      }
+    }
+  }
+}

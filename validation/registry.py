@@ -533,6 +533,42 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "scale_filter_tolerance",
+        "title": "Scale-consistency tolerance — expert-landmark A/B",
+        "category": "registration",
+        "claim": "The scale filter's absolute tolerance is tighter than the coarse pass can "
+                 "physically meet, and flooring it at half the coarse grid stride recovers "
+                 "correspondences without costing expert-landmark accuracy.",
+        "purpose": "Four arms over ANHIR training pairs — shipped absolute tolerance, filter "
+                   "off, and stride-aware at 0.5x and 1.0x of the coarse stride — each "
+                   "fitting a similarity from its own correspondences, then measuring "
+                   "realized TRE at expert landmarks LoFTR never saw.",
+        "why": "tol_px is an absolute distance while the coarse pass matches on an 8/scale = "
+               "16 px grid, so the filter demands agreement to a quarter of its own cell. "
+               "Measured on real 270 µm ROIs it removes 85–93 % of cycle-consistent matches, "
+               "leaving 5 inside the polygon and a NO_MATCHES verdict on a region that had "
+               "283 raw matches.",
+        "datasets": [],
+        "assumptions": "ANHIR training pairs at 1024 px long side; paired per-pair deltas "
+                       "against the shipped arm; reported in working pixels.",
+        "limitations": "A filter selects the points its own residual is measured on, which is "
+                       "why only held-out expert landmarks can answer this. ANHIR is largely "
+                       "cross-stain and mostly well-textured — its median pair already has "
+                       "427 correspondences, far above the threshold — so the decisive "
+                       "evidence is the n<200 subgroup (10 pairs), which is post-hoc even "
+                       "though the mechanism predicts it.",
+        "interpretation": "A change is justified only by more correspondences AND no "
+                          "degradation, since relaxing a filter is the over-certifying "
+                          "direction. Read the n<200 subgroup and the WORST-case paired "
+                          "delta, not the median.",
+        "expected": "Filter off: 4.2x correspondences but TRE degrades on hard pairs (mean "
+                    "+8.85 px, worst +48). Stride-aware 0.5x: 1.64x correspondences, TRE "
+                    "improves (mean −2.39 px), worst case bounded at +2.13 px. 1.0x is too "
+                    "loose (worst +25 px).",
+        "runner": {"kind": "script", "script": "validate_scale_filter_anhir.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "residual_origin",
         "title": "Origin of the certification residual — filter, noise, or deformation",
         "category": "registration",
