@@ -66,6 +66,31 @@ _RAW_CACHE = {}
 _PREP_CACHE_MAX = 48
 _RAW_CACHE_MAX = 512
 
+# LoFTR's fiducial localisation error, in WORKING pixels — measured, not assumed.
+#
+# validation/validate_loftr_fle_groundtruth.py warps a real H-DAB field by a transform we
+# choose and matches it against itself, so the true partner of every point is known
+# analytically. Across thirteen warps and two working scales the per-point error is
+# 0.121-0.195 working px (median 0.16), and it is far more nearly constant in WORKING PIXELS
+# than in µm (CV 0.09 vs 0.41) — it is a property of the matcher's grid, so it scales with
+# px_work. Two independent estimates agree: `loftr_fle` reports 0.199 µm on the disputed ROI
+# (0.11 working px there) and the semivariogram nugget of that pair's real residuals gives
+# 0.409 µm (0.22 working px).
+#
+# WHY A CONSTANT INSTEAD OF MEASURING PER REGION. `loftr_fle` re-runs the whole pipeline under
+# image noise, which bypasses the content cache by design, and it costs 14.3 s per region —
+# measured. What it buys is a sharper value for a term that research/registration.md § 11.3
+# shows explains 1 % of the residual variance on real serial sections. Paying 14 s a region to
+# refine 1 % is a bad trade, and it was the dominant cost of a certification run.
+#
+# 0.16 is the self-matched floor, which is the CONSERVATIVE end: a smaller declared FLE charges
+# more of the residual to deformation and so certifies less. The variogram's 0.22 would be
+# slightly more permissive. The guard against a constant that is too large for a given pair
+# already exists — `p_value_fle_too_high` in the FW certification rejects a declared FLE the
+# residuals cannot support, which is what matters when a pair is genuinely well registered and
+# σ_fit approaches FLE.
+FLE_WORKING_PX = 0.16
+
 
 def _arr_key(a):
     import hashlib
@@ -349,7 +374,7 @@ def _roi_bbox(poly, W, H, pad):
 def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                       provisional_matrix=None, fallback_ref_lm=None, fallback_mov_lm=None,
                       weights="outdoor", tol_um=4.0, min_matches=8, work_max_dim=800,
-                      return_correspondences=False, fle_fast=False, loftr_kw=None):
+                      return_correspondences=False, fle_fast=True, loftr_kw=None):
     """Certify a user-drawn ROI by a LOCAL rigid fit from LoFTR correspondences inside it.
 
     THE WHOLE POINT. Serial-section deformation is smooth, so a similarity fit CONFINED to a
@@ -427,11 +452,15 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
         if len(rp) >= min_matches:
             ref_pts, mov_pts = rp, mp
             if fle_fast:
-                # Skip the noise-relocalization (its 3 extra pipeline runs dominate cost).
-                # A small fixed sub-pixel FLE is CONSERVATIVE: it charges more residual to
-                # deformation, so the fast sweep never over-certifies. Re-certify a chosen
-                # region without fast mode for the principled measured FLE.
-                fle_um = 0.7
+                # The CALIBRATED FLE — no longer a placeholder. This used to declare a flat
+                # 0.7 µm, which was never measured and is ~3x the real value; because a larger
+                # declared FLE books less of the residual as deformation, it was LENIENT, and
+                # it was reported as a certification by the auto path (3.2 µm) while the drawn
+                # path measured 0.199 µm and said 14.5 µm about the identical polygon.
+                #
+                # FLE_WORKING_PX is measured against a known warp and scales with the working
+                # pixel size, which is what the measurement says it does.
+                fle_um = FLE_WORKING_PX * px_work
             else:
                 # Same `loftr_kw` as the selection above: loftr_fle re-runs this pipeline, and
                 # its whole point is that the FLE belongs to the population actually

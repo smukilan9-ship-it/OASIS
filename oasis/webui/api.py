@@ -1728,7 +1728,6 @@ class API:
                                      for x, y in piece.exterior.coords[:-1]])
 
             regions, attempts = [], 0
-            n_dropped_on_recert = 0  # passed the fast screen, failed the real gate
             kept_geoms = []          # accepted regions, for the disjointness check below
             attempt_cap = max(max_regions * 3, 18)
             n_tiles = len(tiles)
@@ -1748,39 +1747,24 @@ class API:
                 attempts += 1
                 self._cert_progress(
                     f"Certifying regions — {len(regions)} certified, "
-                    f"{attempts}/{min(n_tiles, attempt_cap)} checked"
-                    + (f", {n_dropped_on_recert} dropped on re-check" if n_dropped_on_recert
-                       else "") + "…",
+                    f"{attempts}/{min(n_tiles, attempt_cap)} checked…",
                     i=attempts, n=min(n_tiles, attempt_cap))
                 roi_t = np.asarray(poly_t, float)
-                # TWO STAGES, and they are not interchangeable.
+                # ONE certification, because the screen and the answer are now the same
+                # computation. This ran twice for a while — a lenient `fle_fast` screen that
+                # declared FLE = 0.7 µm, then a re-certification that MEASURED it — because
+                # the two disagreed about the same polygon (LOCALLY_CERTIFIED at 3.2 µm here
+                # against RADIUS_LIMITED at 14.5 µm through the drawn path).
                 #
-                # SCREEN. `fle_fast` does not measure FLE, it DECLARES 0.7 µm. That is larger
-                # than the FLE actually measured on this material (0.199 µm here; 0.224 µm
-                # against a known warp — research/registration.md § 11.2), and a declared FLE
-                # that is too large books less of the residual as deformation, so the fast
-                # screen is LENIENT. Fine for skipping hopeless tiles cheaply; never an answer.
-                probe = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
-                                             provisional_matrix=M_t, fle_fast=True,
-                                             work_max_dim=800)
-                if not probe.get("ok"):
-                    continue
-                # ANSWER. Re-certify the survivor with the FLE measured on its own
-                # correspondences — which is what loftr_matcher's own comment instructs
-                # ("Re-certify a chosen region without fast mode for the principled measured
-                # FLE"). Without this the Certify button and the Certify-drawn-regions button
-                # returned DIFFERENT verdicts for the SAME polygon: LOCALLY_CERTIFIED at
-                # 3.2 µm here against RADIUS_LIMITED at 14.5 µm there, identical 82
-                # correspondences over an identical 810,000 µm². The drawn path was the honest
-                # one; this button was reporting a screening result as a certification.
-                #
-                # Cost is bounded by survivors (max_regions, default 9) rather than by tiles
-                # probed, because only a tile that passed the screen is re-certified.
+                # `fle_fast` now uses loftr_matcher.FLE_WORKING_PX, measured against a known
+                # warp, so there is nothing left to re-do: both buttons agree by CONSTRUCTION
+                # rather than because this loop runs the gate twice. That also removes the
+                # measured cost of the re-certification, which was 14.3 s per surviving region
+                # and entirely `loftr_fle`'s cache-bypassing noise trials — the single largest
+                # item in a certification run.
                 cert = lm.certify_local_roi(ref_rgb, mov_rgb, roi_t, px_t,
-                                            provisional_matrix=M_t, fle_fast=False,
-                                            work_max_dim=800)
+                                            provisional_matrix=M_t, work_max_dim=800)
                 if not cert.get("ok"):
-                    n_dropped_on_recert += 1
                     continue
                 local_t = cert.get("local_matrix")
                 local_full = mov_roi_full = None
@@ -1821,11 +1805,6 @@ class API:
                       if r.get("min_interpretable_radius_um") is not None]
             return {"status": "ok", "regions": regions, "n": len(regions),
                     "attempted": attempts, "candidates": len(tiles),
-                    # Regions the lenient screen passed and the real gate then refused. Not a
-                    # diagnostic curiosity: a large count against n=0 means the size ladder
-                    # (which still screens with fast FLE) chose a window too big to certify
-                    # honestly, and the answer is a smaller region size, not a failed pair.
-                    "dropped_on_recertify": n_dropped_on_recert,
                     "region_um": round(region_um, 1), "auto_size": auto_size,
                     "size_policy": size_policy, "size_probe_floor_um": sel_floor,
                     "radius_floor_um": (min(floors) if floors else None),
@@ -1908,8 +1887,7 @@ class API:
             # 1) GLOBAL — whole field, measured FLE (one real attempt), validated FW gate.
             self._cert_progress("Certifying the whole field…")
             gcert = lm.certify_local_roi(ref_rgb, mov_rgb, global_roi, px_t,
-                                         provisional_matrix=M_t, fle_fast=False,
-                                         work_max_dim=1000)
+                                         provisional_matrix=M_t, work_max_dim=1000)
             if gcert.get("verdict") == "CERTIFIED":
                 return {"status": "ok", "mode": "global", "verdict": gcert.get("verdict"),
                         "regions": [_to_full(gcert, global_roi)], "n": 1,
