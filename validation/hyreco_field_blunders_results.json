@@ -1,0 +1,463 @@
+{
+  "fields": [
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 0,
+      "n": 229,
+      "resid_med_um": 11.081,
+      "max_over_med": 4.04,
+      "gross_frac": 0.3974
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 1,
+      "n": 670,
+      "resid_med_um": 4.94,
+      "max_over_med": 18.6,
+      "gross_frac": 0.091
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 2,
+      "n": 658,
+      "resid_med_um": 6.455,
+      "max_over_med": 3.01,
+      "gross_frac": 0.038
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 3,
+      "n": 658,
+      "resid_med_um": 6.488,
+      "max_over_med": 5.74,
+      "gross_frac": 0.1246
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 4,
+      "n": 436,
+      "resid_med_um": 5.064,
+      "max_over_med": 3.92,
+      "gross_frac": 0.0252
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 5,
+      "n": 152,
+      "resid_med_um": 15.811,
+      "max_over_med": 5.57,
+      "gross_frac": 0.5329
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 6,
+      "n": 372,
+      "resid_med_um": 5.692,
+      "max_over_med": 3.13,
+      "gross_frac": 0.0134
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 7,
+      "n": 500,
+      "resid_med_um": 5.866,
+      "max_over_med": 4.27,
+      "gross_frac": 0.028
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 8,
+      "n": 1106,
+      "resid_med_um": 4.485,
+      "max_over_med": 4.92,
+      "gross_frac": 0.0208
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 9,
+      "n": 783,
+      "resid_med_um": 4.667,
+      "max_over_med": 15.3,
+      "gross_frac": 0.0868
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 10,
+      "n": 277,
+      "resid_med_um": 8.187,
+      "max_over_med": 4.08,
+      "gross_frac": 0.0939
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 11,
+      "n": 751,
+      "resid_med_um": 4.414,
+      "max_over_med": 7.26,
+      "gross_frac": 0.0613
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 12,
+      "n": 537,
+      "resid_med_um": 6.988,
+      "max_over_med": 7.6,
+      "gross_frac": 0.1266
+    },
+    {
+      "case": "611",
+      "pair": "CD8/HE",
+      "lm": 13,
+      "n": 952,
+      "resid_med_um": 6.817,
+      "max_over_med": 19.11,
+      "gross_frac": 0.0987
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 0,
+      "n": 2481,
+      "resid_med_um": 4.256,
+      "max_over_med": 30.04,
+      "gross_frac": 0.0552
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 1,
+      "n": 3508,
+      "resid_med_um": 4.266,
+      "max_over_med": 5.66,
+      "gross_frac": 0.0134
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 2,
+      "n": 5168,
+      "resid_med_um": 3.77,
+      "max_over_med": 6.73,
+      "gross_frac": 0.0033
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 3,
+      "n": 6140,
+      "resid_med_um": 3.107,
+      "max_over_med": 4.79,
+      "gross_frac": 0.0
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 4,
+      "n": 7154,
+      "resid_med_um": 1.941,
+      "max_over_med": 18.02,
+      "gross_frac": 0.0008
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 5,
+      "n": 722,
+      "resid_med_um": 5.659,
+      "max_over_med": 3.47,
+      "gross_frac": 0.036
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 6,
+      "n": 8311,
+      "resid_med_um": 3.055,
+      "max_over_med": 5.81,
+      "gross_frac": 0.0002
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 7,
+      "n": 4340,
+      "resid_med_um": 4.105,
+      "max_over_med": 5.43,
+      "gross_frac": 0.0076
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 8,
+      "n": 7338,
+      "resid_med_um": 3.79,
+      "max_over_med": 5.13,
+      "gross_frac": 0.0026
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 9,
+      "n": 4285,
+      "resid_med_um": 2.913,
+      "max_over_med": 17.93,
+      "gross_frac": 0.0142
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 10,
+      "n": 2265,
+      "resid_med_um": 2.915,
+      "max_over_med": 5.06,
+      "gross_frac": 0.0
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 11,
+      "n": 6721,
+      "resid_med_um": 2.635,
+      "max_over_med": 10.7,
+      "gross_frac": 0.0062
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 12,
+      "n": 4093,
+      "resid_med_um": 7.494,
+      "max_over_med": 20.02,
+      "gross_frac": 0.0581
+    },
+    {
+      "case": "611",
+      "pair": "CD8/CD45",
+      "lm": 13,
+      "n": 6532,
+      "resid_med_um": 6.093,
+      "max_over_med": 4.55,
+      "gross_frac": 0.0453
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 0,
+      "n": 329,
+      "resid_med_um": 12.244,
+      "max_over_med": 4.96,
+      "gross_frac": 0.3708
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 1,
+      "n": 377,
+      "resid_med_um": 11.011,
+      "max_over_med": 4.9,
+      "gross_frac": 0.3024
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 2,
+      "n": 210,
+      "resid_med_um": 8.467,
+      "max_over_med": 21.06,
+      "gross_frac": 0.219
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 3,
+      "n": 145,
+      "resid_med_um": 18.911,
+      "max_over_med": 5.0,
+      "gross_frac": 0.6138
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 4,
+      "n": 149,
+      "resid_med_um": 11.147,
+      "max_over_med": 11.56,
+      "gross_frac": 0.2819
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 5,
+      "n": 224,
+      "resid_med_um": 26.991,
+      "max_over_med": 3.91,
+      "gross_frac": 0.7723
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 6,
+      "n": 365,
+      "resid_med_um": 12.404,
+      "max_over_med": 17.67,
+      "gross_frac": 0.4082
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 7,
+      "n": 353,
+      "resid_med_um": 11.978,
+      "max_over_med": 11.68,
+      "gross_frac": 0.3654
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 8,
+      "n": 189,
+      "resid_med_um": 25.111,
+      "max_over_med": 4.66,
+      "gross_frac": 0.6984
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 9,
+      "n": 181,
+      "resid_med_um": 22.838,
+      "max_over_med": 4.34,
+      "gross_frac": 0.7127
+    },
+    {
+      "case": "679",
+      "pair": "CD8/HE",
+      "lm": 10,
+      "n": 154,
+      "resid_med_um": 11.426,
+      "max_over_med": 5.49,
+      "gross_frac": 0.3961
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 0,
+      "n": 2278,
+      "resid_med_um": 3.008,
+      "max_over_med": 5.87,
+      "gross_frac": 0.0013
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 1,
+      "n": 2532,
+      "resid_med_um": 2.885,
+      "max_over_med": 5.76,
+      "gross_frac": 0.0024
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 2,
+      "n": 3111,
+      "resid_med_um": 2.326,
+      "max_over_med": 4.77,
+      "gross_frac": 0.0
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 3,
+      "n": 2663,
+      "resid_med_um": 2.874,
+      "max_over_med": 5.35,
+      "gross_frac": 0.0004
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 4,
+      "n": 1793,
+      "resid_med_um": 2.789,
+      "max_over_med": 5.46,
+      "gross_frac": 0.0006
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 5,
+      "n": 1566,
+      "resid_med_um": 2.81,
+      "max_over_med": 6.39,
+      "gross_frac": 0.0064
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 6,
+      "n": 1260,
+      "resid_med_um": 4.441,
+      "max_over_med": 10.21,
+      "gross_frac": 0.0048
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 7,
+      "n": 1689,
+      "resid_med_um": 3.244,
+      "max_over_med": 4.22,
+      "gross_frac": 0.0
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 8,
+      "n": 2686,
+      "resid_med_um": 2.949,
+      "max_over_med": 10.78,
+      "gross_frac": 0.0074
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 9,
+      "n": 2177,
+      "resid_med_um": 3.826,
+      "max_over_med": 16.26,
+      "gross_frac": 0.0037
+    },
+    {
+      "case": "679",
+      "pair": "CD8/CD45",
+      "lm": 10,
+      "n": 2379,
+      "resid_med_um": 2.834,
+      "max_over_med": 5.19,
+      "gross_frac": 0.0
+    }
+  ],
+  "summary": {
+    "n_fields": 50,
+    "gross_median": 0.032,
+    "gross_mean": 0.14299,
+    "n_median": 1029.0,
+    "resid_med_median": 4.8035,
+    "max_over_med_median": 5.53,
+    "ll477_gross_mean": 0.13566666666666666
+  }
+}

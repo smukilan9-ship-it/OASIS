@@ -601,11 +601,26 @@ separately — a failed registration must not be reported under the certificatio
 `validate_hyreco_field_blunders.py`, 1920 × 1440 fields at exactly 0.7519 µm/px — LL477's own
 frame — centred on each expert landmark:
 
-| pairing | fields | n (median) | residual median | **gross (median)** |
-|---|---|---|---|---|
-| **CD8 ↔ CD45** (IHC↔IHC) | 14 | **4,754** | 3.78 µm | **0.7 %** |
-| CD8 ↔ H&E (IHC↔H&E) | 16 | 518 | 6.47 µm | 9.2 % |
-| **LL477 CD8 ↔ TIM-3** (IHC↔IHC) | 3 | 77–632 | 3.5–8.3 µm | **13.6 %** |
+Final, all 50 fields over both cases:
+
+| stratum | fields | n (median) | residual median | gross median | gross mean |
+|---|---|---|---|---|---|
+| ALL pooled | 50 | 1,029 | 4.80 µm | 3.2 % | **14.3 %** |
+| **CD8 ↔ CD45** (IHC↔IHC) | 25 | **2,686** | 3.06 µm | **0.3 %** | **1.1 %** |
+| CD8 ↔ H&E (IHC↔H&E) | 25 | 365 | 8.47 µm | 21.9 % | 27.5 % |
+| **LL477 CD8 ↔ TIM-3** (IHC↔IHC) | 3 | 77–632 | 3.5–8.3 µm | — | **13.6 %** |
+
+**POOLING IS A TRAP HERE, AND THE SCRIPT'S OWN HEADLINE FALLS INTO IT.** Pooled, HyReCo's mean
+gross rate is 14.3 % against LL477's 13.6 % — indistinguishable, and a naive reading would
+conclude the slides are fine. That number mixes a genuine cross-MODALITY problem (DAB-on-
+haematoxylin against H&E, a different colour space entirely) with the like-for-like one. The
+`validate_hyreco_field_blunders.py` summary prints the pooled median, which happens to favour
+the conclusion; the stratified table is the honest analysis and it is what the argument rests
+on.
+
+Stratified, CD8↔CD45 — the correct analogue for CD8↔TIM-3, both DAB on haematoxylin — gives
+**2,686 correspondences at 1.1 % gross**, consistently across both cases (611: 1.7 %, 679:
+0.2 %).
 
 CD8↔CD45 is the correct analogue for CD8↔TIM-3 — both are DAB-on-haematoxylin IHC. On
 published, expert-annotated slides that pairing yields **4,754 correspondences at 0.7 % gross**.
