@@ -387,6 +387,7 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     source = "loftr_in_roi"
     ref_pts = mov_pts = None
     fle_um = None
+    n_in_roi = None      # survivors that actually fell inside the polygon, for the failure path
     # `loftr_kw` reaches the matcher's own knobs (e.g. local_k=0 to reproduce the pre-
     # local-smoothness selection) so a validation run can A/B the filter through the real
     # certification path instead of a reimplementation of it.
@@ -397,6 +398,11 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
         mp = np.asarray(c["mov_points"], float) / r + np.array([mx0, my0])
         inside = _MplPath(roi).contains_points(rp)     # keep only matches truly in the ROI
         rp, mp = rp[inside], mp[inside]
+        # The crop is the ROI bbox PLUS `pad` on every side, so on a small ROI most of the
+        # crop is padding and most matches land outside the polygon by construction (a 270 µm
+        # ROI is ~40 % of its own crop). Recorded so a NO_MATCHES can distinguish "the filters
+        # took them" from "they were all in the margin".
+        n_in_roi = int(len(rp))
         keep_conf = c["ref_points"]                    # for FLE re-localization
         if len(rp) >= min_matches:
             ref_pts, mov_pts = rp, mp
@@ -423,9 +429,20 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
 
     if ref_pts is None:                                # graceful fallback to landmarks
         if fallback_ref_lm is None or fallback_mov_lm is None:
+            # Carry the funnel out with the failure. "NO_MATCHES" alone reads as "the matcher
+            # found nothing here", which on this data is essentially never true — a region
+            # that reports it typically had 190-280 RAW matches and lost them to the filters
+            # (measured: 224 raw → 46 after scale-consistency → 5 inside the ROI). Without
+            # these counts an operator cannot tell an untextured region from an over-tight
+            # filter, and neither can the next person to read a bug report.
             return {"ok": False, "verdict": "NO_MATCHES",
-                    "msg": f"LoFTR found <{min_matches} matches in ROI and no landmark fallback",
-                    "n_loftr": int(c.get("n") or 0), "source": "none"}
+                    "msg": (f"LoFTR found <{min_matches} matches in ROI and no landmark "
+                            f"fallback ({c.get('msg') or 'no funnel'})"),
+                    "n_loftr": int(c.get("n") or 0), "source": "none",
+                    "loftr_funnel": {k: c.get(k) for k in
+                                     ("n_raw", "n_after_cycle", "n_after_scale",
+                                      "n_after_local")},
+                    "n_in_roi": n_in_roi}
         fr = np.asarray(fallback_ref_lm, float).reshape(-1, 2)
         fm = np.asarray(fallback_mov_lm, float).reshape(-1, 2)
         insl = _MplPath(roi).contains_points(fr)
