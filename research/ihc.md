@@ -1147,3 +1147,131 @@ Not yet settled, deliberately left unwritten rather than guessed:
    triangle/Rosin) validated against the existing DeepLIIF-derived labels.
 4. **Negative-control-derived thresholds** (DAB-quant pattern). The most defensible option
    for a methods paper; blocked on slides, not on code.
+
+---
+
+## 12. Session 2026-08-01 — scale-bar correction, a dead pipeline, and the FLE finding
+
+Everything below was found by driving the shipped app on real data rather than by reading
+code. Three of the four items were invisible to the 155-test suite at the time.
+
+### 12.1 Scale bar — every LL477 distance was 10.5 % wrong
+
+The bar detector Otsu-thresholded the bottom strip, accepted anything up to 25 % of the crop
+HEIGHT as "line-like" (54 px on a 1440 px image) and took the WIDEST survivor, so a tissue
+edge beat the drawn bar. True bar is 133 px in all six LL477 scale images; the detector
+returned 133/139/156/165/174 (to **+31 %**) and batch took the median **0.6802 µm/px** as the
+run default.
+
+Replaced with a shape test — near-black (`<100`), solid (fill ≥ 0.80), thin in ABSOLUTE terms
+(≤ 10 % of crop height), aspect ≥ 6, and the same length on every row (row-length CV ≤ 0.08).
+Fails closed: no bar-shaped component returns `(None, None)` and the operator types the value.
+All six images now read 133 px → **0.7519 µm/px, spread 0.00 %**.
+
+**Consequence for the record.** 0.6802 → 0.7519 is **+10.5 %** on the multiplier for every
+distance the pipeline reports: TRE, cell error, the 10–20 and 20–50 µm bands, the 75 µm
+bandwidth, region areas. **Every LL477-derived number in this document predating this session
+is quantitatively stale by ~10 %** and must be re-run before it is cited. External-dataset
+results (ANHIR, CODEX, DeepLIIF, Keren, HNSCC) carry their own pixel sizes, never went
+through this reader, and are unaffected.
+
+Prior results are kept, not overwritten — the pre-fix numbers are the evidence that the fix
+mattered.
+
+### 12.2 The spatial and quant pipelines could not run at all
+
+Rewriting the detector kept only `_detect_scale_bar` (returns a tuple) and dropped the public
+`extract_pixel_size_from_scale_bar` wrapper. Both callers — `run_pipeline.resolve_pixel_size`
+and the scale matcher in `webui.api` — import that name **inside a function body**, so nothing
+raised until a run reached the line. Every spatial and quant run died on its first step with
+`import failed: cannot import name extract_pixel_size_from_scale_bar`, while the entire test
+suite stayed green, because every scale-bar test called the private function directly and no
+test drives a pipeline.
+
+Swept the tree afterwards: 128 distinct names across 22 first-party modules, all resolve. That
+one wrapper was the only instance. `tests/test_imports_resolve.py` now parses every
+`from oasis… import …` in the tree and checks each name against the module (0.8 s).
+
+The local build's smoke test could not have caught it either: `build.sh` ran the frozen binary
+with output discarded and `|| true`, then checked file existence. `packaging/smoke_test.py`,
+which drives a real pipeline through the frozen binary, existed but was wired only into the
+release workflow. Now wired into `build.sh`, where `set -euo pipefail` makes it fail the build.
+
+### 12.3 Confidence ignored what the pipeline already knew
+
+`compute_confidence` read only cell count and positivity %. An image the trained classifier
+REFUSED as out of its trained range — which hands the calls back to the fixed cutoff and flags
+`staining_quality: low` — was reported **NORMAL**. Observed on `LL477_CD8_x10_1`
+(`area_px=33.36 outside [53, 64]`, 12,942 cells, 1.85 % positive). Both signals now force LOW.
+A run that never requested a classifier is unaffected.
+
+### 12.4 Certification: the FLE estimator, not the gate, is what fails good registrations
+
+Reported separately in **`research/registration.md`** — the full investigation, the measurements
+and the validation plan. The headline for this document:
+
+On `LL477_CD8_x10_1 ↔ Tim3_x10_1`, an 810,000 µm² region certifies **LOCALLY_CERTIFIED at
+3.1 µm** through the auto path and **RADIUS_LIMITED at 12.8 µm** through the drawn-region path
+— identical polygon, identical 59 correspondences, identical fit (`fit_residual 4.144 µm`,
+`landmark_noise 4.073 µm`). The only difference is `fle_fast`, which declares FLE = 0.7 µm
+instead of measuring it (0.199 µm here). That changes `n_good` — the count of landmarks whose
+residual is "consistent with localisation noise" — from **1 to 14**, which is enough to trigger
+the sub-ROI rescue and certify a 32 % sub-window at 3.1 µm.
+
+Measuring the residuals directly settles what the scatter actually is:
+
+```
+n = 59   median 4.14 µm   p75 5.32   p90 7.57   max 14.67
+p90/median = 1.83        (isotropic Gaussian localisation noise = 1.90)
+```
+
+**The distribution is Rayleigh.** It is localisation noise, not deformation, and not an
+outlier tail — which retires two earlier explanations for the same symptom (§ 3.5's "gross
+errors set the residual p90", and the local-smoothness filter added after *84 real CD8/TIM-3
+pairs certified zero regions*).
+
+A 4.14 µm median is state of the art: ANHIR's best methods report median rTRE 0.19–0.38 % of
+image diagonal, which on this 1804 µm diagonal is **3.4–6.9 µm**. The gate nevertheless fails
+it, because it compares a **≤5 µm threshold against an upper confidence bound on a p90**:
+4.14 → 7.57 (×1.83, inherent to Rayleigh) → 12.815 (×1.69, the bound). Passing therefore needs
+a median residual ≤ **1.6 µm ≈ 2 px**, roughly 2–4× better than the best published automatic
+histology registration.
+
+**Root cause.** `σ_fit² = 2·FLE² + model²` assigns everything not explained by FLE to
+deformation. `loftr_fle` re-localises under image noise, which measures *precision*, not
+*accuracy* — this document already labels it "a conservative lower bound". A lower bound on
+FLE is mechanically an upper bound on deformation. If LoFTR's true FLE on H-DAB is ≈2.9 µm
+(≈3.9 px, entirely plausible for a dense matcher on tissue), then `2·FLE² ≈ σ_fit²` and the
+deformation term is ≈ 0.
+
+**Standing consequence: every certification number this tool has produced on H-DAB is an upper
+bound of unknown tightness.** Neither `fle_fast=True` (0.7 µm) nor the measured path (0.199 µm)
+is right; both under-state FLE and the fast one is merely less wrong, which is why it
+reproduces § 3.5's recorded `LOCALLY_CERTIFIED, 67 % of field, p90 2.85 µm`. The FW bound was
+calibrated on lung + mammary and, as § 3.5 already notes, **never on H-DAB**.
+
+Nothing in the gate's design is loosened in response. The ≤5 µm target is correct for a
+10–20 µm contact claim. What must change is measuring FLE against ground truth.
+
+### 12.5 § 8 contradicts the shipped behaviour — unresolved
+
+§ 8 states the CD8/TIM-3 claim is *"underpowered (3 pairs, one cohort, nothing survives cohort
+FDR)"*. A full run this session reported **2 of 2 significant after Benjamini–Hochberg**
+(q = 0.002, 0.038), because the pipeline now auto-switches to the dense morphology-conditioned
+null when the 75 µm pre-flight fails. § 8 also says dense tissues *"still fail closed until the
+morphology-conditioned candidate is validated"*, while § 3 records that candidate as validated
+on CODEX, a rendered-pixel bridge and a Keren TNBC stress test.
+
+Both bullets are stale relative to the code. **Left unedited deliberately**: which is true is a
+scientific judgement, and the run that produced those q-values used the pre-§12.4 certification,
+so it must be repeated after FLE is settled before § 8 is rewritten.
+
+### 12.6 Re-validation required
+
+Must re-run (LL477-derived, at the old pixel size and the old certification):
+registration/certification numbers, the § 3.5a neighbourhood sweep, the LL477 dense-null
+demonstration, and the three-pair spatial results.
+
+Unaffected: ANHIR (§ 7.1), CODEX, DeepLIIF, Keren, HNSCC.
+
+Version rather than overwrite — `validation_reports/<name>/pre-scalebar-fix/`.
