@@ -71,7 +71,26 @@ def worker_cmd(module, *args):
     argv = [str(a) for a in args]
     if is_frozen():
         return [sys.executable, WORKER_FLAG, module] + argv
-    return [sys.executable, "-m", module] + argv
+    # -u so the worker's progress is not held in an 8 KB block buffer — see worker_env().
+    return [sys.executable, "-u", "-m", module] + argv
+
+
+def worker_env(base=None):
+    """Environment for a streaming worker: unbuffered stdout/stderr.
+
+    Python block-buffers stdout whenever it is a pipe rather than a terminal, and every one
+    of these jobs is launched with stdout=PIPE so the UI can stream it. The result is that
+    nothing reaches the UI until the child's buffer fills or the process exits: measured on
+    a three-pair spatial run, all 182 log lines arrived in one burst at 109 s, after the run
+    had already finished. The operator watches a log that stops after the setup lines and an
+    app that looks hung for the whole run — on a large cohort, for many minutes.
+
+    `-u` covers the from-source command; a frozen bundle is not launched through a python
+    interpreter and has no argv to put it on, so the variable is what covers both.
+    """
+    env = dict(os.environ if base is None else base)
+    env["PYTHONUNBUFFERED"] = "1"
+    return env
 
 
 def dispatch_worker(argv=None):

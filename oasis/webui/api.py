@@ -13,7 +13,7 @@ import yaml
 from statistics import median
 from pathlib import Path
 
-from oasis.common.worker import worker_cmd                              # noqa: E402
+from oasis.common.worker import worker_cmd, worker_env                  # noqa: E402
 from oasis.common.paths import (default_model_dir, default_output_dir,   # noqa: E402
                                 user_config_dir)
 from oasis.common.edition import edition_name, is_research              # noqa: E402
@@ -712,7 +712,8 @@ class API:
                     worker_cmd("run_pipeline", "--config", config_path,
                                "--stage", "segment" if review else "full"),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    text=True, start_new_session=True, cwd=str(PROJECT_DIR)
+                    text=True, start_new_session=True, cwd=str(PROJECT_DIR),
+                    env=worker_env()
                 )
                 while True:
                     line = self._process.stdout.readline()
@@ -1037,7 +1038,8 @@ class API:
                     worker_cmd("run_pipeline", "--config", config_path,
                                "--stage", "finish"),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                    text=True, start_new_session=True, cwd=str(PROJECT_DIR)
+                    text=True, start_new_session=True, cwd=str(PROJECT_DIR),
+                    env=worker_env()
                 )
                 for line in self._process.stdout:
                     clean = line.strip()
@@ -2662,6 +2664,7 @@ class API:
                     worker_cmd("run_pipeline", "--config", config_path, "--mode", "spatial"),
                     stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                     text=True, start_new_session=True, cwd=str(PROJECT_DIR),
+                    env=worker_env(),
                 )
                 while True:
                     line = self._process.stdout.readline()
