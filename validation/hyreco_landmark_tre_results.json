@@ -1,0 +1,102 @@
+{
+  "pairs": [
+    {
+      "case": "611",
+      "ref": "CD8",
+      "mov": "HE",
+      "n": 14,
+      "verdict": "DEFORMED",
+      "predicted_p90_um": 504.858,
+      "provisional_median_um": 52.2,
+      "provisional_p90_um": 94.06,
+      "certified_median_um": 90.04,
+      "certified_p90_um": 121.85,
+      "n_correspondences": 9,
+      "um_px": 12.942,
+      "conservative": true
+    },
+    {
+      "case": "611",
+      "ref": "CD8",
+      "mov": "CD45",
+      "n": 14,
+      "verdict": "DEFORMED",
+      "predicted_p90_um": 117.792,
+      "provisional_median_um": 35.84,
+      "provisional_p90_um": 66.01,
+      "certified_median_um": 31.21,
+      "certified_p90_um": 66.31,
+      "n_correspondences": 16,
+      "um_px": 12.942,
+      "conservative": true
+    },
+    {
+      "case": "611",
+      "ref": "HE",
+      "mov": "CD45",
+      "n": 14,
+      "verdict": "NO_MATCHES",
+      "predicted_p90_um": null,
+      "provisional_median_um": 10672.02,
+      "provisional_p90_um": 11344.71,
+      "certified_median_um": null,
+      "certified_p90_um": null,
+      "n_correspondences": null,
+      "um_px": 13.094,
+      "conservative": null
+    },
+    {
+      "case": "679",
+      "ref": "CD8",
+      "mov": "HE",
+      "n": 11,
+      "verdict": "NO_MATCHES",
+      "predicted_p90_um": null,
+      "provisional_median_um": 33.04,
+      "provisional_p90_um": 95.33,
+      "certified_median_um": null,
+      "certified_p90_um": null,
+      "n_correspondences": null,
+      "um_px": 12.944,
+      "conservative": null
+    },
+    {
+      "case": "679",
+      "ref": "CD8",
+      "mov": "CD45",
+      "n": 11,
+      "verdict": "NO_MATCHES",
+      "predicted_p90_um": null,
+      "provisional_median_um": 25.28,
+      "provisional_p90_um": 56.24,
+      "certified_median_um": null,
+      "certified_p90_um": null,
+      "n_correspondences": null,
+      "um_px": 12.944,
+      "conservative": null
+    },
+    {
+      "case": "679",
+      "ref": "HE",
+      "mov": "CD45",
+      "n": 11,
+      "verdict": "NO_MATCHES",
+      "predicted_p90_um": null,
+      "provisional_median_um": 27.01,
+      "provisional_p90_um": 85.5,
+      "certified_median_um": null,
+      "certified_p90_um": null,
+      "n_correspondences": null,
+      "um_px": 13.104,
+      "conservative": null
+    }
+  ],
+  "summary": {
+    "n": 2,
+    "realized_med": 60.625,
+    "realized_p90": 94.08,
+    "predicted_p90": 311.325,
+    "ratio": 2.959829085195455,
+    "conservative": 2
+  }
+}

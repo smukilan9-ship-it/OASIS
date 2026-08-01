@@ -557,3 +557,114 @@ next to its error is the only thing standing between it and being defensible in 
   *pairwise* displacement difference between neighbours, so a population whose true scatter
   exceeded `tol_um` would be culled back to roughly `tol_um` and its survivors' median would
   land there regardless of the tissue.
+
+---
+
+## 12. HyReCo — the external validation, and what it says about our slides
+
+Downloaded 2026-08-02 from IEEE DataPort. Only 12 % of the 233 GB archive was needed: all 45
+expert landmark CSVs (15 KB) plus CD8/H&E/CD45 for cases 611 and 679 (27.9 GB), pulled member
+by member over HTTP range requests (`validation/datasets/remote_zip_probe.py`).
+
+**Format verified, not assumed.** Slides are 95,601 × 218,145 px at 0.2430 µm/px, 17 pyramid
+levels. Landmarks are millimetre world coordinates: `px = mm × 1000 / 0.2430`, origin (0,0),
+no offset. Proof rather than arithmetic — every landmark was converted, a patch read at that
+location, and **14/14 and 11/11 landed on tissue**. A sign or origin error would have put them
+on glass. Counts match across all stains per case, so they are index-corresponded.
+
+### 12.1 Predicted vs realized error at expert landmarks — section scale
+
+First external test of the gate on serial H-DAB. LoFTR never sees a landmark, so the expert
+set is fully held out.
+
+| case | pair | verdict | predicted p90 | provisional TRE | certified TRE |
+|---|---|---|---|---|---|
+| 611 | CD8→HE | DEFORMED | 504.9 µm | 52.2 | 90.0 |
+| 611 | CD8→CD45 | DEFORMED | 117.8 µm | 35.8 | 31.2 |
+| 611 | HE→CD45 | NO_MATCHES | — | **10,672** | — |
+| 679 | all three | NO_MATCHES | — | 25–33 | — |
+
+**The gate never under-predicted (2/2), by a factor of ~3.** That is the safe direction.
+
+But read the rest honestly: **4 of 6 pairs returned NO_MATCHES**, and `register_similarity`
+failed catastrophically once (10,672 µm). At the ~13 µm/px a whole 23 × 53 mm section renders
+to, `certify_local_roi` downscales to `work_max_dim` and LoFTR has almost nothing to work
+with. **OASIS does not register whole sections**, and this is the measurement that says so.
+It is a field-scale tool and these numbers are outside its regime.
+
+A first version of this test reported that 10,672 µm as a *certified* TRE, because it fell
+back to the provisional matrix when LoFTR found nothing. The two transforms are now measured
+separately — a failed registration must not be reported under the certification's name.
+
+### 12.2 The blunder rate is our slides, not the matcher
+
+`validate_hyreco_field_blunders.py`, 1920 × 1440 fields at exactly 0.7519 µm/px — LL477's own
+frame — centred on each expert landmark:
+
+| pairing | fields | n (median) | residual median | **gross (median)** |
+|---|---|---|---|---|
+| **CD8 ↔ CD45** (IHC↔IHC) | 14 | **4,754** | 3.78 µm | **0.7 %** |
+| CD8 ↔ H&E (IHC↔H&E) | 16 | 518 | 6.47 µm | 9.2 % |
+| **LL477 CD8 ↔ TIM-3** (IHC↔IHC) | 3 | 77–632 | 3.5–8.3 µm | **13.6 %** |
+
+CD8↔CD45 is the correct analogue for CD8↔TIM-3 — both are DAB-on-haematoxylin IHC. On
+published, expert-annotated slides that pairing yields **4,754 correspondences at 0.7 % gross**.
+LL477's equivalent yields **77–632 at 13.6 %**: an order of magnitude fewer correspondences and
+twenty times the blunder rate, on the same class of stain pairing at the same magnification and
+pixel size.
+
+**LL477's CD8↔TIM-3 behaves like a hard cross-modality pair rather than the IHC↔IHC pair it
+actually is.** Combined with § 12 of `ihc.md` — TIM-3 thresholded below its own background,
+4–58 callable cells reported as 11,584 — the conclusion is that the slides are the limiting
+factor, and no model work fixes a slide.
+
+### 12.3 Correspondence density predicts blunders
+
+Across all 30 fields, log(n) against gross fraction gives **r = −0.66**:
+
+```
+fields with n <  600 :  9 fields, mean gross 21.0 %
+fields with n >= 600 : 21 fields, mean gross  3.6 %
+```
+
+This is the mechanism behind everything chased this session. Sparse correspondences do not
+merely weaken a fit — they are *contaminated*, because the local-smoothness filter has no
+dense neighbourhood to appeal to and `reject_local_residual_outliers` has no local consensus.
+Density is not a nice-to-have; below roughly 600 correspondences per field the blunder rate
+rises sixfold.
+
+### 12.4 Getting more correspondences — do not fine-tune first
+
+Fine-tuning LoFTR was rejected earlier on similarity-ceiling grounds, and § 11.3 strengthens
+that: deformation dominates the cell error and better correspondences cannot reduce
+deformation. But § 12.3 shows density has a second, independent effect through the blunder
+rate, so the question was reopened.
+
+**It is probably already solved upstream.** *MatchAnything* (arXiv 2501.07556, zju3dv — the
+LoFTR authors) large-scale pre-trains detector-free matchers for cross-modality matching and
+reports, on ANHIR: *"our trained ELoFTR model achieves a 55.3 % relative improvement"* in
+Average-Average rTRE, and 33.2 % for ROMA. Weights are stated to be on HuggingFace and the
+training code is "available later".
+
+So the ranking for getting better correspondences on this modality:
+
+1. **Try MatchAnything's pre-trained ELoFTR weights.** No training, no dataset, no GPU. If the
+   ANHIR improvement transfers, it is a weight swap. **Verify the licence before adopting** —
+   this repo is heading for JOSS and neither the code nor the weight licence was visible from
+   the project page or README.
+2. **Then re-measure with `validate_matchers_on_cohort.py`**, which already compares five
+   matchers on LL477 both ways.
+3. **Only then consider fine-tuning**, and if so the corpus is **ACROBAT** (750 training cases,
+   3,406 WSIs, H&E ↔ ER/Ki67/PGR/HER2 — by far the largest) with **HyReCo subset B** (54
+   re-stained H&E↔PHH3 pairs: *same physical section*, so geometric truth is near-exact while
+   the stain difference is real) for stain-invariance specifically. ANHIR's 481 pairs are for
+   validation, not training — its landmarks are far too sparse.
+
+### 12.5 What is still open
+
+- Only 2 of 9 cases downloaded (27.9 GB of 259.5 GB). The signed URL expired; more needs a
+  fresh one.
+- No mid-scale test yet. The landmarks are ~3 mm apart, so a 1.4 mm field holds at most one and
+  the section is 13 µm/px — neither is OASIS's 450 µm certification regime. A ~5 mm window at
+  ~1 µm/px would hold 3–5 landmarks and *is* close to it. That is the test that would validate
+  the ROI gate externally, and it has not been run.
