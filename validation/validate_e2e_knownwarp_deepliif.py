@@ -60,7 +60,7 @@ def _setup():
         "qupath": os.path.expanduser(s.get(
             "qupath_binary", "/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64")),
         "model": os.path.expanduser(s.get("instanseg_model") or default_model_dir()),
-        "device": s.get("device", "mps"),
+        "device": s.get("device", "auto"),
     }
 
 

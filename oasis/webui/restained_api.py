@@ -40,7 +40,7 @@ def attach_restained_api(api_class):
             "segmenter": setup.get("segmenter", "native"),
             "qupath_binary": setup.get("qupath_binary"),
             "instanseg_model": setup.get("instanseg_model"),
-            "device": setup.get("device", "mps"),
+            "device": setup.get("device", "auto"),
             "instanseg_threads": setup.get("instanseg_threads", 4),
             "timeout_seconds": 1800,
         }

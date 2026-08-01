@@ -32,7 +32,7 @@ DEFAULT_SETUP = {
     "pixel_size_x": 0.5,
     "pixel_size_y": 0.5,
     "default_objective": "10x",
-    "device": "mps",
+    "device": "auto",
     "instanseg_threads": 4,
     # Segmenter: "native" runs the InstanSeg TorchScript bundle in-process (no QuPath).
     # "qupath" is the previous path, kept for one release as an escape hatch.
@@ -160,6 +160,11 @@ class API:
         result["_edition"] = edition_name(result)
         # Platform-appropriate results location, so the UI stops hardcoding ~/Desktop.
         result["_default_output_dir"] = default_output_dir()
+        # What "Auto-detect" actually resolves to on THIS machine. The dropdown otherwise
+        # promises acceleration without saying whether any is present, which is the same
+        # kind of silence that let `device: mps` run on a CUDA box's CPU.
+        from oasis.common.device import describe_device
+        result["_device_resolved"] = describe_device(result.get("device"))
         return result
 
     def save_setup(self, data):
@@ -645,7 +650,7 @@ class API:
             "segmenter":          setup.get("segmenter", DEFAULT_SETUP["segmenter"]),
             "qupath_binary":      setup.get("qupath_binary", DEFAULT_SETUP["qupath_binary"]),
             "instanseg_model":    setup.get("instanseg_model", DEFAULT_SETUP["instanseg_model"]),
-            "device":             setup.get("device", "mps"),
+            "device":             setup.get("device", "auto"),
             "instanseg_threads":  setup.get("instanseg_threads", 4),
             "tile_dims":          512,
             "timeout_seconds":    1800,
@@ -2555,7 +2560,7 @@ class API:
             "segmenter":           setup.get("segmenter", DEFAULT_SETUP["segmenter"]),
             "qupath_binary":       setup.get("qupath_binary", DEFAULT_SETUP["qupath_binary"]),
             "instanseg_model":     setup.get("instanseg_model", DEFAULT_SETUP["instanseg_model"]),
-            "device":              setup.get("device", "mps"),
+            "device":              setup.get("device", "auto"),
             "instanseg_threads":   setup.get("instanseg_threads", 4),
             "tile_dims":           512,
             "timeout_seconds":     1800,

@@ -202,6 +202,8 @@ html, body {
 /* ── Form elements ─────────────────────────────────────── */
 .field { margin-bottom: 12px; }
 .field label { display: block; font-size: 11px; color: var(--text2); margin-bottom: 5px; font-weight: 500; }
+/* Caption under a control, for what the machine resolved rather than what was asked for. */
+.field .hint { font-size: 11px; color: var(--text3); margin-top: 5px; }
 input[type="text"], input[type="number"], input[type="password"], select, textarea {
   width: 100%; height: 36px;
   background: #ffffff;
@@ -2092,10 +2094,12 @@ td.muted { color: var(--text3); font-size: 11px; }
       <div class="row2">
         <div class="field"><label>Compute device</label>
           <select id="s-device">
+            <option value="auto">Auto-detect</option>
             <option value="mps">Apple Silicon (MPS)</option>
             <option value="cpu">CPU</option>
             <option value="cuda">NVIDIA GPU (CUDA)</option>
           </select>
+          <div class="hint" id="s-device-resolved"></div>
         </div>
         <div class="field"><label>InstanSeg threads</label>
           <input type="number" id="s-threads" value="4" min="1" max="16">
@@ -2857,6 +2861,10 @@ async function loadSetup() {
     if (objSel.options[i].text === s.default_objective) { objSel.selectedIndex = i; break; }
   for (let i = 0; i < devSel.options.length; i++)
     if (devSel.options[i].value === s.device) { devSel.selectedIndex = i; break; }
+  // Say what this machine will actually run on. A stored "mps" on a CUDA workstation now
+  // resolves to CUDA rather than to the CPU, and the operator should see that happen.
+  const devRes = document.getElementById('s-device-resolved');
+  if (devRes) devRes.textContent = s._device_resolved ? ('Runs on: ' + s._device_resolved) : '';
 
   // Quant pixel size is REQUIRED and explicit — do NOT pre-fill the manual field.
   // Surface the global default only as the value of the "use global default" option.

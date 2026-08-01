@@ -408,7 +408,7 @@ def _segment_reference(reference_path, output_dir, config):
         "segmenter": config.get("segmenter", "native"),
         "qupath_binary": os.path.expanduser(config.get("qupath_binary") or ""),
         "instanseg_model": os.path.expanduser(config["instanseg_model"]),
-        "device": config.get("device", "mps"),
+        "device": config.get("device", "auto"),
         "instanseg_threads": int(config.get("instanseg_threads", 4)),
         "tile_dims": 512,
         "timeout_seconds": int(config.get("timeout_seconds", 1800)),

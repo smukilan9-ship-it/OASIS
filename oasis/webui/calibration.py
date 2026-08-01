@@ -76,7 +76,7 @@ def segment(image_path, pixel_size, setup):
         "segmenter": setup.get("segmenter", "native"),
         "qupath_binary": os.path.expanduser(setup.get("qupath_binary", "")),
         "instanseg_model": os.path.expanduser(setup.get("instanseg_model", "")),
-        "device": setup.get("device", "mps"), "instanseg_threads": setup.get("instanseg_threads", 4),
+        "device": setup.get("device", "auto"), "instanseg_threads": setup.get("instanseg_threads", 4),
         "default_pixel_size": float(pixel_size), "dab_threshold": 0.1,
         "export_geojson": True, "generate_overlays": False,
         "image_extensions": [f"*{ext}"],

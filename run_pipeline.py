@@ -79,7 +79,10 @@ def load_config(config_path="config.yaml"):
     cfg.setdefault("default_pixel_size", 0.5)
     cfg.setdefault("magnification", "auto")
     cfg.setdefault("instanseg_threads", 4)
-    cfg.setdefault("device", "mps")
+    # "auto" (cuda → mps → cpu), not a hard-coded backend: a config written on a Mac used to
+    # leave InstanSeg on the CPU of an NVIDIA box while LoFTR used its GPU. See
+    # oasis/common/device.py.
+    cfg.setdefault("device", "auto")
     cfg.setdefault("tile_dims", 512)
     cfg.setdefault("timeout_seconds", 1800)
     cfg.setdefault("mode", "automated")
@@ -257,19 +260,20 @@ def run_native_segmentation(img_path, cfg, out_basename=None):
 
 
 def _torch_device(name):
-    """Map the config's device onto something torch will accept, falling back safely."""
-    want = (name or "cpu").lower()
-    if want in ("cpu", ""):
-        return "cpu"
-    try:
-        import torch
-        if want == "mps" and torch.backends.mps.is_available():
-            return "mps"
-        if want.startswith("cuda") and torch.cuda.is_available():
-            return want
-    except Exception:
-        pass
-    return "cpu"
+    """Map the config's device onto something torch will accept, falling back safely.
+
+    Policy — including why an unavailable "mps" now becomes "cuda" rather than "cpu" — lives
+    in oasis/common/device.py, so the pipeline, the UI defaults and the tests all read from
+    one place.
+    """
+    from oasis.common.device import resolve_device
+    return resolve_device(name)
+
+
+def _describe_device(name):
+    """"cuda (requested mps, not available on this machine)" — for the run banner."""
+    from oasis.common.device import describe_device
+    return describe_device(name)
 
 
 def _resolve_dab_threshold(cfg, img_base):
@@ -701,6 +705,7 @@ def run_pipeline(config_path="config.yaml"):
     print(f"  Stain:       {cfg.get('stain_type', 'hdab').upper()}")
     print(f"  Threshold:   {cfg['dab_threshold']} OD")
     print(f"  Magnification: {cfg['magnification']}")
+    print(f"  Device:      {_describe_device(cfg.get('device'))}")
     print(f"  Input:       {cfg['input_dir']}")
     print(f"  Output:      {cfg['output_dir']}")
     print(f"{'='*55}")
