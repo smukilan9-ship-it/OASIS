@@ -278,7 +278,7 @@ def _local_smoothness(src, dst, tol_px, k=8):
 
 def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
                           scales=(0.75, 0.5), tol_um=4.0, conf_floor=0.2,
-                          noise=0.0, rng=None, local_k=8, scale_tol_stride=0.0):
+                          noise=0.0, rng=None, local_k=8, scale_tol_stride=0.5):
     """Cycle-, scale- and locally-smooth LoFTR correspondences. No RANSAC, no residuals.
 
     `noise`/`rng` perturb both images identically-in-distribution; used by `loftr_fle` to
@@ -328,10 +328,24 @@ def loftr_correspondences(ref_rgb, mov_rgb, pixel_size_um, weights="outdoor",
         # `scale_tol_stride` floors the tolerance at a multiple of the coarse stride, which
         # keeps the filter's PURPOSE (a match whose displacement the coarse pass contradicts
         # beyond what that pass can resolve is aliasing) while dropping a precision demand
-        # that was never justified. 0.0 keeps the shipped absolute-only behaviour exactly;
-        # any change of the default must be earned against expert landmarks first, since
-        # relaxing a filter is the over-certifying direction — see
-        # validation/validate_scale_filter_anhir.py.
+        # that was never justified.
+        #
+        # 0.5 IS EARNED, NOT CHOSEN. Relaxing a filter is the over-certifying direction, so
+        # validate_scale_filter_anhir.py A/B'd four arms over 29 ANHIR training pairs against
+        # expert landmarks LoFTR never sees — the only non-circular test, since a filter
+        # selects the points its own residual is measured on. Overall the arms are
+        # indistinguishable, because ANHIR's median pair already has 427 correspondences and
+        # was never near the threshold. The answer is in the 10 pairs with fewer than 200,
+        # which is the regime that produces NO_MATCHES:
+        #
+        #                       n gain   TRE med   paired Δ mean   WORST
+        #   filter OFF           4.20x     71.09          +8.85   +47.98
+        #   stride-aware 0.5x    1.64x     36.04          −2.39    +2.13
+        #   stride-aware 1.0x    1.84x     49.32          +1.77   +25.27
+        #
+        # So the filter IS doing real work — off degrades hard pairs badly — and 1.0x is too
+        # loose. 0.5x gains coverage, improves accuracy, and bounds the worst case. 0.0
+        # restores the absolute-only behaviour for anyone reproducing an older result.
         tol_scale_px = tol_px
         if scale_tol_stride:
             tol_scale_px = max(tol_px, float(scale_tol_stride) * float(stride1))
