@@ -32,10 +32,12 @@ one from the browser and re-run — completed members are skipped.
 import argparse
 import fnmatch
 import io
+import re
 import os
 import sys
 import urllib.request
 import zipfile
+import zlib
 
 
 class HTTPRangeFile(io.RawIOBase):
@@ -48,16 +50,25 @@ class HTTPRangeFile(io.RawIOBase):
         self.size = self._probe()
 
     def _probe(self):
-        req = urllib.request.Request(self.url, method="HEAD")
+        """Total size via a ONE-BYTE ranged GET, not HEAD.
+
+        A SigV4 presigned URL is signed for a specific HTTP METHOD, so a GET-presigned link —
+        which is what a browser's "copy download link" gives you — answers HEAD with 403
+        SignatureDoesNotMatch. Measured against IEEE DataPort's S3: HEAD 403, GET with
+        `Range: bytes=0-0` 206. The Content-Range header carries the total after the slash, so
+        this one request establishes both the size and that ranges work at all.
+        """
+        req = urllib.request.Request(self.url, headers={"Range": "bytes=0-0"})
         with urllib.request.urlopen(req, timeout=self.timeout) as r:
-            n = r.headers.get("Content-Length")
-            accepts = (r.headers.get("Accept-Ranges") or "").lower()
-        if n is None:
-            raise SystemExit("server did not report Content-Length — cannot range-read")
-        if "bytes" not in accepts:
-            # Not fatal: many servers omit the header but still honour Range. Verified below.
-            print("  note: server did not advertise Accept-Ranges; testing a range anyway")
-        return int(n)
+            if r.status != 206:
+                raise SystemExit(
+                    f"server returned {r.status}, not 206 Partial Content — this URL does not "
+                    f"support range requests, so the whole archive must be downloaded")
+            cr = r.headers.get("Content-Range", "")
+        m = re.search(r"/(\d+)\s*$", cr)
+        if not m:
+            raise SystemExit(f"could not read total size from Content-Range: {cr!r}")
+        return int(m.group(1))
 
     def readable(self):
         return True
@@ -90,6 +101,47 @@ class HTTPRangeFile(io.RawIOBase):
             data = r.read()
         self._pos += len(data)
         return data
+
+
+def _stream_member(f, z, info, dst):
+    """Fetch one member with ONE ranged request, decompressing as it arrives.
+
+    zipfile's own reader pulls through the file object in small chunks, and every chunk here
+    is a separate HTTP round trip — measured at 3.5 MB/s against 15.3 MB/s for a single large
+    request, so roughly a 4x tax purely in latency. A member is a contiguous byte range in the
+    archive, so it can be fetched as one stream and inflated on the fly.
+
+    The compressed data does not start at `header_offset`: a local file header sits there,
+    30 bytes plus the filename and extra field whose lengths are in that header. Those lengths
+    can differ from the central directory's, which is why they are read from the local header
+    rather than taken from `info`.
+    """
+    f.seek(info.header_offset)
+    hdr = f.read(30)
+    if hdr[:4] != b"PK\x03\x04":
+        raise SystemExit(f"bad local header for {info.filename}")
+    name_len = int.from_bytes(hdr[26:28], "little")
+    extra_len = int.from_bytes(hdr[28:30], "little")
+    start = info.header_offset + 30 + name_len + extra_len
+    end = start + info.compress_size - 1
+
+    req = urllib.request.Request(f.url, headers={"Range": f"bytes={start}-{end}"})
+    dec = zlib.decompressobj(-15) if info.compress_type == zipfile.ZIP_DEFLATED else None
+    done = 0
+    with urllib.request.urlopen(req, timeout=f.timeout) as r, open(dst, "wb") as out:
+        if r.status != 206:
+            raise SystemExit(f"expected 206 for member range, got {r.status}")
+        while True:
+            buf = r.read(4 << 20)
+            if not buf:
+                break
+            out.write(dec.decompress(buf) if dec else buf)
+            done += len(buf)
+        if dec:
+            out.write(dec.flush())
+    got = os.path.getsize(dst)
+    if got != info.file_size:
+        raise SystemExit(f"{info.filename}: wrote {got} bytes, expected {info.file_size}")
 
 
 def human(n):
@@ -145,13 +197,8 @@ def main():
             print(f"  skip (have)  {i.filename}")
             continue
         os.makedirs(os.path.dirname(dst) or ".", exist_ok=True)
-        print(f"  {human(i.file_size):>10}  {i.filename}")
-        with z.open(i) as src, open(dst, "wb") as out:
-            while True:
-                chunk = src.read(8 << 20)
-                if not chunk:
-                    break
-                out.write(chunk)
+        print(f"  {human(i.file_size):>10}  {i.filename}", flush=True)
+        _stream_member(f, z, i, dst)
     print(f"\ndone -> {a.out}")
 
 
