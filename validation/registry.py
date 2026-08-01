@@ -533,6 +533,35 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "matchers_on_cohort",
+        "title": "Which matcher works on LL477 H-DAB serial sections",
+        "category": "registration",
+        "claim": "LoFTR is the only one of five matchers that produces usable "
+                 "correspondences on the target cohort; the alternatives either find nothing "
+                 "or find mostly-wrong matches.",
+        "purpose": "Two tests per pair. A: warp one real section by a known transform and "
+                   "match it against itself, so accuracy and blunder rate are exact on this "
+                   "tissue. B: the real CD8/TIM-3 cross-stain pair, scored on coverage and "
+                   "residual contamination against a robust similarity.",
+        "why": "The ANHIR matcher benchmark found DISK+LightGlue 6x cleaner than LoFTR and it "
+               "does NOT transfer — on LL477 DISK matches 0-35 where LoFTR gets 77-632. A "
+               "benchmark on the wrong tissue answers the wrong question, and the cohort "
+               "every disputed number comes from is this one.",
+        "datasets": [],
+        "assumptions": "LL477 at 0.7519 um/px, downscaled to the 800 px working size "
+                       "certification uses; gross = residual over 15 um.",
+        "limitations": "Three pairs, one specimen. Test A cannot see cross-stain difficulty "
+                       "by construction — that is exactly why test B decides.",
+        "interpretation": "Read column B. A matcher that sails through A and dies in B "
+                          "handles the texture but cannot bridge two stains, which is the "
+                          "whole problem.",
+        "expected": "Synthetic: every matcher except SIFT is sub-micron with 0 % gross. Real: "
+                    "LoFTR 144/77/632 matches at 8-22 % gross; DISK 0/0/35; SIFT 0/0/0; "
+                    "DeDoDe 633/130/3019 but 37-67 % gross; KeyNet ~90 at 100 % gross.",
+        "runner": {"kind": "script", "script": "validate_matchers_on_cohort.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "matcher_blunders",
         "title": "Matcher blunder rate vs expert landmarks — LoFTR, DISK+LightGlue, SIFT",
         "category": "registration",

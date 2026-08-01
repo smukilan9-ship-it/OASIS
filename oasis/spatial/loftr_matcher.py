@@ -389,7 +389,7 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                       provisional_matrix=None, fallback_ref_lm=None, fallback_mov_lm=None,
                       weights="outdoor", tol_um=4.0, min_matches=8, work_max_dim=800,
                       return_correspondences=False, fle_fast=True, loftr_kw=None,
-                      matcher="auto"):
+                      matcher="loftr"):
     """Certify a user-drawn ROI by a LOCAL rigid fit from LoFTR correspondences inside it.
 
     THE WHOLE POINT. Serial-section deformation is smooth, so a similarity fit CONFINED to a
@@ -451,10 +451,13 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     # `loftr_kw` reaches the matcher's own knobs (e.g. local_k=0 to reproduce the pre-
     # local-smoothness selection) so a validation run can A/B the filter through the real
     # certification path instead of a reimplementation of it.
-    # DISPATCHED, not hard-wired to LoFTR. DISK+LightGlue is primary (6x fewer blunders at
-    # equal expert-landmark accuracy, Wilcoxon p = 0.011 over 20 ANHIR pairs) with LoFTR as
-    # the fallback for the cross-modal pairs where a detector finds nothing — see
-    # oasis/spatial/sparse_matcher.py. `matcher` forces one arm, which is what the A/B uses.
+    # DISPATCHED, and the default is LoFTR because it is the only matcher that works on the
+    # target cohort. validate_matchers_on_cohort.py benchmarked five on LL477 both ways:
+    # against a synthetic warp (exact truth, same tissue) EVERY matcher is sub-micron with no
+    # gross errors, so they all handle spindle-cell H-DAB texture. On the REAL cross-stain
+    # pairs only LoFTR survives — DISK and SIFT return 0 matches, DeDoDe returns thousands of
+    # which 37-67 % are gross, KeyNet returns ~90 of which 100 % are gross. `matcher="disk"`
+    # or "auto" remain reachable for cohorts like ANHIR where DISK is measurably cleaner.
     from oasis.spatial.sparse_matcher import correspondences as _match
     c = _match(small_r, small_m, pixel_size_um=px_work, matcher=matcher,
                weights=weights, tol_um=tol_um, **(loftr_kw or {}))
