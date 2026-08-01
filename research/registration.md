@@ -1,6 +1,12 @@
 # registration.md — the FLE problem
 
-**Status: OPEN — but the original diagnosis is REFUTED. Phase A ran; see § 11.**
+**Status: RESOLVED. The FLE was correct, the attribution was correct, and the gate was right
+to refuse. Read § 11.4a and § 11.4b; everything before them is the route to that answer.**
+
+The residual is a real, spatially continuous deformation field — 2 % of its variance is
+random, Moran's I is +0.60/+0.39 at p ≤ 0.001, and three independent methods put FLE at
+0.2–0.4 µm. What remains is engineering (§ 11.5): propose a certifiable window size from the
+field's spatial range instead of refusing whole fields, and fix Phase C's reporting.
 
 Companion to `research/ihc.md` § 3.5 (the gate), § 7.1 (VALIS/ANHIR benchmark) and § 12.4
 (where this was found). Read § 3.5 first — the gate's design is not restated here.
@@ -9,14 +15,18 @@ Companion to `research/ihc.md` § 3.5 (the gate), § 7.1 (VALIS/ANHIR benchmark)
 attributes matcher localisation error to tissue deformation, because FLE is estimated by a
 method that measures precision rather than accuracy."* Phase A measured LoFTR's localisation
 error against a warp we chose and got **≈0.2 µm** — essentially the value the app already
-ships. The FLE is not the defect. §§ 1–4 stand as recorded; § 5's explanation of them does
-not. What survives is § 4: the gate compares a 5 µm threshold against an upper confidence
-bound on a p90, and it is still true that every cell-error number on H-DAB is an upper bound
-of unknown tightness.
+ships. Then the variogram of the real pair's residuals put **98 % of the variance in a
+spatially structured field**, confirming the deformation the gate had booked. The FLE was not
+the defect and neither was the attribution.
 
-**Read § 11 before §§ 5–7.** Sections 5–7 are kept verbatim because they are the reasoning
-that led to the experiment, and the experiment is only interpretable next to them — but their
-conclusions are superseded.
+**The standing claim that "every cell-error number on H-DAB is an upper bound of unknown
+tightness" is withdrawn.** The tightness is now known: FLE 0.2–0.4 µm against a 4 µm
+deformation, so the cell-error numbers are dominated by a term that has been independently
+verified to be real.
+
+**Read §§ 11.4a–11.4b before §§ 5–7.** Sections 5–7 are kept verbatim because they are the
+reasoning that led to the experiments, and the experiments are only interpretable next to
+them — but their conclusions are superseded.
 
 ---
 
@@ -414,20 +424,117 @@ budget is double-counting: `transform_prediction_error` was **0.091 µm** at n=5
 similarity fitted from 59 noisy correspondences is accurate even when each one is noisy, and
 charging the full per-match scatter to a systematic cell displacement is wrong.
 
+### 11.4a RESOLVED — the residuals are a real deformation field
+
+`validation/validate_residual_origin.py`. Both experiments of § 11.4 ran on the disputed ROI,
+after reproducing it exactly (n = 59, `fit_residual` 4.144, `landmark_noise` 4.073 — the
+recorded values to three decimals, so this is the thing under dispute and not a lookalike).
+
+**Hypothesis (1), filter truncation — refuted.** Sweeping `tol_um`:
+
+| `tol_um` | n | median residual | σ_fit | med/tol | raw → cycle → scale → local |
+|---|---|---|---|---|---|
+| 1 | — | *fewer than 8 matches* | | | |
+| 2 | 15 | 2.468 µm | 2.352 | 1.23 | 495 → 194 → 17 → 16 |
+| 3 | 43 | 4.205 µm | 4.191 | 1.40 | 495 → 301 → 49 → 46 |
+| **4 (shipped)** | **59** | **4.144 µm** | **4.073** | 1.04 | 495 → 365 → 72 → 65 |
+| 6 | 102 | 3.915 µm | 4.268 | 0.65 | 495 → 403 → 121 → 111 |
+| 8 | 124 | 4.165 µm | 4.627 | 0.52 | 495 → 418 → 154 → 136 |
+| 12 | 153 | 5.732 µm | 5.406 | 0.48 | 495 → 424 → 190 → 169 |
+
+The median is **flat at ~4 µm across tol 3→8 while n triples** (43 → 124). Under truncation
+`med/tol` would be roughly constant; instead it falls by 2.7×. The 4.14 µm is a property of
+the pair. (`tol_um = 2` *does* buy `LOCALLY_CERTIFIED` at σ_fit 2.35 — by keeping 15 of 153
+matches, i.e. by selecting the region's most-agreeing subset. That is the circularity this
+module exists to avoid, and it is why the tolerance must not be tuned on the verdict.)
+
+**Hypotheses (2) vs (3) — decisively (3).** Semivariogram of the 59 residual vectors:
+
+| lag | 100 | 325 | 461 | 572 | 704 | 801 | 896 | 1075 µm |
+|---|---|---|---|---|---|---|---|---|
+| γ | 11.6 | 31.8 | 48.6 | 49.7 | 41.7 | 31.6 | 17.3 | 26.4 |
+
+γ rises steeply with separation — the hallmark of a spatially continuous field. (The fall
+beyond ~570 µm is the ordinary detrending artefact: these are *post*-fit residuals, so the
+similarity has already absorbed the global linear component. That biases the test **against**
+finding structure, and structure was found anyway.)
+
+```
+sill                    31.889          (√(sill/2) = 3.99 µm, i.e. σ_fit as expected)
+nugget (γ → 0)           0.668
+nugget / sill            0.021           only 2 % of the variance is spatially random
+Moran's I  dx  +0.5959   dy  +0.3907     null −0.0172, permutation p ≤ 0.001 both
+```
+
+**Variogram decomposition of σ_fit — the split the budget needs, read off the real pair:**
+
+```
+random (nugget)      -> FLE  0.409 µm   (combined 0.578)
+structured           -> deformation  3.951 µm
+```
+
+**The 0.409 µm is the important number.** It is an entirely independent estimate of FLE —
+from the spatial statistics of the real CD8↔TIM-3 pair, with no synthetic warp anywhere — and
+it lands next to Phase A's 0.224 µm and the shipped 0.199 µm. Three methods, one answer:
+**FLE on this material is a few tenths of a micron.** Hypothesis (2), serial-section
+correspondence ambiguity inflating FLE to ~2.9 µm, is dead; had it been true the nugget would
+have carried most of the variance and it carries 2 %.
+
+### 11.4b So the gate is right — and this is what closes the file
+
+`σ_fit² = 2·FLE² + deformation²` with FLE ≈ 0.2–0.4 µm gives deformation ≈ 3.95–4.06 µm. That
+is exactly what the gate computed. **The attribution was correct all along.** This tissue
+genuinely deforms by ~4 µm across a 1299 µm window, and no similarity transform can align it
+better — so a ≤5 µm cell-error claim over that whole window is not available, and refusing it
+is the right answer, not a calibration failure.
+
+Note this stands **without** § 4's stacking argument: the p90 residual *point estimate* is
+7.57 µm, already past the 5 µm threshold before any confidence bound is applied. § 4's
+observation (that the ×1.83 quantile and the ×1.69 bound multiply against a threshold that
+reads like a point estimate) remains a fair criticism of how strict the gate is *in general*,
+but it is not what refused this ROI.
+
+**And it retro-justifies the sub-ROI rescue.** A spatially continuous deformation field means
+a smaller window contains less of it — precisely what `certify_local_roi`'s docstring claims
+and what the ANHIR mammary 335 → 117 µm measurement showed. Certifying a 32 % sub-window at
+3.1 µm is therefore scientifically sound rather than a residual-chasing artefact. What is
+*not* sound is choosing that window by which landmarks had small residuals, and reporting the
+drawn area beside the rescued window's error (§ 11.5).
+
+One thing this does **not** license: § 3 read the Rayleigh p90/median 1.83 as proof of
+localisation noise. That reading was wrong. A smooth field sampled at scattered points
+produces a residual magnitude distribution that can look Rayleigh while being strongly
+autocorrelated — the marginal distribution and the spatial structure are different questions,
+and only the second one distinguishes noise from deformation.
+
 ### 11.5 What Phase B should now be
 
-Not "re-derive the gate with the measured FLE" — that changes nothing (§ 11.3). Instead:
+Not "re-derive the gate with the measured FLE" — that changes nothing (§ 11.3). Items 1 and 2
+below are **done** (§ 11.4a); what remains is real engineering, not calibration.
 
-1. The `tol_um` sweep of § 11.4(1). One pair, minutes.
-2. The residual-autocorrelation test of § 11.4. Same pair, same 59 points.
-3. Only then, § 4's surviving criticism: the gate compares 5 µm against an upper confidence
-   bound on a p90 (×1.83 then ×1.69), which demands a median residual ≤1.6 µm ≈ 2 px — 2–4×
-   better than the best published automatic histology registration. Decide the statistic
-   explicitly, for a *bound* rather than for a point estimate, and record why.
+1. ~~The `tol_um` sweep.~~ Done — refuted.
+2. ~~The residual-autocorrelation test.~~ Done — the field is structured; the gate is right.
+3. § 4's surviving criticism, now the only calibration question left: the gate compares 5 µm
+   against an upper confidence bound on a p90 (×1.83 then ×1.69), which demands a median
+   residual ≤1.6 µm ≈ 2 px — 2–4× better than the best published automatic histology
+   registration. It did **not** refuse the disputed ROI (the point estimate already fails),
+   but it will refuse marginal ones. Decide the statistic explicitly, for a *bound* rather
+   than a point estimate, and record why.
+4. **New, and the one with real value for users: derive the certifiable window size from the
+   variogram.** The deformation field is spatially continuous, so there is some window
+   diameter at which any given pair certifies. `roi_certification_neighbourhood.py` already
+   sweeps window size; pair it with the variogram range so the app can *propose* a window
+   instead of shrinking one by residual-chasing. This turns "RADIUS_LIMITED, sorry" into
+   "certifiable below ~N µm", which is an answer a biologist can use.
+5. Re-run the 84-pair CD8/TIM-3 set with (4). The original symptom — zero of 84 certifying —
+   is now expected rather than mysterious: they were all being asked to certify whole fields
+   carrying ~4 µm of real deformation.
 
 Phase C's reporting bugs (the drawn area shown beside the rescued window's error; a blank FLE
 on a certified region; `auto_certify_regions` never re-certifying with a measured FLE) are
-untouched by any of this and are still real.
+untouched by any of this and are still real — and § 11.4b makes the first one worse, not
+better: now that the rescue is known to be scientifically justified, showing the wrong area
+next to its error is the only thing standing between it and being defensible in a paper.
 
 ### 11.6 Limits of this result — stated plainly
 

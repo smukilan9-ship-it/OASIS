@@ -533,6 +533,39 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "residual_origin",
+        "title": "Origin of the certification residual — filter, noise, or deformation",
+        "category": "registration",
+        "claim": "The residual the gate books as deformation IS deformation: a spatially "
+                 "continuous displacement field, not an artefact of the correspondence "
+                 "filters and not random localisation error.",
+        "purpose": "On the real LL477 CD8/TIM-3 pair, reproduce the disputed certification "
+                   "and then (a) sweep the correspondence filters' admission tolerance "
+                   "tol_um to test whether the residual is simply what we admit, and (b) "
+                   "measure the spatial structure of the residual vectors by semivariogram "
+                   "and Moran's I with a permutation null.",
+        "why": "cell_error_budget charges the residual to a systematic cell displacement. "
+               "That is correct only if the residual is spatially structured. If it were "
+               "random, a similarity fitted from n correspondences would average it away "
+               "(tre_pred_p90 = 0.091 µm at n=59) and the budget would double-count. The "
+               "variogram nugget also yields FLE independently of any synthetic warp.",
+        "datasets": [],
+        "assumptions": "Local LL477 pair at 0.7519 µm/px; the ROI of research/registration.md "
+                       "§ 9; residuals measured after the local similarity fit.",
+        "limitations": "Post-fit residuals have had the global linear component absorbed, "
+                       "which biases both tests AGAINST detecting structure — conservative "
+                       "in the direction that matters. One pair.",
+        "interpretation": "PASS covers the reproduction only (n=59, fit_residual 4.144, "
+                          "landmark_noise 4.073); if that fails, nothing else is about the "
+                          "disputed ROI. The structure measurements are reported, not "
+                          "asserted.",
+        "expected": "nugget/sill ≈ 0.02 (2 % random), Moran's I +0.60/+0.39 at p ≤ 0.001, "
+                    "variogram FLE ≈ 0.41 µm and deformation ≈ 3.95 µm — i.e. the gate's "
+                    "attribution is correct.",
+        "runner": {"kind": "script", "script": "validate_residual_origin.py"},
+        "runtime_tier": "short", "external_deps": [],
+    },
+    {
         "id": "spatstat_crossval",
         "title": "Cross-K agreement with R spatstat",
         "category": "registration",

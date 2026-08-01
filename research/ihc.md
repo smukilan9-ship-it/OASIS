@@ -1279,13 +1279,59 @@ residual variance. So `loftr_fle` measuring precision rather than accuracy is a 
 about the method that does not matter here: on this tissue LoFTR's precision and its accuracy
 are both sub-micron.
 
-The 4.07 µm is therefore real, and the open question is what it is. `registration.md` § 11.4
-lists the three live hypotheses (the `tol_um = 4.0` filter tolerance setting the scale, which
-is one cheap experiment away; serial-section correspondence ambiguity; genuine short-wavelength
-deformation) and the spatial-autocorrelation test that separates the last two. **§ 12.4's
-"standing consequence" paragraph still holds** — the certification numbers are still upper
-bounds — but not for the reason § 12.4 gives. What survives of § 12.4 is the arithmetic: the
-gate compares 5 µm against an upper confidence bound on a p90.
+### 12.4b The residual is a real deformation field, and the gate was right
+
+`validation/validate_residual_origin.py` reproduced the disputed certification exactly (n = 59,
+`fit_residual` 4.144, `landmark_noise` 4.073) and then asked what the residual is.
+
+**It is not the filter tolerance.** Sweeping `tol_um` 2 → 12, the median residual is flat at
+~4 µm across 3 → 8 while n triples (43 → 124); `med/tol` falls 2.7×, where truncation would
+hold it constant. (`tol_um = 2` does certify — by keeping 15 of 153 matches, i.e. by selecting
+the most-agreeing subset. That is the circularity the matcher module exists to avoid, and it
+is why the tolerance must never be tuned against the verdict.)
+
+**It is a spatially continuous field.** The semivariogram of the 59 residual vectors rises from
+γ = 11.6 at 100 µm separation to ~49 at 570 µm:
+
+```
+sill 31.889   nugget 0.668   nugget/sill 0.021     only 2 % of the variance is random
+Moran's I   dx +0.5959   dy +0.3907   null −0.0172, permutation p ≤ 0.001
+```
+
+Both tests are biased *against* this conclusion — the residuals are post-fit, so the similarity
+has already absorbed the global linear component — and it holds anyway.
+
+**Variogram decomposition of σ_fit, on the real pair, with no synthetic warp anywhere:**
+
+```
+random (nugget)   -> FLE 0.409 µm      structured -> deformation 3.951 µm
+```
+
+0.409 µm is a third independent estimate of FLE, next to Phase A's 0.224 and the shipped 0.199.
+`σ_fit² = 2·FLE² + deformation²` then gives deformation ≈ 3.95–4.06 µm — **exactly what the
+gate computed.** The tissue genuinely deforms ~4 µm across a 1299 µm window; no similarity can
+align it better; refusing a ≤5 µm cell-error claim over that window is correct. Note this holds
+without § 12.4's stacking argument: the p90 residual *point estimate* is 7.57 µm, already past
+5 µm before any confidence bound.
+
+**§ 12.4's "standing consequence" paragraph is withdrawn.** The certification numbers are not
+upper bounds of unknown tightness; the tightness is known, and the dominant term has been
+independently verified to be real. What survives of § 12.4 is the narrower point that the
+threshold is applied to an upper bound on a p90 and so is stricter than it reads — true, but
+not what refused this ROI.
+
+**Two consequences.** (i) The sub-ROI rescue is retro-justified: a spatially continuous field
+means a smaller window carries less of it, so certifying a 32 % sub-window at 3.1 µm is sound
+— though choosing that window by which landmarks had small residuals is not, and the UI must
+stop reporting the drawn area beside the rescued window's error. (ii) § 3's reading of the
+Rayleigh p90/median as proof of localisation noise was **wrong**: a smooth field sampled at
+scattered points gives a Rayleigh-looking magnitude distribution while being strongly
+autocorrelated. The marginal distribution and the spatial structure are different questions,
+and only the second separates noise from deformation.
+
+The useful next step is no longer calibration but a feature: derive the certifiable window size
+from the field's spatial range, so the app answers "certifiable below ~N µm" instead of
+"RADIUS_LIMITED". `registration.md` § 11.5.
 
 ### 12.5 § 8 contradicts the shipped behaviour — unresolved
 

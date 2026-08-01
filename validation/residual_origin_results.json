@@ -1,0 +1,224 @@
+{
+  "ref": "/Users/mukilan/Desktop/cd8_input/LL477_CD8_x10_1.tif",
+  "mov": "/Users/mukilan/Desktop/tim3 input/LL477_Tim3_x10_1.tif",
+  "pixel_size_um": 0.7519,
+  "px_thumbnail_um": 0.7519,
+  "roi_span_um": 1299.3,
+  "reproduction": {
+    "expected": {
+      "n": 59,
+      "fit_residual_um": 4.144,
+      "landmark_noise_um": 4.073
+    },
+    "got": {
+      "n": 59,
+      "fit_residual_um": 4.144,
+      "landmark_noise_um": 4.073
+    },
+    "verdict": "RADIUS_LIMITED",
+    "fle_um_loftr": 0.1992,
+    "cell_error_p90_um": 12.816,
+    "tre_pred_p90_um": 0.091
+  },
+  "tol_sweep": [
+    {
+      "tol_um": 1.0,
+      "verdict": "NO_MATCHES",
+      "n": null,
+      "fit_residual_um": null,
+      "landmark_noise_um": null,
+      "funnel": null
+    },
+    {
+      "tol_um": 2.0,
+      "verdict": "LOCALLY_CERTIFIED",
+      "n": 15,
+      "fit_residual_um": 2.468,
+      "landmark_noise_um": 2.352,
+      "funnel": {
+        "n_raw": 495,
+        "n_after_cycle": 194,
+        "n_after_scale": 17,
+        "n_after_local": 16
+      },
+      "res_med_um": 2.4675,
+      "res_p90_um": 4.6059,
+      "res_max_um": 5.5597,
+      "med_over_tol": 1.234
+    },
+    {
+      "tol_um": 3.0,
+      "verdict": "LOCALLY_CERTIFIED",
+      "n": 43,
+      "fit_residual_um": 4.205,
+      "landmark_noise_um": 4.191,
+      "funnel": {
+        "n_raw": 495,
+        "n_after_cycle": 301,
+        "n_after_scale": 49,
+        "n_after_local": 46
+      },
+      "res_med_um": 4.2046,
+      "res_p90_um": 9.1358,
+      "res_max_um": 13.6764,
+      "med_over_tol": 1.402
+    },
+    {
+      "tol_um": 4.0,
+      "verdict": "LOCALLY_CERTIFIED",
+      "n": 59,
+      "fit_residual_um": 4.144,
+      "landmark_noise_um": 4.073,
+      "funnel": {
+        "n_raw": 495,
+        "n_after_cycle": 365,
+        "n_after_scale": 72,
+        "n_after_local": 65
+      },
+      "res_med_um": 4.1437,
+      "res_p90_um": 7.5715,
+      "res_max_um": 14.6677,
+      "med_over_tol": 1.036
+    },
+    {
+      "tol_um": 6.0,
+      "verdict": "LOCALLY_CERTIFIED",
+      "n": 102,
+      "fit_residual_um": 3.915,
+      "landmark_noise_um": 4.268,
+      "funnel": {
+        "n_raw": 495,
+        "n_after_cycle": 403,
+        "n_after_scale": 121,
+        "n_after_local": 111
+      },
+      "res_med_um": 3.915,
+      "res_p90_um": 8.5405,
+      "res_max_um": 20.6063,
+      "med_over_tol": 0.652
+    },
+    {
+      "tol_um": 8.0,
+      "verdict": "LOCALLY_CERTIFIED",
+      "n": 124,
+      "fit_residual_um": 4.165,
+      "landmark_noise_um": 4.627,
+      "funnel": {
+        "n_raw": 495,
+        "n_after_cycle": 418,
+        "n_after_scale": 154,
+        "n_after_local": 136
+      },
+      "res_med_um": 4.1651,
+      "res_p90_um": 11.417,
+      "res_max_um": 20.0593,
+      "med_over_tol": 0.521
+    },
+    {
+      "tol_um": 12.0,
+      "verdict": "LOCALLY_CERTIFIED",
+      "n": 153,
+      "fit_residual_um": 5.732,
+      "landmark_noise_um": 5.406,
+      "funnel": {
+        "n_raw": 495,
+        "n_after_cycle": 424,
+        "n_after_scale": 190,
+        "n_after_local": 169
+      },
+      "res_med_um": 5.7317,
+      "res_p90_um": 12.3282,
+      "res_max_um": 17.7099,
+      "med_over_tol": 0.478
+    }
+  ],
+  "tol_sweep_reading": {
+    "pearson_r_median_vs_tol": 0.834,
+    "med_over_tol_range": [
+      0.478,
+      1.402
+    ],
+    "median_um_range": [
+      2.467,
+      5.732
+    ],
+    "n_range": [
+      15,
+      153
+    ],
+    "reading": "residual does NOT simply track the tolerance - it is a property of the pair, not of the filter"
+  },
+  "spatial_structure": {
+    "n": 59,
+    "variogram": {
+      "bins": [
+        {
+          "h_um": 100.48,
+          "gamma": 11.577,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 324.94,
+          "gamma": 31.8199,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 460.49,
+          "gamma": 48.6122,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 572.3,
+          "gamma": 49.7239,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 704.37,
+          "gamma": 41.6612,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 800.47,
+          "gamma": 31.5812,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 896.39,
+          "gamma": 17.3025,
+          "n_pairs": 213
+        },
+        {
+          "h_um": 1075.43,
+          "gamma": 26.422,
+          "n_pairs": 213
+        }
+      ],
+      "sill": 31.889,
+      "nugget": 0.668,
+      "nugget_over_sill": 0.021
+    },
+    "morans_i_dx": {
+      "I": 0.5959,
+      "expected_under_null": -0.0172,
+      "p_permutation": 0.001,
+      "k": 6,
+      "null_mean": -0.0136,
+      "null_sd": 0.0666
+    },
+    "morans_i_dy": {
+      "I": 0.3907,
+      "expected_under_null": -0.0172,
+      "p_permutation": 0.001,
+      "k": 6,
+      "null_mean": -0.0157,
+      "null_sd": 0.0658
+    },
+    "decomposition": {
+      "fle_combined_um": 0.5779,
+      "fle_um": 0.4087,
+      "deformation_um": 3.951,
+      "random_frac_of_variance": 0.021
+    }
+  },
+  "controls_failed": []
+}
