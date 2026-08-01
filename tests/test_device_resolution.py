@@ -117,14 +117,22 @@ def test_nonsense_is_treated_as_a_preference_not_an_error(hardware):
 # ── the operator has to be able to see the substitution ──────────────────────────────
 def test_the_banner_says_when_it_did_not_get_what_was_asked(hardware):
     hardware(cuda=True, mps=False)
-    msg = dev.describe_device("mps")
-    assert "cuda" in msg and "mps" in msg, msg
+    msg = dev.describe_device("mps").lower()
+    assert "cuda" in msg and "mps" in msg, msg    # both the substitute and the request
 
     hardware(cuda=False, mps=True)
-    assert dev.describe_device("mps") == "mps"       # nothing to explain
+    assert dev.describe_device("mps") == "Apple Silicon GPU (MPS)"   # nothing to explain
 
     hardware(cuda=True, mps=False)
     assert "auto-detected" in dev.describe_device("auto")
+
+
+def test_the_label_is_readable_and_keeps_the_card_number(hardware):
+    """This string lands under a dropdown a pathologist reads, not only in a log."""
+    assert dev.device_label("cuda") == "NVIDIA GPU (CUDA)"
+    assert "card 1" in dev.device_label("cuda:1")
+    assert dev.device_label("mps") == "Apple Silicon GPU (MPS)"
+    assert dev.device_label("cpu") == "CPU"
 
 
 # ── the pipeline's own entry point uses this policy ──────────────────────────────────

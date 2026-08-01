@@ -85,16 +85,34 @@ def resolve_device(name=None):
     return "cpu"
 
 
-def describe_device(name=None):
-    """A log line: what was asked for, what was chosen, and why they differ.
+def device_label(dev):
+    """"NVIDIA GPU (CUDA)" for "cuda:1" — the wording the Settings dropdown already uses.
 
-    Printed at the top of a run so an operator can see the substitution happen instead of
-    discovering it from the wall-clock time.
+    The raw torch string still goes into the summary provenance (`segmenter_device`); this
+    is for the two places a person reads it.
+    """
+    d = str(dev or "").strip().lower()
+    if d.startswith("cuda"):
+        n = d.split(":", 1)[1] if ":" in d else None
+        return f"NVIDIA GPU (CUDA{', card ' + n if n else ''})"
+    if d == "mps":
+        return "Apple Silicon GPU (MPS)"
+    if d == "cpu":
+        return "CPU"
+    return d or "unknown"
+
+
+def describe_device(name=None):
+    """What was asked for, what was chosen, and why they differ.
+
+    Shown in the run banner and under the Settings dropdown, so an operator sees the
+    substitution happen instead of inferring it from the wall-clock time.
     """
     want = str(name or "auto").strip().lower()
     got = resolve_device(name)
     if want in ("auto", ""):
-        return f"{got} (auto-detected)"
+        return f"{device_label(got)}, auto-detected"
     if got == want:
-        return got
-    return f"{got} (requested {want}, not available on this machine)"
+        return device_label(got)
+    return (f"{device_label(got)} — {device_label(want)} was requested but is not "
+            f"available on this machine")
