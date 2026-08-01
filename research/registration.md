@@ -1,14 +1,22 @@
 # registration.md — the FLE problem
 
-**Status: OPEN. This blocks every certification claim OASIS makes on H-DAB.**
+**Status: OPEN — but the original diagnosis is REFUTED. Phase A ran; see § 11.**
 
 Companion to `research/ihc.md` § 3.5 (the gate), § 7.1 (VALIS/ANHIR benchmark) and § 12.4
 (where this was found). Read § 3.5 first — the gate's design is not restated here.
 
-**One-line summary.** The certification gate attributes matcher localisation error to tissue
-deformation, because FLE is estimated by a method that measures precision rather than
-accuracy. The consequence is that well-registered regions fail, and every cell-error number
-the tool has produced on H-DAB is an upper bound of unknown tightness.
+**One-line summary — as first written, and now known to be wrong.** *"The certification gate
+attributes matcher localisation error to tissue deformation, because FLE is estimated by a
+method that measures precision rather than accuracy."* Phase A measured LoFTR's localisation
+error against a warp we chose and got **≈0.2 µm** — essentially the value the app already
+ships. The FLE is not the defect. §§ 1–4 stand as recorded; § 5's explanation of them does
+not. What survives is § 4: the gate compares a 5 µm threshold against an upper confidence
+bound on a p90, and it is still true that every cell-error number on H-DAB is an upper bound
+of unknown tightness.
+
+**Read § 11 before §§ 5–7.** Sections 5–7 are kept verbatim because they are the reasoning
+that led to the experiment, and the experiment is only interpretable next to them — but their
+conclusions are superseded.
 
 ---
 
@@ -90,7 +98,11 @@ a threshold that reads like it applies to a point estimate.
 `tre_pred_p90_um` was **0.091 µm** at n=59, i.e. the Fitzpatrick–West term is negligible and
 the entire budget is the deformation term.
 
-## 5. Root cause
+## 5. Root cause — REFUTED BY MEASUREMENT (§ 11)
+
+> **This section is wrong and is kept deliberately.** It is the hypothesis Phase A was built
+> to test, and it failed the test: the predicted FLE of ≈2.9 µm is ~15× the measured value.
+> Everything below is the reasoning as it stood before the measurement existed.
 
 ```
 σ_fit² = 2·FLE² + model²          model² = deformation
@@ -127,7 +139,10 @@ realized p90 ratio 0.96/1.03/1.10) and, as § 3.5 states, **never on H-DAB**.
 
 ## 7. Plan — measure FLE against ground truth
 
-### Phase A — build the ground-truth harness *(the unblocking step)*
+> **Phase A is DONE (`c83cfc0`); its result is § 11 and it refutes the premise of Phase B as
+> written below. Phases B–D are kept as planned so the change of direction is legible.**
+
+### Phase A — build the ground-truth harness *(the unblocking step)* — DONE
 
 `validation/validate_loftr_fle_groundtruth.py`.
 
@@ -216,11 +231,18 @@ LoFTR auto-selects CUDA (`loftr_matcher._device`), so a T4 needs no code change;
 the $300 credits are ~850 GPU-hours, far more than the whole plan needs.
 
 **Two things to fix before renting anything:**
-- `run_pipeline.py` does `cfg.setdefault("device", "mps")`, and `_torch_device("mps")` on a
-  CUDA box finds MPS unavailable and returns **"cpu"**. LoFTR would use the GPU while InstanSeg
-  silently would not. Default should be auto → cuda → mps → cpu.
+- ~~`run_pipeline.py` does `cfg.setdefault("device", "mps")`, and `_torch_device("mps")` on a
+  CUDA box finds MPS unavailable and returns **"cpu"**.~~ **FIXED** (`a8a8a75`). Policy now
+  lives in `oasis/common/device.py`: default `auto` → cuda → mps → cpu, a named backend is a
+  preference that falls through to the next accelerator rather than to the CPU, and `cpu`
+  stays an absolute opt-out. The run banner and the Settings tab both state the device chosen.
 - Containerise the headless path first (`run_pipeline.py` imports no pywebview). Needed for the
   cloud run anyway, and it is the reproducibility artefact JOSS/JPI will ask for.
+
+**But note what § 11 does to the case for renting at all.** Phase A ran to completion on a
+laptop CPU in minutes. The experiments it now points to — a `tol_um` sweep on one real pair,
+a spatial-autocorrelation test on 59 residuals — are smaller still. The GPU becomes worth
+paying for at Phase B/D scale (the 84-pair CD8/TIM-3 set, full ANHIR), not before.
 
 ## 9. Reproducing the observation
 
@@ -238,15 +260,193 @@ both:           fit_residual 4.144  landmark_noise 4.073  n 59  tre_pred_p90 0.0
 Residuals: map `corr_mov` through `local_matrix` (**moving → reference** — the codebase
 convention; the other direction gives ~148 µm nonsense) and compare to `corr_ref`.
 
-## 10. Open questions for the next session
+## 10. Open questions — as first written
 
-1. What **is** LoFTR's FLE on H-DAB? Everything else follows. (Phase A)
+1. ~~What **is** LoFTR's FLE on H-DAB? Everything else follows. (Phase A)~~ **ANSWERED: § 11.**
 2. Is the correct gate statistic the p90 point estimate or a bound on it — and at what
-   confidence?
+   confidence? **Still open, and now the main question.**
 3. With a correct FLE, does the sub-ROI rescue still fire, and should it? It is a
    residual-based selection of the analysis window, which § 3.5 already flags as a circularity
-   risk.
+   risk. **Still open.**
 4. Does the 84-pair CD8/TIM-3 set certify once calibrated? If it still does not, the problem is
-   not FLE.
+   not FLE. **The premise is gone — the FLE was already right, so recalibration will not move
+   those 84 pairs. Whatever refused them is what § 11.4 has to identify.**
 5. Does `deformation_detectable=True` / `deformation_is_validated=False` mean anything useful
-   here, or is it another artefact of the same mis-attribution?
+   here, or is it another artefact of the same mis-attribution? **Still open, but it is no
+   longer "the same mis-attribution" — see § 11.4.**
+
+---
+
+## 11. Phase A result — the FLE was right all along
+
+`validation/validate_loftr_fle_groundtruth.py`, commit `c83cfc0`. Registry id
+`loftr_fle_groundtruth`. Full output in `validation/loftr_fle_groundtruth_results.json`.
+
+### 11.1 What was measured
+
+One real H-DAB field (`LL477_CD8_x10_1`, 0.7519 µm/px), densest-tissue crop, warped by a
+transform of our choosing and matched against itself with `loftr_correspondences` at its
+shipped defaults and at certification's own working resolution (`work_max_dim = 800`).
+Because the moving image is *constructed* as `moving(W(X)) = ref(X)`, the partner of every
+reference point is exactly `W(X)` — so for a returned correspondence `(p, q)`, `q − W(p)` is
+its true localisation error. No annotator, no second section, no circularity.
+
+Controls, all passing, and each one guards a failure that would look plausible:
+
+| control | why it exists | result |
+|---|---|---|
+| `cv2.warpAffine` moves content forward by `M` | a direction error inverts every truth while leaving every magnitude believable | mean\|diff\| = 0.0000 grey levels |
+| identity warp returns ≈0 | catches an off-by-one crop, a swapped x/y, a `to_work`/`to_full` slip | n=2213, **median 0.095 µm**, max 0.49 |
+| dense-field inversion converges | if it has not, the B-spline image does not correspond to the warp called truth | round-trip residual 7.1e-3 px |
+
+### 11.2 The numbers
+
+Thirteen known warps at `work_max_dim = 800` — what `certify_local_roi` actually uses. Crop
+1083 µm (this field is 1920×1440 px, too small for the disputed ROI's 1300 µm), tissue 42 %:
+
+| warp | n | median | p90 | p90/med | bias | **FLE (per point)** | gross |
+|---|---|---|---|---|---|---|---|
+| translation 2 µm | 2213 | 0.258 | 0.562 | 2.18 | 0.15 | **0.172** | 0 |
+| translation 5 µm | 2213 | 0.251 | 0.521 | 2.07 | 0.09 | **0.164** | 0 |
+| translation 10 µm | 2185 | 0.302 | 0.504 | 1.67 | 0.26 | **0.171** | 0 |
+| translation 30 µm | 2166 | 0.335 | 0.591 | 1.77 | 0.27 | **0.195** | 0 |
+| rotation 1° | 2041 | 0.388 | 0.692 | 1.78 | 0.03 | **0.230** | 0 |
+| rotation 3° | 2029 | 0.365 | 0.680 | 1.86 | 0.02 | **0.224** | 0 |
+| rotation 10° | 1820 | 0.430 | 0.807 | 1.88 | 0.07 | **0.270** | 0 |
+| scale +2 % | 2013 | 0.381 | 0.691 | 1.81 | 0.02 | **0.229** | 0 |
+| scale −2 % | 1939 | 0.393 | 0.700 | 1.78 | 0.06 | **0.234** | 0 |
+| scale +5 % | 1900 | 0.353 | 0.672 | 1.91 | 0.02 | **0.219** | 0 |
+| scale −5 % | 1928 | 0.382 | 0.702 | 1.84 | 0.08 | **0.231** | 0 |
+| B-spline p90 5 µm | 2213 | 0.346 | 0.617 | 1.78 | 0.04 | **0.205** | 0 |
+| B-spline p90 15 µm | 2092 | 0.380 | 0.679 | 1.79 | 0.02 | **0.228** | 0 |
+
+**Measured FLE: 0.224 µm** (median over the eleven rigid warps; range 0.164–0.270). The
+shipped `loftr_fle` reported **0.199 µm** on the disputed ROI. It was accurate.
+
+Three things the sweep settles beyond the headline:
+
+- **Error does not grow with the warp.** Pearson r between warp magnitude and median error is
+  **−0.07** — flat. That includes the 30 µm translation, where `phase-a-registration-052526`
+  records patch-flow *aliasing*; LoFTR shows none (FLE 0.195 µm, 2166 matches). The error is
+  the matcher's fixed localisation noise, not a function of how hard the transform is.
+- **p90/median = 1.839** against a Rayleigh 1.823, and **zero** gross errors (>25 µm) in any
+  of the thirteen. Pure isotropic noise, no blunder tail.
+- **FLE is closer to a matcher-grid property than a tissue property.** Across a 2× change in
+  working scale the error's coefficient of variation is **0.09 in working pixels vs 0.41 in
+  µm** — i.e. roughly constant at **0.12–0.20 working px**, so its value in µm scales with
+  `px_work`:
+
+  | warp | work_max_dim | px_work | n | median | **FLE µm** | FLE px |
+  |---|---|---|---|---|---|---|
+  | translation 5 µm | 400 | 2.71 µm/px | 444 | 0.797 | 0.456 | 0.168 |
+  | translation 5 µm | 800 | 1.35 µm/px | 2213 | 0.251 | 0.164 | 0.121 |
+  | rotation 3° | 400 | 2.71 µm/px | 374 | 0.877 | 0.527 | 0.195 |
+  | rotation 3° | 800 | 1.35 µm/px | 2029 | 0.365 | 0.224 | 0.166 |
+
+  Only two scales, so read it as a direction rather than a law — but it is the direction that
+  matters, because **the disputed ROI ran at `px_work` = 1.82 µm/px** (a ~1940 px crop into
+  `work_max_dim` 800, r ≈ 0.41), coarser than either row above. At ~0.15 working px that is
+  **FLE ≈ 0.27 µm** there. Reaching 2.88 µm would need `px_work` ≈ 19 µm/px.
+
+  Note also the collapse in **n** at the coarser scale: 2213 → 444. Certification at
+  `work_max_dim` 800 on a large ROI is buying its speed with an order of magnitude of
+  correspondences, which is worth knowing independently of FLE.
+
+Appearance mismatch — moving image restained, defocused, illumination-graded and noised, so
+the two images stop looking like the same slide — barely moves it:
+
+| appearance | n | median | **FLE** |
+|---|---|---|---|
+| matched | 2029 | 0.365 µm | 0.224 µm |
+| DAB density ×0.45 | 2028 | 0.365 µm | 0.224 µm |
+| DAB density ×1.9 | 2025 | 0.366 µm | 0.224 µm |
+| counterstain ×0.6 | 2026 | 0.367 µm | 0.225 µm |
+| defocus σ 1.5 px | 2019 | 0.362 µm | 0.225 µm |
+| illumination ±15 % | 2027 | 0.368 µm | 0.225 µm |
+| sensor noise σ 6 | 2025 | 0.372 µm | 0.226 µm |
+| all of the above | 2022 | 0.394 µm | **0.247 µm** (×1.10, keeping 100 % of matches) |
+
+### 11.3 What that does to the disputed ROI
+
+```
+σ_fit                      4.073 µm     (measured on the real pair, both runs)
+FLE needed to explain it   2.88 µm      = σ_fit / √2
+FLE actually measured      0.224 µm     (0.164–0.270 across 11 rigid warps)
+  … at that ROI's coarser px_work        ≈ 0.27 µm  (extrapolated at ~0.15 working px)
+  … under the worst appearance mismatch  0.247 µm
+```
+
+The gap is **~11×**, and the strongest appearance perturbation this harness can produce closes
+under 1 % of it. Substituting the measured FLE changes the deformation term from 4.0633 µm to
+4.0606 µm: **the FLE explains 1 % of the residual variance.**
+
+So § 5 is dead. `loftr_fle` measuring precision rather than accuracy is a true statement about
+the method that turns out not to matter, because on this tissue LoFTR's precision and its
+accuracy are both sub-micron.
+
+### 11.4 What this leaves — three live hypotheses, in order of cheapness
+
+The 4.07 µm is *real*. Two sections, after the best local similarity fit, genuinely disagree
+by that much per correspondence. Why is now the whole question, and § 3's Rayleigh finding no
+longer implies what it seemed to: a Rayleigh residual is the signature of *isotropic random*
+error, and having ruled the matcher out, the randomness has to come from somewhere else.
+
+1. **The filter tolerance sets the scale.** `tol_um = 4.0` is the admission tolerance of all
+   three correspondence filters, and the observed median residual is **4.14 µm**. That
+   coincidence is close enough to be worth one experiment: sweep `tol_um` ∈ {1, 2, 4, 8} on
+   the real pair and see whether the residual median tracks it. If it does, 4.14 µm is an
+   artefact of what the filters admit, not a property of the tissue — and the whole dispute
+   dissolves. *Cheapest decisive test available; run it first.* Note the confound: tightening
+   `tol_um` also selects, so read the change in **n** alongside the change in residual.
+2. **Serial-section correspondence ambiguity.** The sections are ~4 µm apart in the block, so
+   the "same" vessel wall is a different cross-section and the true partner of a point is
+   genuinely undefined by roughly a nuclear diameter. This *is* fiducial localisation error in
+   the sense the budget means, but it belongs to the specimen, not the matcher, and no
+   single-section harness can produce it — which is exactly the limitation § 11.1's method
+   carries.
+3. **Real short-wavelength deformation**, as the identity currently assumes.
+
+**(2) and (3) are distinguishable, cheaply.** Deformation is a smooth field, so its residuals
+are spatially *correlated*; correspondence ambiguity is spatially *white*. Compute the spatial
+autocorrelation (or a semivariogram) of the 59 residual vectors on the disputed ROI. Correlated
+at some length scale → deformation, and the gate is right to refuse. White → ambiguity, and the
+budget is double-counting: `transform_prediction_error` was **0.091 µm** at n=59, so a
+similarity fitted from 59 noisy correspondences is accurate even when each one is noisy, and
+charging the full per-match scatter to a systematic cell displacement is wrong.
+
+### 11.5 What Phase B should now be
+
+Not "re-derive the gate with the measured FLE" — that changes nothing (§ 11.3). Instead:
+
+1. The `tol_um` sweep of § 11.4(1). One pair, minutes.
+2. The residual-autocorrelation test of § 11.4. Same pair, same 59 points.
+3. Only then, § 4's surviving criticism: the gate compares 5 µm against an upper confidence
+   bound on a p90 (×1.83 then ×1.69), which demands a median residual ≤1.6 µm ≈ 2 px — 2–4×
+   better than the best published automatic histology registration. Decide the statistic
+   explicitly, for a *bound* rather than for a point estimate, and record why.
+
+Phase C's reporting bugs (the drawn area shown beside the rescued window's error; a blank FLE
+on a certified region; `auto_certify_regions` never re-certifying with a measured FLE) are
+untouched by any of this and are still real.
+
+### 11.6 Limits of this result — stated plainly
+
+- It measures the matcher's **floor**. A section matched against a resampled copy of itself
+  has no biological difference to absorb; the real FLE cannot be *smaller* than this, and this
+  harness gives no upper bound on it.
+- One field, one tissue, one magnification. `--image` takes any other.
+- The appearance perturbations are synthetic. A real CD8 → TIM-3 pair differs in ways a
+  restain cannot imitate.
+- The **selection** is the shipped one (cycle + scale + local smoothness). On self-matched
+  images essentially everything survives (2213 of 2213); on the real pair 59 of ~750 did.
+  A heavily-filtered population should be *better* localised, not worse — but this harness has
+  not verified that on a population filtered that hard, which is another reason § 11.4(1)
+  matters.
+- **The harness cannot see a truncation effect, by construction.** All three filters admit
+  disagreement up to `tol_um = 4.0 µm`; the errors measured here are ~0.25 µm, so the
+  tolerance never binds. That is exactly why § 11.4(1) needs the real pair — where the median
+  residual (4.14 µm) sits *at* the tolerance, which is what a truncated distribution looks
+  like. Note the mechanism is plausible and not merely numerological: the filters cap the
+  *pairwise* displacement difference between neighbours, so a population whose true scatter
+  exceeded `tol_um` would be culled back to roughly `tol_um` and its survivors' median would
+  land there regardless of the tissue.

@@ -58,6 +58,8 @@ Run:
     python validation/validate_loftr_fle_groundtruth.py                 # full sweep, ~10 min
     python validation/validate_loftr_fle_groundtruth.py --quick         # controls + one scale
     python validation/validate_loftr_fle_groundtruth.py --image PATH --pixel-size 0.7519
+    python validation/validate_loftr_fle_groundtruth.py --work-dims 400 800 1200 1600
+                                                            # needs a GPU, see run() below
 
 Writes validation/loftr_fle_groundtruth_results.json for Phase B.
 """
@@ -560,7 +562,16 @@ def run(image_path, px, quick=False, work_dims=None, out_json=OUT_JSON):
         warps = [("translation", 5.0), ("rotation", 3.0), ("bspline", 5.0)]
 
     if work_dims is None:
-        work_dims = [CERT_WORK_MAX_DIM] if quick else [400, CERT_WORK_MAX_DIM, 1200, 1600]
+        # 400 and 800 give a 2x lever on px_work (2.71 and 1.35 um/px), which brackets the
+        # disputed ROI's 1.82 and is enough to separate "constant in um" from "constant in
+        # working pixels" -- the only thing this sweep has to decide.
+        #
+        # 1200 and 1600 are deliberately NOT the default. LoFTR's attention is quadratic in
+        # the coarse-grid token count, so a 1440 px crop at work_max_dim=1600 runs the
+        # transformer over (1080/8)^2 = 18k tokens: measured >18 min of CPU without
+        # finishing, at 3.7 GB resident, for three warps. Ask for them explicitly on a
+        # machine with a GPU:  --work-dims 400 800 1200 1600
+        work_dims = [CERT_WORK_MAX_DIM] if quick else [400, CERT_WORK_MAX_DIM]
 
     print(f"\n2. Known warps at work_max_dim={CERT_WORK_MAX_DIM} "
           f"(what certify_local_roi uses)")
@@ -579,7 +590,7 @@ def run(image_path, px, quick=False, work_dims=None, out_json=OUT_JSON):
                   f"{m['err_p90_um']:>7.3f}  {m['rayleigh_ratio']:>7.2f}  "
                   f"{m['bias_um']:>6.2f}  {m['fle_um']:>7.3f}  {m['n_gross']:>5}")
         else:
-            print(f"   {label:>18}  {'--':>4}  {m.get('loftr_msg')}")
+            print(f"   {label:>18}  {'--':>4}  {m.get('loftr_msg')}", flush=True)
         clear_loftr_caches()
 
     print(f"\n3. Scale dependence - is FLE a tissue property (constant um) or a "
@@ -599,10 +610,10 @@ def run(image_path, px, quick=False, work_dims=None, out_json=OUT_JSON):
                 print(f"   {kind + ' ' + format(amount, 'g'):>14} {wd:>7} "
                       f"{m['px_work_um']:>6.2f}  {m['n_used']:>4}  "
                       f"{m['err_med_um']:>7.3f}  {m['err_med_px']:>7.3f}  "
-                      f"{m['fle_um']:>7.3f}  {m['fle_px']:>7.3f}")
+                      f"{m['fle_um']:>7.3f}  {m['fle_px']:>7.3f}", flush=True)
             else:
                 print(f"   {kind + ' ' + format(amount, 'g'):>14} {wd:>7} "
-                      f"{'--':>6}  {m.get('loftr_msg')}")
+                      f"{'--':>6}  {m.get('loftr_msg')}", flush=True)
             clear_loftr_caches()
 
     print("\n4. Appearance mismatch - the term a geometry-only warp cannot see.")
@@ -622,9 +633,9 @@ def run(image_path, px, quick=False, work_dims=None, out_json=OUT_JSON):
         if m.get("n_used"):
             print(f"   {app:>14}  {m['n_used']:>4}  {m['err_med_um']:>7.3f}  "
                   f"{m['err_p90_um']:>7.3f}  {m['rayleigh_ratio']:>7.2f}  "
-                  f"{m['fle_um']:>7.3f}  {m['n_gross']:>5}")
+                  f"{m['fle_um']:>7.3f}  {m['n_gross']:>5}", flush=True)
         else:
-            print(f"   {app:>14}  {'--':>4}  {m.get('loftr_msg')}")
+            print(f"   {app:>14}  {'--':>4}  {m.get('loftr_msg')}", flush=True)
         clear_loftr_caches()
 
     ok_rows = [r for r in rows if r.get("n_used")]

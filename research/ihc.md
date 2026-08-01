@@ -1237,7 +1237,8 @@ it, because it compares a **≤5 µm threshold against an upper confidence bound
 a median residual ≤ **1.6 µm ≈ 2 px**, roughly 2–4× better than the best published automatic
 histology registration.
 
-**Root cause.** `σ_fit² = 2·FLE² + model²` assigns everything not explained by FLE to
+**Root cause — proposed here, and REFUTED the same session; see § 12.4a.**
+`σ_fit² = 2·FLE² + model²` assigns everything not explained by FLE to
 deformation. `loftr_fle` re-localises under image noise, which measures *precision*, not
 *accuracy* — this document already labels it "a conservative lower bound". A lower bound on
 FLE is mechanically an upper bound on deformation. If LoFTR's true FLE on H-DAB is ≈2.9 µm
@@ -1252,6 +1253,39 @@ calibrated on lung + mammary and, as § 3.5 already notes, **never on H-DAB**.
 
 Nothing in the gate's design is loosened in response. The ≤5 µm target is correct for a
 10–20 µm contact claim. What must change is measuring FLE against ground truth.
+
+### 12.4a The FLE was measured, and the § 12.4 root cause is wrong
+
+`validation/validate_loftr_fle_groundtruth.py` (`c83cfc0`) warps a real H-DAB field by a
+transform we choose and matches it against itself, so the partner of every reference point is
+known analytically and `q − W(p)` is the true localisation error. Controls pass: identity warp
+median **0.095 µm**, resample direction verified against the pixels, dense-field inversion
+converged to 7e-3 px.
+
+**Measured FLE: 0.224 µm** — the median over the eleven rigid warps of thirteen, range
+0.164–0.270 — at certification's
+own working resolution, stable under restaining, defocus, illumination gradient and noise
+(worst case ×1.10, no matches lost). The shipped `loftr_fle` reported **0.199 µm**. It was
+accurate. Error does not grow with warp magnitude (Pearson r = −0.07, including the 30 µm
+shift that aliases patch flow), there are no gross errors in any warp, and the residual is
+Rayleigh (p90/median 1.84 against 1.82).
+
+Explaining the 4.073 µm σ_fit would need FLE = **2.88 µm**, about **11×** the measured value —
+and the sweep across working scales rules out the obvious escape. FLE is roughly constant at
+0.12–0.20 *working pixels* (CV 0.09 in px vs 0.41 in µm), so it scales with `px_work`; at the
+disputed ROI's coarser `px_work` of 1.82 µm/px that is ≈0.27 µm, not 2.88. Substituting the
+measured value moves the deformation term from 4.0633 to 4.0606 µm — it explains **1 %** of the
+residual variance. So `loftr_fle` measuring precision rather than accuracy is a true statement
+about the method that does not matter here: on this tissue LoFTR's precision and its accuracy
+are both sub-micron.
+
+The 4.07 µm is therefore real, and the open question is what it is. `registration.md` § 11.4
+lists the three live hypotheses (the `tol_um = 4.0` filter tolerance setting the scale, which
+is one cheap experiment away; serial-section correspondence ambiguity; genuine short-wavelength
+deformation) and the spatial-autocorrelation test that separates the last two. **§ 12.4's
+"standing consequence" paragraph still holds** — the certification numbers are still upper
+bounds — but not for the reason § 12.4 gives. What survives of § 12.4 is the arithmetic: the
+gate compares 5 µm against an upper confidence bound on a p90.
 
 ### 12.5 § 8 contradicts the shipped behaviour — unresolved
 
