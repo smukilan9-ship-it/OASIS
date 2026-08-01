@@ -533,6 +533,40 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "matcher_blunders",
+        "title": "Matcher blunder rate vs expert landmarks — LoFTR, DISK+LightGlue, SIFT",
+        "category": "registration",
+        "claim": "The correspondence engine's weakness on real serial sections is its BLUNDER "
+                 "RATE, not its localisation accuracy, and a learned sparse matcher produces "
+                 "roughly 6x fewer blunders at equal expert-landmark accuracy.",
+        "purpose": "Hand every matcher the same hematoxylin+CLAHE input OASIS would give it, "
+                   "fit a robust similarity from each one's correspondences, and measure "
+                   "(a) the fraction of its own residuals exceeding 5x the median — blunder "
+                   "contamination — and (b) realized TRE at expert landmarks no matcher saw.",
+        "why": "validate_loftr_fle_groundtruth measured 0.22 um localisation error and ZERO "
+               "gross errors, and that was used to argue no better matcher could help. It "
+               "cannot support that: it matches a section against a resampled copy of itself, "
+               "where blunders are nearly impossible by construction. On real LL477 regions "
+               "the max/median residual ratio is 6.7-8.8 against ~2.5 for noise, and because "
+               "the gate reads a p90 those few wrong matches set the reported cell error.",
+        "datasets": [],
+        "assumptions": "ANHIR training pairs at 1024 px; residual-based blunder definition "
+                       "(>5x median) needs no ground truth and is matcher-agnostic.",
+        "limitations": "20 pairs. ANHIR is largely cross-stain rather than serial H-DAB. "
+                       "SIFT+LightGlue did not complete. The blunder metric is measured on "
+                       "each arm's OWN residuals, so it detects contamination but cannot "
+                       "distinguish a blunder from genuine local deformation — which is why "
+                       "expert TRE is reported beside it.",
+        "interpretation": "A matcher swap is a bigger change than any filter tweak; only a "
+                          "large, consistent blunder advantage at no accuracy cost justifies "
+                          "it. Read the pairs where a detector-based matcher COLLAPSES.",
+        "expected": "DISK+LightGlue 0.34 % mean blunders vs LoFTR's 2.10 % (Wilcoxon "
+                    "p = 0.011), equal expert TRE (p = 0.39), but under 40 matches on 4 of 19 "
+                    "pairs where LoFTR still finds 47-230.",
+        "runner": {"kind": "script", "script": "validate_matcher_blunders_anhir.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "scale_filter_tolerance",
         "title": "Scale-consistency tolerance — expert-landmark A/B",
         "category": "registration",

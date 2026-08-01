@@ -1,0 +1,645 @@
+{
+  "pairs": [
+    {
+      "pair": "COAD_09 S6.jpg",
+      "loftr_oasis": {
+        "n": 1604,
+        "resid_med": 3.201,
+        "max_over_med": 10.82,
+        "blunder_frac": 0.0175,
+        "tre_med": 5.18,
+        "tre_p90": 16.41,
+        "seconds": 18.8
+      },
+      "loftr_raw": {
+        "n": 2047,
+        "resid_med": 3.78,
+        "max_over_med": 53.88,
+        "blunder_frac": 0.044,
+        "tre_med": 5.16,
+        "tre_p90": 15.63,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 977,
+        "resid_med": 2.96,
+        "max_over_med": 5.05,
+        "blunder_frac": 0.001,
+        "tre_med": 5.38,
+        "tre_p90": 15.45,
+        "seconds": 24.5
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mice-kidney_1 8_CD31.jpg",
+      "loftr_oasis": {
+        "n": 149,
+        "resid_med": 3.251,
+        "max_over_med": 39.87,
+        "blunder_frac": 0.094,
+        "tre_med": 2.72,
+        "tre_p90": 6.78,
+        "seconds": 23.8
+      },
+      "loftr_raw": {
+        "n": 420,
+        "resid_med": 42.043,
+        "max_over_med": 21.69,
+        "blunder_frac": 0.0143,
+        "tre_med": 41.28,
+        "tre_p90": 69.71,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 955,
+        "resid_med": 4.147,
+        "max_over_med": 11.02,
+        "blunder_frac": 0.0209,
+        "tre_med": 2.59,
+        "tre_p90": 5.64,
+        "seconds": 41.9
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "kidney_2 PAS.jpg",
+      "loftr_oasis": {
+        "n": 109,
+        "resid_med": 4.427,
+        "max_over_med": 4.4,
+        "blunder_frac": 0.0,
+        "tre_med": 4.63,
+        "tre_p90": 8.99,
+        "seconds": 11.9
+      },
+      "loftr_raw": {
+        "n": 295,
+        "resid_med": 13.528,
+        "max_over_med": 29.77,
+        "blunder_frac": 0.1017,
+        "tre_med": 7.08,
+        "tre_p90": 12.72,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 503,
+        "resid_med": 6.128,
+        "max_over_med": 8.24,
+        "blunder_frac": 0.002,
+        "tre_med": 3.74,
+        "tre_p90": 8.12,
+        "seconds": 16.5
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "lung-lobes_3 29-040-U-35W",
+      "loftr_oasis": {
+        "n": 1811,
+        "resid_med": 2.511,
+        "max_over_med": 67.24,
+        "blunder_frac": 0.0574,
+        "tre_med": 2.72,
+        "tre_p90": 6.09,
+        "seconds": 17.0
+      },
+      "loftr_raw": {
+        "n": 2192,
+        "resid_med": 2.914,
+        "max_over_med": 145.03,
+        "blunder_frac": 0.1346,
+        "tre_med": 2.77,
+        "tre_p90": 6.09,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 1266,
+        "resid_med": 2.775,
+        "max_over_med": 4.02,
+        "blunder_frac": 0.0,
+        "tre_med": 2.86,
+        "tre_p90": 5.77,
+        "seconds": 19.9
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "breast_1 HER2.jpg",
+      "loftr_oasis": {
+        "n": 47,
+        "resid_med": 70.68,
+        "max_over_med": 2.95,
+        "blunder_frac": 0.0,
+        "tre_med": 522.1,
+        "tre_p90": 760.4,
+        "seconds": 14.9
+      },
+      "loftr_raw": {
+        "n": 320,
+        "resid_med": 74.575,
+        "max_over_med": 10.95,
+        "blunder_frac": 0.0031,
+        "tre_med": 541.75,
+        "tre_p90": 781.25,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 13,
+        "resid_med": 144.052,
+        "max_over_med": 2.89,
+        "blunder_frac": 0.0,
+        "tre_med": 517.32,
+        "tre_p90": 677.19,
+        "seconds": 107.9
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mice-kidney_1 8_CD31.jpg",
+      "loftr_oasis": {
+        "n": 747,
+        "resid_med": 1.983,
+        "max_over_med": 97.45,
+        "blunder_frac": 0.0094,
+        "tre_med": 2.16,
+        "tre_p90": 5.72,
+        "seconds": 36.7
+      },
+      "loftr_raw": {
+        "n": 1201,
+        "resid_med": 2.702,
+        "max_over_med": 123.41,
+        "blunder_frac": 0.1532,
+        "tre_med": 2.53,
+        "tre_p90": 6.87,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 968,
+        "resid_med": 2.066,
+        "max_over_med": 6.58,
+        "blunder_frac": 0.0031,
+        "tre_med": 2.13,
+        "tre_p90": 5.48,
+        "seconds": 85.2
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "gastric_6 EBV.jpg",
+      "loftr_oasis": {
+        "n": 2183,
+        "resid_med": 2.145,
+        "max_over_med": 4.65,
+        "blunder_frac": 0.0,
+        "tre_med": 1.96,
+        "tre_p90": 3.3,
+        "seconds": 32.4
+      },
+      "loftr_raw": {
+        "n": 2631,
+        "resid_med": 2.348,
+        "max_over_med": 78.42,
+        "blunder_frac": 0.057,
+        "tre_med": 2.02,
+        "tre_p90": 3.23,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 863,
+        "resid_med": 2.374,
+        "max_over_med": 4.46,
+        "blunder_frac": 0.0,
+        "tre_med": 1.82,
+        "tre_p90": 3.69,
+        "seconds": 71.1
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "COAD_01 S3.jpg",
+      "loftr_oasis": {
+        "n": 56,
+        "resid_med": 50.351,
+        "max_over_med": 4.34,
+        "blunder_frac": 0.0,
+        "tre_med": 51.44,
+        "tre_p90": 68.02,
+        "seconds": 34.2
+      },
+      "loftr_raw": {
+        "n": 229,
+        "resid_med": 83.106,
+        "max_over_med": 3.38,
+        "blunder_frac": 0.0,
+        "tre_med": 75.78,
+        "tre_p90": 111.39,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 10,
+        "resid_med": 52.776,
+        "max_over_med": 1.76,
+        "blunder_frac": 0.0,
+        "tre_med": 214.55,
+        "tre_p90": 317.69,
+        "seconds": 58.3
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mice-kidney_1 6_CD31.jpg",
+      "loftr_oasis": {
+        "n": 75,
+        "resid_med": 84.803,
+        "max_over_med": 1.9,
+        "blunder_frac": 0.0,
+        "tre_med": 120.55,
+        "tre_p90": 182.48,
+        "seconds": 28.8
+      },
+      "loftr_raw": {
+        "n": 251,
+        "resid_med": 86.568,
+        "max_over_med": 3.46,
+        "blunder_frac": 0.0,
+        "tre_med": 99.76,
+        "tre_p90": 160.07,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 514,
+        "resid_med": 4.487,
+        "max_over_med": 15.26,
+        "blunder_frac": 0.0253,
+        "tre_med": 3.72,
+        "tre_p90": 9.66,
+        "seconds": 112.6
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "lung-lesion_2 29-041-Izd2-",
+      "loftr_oasis": {
+        "n": 290,
+        "resid_med": 7.768,
+        "max_over_med": 4.49,
+        "blunder_frac": 0.0,
+        "tre_med": 8.98,
+        "tre_p90": 20.89,
+        "seconds": 12.6
+      },
+      "loftr_raw": {
+        "n": 706,
+        "resid_med": 13.873,
+        "max_over_med": 70.78,
+        "blunder_frac": 0.1416,
+        "tre_med": 9.88,
+        "tre_p90": 21.84,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 124,
+        "resid_med": 8.924,
+        "max_over_med": 5.25,
+        "blunder_frac": 0.0081,
+        "tre_med": 9.66,
+        "tre_p90": 21.5,
+        "seconds": 17.5
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "COAD_18 S7.jpg",
+      "loftr_oasis": {
+        "n": 1574,
+        "resid_med": 3.035,
+        "max_over_med": 14.32,
+        "blunder_frac": 0.0273,
+        "tre_med": 3.87,
+        "tre_p90": 15.08,
+        "seconds": 15.8
+      },
+      "loftr_raw": {
+        "n": 2129,
+        "resid_med": 3.745,
+        "max_over_med": 160.93,
+        "blunder_frac": 0.0587,
+        "tre_med": 3.84,
+        "tre_p90": 15.06,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 913,
+        "resid_med": 3.173,
+        "max_over_med": 4.78,
+        "blunder_frac": 0.0,
+        "tre_med": 3.59,
+        "tre_p90": 15.6,
+        "seconds": 48.0
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "COAD_19 S5.jpg",
+      "loftr_oasis": {
+        "n": 1589,
+        "resid_med": 4.139,
+        "max_over_med": 8.2,
+        "blunder_frac": 0.0138,
+        "tre_med": 3.79,
+        "tre_p90": 10.8,
+        "seconds": 38.7
+      },
+      "loftr_raw": {
+        "n": 2131,
+        "resid_med": 4.645,
+        "max_over_med": 48.38,
+        "blunder_frac": 0.0328,
+        "tre_med": 3.78,
+        "tre_p90": 11.29,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 827,
+        "resid_med": 4.185,
+        "max_over_med": 5.6,
+        "blunder_frac": 0.0024,
+        "tre_med": 4.32,
+        "tre_p90": 10.63,
+        "seconds": 89.5
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "COAD_17 S5.jpg",
+      "loftr_oasis": {
+        "n": 706,
+        "resid_med": 3.639,
+        "max_over_med": 20.62,
+        "blunder_frac": 0.0326,
+        "tre_med": 3.06,
+        "tre_p90": 7.14,
+        "seconds": 11.3
+      },
+      "loftr_raw": {
+        "n": 1087,
+        "resid_med": 4.345,
+        "max_over_med": 46.53,
+        "blunder_frac": 0.0948,
+        "tre_med": 3.44,
+        "tre_p90": 7.94,
+        "seconds": 0.1
+      },
+      "disk_lightglue": {
+        "n": 1101,
+        "resid_med": 2.646,
+        "max_over_med": 3.66,
+        "blunder_frac": 0.0,
+        "tre_med": 2.93,
+        "tre_p90": 6.83,
+        "seconds": 18.4
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "COAD_02 S3.jpg",
+      "loftr_oasis": {
+        "n": 2425,
+        "resid_med": 11.215,
+        "max_over_med": 8.12,
+        "blunder_frac": 0.0029,
+        "tre_med": 11.43,
+        "tre_p90": 18.39,
+        "seconds": 15.0
+      },
+      "loftr_raw": {
+        "n": 2961,
+        "resid_med": 11.487,
+        "max_over_med": 41.24,
+        "blunder_frac": 0.0101,
+        "tre_med": 11.46,
+        "tre_p90": 18.27,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 938,
+        "resid_med": 9.49,
+        "max_over_med": 3.36,
+        "blunder_frac": 0.0,
+        "tre_med": 10.84,
+        "tre_p90": 17.68,
+        "seconds": 27.5
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mice-kidney_1 3_PAS.jpg",
+      "loftr_oasis": {
+        "n": 64,
+        "resid_med": 64.28,
+        "max_over_med": 3.06,
+        "blunder_frac": 0.0,
+        "tre_med": 100.83,
+        "tre_p90": 176.27,
+        "seconds": 14.1
+      },
+      "loftr_raw": {
+        "n": 178,
+        "resid_med": 70.548,
+        "max_over_med": 3.31,
+        "blunder_frac": 0.0,
+        "tre_med": 106.05,
+        "tre_p90": 178.89,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 20,
+        "resid_med": 84.978,
+        "max_over_med": 4.16,
+        "blunder_frac": 0.0,
+        "tre_med": 68.18,
+        "tre_p90": 119.61,
+        "seconds": 46.6
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mammary-gland_2 s2_68-ER-A49",
+      "loftr_oasis": null,
+      "loftr_raw": {
+        "n": 124,
+        "resid_med": 146.668,
+        "max_over_med": 4.34,
+        "blunder_frac": 0.0,
+        "tre_med": 95.66,
+        "tre_p90": 197.78,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 704,
+        "resid_med": 3.558,
+        "max_over_med": 4.9,
+        "blunder_frac": 0.0,
+        "tre_med": 5.59,
+        "tre_p90": 11.3,
+        "seconds": 9.7
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "kidney_1 PAS.jpg",
+      "loftr_oasis": {
+        "n": 292,
+        "resid_med": 3.534,
+        "max_over_med": 21.03,
+        "blunder_frac": 0.0582,
+        "tre_med": 4.29,
+        "tre_p90": 7.62,
+        "seconds": 8.3
+      },
+      "loftr_raw": {
+        "n": 549,
+        "resid_med": 7.605,
+        "max_over_med": 41.12,
+        "blunder_frac": 0.1348,
+        "tre_med": 6.42,
+        "tre_p90": 7.65,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 1167,
+        "resid_med": 3.804,
+        "max_over_med": 12.65,
+        "blunder_frac": 0.0017,
+        "tre_med": 4.04,
+        "tre_p90": 7.24,
+        "seconds": 9.6
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mammary-gland_2 s2_70-PR_A49",
+      "loftr_oasis": {
+        "n": 505,
+        "resid_med": 5.17,
+        "max_over_med": 2.6,
+        "blunder_frac": 0.0,
+        "tre_med": 4.73,
+        "tre_p90": 11.23,
+        "seconds": 4.6
+      },
+      "loftr_raw": {
+        "n": 707,
+        "resid_med": 5.536,
+        "max_over_med": 44.63,
+        "blunder_frac": 0.0141,
+        "tre_med": 4.78,
+        "tre_p90": 11.07,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 1255,
+        "resid_med": 3.642,
+        "max_over_med": 4.96,
+        "blunder_frac": 0.0,
+        "tre_med": 4.86,
+        "tre_p90": 11.36,
+        "seconds": 7.6
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "lung-lesion_3 29-041-Izd2-",
+      "loftr_oasis": {
+        "n": 230,
+        "resid_med": 11.08,
+        "max_over_med": 6.97,
+        "blunder_frac": 0.0391,
+        "tre_med": 12.09,
+        "tre_p90": 34.96,
+        "seconds": 22.1
+      },
+      "loftr_raw": {
+        "n": 773,
+        "resid_med": 29.225,
+        "max_over_med": 25.4,
+        "blunder_frac": 0.1164,
+        "tre_med": 14.78,
+        "tre_p90": 33.67,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 8,
+        "resid_med": 25.342,
+        "max_over_med": 1.51,
+        "blunder_frac": 0.0,
+        "tre_med": 40.41,
+        "tre_p90": 81.37,
+        "seconds": 34.6
+      },
+      "sift_lightglue": null
+    },
+    {
+      "pair": "mice-kidney_1 5_PAS.jpg",
+      "loftr_oasis": {
+        "n": 506,
+        "resid_med": 3.319,
+        "max_over_med": 83.45,
+        "blunder_frac": 0.0474,
+        "tre_med": 3.73,
+        "tre_p90": 6.21,
+        "seconds": 16.7
+      },
+      "loftr_raw": {
+        "n": 853,
+        "resid_med": 31.295,
+        "max_over_med": 14.47,
+        "blunder_frac": 0.0844,
+        "tre_med": 27.26,
+        "tre_p90": 44.7,
+        "seconds": 0.0
+      },
+      "disk_lightglue": {
+        "n": 982,
+        "resid_med": 3.302,
+        "max_over_med": 4.03,
+        "blunder_frac": 0.0,
+        "tre_med": 3.46,
+        "tre_p90": 5.89,
+        "seconds": 88.8
+      },
+      "sift_lightglue": null
+    }
+  ],
+  "summary": {
+    "loftr_oasis": {
+      "pairs": 19,
+      "n_median": 505.0,
+      "blunder_frac_median": 0.0094,
+      "max_over_med_median": 8.12,
+      "tre_med_median": 4.63,
+      "tre_p90_median": 11.23,
+      "seconds_median": 16.7
+    },
+    "loftr_raw": {
+      "pairs": 20,
+      "n_median": 740.0,
+      "blunder_frac_median": 0.0505,
+      "max_over_med_median": 41.18,
+      "tre_med_median": 8.48,
+      "tre_p90_median": 16.95,
+      "seconds_median": 0.0
+    },
+    "disk_lightglue": {
+      "pairs": 20,
+      "n_median": 888.0,
+      "blunder_frac_median": 0.0,
+      "max_over_med_median": 4.84,
+      "tre_med_median": 4.18,
+      "tre_p90_median": 10.96,
+      "seconds_median": 38.2
+    }
+  }
+}
