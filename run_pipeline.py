@@ -116,10 +116,30 @@ def load_config(config_path="config.yaml"):
 # CONFIDENCE + JSON PARSER
 # ==========================================================
 
-def compute_confidence(total, pos_pct):
+def compute_confidence(total, pos_pct, staining_quality=None,
+                       classifier_name=None, classifier_applied=None):
+    """How much to trust this row — counts AND how the calls were actually made.
+
+    This used to read only the cell count and the positivity percentage, so an image the
+    trained classifier REFUSED as out of its trained range — handing the calls back to the
+    fixed cutoff and flagging `staining_quality: low` — was still reported as NORMAL. The
+    pipeline had already judged that slide poor and printed as much; the one column whose
+    entire job is "how much to trust it" was the only place that did not say so.
+
+    Both new reasons are the conservative direction. `staining_quality: low` is the
+    pipeline's own verdict on the staining. A named-but-unapplied classifier means the
+    numbers did not come from the method the operator chose, which is worth seeing even
+    though the fixed-cutoff fallback is a legitimate rule in its own right.
+
+    The specific reason is not lost: `Positivity rule` and `Cutoff source` in the same row
+    already spell out which rule ran and why, and `Classifier_Refused_Reason` carries the
+    measurement that put the slide out of range.
+    """
     if total < 50: return "LOW"
     if pos_pct < 0.1: return "LOW"
     if pos_pct > 95: return "LOW"
+    if str(staining_quality or "").lower() == "low": return "LOW"
+    if classifier_name and classifier_applied is False: return "LOW"
     return "NORMAL"
 
 
@@ -165,7 +185,12 @@ def parse_summary_json(json_path):
             "Membrane_Rule": data.get("membrane_classifier"),
             "Membrane_Pix_Thr": data.get("membrane_pix_thr"),
             "Membrane_Frac_Min": data.get("membrane_frac_min"),
-            "Confidence": compute_confidence(total, pos_pct)
+            "Staining_Quality": data.get("staining_quality"),
+            "Confidence": compute_confidence(
+                total, pos_pct,
+                staining_quality=data.get("staining_quality"),
+                classifier_name=data.get("classifier_name"),
+                classifier_applied=data.get("classifier_applied"))
         }
     except Exception as e:
         print(f"  Failed to parse JSON: {e}")
