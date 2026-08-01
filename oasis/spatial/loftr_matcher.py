@@ -525,6 +525,28 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                     "msg": f"only {len(ref_pts)} landmarks inside ROI (need {min_matches})",
                     "source": source}
 
+    # BLUNDER REJECTION, before the fit that gets certified.
+    #
+    # LoFTR is the only matcher that works on this material, and 8-22 % of its correspondences
+    # on real pairs are gross (validate_matchers_on_cohort.py). The gate reads a p90, so those
+    # few set the reported cell error — 39 matches with a 6.55 um median residual produced a
+    # 58 um cell error because ~4 were wrong. Huber down-weights them without rejecting, and
+    # the local-smoothness filter compares displacements before any fit, which a blunder in a
+    # locally-consistent wrong place survives.
+    #
+    # `reject_local_residual_outliers` drops a correspondence whose residual disagrees with its
+    # NEIGHBOURS' residuals, which is not the circular "reject large residuals" — real
+    # deformation is spatially continuous (nugget/sill 0.021, Moran's I +0.60, p <= 0.001) so a
+    # displaced neighbourhood survives intact and only an isolated one is cut. Validated on 36
+    # 10X pairs: gross fraction 50.4 % -> 47.0 % (Wilcoxon p = 0.0095), median residual
+    # 34.3 -> 31.1 um (p = 6.6e-05), 94 % of correspondences kept, and against a synthetic warp
+    # where the truth is exact the true p90 error improved on 36 of 36 pairs.
+    _n_before = len(ref_pts)
+    _keep = sr.reject_local_residual_outliers(
+        ref_pts, mov_pts, sr._fit_similarity_robust(mov_pts, ref_pts))
+    if _keep.sum() >= max(min_matches, 6):
+        ref_pts, mov_pts = np.asarray(ref_pts)[_keep], np.asarray(mov_pts)[_keep]
+
     # local rigid fit + ordinary FW certification, windowed to the user's ROI
     M_local = sr._fit_similarity_robust(mov_pts, ref_pts)
     cert = sr.landmark_register_and_verify(
@@ -538,6 +560,7 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     cert["n_correspondences"] = int(len(ref_pts))
     cert["fle_um_loftr"] = fle_um
     cert["matcher"] = c.get("matcher")
+    cert["n_blunders_rejected"] = int(_n_before - len(ref_pts))
     # Surfaced so an implausible cull by the local-smoothness filter is visible to the
     # caller rather than silently shaping the certified set.
     cert["local_drop_frac"] = c.get("local_drop_frac")

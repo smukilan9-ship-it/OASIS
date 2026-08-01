@@ -2688,3 +2688,49 @@ def certify_pair(sample_id, ref_path, mov_path, pixel_size_um, out_dir,
         row["status"] = "NOT CERTIFIED"
         row["reason"] = "; ".join(reasons) if reasons else "failed certification"
     return row
+
+
+def reject_local_residual_outliers(ref_pts, mov_pts, matrix, k=8, mult=3.5):
+    """Drop correspondences whose residual disagrees with their NEIGHBOURS' residuals.
+
+    THE PROBLEM. LoFTR is the only matcher that works on H-DAB serial sections
+    (validate_matchers_on_cohort.py), but 8-22 % of its correspondences on real pairs are
+    gross. The gate reads a p90, so those few set the reported cell error — one region with a
+    6.55 um median residual reported 58 um because ~4 of 39 matches were wrong. Neither
+    existing defence catches them: `_fit_similarity_robust` is Huber and down-weights without
+    rejecting, and `_local_smoothness` compares DISPLACEMENTS before any fit, which a blunder
+    in a locally-consistent wrong place survives.
+
+    WHY THIS IS NOT THE CIRCULARITY THE MODULE WARNS ABOUT. Rejecting on residual MAGNITUDE
+    would be circular — it selects the points that agree with the transform under test, which
+    is precisely how `propose_landmarks` certified a pair carrying 31 um of deformation. This
+    rejects on residual DISAGREEMENT WITH NEIGHBOURS instead, and those are different because
+    the residual field is not white: validate_residual_origin.py measured nugget/sill 0.021 and
+    Moran's I +0.60 at p <= 0.001 on the disputed pair, so real deformation is spatially
+    CONTINUOUS. A point sitting 30 um from where its immediate neighbours agree the tissue went
+    is a blunder; a whole neighbourhood sitting 30 um out is deformation, and this leaves it
+    entirely alone. The test is local, so it cannot flatter the global transform.
+
+    MAD rather than standard deviation, because the contamination being measured would inflate
+    an SD-based scale and hide itself.
+
+    Returns a boolean keep-mask. k+2 points are needed for a neighbourhood to mean anything;
+    below that everything is kept, since with 9 correspondences there is no local consensus to
+    appeal to and silently dropping points would be worse than admitting them.
+    """
+    from scipy.spatial import cKDTree
+    ref = np.asarray(ref_pts, float).reshape(-1, 2)
+    mov = np.asarray(mov_pts, float).reshape(-1, 2)
+    n = len(ref)
+    if matrix is None or n < int(k) + 2:
+        return np.ones(n, bool)
+    resid = _apply_affine(mov, np.asarray(matrix, float)) - ref      # 2-D residual vectors
+    kk = min(int(k), n - 1)
+    _d, idx = cKDTree(ref).query(ref, k=kk + 1)
+    nb = idx[:, 1:]                                                  # drop self
+    local_med = np.median(resid[nb], axis=1)                         # neighbours' consensus
+    dev = np.linalg.norm(resid - local_med, axis=1)
+    scale = np.median(np.abs(dev - np.median(dev))) * 1.4826         # MAD -> sigma
+    if not np.isfinite(scale) or scale <= 1e-9:
+        return np.ones(n, bool)
+    return dev <= np.median(dev) + float(mult) * scale
