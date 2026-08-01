@@ -498,6 +498,41 @@ VALIDATIONS = [
         "runtime_tier": "short", "external_deps": [],
     },
     {
+        "id": "loftr_fle_groundtruth",
+        "title": "LoFTR fiducial localisation error against a known warp",
+        "category": "registration",
+        "claim": "The FLE that enters σ_fit² = 2·FLE² + deformation² is measured against "
+                 "ground truth, not inferred from the matcher's repeatability.",
+        "purpose": "Warp one real H-DAB section by a KNOWN transform (translation, rotation, "
+                   "scale, smooth B-spline) and match it against itself. Because the "
+                   "displacement is known analytically at every pixel, q − W(p) is the true "
+                   "localisation error of each correspondence. Swept across working "
+                   "resolutions (is FLE a tissue property or a matcher-grid one?) and across "
+                   "appearance mismatches (different DAB density, counterstain, focus, "
+                   "illumination, noise).",
+        "why": "loftr_fle measures REPEATABILITY under image noise, i.e. precision, not "
+               "accuracy — and a lower-bound FLE is mechanically an upper-bound deformation, "
+               "so every certification is an upper bound of unknown tightness. This is the "
+               "only measurement that says whether that bound is tight. See "
+               "research/registration.md.",
+        "datasets": [],
+        "assumptions": "One real H-DAB field (LL477 at 0.7519 µm/px by default); the warp is "
+                       "the ground truth, so no annotator and no second section are needed.",
+        "limitations": "Matching a section against a resampled copy of itself cannot "
+                       "reproduce the one thing that makes a real pair hard: two serial "
+                       "sections are 4 µm apart and contain DIFFERENT CELLS. This measures "
+                       "the matcher's floor, which bounds the real FLE from below.",
+        "interpretation": "PASS covers the CONTROLS only (resample direction, identity warp "
+                          "≈ 0, dense-field inversion). The FLE numbers are the measurement "
+                          "and are reported, never asserted — a harness that asserts its own "
+                          "answer cannot discover one.",
+        "expected": "Controls pass; measured FLE ≈ 0.19–0.25 µm, i.e. the shipped 0.199 µm "
+                    "is right and the 4.07 µm residual on the disputed ROI is NOT matcher "
+                    "noise.",
+        "runner": {"kind": "script", "script": "validate_loftr_fle_groundtruth.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "spatstat_crossval",
         "title": "Cross-K agreement with R spatstat",
         "category": "registration",
