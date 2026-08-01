@@ -388,7 +388,8 @@ def _roi_bbox(poly, W, H, pad):
 def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                       provisional_matrix=None, fallback_ref_lm=None, fallback_mov_lm=None,
                       weights="outdoor", tol_um=4.0, min_matches=8, work_max_dim=800,
-                      return_correspondences=False, fle_fast=True, loftr_kw=None):
+                      return_correspondences=False, fle_fast=True, loftr_kw=None,
+                      matcher="auto"):
     """Certify a user-drawn ROI by a LOCAL rigid fit from LoFTR correspondences inside it.
 
     THE WHOLE POINT. Serial-section deformation is smooth, so a similarity fit CONFINED to a
@@ -450,8 +451,13 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     # `loftr_kw` reaches the matcher's own knobs (e.g. local_k=0 to reproduce the pre-
     # local-smoothness selection) so a validation run can A/B the filter through the real
     # certification path instead of a reimplementation of it.
-    c = loftr_correspondences(small_r, small_m, pixel_size_um=px_work,
-                              weights=weights, tol_um=tol_um, **(loftr_kw or {}))
+    # DISPATCHED, not hard-wired to LoFTR. DISK+LightGlue is primary (6x fewer blunders at
+    # equal expert-landmark accuracy, Wilcoxon p = 0.011 over 20 ANHIR pairs) with LoFTR as
+    # the fallback for the cross-modal pairs where a detector finds nothing — see
+    # oasis/spatial/sparse_matcher.py. `matcher` forces one arm, which is what the A/B uses.
+    from oasis.spatial.sparse_matcher import correspondences as _match
+    c = _match(small_r, small_m, pixel_size_um=px_work, matcher=matcher,
+               weights=weights, tol_um=tol_um, **(loftr_kw or {}))
     if c["ok"]:
         rp = np.asarray(c["ref_points"], float) / r + np.array([rx0, ry0])
         mp = np.asarray(c["mov_points"], float) / r + np.array([mx0, my0])
@@ -528,6 +534,7 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     cert["source"] = source
     cert["n_correspondences"] = int(len(ref_pts))
     cert["fle_um_loftr"] = fle_um
+    cert["matcher"] = c.get("matcher")
     # Surfaced so an implausible cull by the local-smoothness filter is visible to the
     # caller rather than silently shaping the certified set.
     cert["local_drop_frac"] = c.get("local_drop_frac")
