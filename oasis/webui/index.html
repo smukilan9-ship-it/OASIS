@@ -6078,6 +6078,13 @@ function lmUp(side){ lmPanes[side].drag=false; }
   const st = document.getElementById('lm-stage-' + side);
   if (!st) return;
   st.addEventListener('dblclick', e => {
+    // Not while a drawing tool owns this pane. Double-click is that tool's "close the
+    // shape" gesture, and the closer below only claims the event once three vertices are
+    // down — so double-clicking a moment too early fell through to here and zoomed the
+    // canvas 1.8x mid-draw, leaving a half-finished shape on a view that had just jumped.
+    // Tools are modal in QuPath for this reason: while one is active it owns the gesture.
+    const d = certDraw();
+    if (d.tool && d.side === side) { e.preventDefault(); return; }
     e.preventDefault();
     const r = st.getBoundingClientRect();
     lmZoomAt(side, e.clientX - r.left, e.clientY - r.top,
