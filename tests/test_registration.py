@@ -762,11 +762,19 @@ def test_a_region_fit_that_disagrees_with_the_whole_field_is_repaired():
     spread within a single pair reached 61.9 deg and scale spread 0.53, while genuinely
     well-registered pairs sit at 0.22-0.36 deg and 0.002-0.007.
 
-    The first fix REFUSED such regions. Constraining the local fit to the global rotation and
-    scale is better: it prevents the condition instead of detecting it, and recovers a region
-    that refusal would have discarded. The ordinary residual gate still decides the verdict
-    afterwards, so a genuinely bad region still fails — this only stops the transform being
-    spun by a handful of matches.
+    The fix has three parts and this test pins all three, because the first two shipped on
+    their own and each was incomplete.
+
+      1. CONSTRAIN. The local fit takes rotation and scale from the whole field and fits only
+         translation, so the reported transform cannot be spun by a handful of matches.
+      2. JUDGE ON THE SAME MATRIX. For a while only the REPORTED matrix was constrained while
+         landmark_register_and_verify went on fitting its own free similarity to the same
+         points — mapping and verdict came from different transforms and the verdict's still
+         carried 19.8 deg here. `fixed_linear` closes that, and the residual then honestly
+         reports what wanting-to-spin costs (20.0 µm on this case, against a free fit that
+         would have absorbed the rotation and looked clean).
+      3. REFUSE. A region whose own correspondences want their own rotation is fitting noise;
+         the field-agreement gate says so explicitly instead of leaving a vague DEFORMED.
     """
     import math
 
@@ -800,6 +808,28 @@ def test_a_region_fit_that_disagrees_with_the_whole_field_is_repaired():
                                 - math.atan2(-G[0, 1], G[0, 0])))
     assert min(rot_used, 360 - rot_used) <= 1e-6, (
         f"the local matrix kept {rot_used:.2f} deg of its own rotation")
+
+    # (2) THE VERDICT'S OWN MATRIX. This is the half that was missing: cert["matrix"] comes
+    # from landmark_register_and_verify, which used to fit its own free similarity and so
+    # still carried ~19.8 deg here while the mapping matrix carried 0.
+    assert c["linear_part"] == "fixed_from_field", (
+        "the certification refitted its own linear part instead of taking the field's")
+    V = np.asarray(c["matrix"], float)
+    rot_verdict = abs(math.degrees(math.atan2(-V[0, 1], V[0, 0])
+                                   - math.atan2(-G[0, 1], G[0, 0])))
+    assert min(rot_verdict, 360 - rot_verdict) <= 1e-6, (
+        f"the matrix the VERDICT was measured on kept {rot_verdict:.2f} deg of its own "
+        f"rotation, so mapping and verdict still come from different transforms")
+    # Judged on the constrained matrix, the residual must show what the spin actually costs
+    # rather than being absorbed by a flattering free fit.
+    assert c["fit_residual_um"] > 5.0, (
+        "the residual is still being measured on a fit free to rotate away the error")
+
+    # (3) AND IT IS REFUSED, with the reason naming the disagreement rather than leaving the
+    # operator a bare DEFORMED to interpret.
+    assert c["verdict"] == "NOT_CERTIFIABLE"
+    assert c["refused_by"] == "field_agreement"
+    assert "disagree" in c["reason"]
 
 
 def test_the_agreement_thresholds_sit_between_the_measured_populations():

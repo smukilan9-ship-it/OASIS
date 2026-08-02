@@ -1,0 +1,14 @@
+{
+  "config": {
+    "radius_um": 238.0,
+    "grid": 3,
+    "work_px": 800,
+    "rot_max_deg": 5.0,
+    "scale_max": 0.05
+  },
+  "n_certifying": 2,
+  "n_impossible": 0,
+  "n_refused_by_gate": 29,
+  "offenders": [],
+  "passed": true
+}

@@ -644,10 +644,20 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
         _fr, _fs = _free_rot_vs_global, _free_scale_vs_global
     except NameError:
         _fr = _fs = None
+    # THE VERDICT IS NOW MEASURED ON THE TRANSFORM THAT IS ACTUALLY USED.
+    #
+    # Previously this call fitted its own free similarity to the same correspondences, so the
+    # matrix that MAPPED the region and the matrix that JUDGED it were different — on the
+    # regression case the judging one still carried 19.8 deg. Handing the constrained linear
+    # part in makes the residuals, the held-out TRE and cell_error_p90_um all properties of
+    # the transform the operator is shown. A region whose correspondences wanted to spin now
+    # shows the large residual that wanting-to-spin actually implies, and fails the existing
+    # error gate on its own merits rather than being rescued by a flattering free fit.
     cert = sr.landmark_register_and_verify(
         ref_pts, mov_pts, float(pixel_size_um),
         image_wh=(Wr, Hr), user_roi_polygon=roi.tolist(),
-        fle_um=fle_um, landmarks_are_model_selected=False)
+        fle_um=fle_um, landmarks_are_model_selected=False,
+        fixed_linear=(np.asarray(M_local, float)[:2, :2] if constrained else None))
     matrix = cert.get("matrix")
     cert["matrix"] = matrix.tolist() if hasattr(matrix, "tolist") else matrix
     cert["local_matrix"] = np.asarray(M_local, float).tolist()
@@ -673,17 +683,49 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     # at 0.22-0.36 deg — a region wanting to rotate 20 deg relative to the field is telling
     # you its matches are bad, whatever verdict it ends up with.
     #
-    # LIMIT, stated because it matters: constraining M_local fixes the transform that is
-    # REPORTED and used to map the region onto the moving section. The VERDICT still comes
-    # from landmark_register_and_verify, which fits its own unconstrained similarity to the
-    # same correspondences — so a spun fit can still set the certified error. Wiring the
-    # constraint through the certification is the remaining half of this fix.
     cert["rotation_vs_global_deg"] = _fr
     cert["scale_vs_global"] = _fs
-    cert["local_fit_disagreed_with_global"] = bool(
+    _disagrees = bool(
         _fr is not None and (_fr > GLOBAL_AGREEMENT_MAX_DEG
                              or (_fs is not None
                                  and abs(_fs - 1.0) > GLOBAL_AGREEMENT_MAX_SCALE)))
+    cert["local_fit_disagreed_with_global"] = _disagrees
+
+    # FIELD-AGREEMENT GATE — refuse a region whose own correspondences do not determine a
+    # transform the field agrees with.
+    #
+    # Constraining the fit above stops such a region reporting a spun transform, and now that
+    # the verdict is measured on the constrained matrix it will usually fail the error gate on
+    # its own. This gate is the explicit statement of WHY, and it fails closed where the
+    # residual might still flatter: a handful of mutually-consistent blunders can sit tightly
+    # around a wrong translation and produce a small residual under any linear part.
+    #
+    # CALIBRATED, NOT INVENTED (research/ihc.md § 16.1). Decoding every certifying window in
+    # the production sweeps: at 4X, where correspondences are plentiful, NOTHING exceeded
+    # 3.1 deg or 2 % scale — 0 of 26 windows. At 10X half the windows exceed it and at 20X all
+    # ten do, with rotations to 32.3 deg and scales to 0.537. Serial sections of one block on
+    # one scanner cannot do that. The 5 deg / 5 % thresholds sit just above the observed
+    # clean-case spread, so the gate refuses what the physics forbids and nothing else.
+    #
+    # Cost is coverage, which is the correct trade for a fail-closed tool: § 16.1's 20X table
+    # is ten windows that certified with claimed errors of 2.3-9.5 µm while carrying transforms
+    # that cannot be tissue. Every one of them is refused here.
+    if _disagrees and cert.get("verdict") not in (None, "NOT_CERTIFIABLE"):
+        _bits = []
+        if _fr is not None and _fr > GLOBAL_AGREEMENT_MAX_DEG:
+            _bits.append(f"{_fr:.1f}° of rotation (limit {GLOBAL_AGREEMENT_MAX_DEG:.0f}°)")
+        if _fs is not None and abs(_fs - 1.0) > GLOBAL_AGREEMENT_MAX_SCALE:
+            _bits.append(f"{abs(_fs - 1.0) * 100:.0f}% of scale "
+                         f"(limit {GLOBAL_AGREEMENT_MAX_SCALE * 100:.0f}%)")
+        cert["verdict_before_field_agreement"] = cert.get("verdict")
+        cert["verdict"] = "NOT_CERTIFIABLE"
+        cert["reason"] = (
+            f"this region's own correspondences disagree with the whole-field transform by "
+            f"{' and '.join(_bits)}. Two serial sections of one block differ by one placement "
+            f"rotation and one scale, so a region that wants its own is fitting noise, not "
+            f"tissue — its correspondences cannot measure alignment here. Draw a larger region, "
+            f"or place manual landmarks in it.")
+        cert["refused_by"] = "field_agreement"
     cert["roi_clipped_to_moving_frac"] = round(float(roi_clip_frac), 4)
     if roi_clip_frac < 0.999:
         cert["roi_polygon_drawn"] = np.asarray(roi_polygon_ref, float).reshape(-1, 2).tolist()

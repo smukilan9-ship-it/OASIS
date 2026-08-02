@@ -1803,8 +1803,25 @@ td.muted { color: var(--text3); font-size: 11px; }
               </div>
             </details>
           </div>
+          <!-- ARMED-TOOL STATUS. This line is the fix for landmarks being unplaceable.
+               A click-built polygon deliberately keeps its tool armed so the next click adds
+               another vertex — but the ONLY indicator of that was #spatial-draw-hint, which
+               lives inside a <details> inside .cert-only-loftr and is therefore invisible in
+               landmark mode and invisible whenever the disclosure is closed. So an armed tool
+               silently swallowed every landmark click (`if (certDraw().tool) return`) with
+               nothing on screen explaining it. It is now stated in the always-visible row,
+               next to a button that disarms it. -->
+          <div id="spatial-cert-armed" class="cert-only-landmark cert-hidden"
+               style="margin-top:10px;padding:7px 10px;border-radius:8px;font-size:11.5px;
+                      background:rgba(217,119,6,.10);border:1px solid rgba(217,119,6,.45);
+                      color:#b45309"></div>
           <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
             <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
+            <!-- The operator's own request: an explicit way back to placing landmarks after
+                 drawing a window. It disarms whatever tool is holding the gesture; landmark
+                 clicks then work because nothing owns them any more. -->
+            <button class="btn sm" id="spatial-cert-lm-btn" onclick="certPlaceLandmarks()"
+                    title="Stop drawing and go back to placing landmark pairs. Click the fixed section, then the same structure on the moving section.">📍 Place landmarks</button>
             <!-- Guided suggestions could be ACCEPTED by clicking a candidate spot but never
                  rejected: spatialCertRejectGuide() existed with nothing to call it, and a
                  toast told the operator to "reject the suggestion" with no control to do
@@ -5474,6 +5491,44 @@ function certSyncToolButtons() {
          : 'Click points and double-click to close, or hold and drag to sketch freehand')
       : '';
   }
+  // The same state, said where it can always be seen. `hint` above is inside a collapsed
+  // <details> inside .cert-only-loftr, so on its own it explains nothing to an operator in
+  // landmark mode wondering why their clicks do nothing.
+  const armed = document.getElementById('spatial-cert-armed');
+  if (armed) {
+    const on = !!d.tool;
+    armed.classList.toggle('cert-hidden', !on);
+    if (on) {
+      const what = d.tool === 'region' ? 'analysis region' : 'certification window';
+      armed.innerHTML =
+        `<b>Drawing the ${what} on the ${d.side === 'mov' ? 'moving' : 'reference'} section`
+        + (d.pts.length ? ` — ${d.pts.length} point${d.pts.length === 1 ? '' : 's'} placed` : '')
+        + `.</b> Landmark clicks are paused while a tool is active. Double-click to close the `
+        + `shape, press Esc, or use <b>📍 Place landmarks</b> below.`;
+    }
+  }
+  const lmBtn = document.getElementById('spatial-cert-lm-btn');
+  if (lmBtn) lmBtn.classList.toggle('active', !d.tool);
+}
+
+// Disarm every drawing gesture and hand clicks back to landmark placement.
+//
+// Requested by the operator after landmarks stayed unplaceable: "we need a button to allow me
+// to place landmarks after drawing roi". The diagnosis matched exactly — a click-built polygon
+// keeps its tool armed on purpose (so the next click adds a vertex), and the only exits were a
+// double-click, Esc, or re-pressing the same tool button, none of which is discoverable and
+// none of which was signposted. This is the discoverable exit.
+function certPlaceLandmarks() {
+  const w = spatialCertWork;
+  const d = certDraw();
+  const wasDrawing = !!d.tool;
+  d.tool = null; d.side = null; d.pts = []; d.drag = false; d.down = false; d.moved = 0;
+  w.roiMode = false; w.loftrMode = false; w.loftrDraft = [];
+  certSyncToolButtons();
+  spatialCertRender();
+  showToast(wasDrawing
+    ? 'Drawing cancelled — click the fixed section to place a landmark'
+    : 'Click the fixed section, then the same structure on the moving section');
 }
 
 // Where a finished shape goes.
@@ -5939,6 +5994,10 @@ function spatialCertSetMode(mode) {
   if (!regionEngine) { w.loftrMode = false; w.freehand = false; w.loftrDraft = []; }
   if (typeof spatialCertRoiUpdateBadge === 'function') spatialCertRoiUpdateBadge();
   loftrRoiSync();
+  // MUST come after the blanket unhide above, which would otherwise leave the armed-tool
+  // banner (#spatial-cert-armed, itself a .cert-only-landmark) permanently on screen. This
+  // re-derives its visibility, and the Place-landmarks button's active state, from the tool.
+  certSyncToolButtons();
 }
 
 function loftrTolUm() {

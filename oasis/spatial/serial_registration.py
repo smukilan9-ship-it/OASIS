@@ -1721,7 +1721,8 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
                                  user_roi_polygon=None,
                                  fle_um=None,
                                  landmarks_are_model_selected=False,
-                                 censor_um=None):
+                                 censor_um=None,
+                                 fixed_linear=None):
     """
     GOLD-STANDARD, landmark-DRIVEN registration + verification (Phase A).
 
@@ -1804,6 +1805,7 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
            "deformation_capture_range_um": None,
            "deformation_is_validated": False,
            "accuracy_basis": "leave_one_out_landmark_tre",
+           "linear_part": "fitted",
            "gates": {"min_n": int(min_n), "target_n": int(target_n),
                      "loo_max_um": float(loo_max_um), "fit_max_um": float(fit_max_um),
                      "deformed_loo_um": float(deformed_loo_um),
@@ -1833,7 +1835,26 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
     # Robust (Huber IRLS) fit: a landmark on a fold or tear bends the transform instead
     # of breaking it. Plain least squares has zero breakdown point — one bad point drags
     # the whole similarity and fails an otherwise certifiable pair.
-    M = _fit_similarity_robust(mov, ref) if n >= 2 else None
+    #
+    # `fixed_linear` REPLACES the rotation and scale with the caller's, fitting only the
+    # translation. It exists because certify_local_roi constrains a small region's transform
+    # to the whole-field rotation and scale (few clustered correspondences put their error
+    # into rotation and scale, which two serial sections of one block cannot differ in), and
+    # for a while it constrained only the matrix it REPORTED while this function went on
+    # fitting its own free similarity to the same points. Mapping and verdict then came from
+    # different transforms, and the verdict's could still be spun — on the regression case it
+    # carried 19.8°. Passing the linear part in closes that: residuals, TRE, and the cell
+    # error are now measured on the transform that is actually used.
+    if fixed_linear is not None and n >= 1:
+        A_fix = np.asarray(fixed_linear, float).reshape(2, 2)
+        t_fix = np.median(ref - mov @ A_fix.T, axis=0)      # robust translation
+        M = np.hstack([A_fix, t_fix.reshape(2, 1)])
+        out["linear_part"] = "fixed_from_field"
+    elif n >= 2:
+        M = _fit_similarity_robust(mov, ref)
+        out["linear_part"] = "fitted"
+    else:
+        M = None
     if M is not None:
         out["matrix"] = M.tolist()
         out["est_scale"] = round(_affine_scale(M), 4)

@@ -2606,3 +2606,108 @@ to produce that; it fell out.
 
 **Cost of the check: 13 s total, ~1.8 s per 1000-permutation run** — which is also the number
 that retires the KAMP speedup argument in § 18.6 item 3.
+
+---
+
+## 19. Session 2026-08-03 — the certification is honest again, and landmarks are placeable
+
+Three fixes: the half-wired constraint from § 16.2, the field-agreement gate § 16.8 called for,
+and the real cause of the landmark bug the operator had been blocked on for weeks.
+
+### 19.1 The verdict is now measured on the transform it reports
+
+§ 16.2 item 3 shipped half-done and said so: `M_local` was constrained to the whole-field
+rotation and scale, but `landmark_register_and_verify` went on fitting its own free similarity
+to the same correspondences, so **the matrix that mapped a region and the matrix that judged it
+were different**. On the regression case the judging one still carried 19.8°.
+
+`landmark_register_and_verify` now takes `fixed_linear`: when given a 2×2 linear part it fits
+only the translation, `t = median(ref − mov·Aᵀ)`. The residual, the held-out TRE and
+`cell_error_p90_um` therefore all become properties of the transform the operator is shown.
+
+| on the regression case | before | after |
+|---|---|---|
+| mapping matrix (`local_matrix`) rotation | 0.00° | 0.00° |
+| **verdict matrix (`matrix`) rotation** | **19.88°** | **0.000°** |
+| `fit_residual_um` | absorbed by the free refit | **20.0 µm** |
+| `cell_error_p90_um` | — | 40.9 µm |
+
+The residual change is the point. A free fit rotates the error away and looks clean; the
+constrained fit reports what wanting-to-spin actually costs, so a bad region now fails the
+*existing* error gate on its own merits instead of being rescued.
+
+### 19.2 The field-agreement gate
+
+Constraining prevents a spun transform being *reported*, but a handful of mutually-consistent
+blunders can still sit tightly around a wrong translation and give a small residual under any
+linear part. So a region whose **free** fit disagrees with the field is now refused outright:
+
+```
+verdict → NOT_CERTIFIABLE,  refused_by = "field_agreement"
+verdict_before_field_agreement records what it would have been
+```
+
+with a reason naming the disagreement — *"disagree with the whole-field transform by 19.9° of
+rotation … a region that wants its own is fitting noise, not tissue"* — rather than leaving a
+bare DEFORMED for the operator to interpret.
+
+**The thresholds are § 16.1's measurement, not a choice.** At 4X, where correspondences are
+plentiful, no certifying window exceeded 3.1° or 2 % scale — 0 of 26. The shipped 5° / 5 %
+sits just above that observed clean-case spread, so the gate refuses what the physics forbids
+and nothing else.
+
+### 19.3 MEASURED on real pairs — no impossible transform survives
+
+`validation/validate_field_agreement_gate.py`, 13 real 10X pairs, 9 windows each at the 238 µm
+production radius, 117 windows:
+
+| | |
+|---|---|
+| windows reaching a certifying verdict | 2 |
+| **of those, physically impossible** | **0** |
+| windows refused by the field gate | 29 |
+
+§ 16.1 measured **12 of 24 impossible** at this radius before the fix. It is now 0.
+
+**What this does not measure, stated because the number invites the wrong reading.** These
+pairs are the cohort's *failures* — their manifests read `size policy: none_certified` with
+verdicts like `{'DEFORMED': 8, 'NO_MATCHES': 4}`. Almost nothing here certified before the fix
+either, so 2 of 117 is the cohort, not the gate. **The coverage cost of the gate is not
+measured and cannot be measured on this set** — it needs pairs that do certify, which is the
+operator's own re-certification run.
+
+### 19.4 Why landmarks were unplaceable — the real cause
+
+Not the routing fixed in § 15. `certSetTool` arms a drawing tool and a **click-built polygon
+deliberately keeps it armed**, so the next click adds another vertex; the only exits are
+double-click, Esc, or re-pressing the same tool button. Meanwhile `spatialCertHandleRefClick`
+opens with `if (certDraw().tool) return;`.
+
+So: draw a certification ROI by clicking points, then click to place a landmark — and the
+still-armed tool silently eats the click. Permanently.
+
+The compounding failure is that the **only** indicator of the armed state was
+`#spatial-draw-hint`, which sits inside a `<details>` inside `.cert-only-loftr` — invisible in
+landmark mode, and invisible whenever that disclosure is closed. Nothing on screen ever said
+why the clicks did nothing.
+
+Fixed as the operator asked for it:
+
+* **📍 Place landmarks** button in the always-visible landmark row, which disarms any tool and
+  hands clicks back to landmark placement;
+* **an amber armed-tool banner** in the same always-visible row, naming the tool, the side and
+  the point count, and stating that landmark clicks are paused;
+* both re-synced at the end of `spatialCertSetMode`, which unhides every `.cert-only-landmark`
+  element and would otherwise pin the banner permanently on.
+
+The banner is the part that matters beyond this one bug: an armed tool can no longer swallow
+input silently.
+
+### 19.5 Still open
+
+* The gate's **coverage cost** is unmeasured (§ 19.3).
+* § 18.6 items 1 and 2 — whether `Kinhom` ever decides a verdict, and window size under the
+  holed A∩B intersection window.
+* The operator has still not re-certified LL477–480 under any of this. 227 unit tests pass and
+  passed throughout the period when 20X windows were certifying impossible transforms, so they
+  are not evidence about outcomes.
