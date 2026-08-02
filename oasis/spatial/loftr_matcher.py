@@ -593,15 +593,55 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     if _keep.sum() >= max(min_matches, 6):
         ref_pts, mov_pts = np.asarray(ref_pts)[_keep], np.asarray(mov_pts)[_keep]
 
-    # local rigid fit + ordinary FW certification, windowed to the user's ROI
-    M_local = sr._fit_similarity_robust(mov_pts, ref_pts)
+    # LOCAL FIT: TRANSLATION ONLY, ON THE GLOBAL ROTATION AND SCALE.
+    #
+    # A free 4-DOF similarity fitted to one small region's correspondences puts its error
+    # wherever it fits best, and with few points that is rotation and scale — which is how
+    # neighbouring regions of the same pair ended up 20-60 deg and up to 0.53 in scale apart
+    # while each certified on its own residual. The physics does not allow it: two serial
+    # sections of one block differ by ONE placement rotation and ONE scale, and what varies
+    # locally is DISPLACEMENT, as tissue stretches and tears.
+    #
+    # So the rotation and scale come from the provisional whole-field fit, which sees the
+    # entire image and is far better constrained, and only the local translation is fitted
+    # here. Two parameters instead of four: better conditioned on 17 points, and a handful of
+    # blunders can shift a translation slightly but can no longer spin the transform.
+    #
+    # The free fit is still computed and preferred when it AGREES with the global one — more
+    # degrees of freedom genuinely help where the correspondences support them. Disagreement
+    # falls back to the constrained fit rather than being rejected outright, so a region with
+    # awkward matches is recovered instead of discarded.
+    M_free = sr._fit_similarity_robust(mov_pts, ref_pts)
+    M_local = M_free
+    constrained = False
+    if provisional_matrix is not None and M_free is not None:
+        try:
+            Ga = np.asarray(A, float)
+            Fa = np.asarray(M_free, float)[:2, :2]
+            rot = abs(math.degrees(math.atan2(-Fa[0, 1], Fa[0, 0])
+                                   - math.atan2(-Ga[0, 1], Ga[0, 0])))
+            rot = min(rot, 360.0 - rot)
+            sg, sf = math.hypot(Ga[0, 0], Ga[0, 1]), math.hypot(Fa[0, 0], Fa[0, 1])
+            if rot > GLOBAL_AGREEMENT_MAX_DEG or (
+                    sg > 0 and abs(sf / sg - 1.0) > GLOBAL_AGREEMENT_MAX_SCALE):
+                mp = np.asarray(mov_pts, float)
+                rp = np.asarray(ref_pts, float)
+                # robust translation: the median offset once the global A is applied
+                t_loc = np.median(rp - mp @ Ga.T, axis=0)
+                M_local = np.hstack([Ga, t_loc.reshape(2, 1)])
+                constrained = True
+        except Exception:
+            M_local = M_free
+    _local_note = ("global_rotation_scale_local_translation" if constrained
+                   else "free_similarity")
     cert = sr.landmark_register_and_verify(
         ref_pts, mov_pts, float(pixel_size_um),
         image_wh=(Wr, Hr), user_roi_polygon=roi.tolist(),
         fle_um=fle_um, landmarks_are_model_selected=False)
     matrix = cert.get("matrix")
     cert["matrix"] = matrix.tolist() if hasattr(matrix, "tolist") else matrix
-    cert["local_matrix"] = M_local.tolist()
+    cert["local_matrix"] = np.asarray(M_local, float).tolist()
+    cert["local_fit"] = _local_note
     cert["source"] = source
     cert["n_correspondences"] = int(len(ref_pts))
     cert["fle_um_loftr"] = fle_um

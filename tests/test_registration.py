@@ -800,3 +800,45 @@ def test_the_agreement_thresholds_sit_between_the_measured_populations():
     # broken pairs measured at >=18 deg / >=0.17 scale spread
     assert lm.GLOBAL_AGREEMENT_MAX_DEG < 18.0
     assert lm.GLOBAL_AGREEMENT_MAX_SCALE < 0.17
+
+
+def test_a_local_fit_does_not_invent_its_own_rotation_and_scale():
+    """Rotation and scale come from the whole field; only displacement is local.
+
+    A free 4-DOF similarity fitted to one small region's correspondences puts its error
+    wherever it fits best, and with few clustered points that is rotation and scale — which
+    is how neighbouring regions of one pair ended up 20-60 deg and up to 0.53 in scale apart
+    while each certified on its own residual. Two serial sections of one block differ by ONE
+    placement rotation and ONE scale; what varies locally is DISPLACEMENT, as tissue
+    stretches and tears.
+
+    Measured on clustered correspondences with blunders, constraining to the global rotation
+    and scale and fitting only the translation is also MORE accurate on the good points
+    (residual 0.83-0.99 against 0.89-1.20 free), so this is not a safety-for-accuracy trade.
+    """
+    import math
+
+    import numpy as np
+    from oasis.spatial import serial_registration as sr
+
+    rng = np.random.default_rng(7)
+    mov = np.array([250.0, 250.0]) + rng.normal(0, 25, (17, 2))     # clustered
+    truth = np.array([25.0, -12.0])
+    ref = mov + truth + rng.normal(0, 1.0, mov.shape)
+    ref[:4] += rng.normal(0, 60.0, (4, 2))                          # blunders
+
+    Ga = np.eye(2)                       # the whole field says no rotation, unit scale
+    free = np.asarray(sr._fit_similarity_robust(mov, ref), float)
+    con = np.hstack([Ga, np.median(ref - mov @ Ga.T, axis=0).reshape(2, 1)])
+
+    def resid(M):                        # on the GOOD points only
+        return float(np.median(np.linalg.norm(
+            sr._apply_affine(mov, M) - ref, axis=1)[4:]))
+
+    assert abs(math.degrees(math.atan2(-con[0, 1], con[0, 0]))) < 1e-6, (
+        "the constrained fit must carry the global rotation exactly")
+    assert resid(con) <= resid(free) + 1e-6, (
+        f"constrained residual {resid(con):.2f} worse than free {resid(free):.2f} — the "
+        f"constraint is supposed to help, not cost accuracy")
+    assert np.allclose(con[:, 2], truth, atol=2.0), (
+        f"constrained translation {con[:, 2]} did not recover the truth {truth}")
