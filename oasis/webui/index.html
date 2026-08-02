@@ -1720,8 +1720,8 @@ td.muted { color: var(--text3); font-size: 11px; }
             <button class="btn sm" onclick="lmZoomBy(1.4)" title="Zoom in">+</button>
             <button class="btn sm active" id="spatial-cert-matchzoom-btn" onclick="lmToggleMatchZoom()"
                     title="Keep both sections at the same magnification. On by default — comparing structures at different magnifications is misleading.">Match magnification</button>
-            <button class="btn sm" id="spatial-cert-syncpan-btn" onclick="lmToggleSyncPan()"
-                    title="Also move both sections together. Leave OFF when the sections are shifted, so each pane can sit on its own copy of the same structure.">Sync position</button>
+            <button class="btn sm active" id="spatial-cert-syncpan-btn" onclick="lmToggleSyncPan()"
+                    title="Both sections move together, matched through the registration transform so they show the SAME TISSUE rather than the same pixel offset. Turn off only to look at two different places at once.">Unsync panes</button>
             <span id="spatial-cert-cursor" style="font-size:11px;color:var(--text3);margin-left:auto;font-variant-numeric:tabular-nums"></span>
             <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both tissue images to their viewing panes">Reset zoom</button>
             <span class="cert-only-landmark" style="font-size:11px;color:var(--text2)"><b>Click the fixed section, then the matching structure on the moving section.</b> OASIS never places the matching point for you — the verdict is re-measured after every pair.</span>
@@ -6069,7 +6069,11 @@ function lmScheduleRender(){
 // section to a speck with nothing to navigate back by. Zoom is now relative to the FIT scale
 // (0.5x fit to 24x fit), the image is kept partly on screen so it can never be panned into
 // the void, and the level is readable rather than guessed at.
-const LM_ZOOM_MIN = 0.5, LM_ZOOM_MAX = 24;
+// 24x fit put a 0.75 µm/px field at ~30x screen magnification, where one tissue pixel
+// spans a finger-width and a single trackpad flick crossed the whole range — the
+// per-event cap bounded ONE event, not the gesture. 8x is past cell-level detail on a
+// 1920 px field and the range is now crossable but not by accident.
+const LM_ZOOM_MIN = 0.5, LM_ZOOM_MAX = 8;
 function lmClamp(side) {
   const p = lmPanes[side], fit = p.fit || 1;
   p.scale = Math.min(Math.max(p.scale, fit * LM_ZOOM_MIN), fit * LM_ZOOM_MAX);
@@ -6112,7 +6116,19 @@ function lmZoomLabel() {
 // "linked" toggle breaks the common case — serial sections are usually SHIFTED, so you want
 // the same magnification while panning each pane onto its own copy of the same structure.
 // Matching magnification is on by default; sharing position is not.
-let lmMatchZoom = true, lmSyncPan = false;
+// SYNCED BY DEFAULT, and synced through the TRANSFORM rather than through raw pan offsets.
+//
+// The note above was right that serial sections are shifted, so copying tx/ty from one pane
+// to the other lands you on the wrong tissue — but the conclusion drawn from it was wrong.
+// The answer is not to leave the panes unlinked; it is to sync the TISSUE instead of the
+// pixels. lmMirror now maps the reference pane's view centre into moving space through the
+// best transform available (certified > provisional > pixel-size-scaled centre alignment)
+// and centres the moving pane there, so both panes show the same structure while panning.
+//
+// Default is ON because comparing the same structure on two sections IS the task; hunting
+// for the matching spot by hand is the failure mode. The control is now an UNSYNC, so the
+// operator opts out when they deliberately want to look at two different places.
+let lmMatchZoom = true, lmSyncPan = true;
 function lmToggleMatchZoom() {
   lmMatchZoom = !lmMatchZoom;
   const b = document.getElementById('spatial-cert-matchzoom-btn');
@@ -6122,15 +6138,68 @@ function lmToggleMatchZoom() {
 function lmToggleSyncPan() {
   lmSyncPan = !lmSyncPan;
   const b = document.getElementById('spatial-cert-syncpan-btn');
-  if (b) b.classList.toggle('active', lmSyncPan);
+  if (b) {
+    b.classList.toggle('active', lmSyncPan);
+    // The label names the ACTION, not the state: synced (the default) offers "Unsync".
+    b.textContent = lmSyncPan ? 'Unsync panes' : 'Sync panes';
+  }
   if (lmSyncPan) lmMirror('ref');
 }
+// Best available moving<-reference mapping, as a 2x3 affine in FULL-RES pixels.
+// Falls back progressively rather than failing: a rough alignment beats none, and the panes
+// only need to land on the same structure, not to be certified.
+function lmRefToMovMatrix() {
+  const w = spatialCertWork;
+  const cert = w.pair && spatialCertifications[w.pair.sample_id];
+  const M = (cert && (cert.local_matrix || cert.matrix)) ||
+            (w.loftrRois || []).map(r => r.cert && r.cert.local_matrix).find(Boolean);
+  if (M && M.length === 2) {
+    // stored transform maps MOVING -> REFERENCE; invert it to go the other way
+    const [[a, b, tx], [c, d, ty]] = M;
+    const det = a * d - b * c;
+    if (Math.abs(det) > 1e-9) {
+      return [[d / det, -b / det, (b * ty - d * tx) / det],
+              [-c / det, a / det, (c * tx - a * ty) / det]];
+    }
+  }
+  // No transform yet: same physical offset from each image's centre, using each image's own
+  // µm/px. This is what certSeedMovingRoi already assumes and is right whenever the two
+  // frames were captured of roughly the same field.
+  if (!w.ref || !w.mov) return null;
+  const k = spatialCertPixelSize() / Math.max(spatialCertMovPixelSize(), 1e-9);
+  return [[k, 0, w.mov.width / 2 - k * w.ref.width / 2],
+          [0, k, w.mov.height / 2 - k * w.ref.height / 2]];
+}
+
 function lmMirror(from) {
   if (!lmMatchZoom && !lmSyncPan) return;
   const to = from === 'ref' ? 'mov' : 'ref';
   const a = lmPanes[from], b = lmPanes[to];
   if (lmMatchZoom) b.scale = (b.fit || 1) * (a.scale / (a.fit || 1));
-  if (lmSyncPan)   { b.tx = a.tx; b.ty = a.ty; }
+  if (lmSyncPan) {
+    const stageA = document.getElementById('lm-stage-' + from);
+    const stageB = document.getElementById('lm-stage-' + to);
+    const M = lmRefToMovMatrix();
+    if (stageA && stageB && M) {
+      // image point currently under the centre of pane `from`
+      const rA = stageA.getBoundingClientRect(), rB = stageB.getBoundingClientRect();
+      const cx = (rA.width / 2 - a.tx) / a.scale, cy = (rA.height / 2 - a.ty) / a.scale;
+      let px, py;
+      if (from === 'ref') {
+        px = M[0][0] * cx + M[0][1] * cy + M[0][2];
+        py = M[1][0] * cx + M[1][1] * cy + M[1][2];
+      } else {                                   // invert for mov -> ref
+        const [[m00, m01, m02], [m10, m11, m12]] = M;
+        const det = m00 * m11 - m01 * m10;
+        if (Math.abs(det) < 1e-9) { lmClamp(to); lmApply(to); return; }
+        const ux = cx - m02, uy = cy - m12;
+        px = (m11 * ux - m01 * uy) / det;
+        py = (-m10 * ux + m00 * uy) / det;
+      }
+      b.tx = rB.width / 2 - px * b.scale;
+      b.ty = rB.height / 2 - py * b.scale;
+    } else { b.tx = a.tx; b.ty = a.ty; }
+  }
   lmClamp(to); lmApply(to);
 }
 function lmZoomBy(f, side) {
@@ -6157,8 +6226,8 @@ function lmWheel(side,e){ e.preventDefault();
   // notch cannot leap across the range.
   let dy = e.deltaY;
   if (e.deltaMode === 1) dy *= 16; else if (e.deltaMode === 2) dy *= 400;
-  let f = Math.exp(-dy * 0.0015);
-  f = Math.min(Math.max(f, 0.6), 1.6);
+  let f = Math.exp(-dy * 0.0007);           // halved: a flick emits dozens of events
+  f = Math.min(Math.max(f, 0.85), 1.18);    // per-event cap, so a gesture ramps
   lmZoomAt(side, e.clientX-r.left, e.clientY-r.top, f); }
 function lmDown(side,e){
   if (e.button !== 0) return;
@@ -6174,14 +6243,26 @@ function lmDown(side,e){
                                  side === 'ref' ? spatialCertWork.ref : spatialCertWork.mov);
     return;
   }
+  const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY;
   if (side === 'mov' && spatialCertMode === 'landmark') {
-    // Direct manipulation of the moving window, ahead of pan.
+    // CANDIDATE window drag — never consumes the press.
+    //
+    // This used to `return` here on a hit, which broke landmark placement outright: it
+    // skipped `p.moved = 0`, so a stale `moved` from any earlier pan left the click handler
+    // permanently short-circuited by its own `if (moved > 4) return`. Landmarks could not be
+    // placed inside the moving window at all — which is the one place you most want them.
+    //
+    // The deeper mistake was gesture priority. In landmark mode a click inside the window
+    // MUST place a landmark; moving the window is the rarer action. So the press is left
+    // alone and only a real DRAG (past the same 4 px the click handler uses) is promoted to
+    // a window move — click to place, drag to move, no extra mode and no extra button.
+    // Resize handles are tiny explicit targets and are exempt: they claim the press.
     const pt = spatialCertPoint(e, document.getElementById('spatial-cert-mov'),
                                 spatialCertWork.mov);
     const hit = certMovRoiHitTest(pt);
-    if (hit) { certMovRoiBegin(hit, pt); return; }
-  }
-  const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
+    if (hit && hit.mode === 'scale') { certMovRoiBegin(hit, pt); p.drag = false; }
+    else if (hit) { spatialCertWork.movRoiPending = { hit, pt }; }
+  } }
 function lmMove(side,e){
   const d = certDraw();
   if (d.tool && d.side === side && d.down) {
@@ -6206,11 +6287,27 @@ function lmMove(side,e){
                                       spatialCertWork.mov));
     return;
   }
-  const p=lmPanes[side]; if(!p.drag) return;
+  const p=lmPanes[side];
+  if (side === 'mov' && spatialCertWork.movRoiPending) {
+    const pend = spatialCertWork.movRoiPending;
+    p.moved += Math.abs(e.clientX - p.px) + Math.abs(e.clientY - p.py);
+    p.px = e.clientX; p.py = e.clientY;
+    if (p.moved > 4) {                       // same threshold the click handler uses
+      certMovRoiBegin(pend.hit, pend.pt);
+      spatialCertWork.movRoiPending = null; p.drag = false;
+      // Apply this event too, or the window sits still for one frame and then jumps —
+      // begin() only records the origin, it does not move anything.
+      certMovRoiDragTo(spatialCertPoint(e, document.getElementById('spatial-cert-mov'),
+                                        spatialCertWork.mov));
+    }
+    return;
+  }
+  if(!p.drag) return;
   const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
   p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY;
   lmClamp(side); lmApply(side); lmMirror(side); }
-function lmUp(side){ lmPanes[side].drag=false; if(side==='mov') certMovRoiEnd(); }
+function lmUp(side){ lmPanes[side].drag=false;
+  if(side==='mov'){ certMovRoiEnd(); spatialCertWork.movRoiPending=null; } }
 // Double-click zooms in on the spot, alt/shift-double-click out — the QuPath reflex.
 ['ref','mov'].forEach(side => {
   const st = document.getElementById('lm-stage-' + side);

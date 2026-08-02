@@ -131,28 +131,42 @@ def test_the_manual_landmark_path_offers_no_suggestions(ui):
     assert not wired, f"retired suggestion helpers have controls again: {wired}"
 
 
-def test_the_moving_window_drag_is_claimed_in_the_right_order(ui):
-    """lmDown resolves three competing gestures, and the order is the whole correctness.
+def test_a_press_on_the_moving_pane_never_swallows_a_landmark_click(ui):
+    """lmDown must initialise pan state BEFORE any early return, and must not consume a
+    plain press in landmark mode.
 
-    A pointer-down on the moving pane can mean: continue an active drawing tool, grab the
-    moving certification window, or pan the canvas. They must be tried in that order.
-    Claiming the moving-window drag before the draw tool makes the moving pane undrawable
-    (the tool never sees its own gesture); claiming pan first makes the window immovable.
-    Neither failure raises anything — the control just silently does the wrong thing — so
-    it is checked here rather than left to a click-test.
+    Both halves are regressions that shipped. An earlier version returned early when the
+    press landed inside the moving window, which skipped `p.moved = 0` — so a stale `moved`
+    from any previous pan left the click handler permanently short-circuited by its own
+    `if (moved > 4) return`, and landmarks could not be placed inside the moving window at
+    all. That is the one place an operator most wants to place them.
+
+    The deeper error was gesture priority: in landmark mode a click inside the window MUST
+    place a landmark, and moving the window is the rarer action. So a plain press is left
+    alone and only a real DRAG is promoted to a window move. Resize handles are tiny explicit
+    targets and may claim the press; the window interior may not.
     """
     body = re.search(r"function lmDown\(side,e\)\{(.*?)\nfunction lmMove",
                      ui["script"], re.S)
     assert body, "lmDown has been renamed or restructured — re-check the gesture ordering"
     src = body.group(1)
-    draw = src.find("d.tool && d.side === side")
-    roi = src.find("certMovRoiHitTest")
-    pan = src.find("p.drag=true")
-    assert -1 not in (draw, roi, pan), \
-        f"lmDown lost one of its three branches (draw={draw}, movRoi={roi}, pan={pan})"
-    assert draw < roi < pan, (
-        "lmDown must try the draw tool, then the moving window, then pan — got order "
-        f"draw={draw}, movRoi={roi}, pan={pan}")
+
+    i_draw = src.find("d.tool && d.side === side")
+    i_pan = src.find("p.moved=0")
+    i_roi = src.find("certMovRoiHitTest")
+    assert -1 not in (i_draw, i_pan, i_roi), (
+        f"lmDown lost a branch (draw={i_draw}, pan-init={i_pan}, movRoi={i_roi})")
+    assert i_draw < i_pan, "the draw tool must still own its own gesture first"
+    assert i_pan < i_roi, (
+        "pan state (p.moved=0) must be initialised BEFORE the moving-window check, or a "
+        "stale `moved` silently blocks landmark placement")
+
+    # Only the scale handles may consume the press; a hit on the interior must not.
+    tail = src[i_roi:]
+    assert "hit.mode === 'scale'" in tail, (
+        "the moving-window branch must distinguish handles from the interior")
+    assert "movRoiPending" in tail, (
+        "an interior hit must be recorded as PENDING and promoted only on a real drag")
 
 
 def test_resizing_the_moving_window_cannot_reach_the_certification(ui):
