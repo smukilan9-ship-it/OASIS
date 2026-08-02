@@ -2403,3 +2403,145 @@ of four cases.
 **Standing rule applies:** any change to the spatial association statistics must be validated
 before implementation. Nothing here has been implemented, and § 17.4 is a direction, not a
 decision.
+
+---
+
+## 18. The spatial-statistics field, read against OASIS
+
+Six methods read in full. Read together they do something § 17 alone could not: they show
+which of OASIS's statistical choices are independently converged on by other groups, which
+are contradicted, and — the part that matters for the paper — what nobody has solved.
+
+### 18.1 The six, mapped
+
+| method | statistic | null | cross-sample layer | inhomogeneity |
+|---|---|---|---|---|
+| **spicyR** (Canete 2022, *Bioinformatics* 38:3099) | Ripley's L → scalar `u = Σ[L_obs − L_Pois]` | theoretical Poisson | linear / linear **mixed** model (lmerTest) | none |
+| **SpaceANOVA** (Seal 2024, *J Proteome Res* 23:1131) | **pair correlation g(r)** | permutation-envelope adjusted | one-/two-way **FANOVA** + subject random effect | envelope adjustment; handles holes |
+| **SPOT** (Samorodnitsky 2024, *Bioinformatics* 40:btae425) | Besag's L at many radii | none (Cox model) | Cox PH per radius | none |
+| **spagg** (Samorodnitsky 2024, *Brief Bioinform* 25:bbae522) | K / L | — | **weighted averaging over ROIs** | Landau weights |
+| **KAMP** (Wrobel & Song, arXiv 2412.08498v3) | K, uni- and **bivariate** | **label permutation, closed-form moments** | Cox | robust by construction |
+| **B-KAMP** (Go, arXiv 2606.12021) | K within **blocks** | blockwise label permutation | weighted sum of block Z | robust |
+| **PANORAMIC** (§ 17) | neighbourhood enrichment | analytic, assumes homogeneity | **REML random-effects meta-analysis** | assumed away |
+
+### 18.2 Four things the field independently confirms about OASIS
+
+**(a) Cumulative K is the wrong statistic for a band-resolved question.** SpaceANOVA chose
+g(r) over K explicitly because g "contains contributions only from interpoint distances
+exactly equal to r" and K's cumulative form loses that granularity. OASIS reached the same
+conclusion by measurement — § 13/§ 15.1 found the shipped `bands` statistic leaked
+contact→co-infiltration at **0.98** and was blind to a regional truth at **0.06**, and
+replaced it with `bands_ring`, a per-bin ring density. **Two independent routes to the same
+conclusion, one theoretical and one empirical.** This is the strongest single point OASIS
+can make in the paper about its statistic, and it should be made with the SpaceANOVA
+citation next to the § 15.1 table.
+
+**(b) The right null is label permutation over all cells, not CSR.** KAMP's null is
+*proportional intensity*, λ_m(u) ∝ λ_{n−m}(u) — immune cells as a random subset of the
+observed cell population — implemented as permuting immune/background labels with locations
+fixed. B-KAMP uses the blockwise version; SpaceANOVA's envelope adjustment is the same idea.
+**That is exactly OASIS's `dense_morphology`** (all-cell support with jitter, random
+labelling). Four groups, one null.
+
+**(c) Downweight, do not exclude.** Universal. spicyR fits a monotone-decreasing GAM to `u²`
+against both cell counts and uses inverse fitted values as regression weights — **AUC 0.940
+with weights against 0.901 without**. B-KAMP weights blocks `w_i ∝ n_i/p_i`. spagg weights
+ROIs. PANORAMIC weights by bootstrap variance. Nobody gates. This is § 17.4 with four more
+citations behind it.
+
+**(d) A minimum-evidence floor per window is standard, and OASIS's is in the right place.**
+PANORAMIC requires ≥ 5 cells of each type per sample; KAMP restricts to ≥ 2 B cells and
+≥ 2 macrophages; B-KAMP requires ≥ √m points of interest per block. OASIS's ≥ 5 floor sits
+comfortably inside that range.
+
+### 18.3 Four warnings that land directly on OASIS
+
+**(1) Kinhom is biased, and OASIS ships it.** KAMP's simulations (their Fig. 3) show the
+inhomogeneous K estimator **systematically overestimates** the degree of clustering under the
+homogeneous null at λ_n = 1000 or p = 0.1, and **underestimates** it under
+homogeneous+clustered. Low total counts and low abundance is precisely OASIS's small-window
+regime. OASIS runs `Kinhom` as one of three nulls in `cross_k_all_nulls`. **Action: find out
+whether Kinhom is ever the null that decides a verdict, and if it is, this needs measuring on
+our substrates before the paper claims it as a robustness check.**
+
+**(2) Irregular windows inflate K — and OASIS's analysis window is deliberately irregular.**
+B-KAMP requires every block to be a **rectangle** with a bounded aspect ratio, citing Goreaud
+& Pélissier (1999): complex windows "complicate edge-effect correction and may induce
+artificial spatial heterogeneity, potentially leading to inflated K-function estimates or
+spurious clustering", and Doguwa & Upton (1989): elongated rectangles give markedly larger
+MSE than square ones. **OASIS's A∩B intersection window preserves holes by design.** That
+choice was made to be honest about where tissue actually overlaps, and it may well still be
+right — but it is a choice the literature warns against, it has never been measured here, and
+an operator-drawn ROI can be arbitrarily elongated. **Action: measure size under the
+intersection window with holes against a rectangle inscribed in it.**
+
+**(3) Never tune the radius — SPOT measured the cost.** Choosing the best-performing radius
+post hoc gave a **type I error of 0.456**; the worst radius gave 0.006 power. SPOT's answer
+is a Cauchy combination across candidate radii, `T = Σ ω_p tan[π(0.5 − p_p)]`, reaching
+type I 0.057 / power 0.925 where FunSpace gave 0.124 / 0.714. OASIS pre-specifies its bands
+and never tunes them, which is the safe side of this — and 0.456 is the number that justifies
+that discipline to a referee.
+
+**(4) KAMP's asymptotics need many cells, which is exactly what OASIS's certified windows
+lack.** Theorem 2.4 holds under a **no-dominating-cell condition**: the statistic "should
+reflect spatial organization accumulated across many cells, rather than being driven by a few
+cells in an unusually dense region, a tissue artifact, or boundary cells with extreme edge
+corrections." B-KAMP adds the mirror requirement — each block needs
+≥ min(√m, √(n−m)) **background** points, because "without sufficient background points, most
+permutations yield similar label configurations, causing the permutation distribution to
+concentrate near the observed value and thereby reducing statistical power."
+
+That is the operator's complaint — *"the window where everything gets certified is so small,
+there are physically not enough cells to even have more than 5 positives"* — stated as a
+formal condition by two independent papers. It is also § 16's conclusion arriving from the
+statistics side rather than the registration side.
+
+### 18.4 What the field has that OASIS does not
+
+* **A cross-sample layer.** Every one of the six has one; OASIS has none. It analyses a pair
+  and stops.
+* **Closed-form null moments.** KAMP Theorem 2.1 gives E and Var of K under the label-
+  permutation null analytically, and — elegantly — **E(K) is just Ripley's K computed on all
+  cells**, so existing software computes it directly. Measured cost on their data: permutation
+  562 min → KAMP 3.6 min → KAMP lite 0.6 min; per image 213.1 s → 1.6 s → 0.2 s. OASIS runs
+  199 Monte Carlo permutations for the same null. **This is a ~100× speedup available for a
+  null OASIS already uses**, and it would remove Monte Carlo error from the verdict entirely.
+* **Multi-ROI aggregation.** spagg exists because OASIS's exact situation — several regions
+  per sample, one conclusion wanted — is a real statistical problem. Its finding matters:
+  Landau weights win when intensity varies across ROIs (ours does), and a **resampling
+  aggregation inflates type I error to ~8 % at α = 0.05**.
+* **Multi-radius aggregation** (SPOT's Cauchy combination).
+
+### 18.5 What nobody has, and why that is the paper
+
+**Every one of the six is single-section.** mIF, IMC, CODEX — all markers on one physical
+slide. Not one of them has a registration transform between the two channels being compared,
+so not one of them has any notion of position error propagating into a colocalization test.
+Their "degradation" experiments are cell thinning, cell-type bias, and tissue holes; their
+uncertainty is *which region you sampled*, not *where the cell actually is*.
+
+OASIS's whole problem — two markers on two consecutive sections, a certified registration
+between them, and a ~4.4 µm physical floor (§ 16.3) — is untouched by this literature. That
+is the contribution, and § 18.2 says the statistical machinery underneath it is the machinery
+the field converged on independently. **The paper should be framed as: the field's null and
+band-resolved statistic, carried across a registration boundary, with the registration error
+propagated and reported (the MDE curve) rather than assumed to be zero.**
+
+### 18.6 Ranked actions, each with the validation it needs
+
+1. **Check whether Kinhom ever decides a verdict** (§ 18.3.1). Read-only; no statistics
+   change. If it does, measure it on the § 15 substrates before the paper cites it.
+2. **Measure size under the holed intersection window** against an inscribed rectangle
+   (§ 18.3.2). This is a validation, not a change — but it may force one.
+3. **Adopt KAMP's closed-form moments for the `dense_morphology` null.** Large speedup,
+   removes Monte Carlo error, same null. Must reproduce the § 15.1 size/leak/power table
+   within Monte Carlo error before replacing anything.
+4. **Add a minimum-evidence gate in the B-KAMP form** — ≥ √m of each marker and a background
+   floor — reported alongside the existing ≥ 5. Changes which windows produce numbers, so it
+   needs the § 16.9 treatment.
+5. **A cross-region layer** (§ 17.4 + spagg). The largest and least certain: it needs
+   registration error as a variance component, which nobody has done, and `spagg` warns that
+   the obvious resampling route inflates type I error.
+
+Nothing here is implemented. Items 3–5 all change what the statistics report and are subject
+to the standing rule that they are validated first.
