@@ -1452,3 +1452,84 @@ Not yet done, and required before the factor is changed: the sweep is synthetic,
 at 20 µm, and § 13.2 means the co-infiltration verdict is unreliable regardless of the floor.
 
 
+
+---
+
+## 14. Session 2026-08-02b — the moving certification window is now the operator's
+
+### 14.1 What the registration workflow actually is
+
+Settled this session, and it narrows the tab rather than widening it:
+
+> Draw a region. Place landmarks by hand, on both sections. The gate does the rest.
+
+No proposed landmarks, no guided landmarks. **Proposing is circular** — asking a matcher to
+suggest correspondences is the same automatic step that already failed, wearing a human's
+signature; and at cohort scale a per-pair proposal pass is slow enough to be impractical.
+The backends (`propose_landmarks`, `guide_landmark_candidates`, `suggest_moving_landmark`)
+stay unreachable from the UI, and `legacy/webui_guided_landmarks.js` keeps the retired
+implementation. `tests/test_ui_wiring.py::test_the_manual_landmark_path_offers_no_suggestions`
+still guards this.
+
+This is the answer to a question § 13 could not settle. On the real 10X windows in
+`roi_certification_neighbourhood_results.json`, **42 of 54 returned NO_MATCHES** and 10
+DEFORMED. No statistic reaches those pairs. And the promotion path is already in
+`serial_registration.py`:
+
+```
+accuracy_um <= 5.0 µm                              → CERTIFIED
+else a spatial subset passes, hull ≥ 10% of field  → LOCALLY_CERTIFIED
+else enough radius band remains                    → RADIUS_LIMITED
+```
+
+`_RADIUS_FLOOR_FACTOR` does **not** decide that — a point worth stating plainly, because
+§ 13's calibration might otherwise be read as a route to promoting pairs. It is not.
+LOCALLY_CERTIFIED needs a spatial subset of landmarks agreeing to within the gate over
+≥ 10 % of the field, which is a person placing good landmarks in a good region. What § 13's
+calibration would change is only what a RADIUS_LIMITED pair may *claim*, not its verdict.
+
+### 14.2 The gap: a matched window nobody could move
+
+`certSeedMovingRoi` copies the reference ROI onto the moving section, scaled by
+`ref_px / mov_px` so it covers the same PHYSICAL area rather than the same pixel count
+(250 px is 188 µm at 0.7519 but 160 µm at 0.641). Its comment claimed the operator "only
+ever translates it, never resizes it" — but **there was no translate control and no resize
+control**. The only way to change it was to redraw the polygon by hand, which destroys both
+the shape and the matched physical area the seed exists to establish. The seed is also
+centred on the moving image, which is almost never where the corresponding tissue sits.
+
+### 14.3 What was built
+
+Direct manipulation on the moving pane: grab anywhere inside the window to move it, grab a
+corner handle to resize it. Scaling is **uniform about the centroid**, so the window keeps
+its drawn shape — a per-vertex edit would let it be distorted into something that no longer
+corresponds to the reference window at all. The collapse case is clamped (0.05×–20×) so a
+grab that lands on the centroid cannot reduce the window to a point.
+
+`lmDown` resolves three competing gestures and the order is the whole correctness: **active
+draw tool → moving window → pan**. Claiming the window before the draw tool makes the
+moving pane undrawable; claiming pan first makes the window immovable. Neither failure
+raises anything, so it is pinned by a test.
+
+The ROI badge now reports physical size: `both windows set · moving 2.00× reference`, or
+`· matched` within 2 %. Resizing is allowed rather than prevented — only the operator can
+see which tissue corresponds — but silently drifting from the reference window's area is
+exactly what is worth showing.
+
+**Why resizing cannot bias a verdict:** `movRoi` never reaches the transform or the
+certification. Those come from the hand-placed landmark pairs and from the REFERENCE ROI,
+which is what `certify_landmarks` is sent. A test asserts `movRoi` is never included in that
+call, so the aid cannot be promoted to evidence by a later edit.
+
+### 14.4 Verified
+
+Driven in-browser: seeded window matches the reference area exactly; move shifts by the
+exact delta with area unchanged; a corner drag to 2× distance gives exactly 2.000× linear
+scale with the centroid fixed; the collapse clamp holds. Gesture priority checked on all
+five paths — inside the window drags it, outside pans, an active draw tool wins over both,
+LoFTR mode does not hijack the moving pane, and the reference pane still pans. No console
+errors; suite green.
+
+**Not done:** exercised with synthetic geometry, not on real slides — how well the seeded
+window lands on corresponding tissue in practice is unmeasured. Nothing in the spatial
+statistics was touched (§ 13.2 remains diagnosed and unfixed).

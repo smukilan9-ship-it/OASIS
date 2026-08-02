@@ -131,6 +131,45 @@ def test_the_manual_landmark_path_offers_no_suggestions(ui):
     assert not wired, f"retired suggestion helpers have controls again: {wired}"
 
 
+def test_the_moving_window_drag_is_claimed_in_the_right_order(ui):
+    """lmDown resolves three competing gestures, and the order is the whole correctness.
+
+    A pointer-down on the moving pane can mean: continue an active drawing tool, grab the
+    moving certification window, or pan the canvas. They must be tried in that order.
+    Claiming the moving-window drag before the draw tool makes the moving pane undrawable
+    (the tool never sees its own gesture); claiming pan first makes the window immovable.
+    Neither failure raises anything — the control just silently does the wrong thing — so
+    it is checked here rather than left to a click-test.
+    """
+    body = re.search(r"function lmDown\(side,e\)\{(.*?)\nfunction lmMove",
+                     ui["script"], re.S)
+    assert body, "lmDown has been renamed or restructured — re-check the gesture ordering"
+    src = body.group(1)
+    draw = src.find("d.tool && d.side === side")
+    roi = src.find("certMovRoiHitTest")
+    pan = src.find("p.drag=true")
+    assert -1 not in (draw, roi, pan), \
+        f"lmDown lost one of its three branches (draw={draw}, movRoi={roi}, pan={pan})"
+    assert draw < roi < pan, (
+        "lmDown must try the draw tool, then the moving window, then pan — got order "
+        f"draw={draw}, movRoi={roi}, pan={pan}")
+
+
+def test_resizing_the_moving_window_cannot_reach_the_certification(ui):
+    """The moving window is a viewing aid, and nothing may quietly promote it to evidence.
+
+    It starts matched to the reference window's physical area and the operator may then
+    move and resize it freely — which is only safe because it never reaches the transform.
+    `certify_landmarks` must be sent the REFERENCE roi_polygon; the moment movRoi is sent
+    too, a drag of a visual aid starts changing a verdict.
+    """
+    calls = re.findall(r"certify_landmarks\(\{(.*?)\}\)", ui["script"], re.S)
+    assert calls, "no certify_landmarks call found — the regex has drifted"
+    for body in calls:
+        assert "movRoi" not in body, \
+            "movRoi is being sent to certify_landmarks; it is a drawing aid, not evidence"
+
+
 def test_no_micro_sign_is_left_inside_an_uppercased_heading(ui):
     """`text-transform: uppercase` turns µ into Greek capital Mu, which looks like M.
 

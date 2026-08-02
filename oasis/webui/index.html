@@ -5310,7 +5310,7 @@ async function spatialCertLoad() {
   btn.disabled = false; btn.textContent = 'Load the pair';
   if (r.status !== 'ok') { showToast(r.error || 'Could not load images'); return; }
   spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], pending:null,
-                      certifying:false, roiPoints:[], movRoi:null, roiMode:false,
+                      certifying:false, roiPoints:[], movRoi:null, movRoiDrag:null, roiMode:false,
                       loftrRois:[], loftrDraft:[], loftrMode:false, freehand:false };
   spatialCertRoiUpdateBadge(); loftrRoiSync(); spatialCertSetMode(spatialCertMode);
   const imgR = document.getElementById('spatial-cert-ref'), imgM = document.getElementById('spatial-cert-mov');
@@ -5387,8 +5387,18 @@ function spatialCertRender() {
       ? roiSvg(d.pts, side === 'ref' ? w.ref : w.mov, side, false) : '';
     ro.innerHTML = roiSvg(w.roiPoints, w.ref, 'ref', (w.roiPoints||[]).length >= 3)
                  + loftrRoiLayerSvg('ref') + dots(w.refPoints, w.ref, 'ref', w.pending) + draft('ref');
+    // Corner handles advertise that the moving window is grabbable — without them the
+    // interaction is invisible and the operator has no reason to try dragging it.
+    const movHandles = (spatialCertMode === 'landmark' && (w.movRoi||[]).length >= 3)
+      ? certMovRoiHandles().map(h => {
+          const u = certMovRoiUnits(), r = MOV_HANDLE_SCREEN_PX * u;
+          return `<rect x="${h[0]-r}" y="${h[1]-r}" width="${2*r}" height="${2*r}"`
+               + ` fill="#facc15" stroke="#1e293b" stroke-width="${1.5*u}" rx="${0.5*r}"/>`;
+        }).join('')
+      : '';
     mo.innerHTML = roiSvg(w.movRoi, w.mov, 'mov', (w.movRoi||[]).length >= 3)
-                 + loftrRoiLayerSvg('mov') + dots(w.movPoints, w.mov, 'mov', null) + draft('mov');
+                 + loftrRoiLayerSvg('mov') + dots(w.movPoints, w.mov, 'mov', null) + draft('mov')
+                 + movHandles;
   }
   document.getElementById('spatial-cert-count').textContent =
     (w.roiMode ? `ROI draw mode · ${(w.roiPoints||[]).length} vertices · click reference to add`
@@ -5400,8 +5410,20 @@ function spatialCertRoiUpdateBadge() {
   const w = spatialCertWork, b = document.getElementById('spatial-cert-roi-badge');
   if (!b) return;
   const n = (w.roiPoints||[]).length, m = (w.movRoi||[]).length;
-  if (n >= 3) { b.textContent = m >= 3 ? 'both windows set' : `reference set (${n} pts)`;
-                b.className = 'badge cyan'; }
+  if (n >= 3) {
+    // The moving window starts matched to the reference window in PHYSICAL area. Once the
+    // operator resizes it that stops being true, and silently drifting away from the
+    // reference window's size is exactly the thing worth seeing — so report the ratio.
+    let note = '';
+    if (m >= 3) {
+      const aRef = certPolyAreaUm2(w.roiPoints, spatialCertPixelSize());
+      const aMov = certPolyAreaUm2(w.movRoi, spatialCertMovPixelSize());
+      const k = aRef > 0 ? Math.sqrt(aMov / aRef) : 0;
+      note = (k && Math.abs(k - 1) > 0.02) ? ` · moving ${k.toFixed(2)}× reference` : ' · matched';
+    }
+    b.textContent = (m >= 3 ? 'both windows set' : `reference set (${n} pts)`) + note;
+    b.className = 'badge cyan';
+  }
   else { b.textContent = 'none'; b.className = 'badge gray'; }
 }
 function spatialCertRoiClear() {
@@ -5480,10 +5502,17 @@ function certCommitShape(pts, tool, side) {
 // Sized in MICRONS, not pixels. The two sections can sit at slightly different µm/px, and a
 // pixel-for-pixel copy would then cover a different physical area — 250 px is 188 µm at
 // 0.7519 but 160 µm at 0.641. Scaling by ref_px/mov_px makes the copy the same PHYSICAL
-// window, so the operator only ever translates it, never resizes it.
+// window, so it STARTS matched to the reference window.
 //
-// This is a drawing aid and a visual check. It never feeds the transform: that comes only
-// from landmark pairs the operator placed by hand.
+// It is then the operator's to move and resize (certMovRoiHitTest / lmDown). The seed is
+// centred on the moving image, which is almost never where the corresponding tissue
+// actually sits, and serial sections drift in scale — so a fixed copy was the wrong
+// object. Deviation from the matched physical size is reported next to the badge rather
+// than prevented, because only the operator can see which tissue corresponds.
+//
+// This is a drawing aid and a visual check. It never feeds the transform or the
+// certification: those come only from the landmark pairs the operator placed by hand and
+// from the REFERENCE ROI, which is why resizing this one cannot bias a verdict.
 function certSeedMovingRoi() {
   const w = spatialCertWork;
   if (!w.ref || !w.mov || (w.roiPoints || []).length < 3) return;
@@ -5492,6 +5521,95 @@ function certSeedMovingRoi() {
   const cy = w.roiPoints.reduce((a, p) => a + p[1], 0) / w.roiPoints.length;
   const tx = w.mov.width / 2, ty = w.mov.height / 2;
   w.movRoi = w.roiPoints.map(p => [tx + (p[0] - cx) * k, ty + (p[1] - cy) * k]);
+}
+
+// ── Moving window: direct manipulation ───────────────────────────────────────
+// Grab anywhere inside it to move it, or a corner to resize it. Uniform scaling about the
+// centroid, so the window keeps its drawn SHAPE and only changes size — a per-vertex edit
+// would let the operator distort the window into something that no longer corresponds to
+// the reference one at all.
+//
+// Priority in lmDown is: an active draw tool, then this, then pan. That ordering matters —
+// claiming the drag before the draw tool would make the moving pane undrawable.
+const MOV_HANDLE_SCREEN_PX = 9;
+
+function certMovRoiUnits() {
+  // full-res units per on-screen px, so hit targets stay a constant size at any zoom
+  const w = spatialCertWork;
+  const img = document.getElementById('spatial-cert-mov');
+  if (!w.mov || !img) return 1;
+  const iw = img.naturalWidth || w.mov.width;
+  const sc = (lmPanes.mov && lmPanes.mov.scale) || 1;
+  return (w.mov.width / iw) / sc;
+}
+function certMovRoiBBox() {
+  const p = spatialCertWork.movRoi;
+  if (!p || p.length < 3) return null;
+  const xs = p.map(q => q[0]), ys = p.map(q => q[1]);
+  return [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+}
+function certMovRoiHandles() {
+  const b = certMovRoiBBox();
+  if (!b) return [];
+  const [x0, y0, x1, y1] = b;
+  return [[x0, y0], [x1, y0], [x1, y1], [x0, y1]];
+}
+function certPointInPoly(pt, poly) {
+  let inside = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, yi] = poly[i], [xj, yj] = poly[j];
+    if ((yi > pt[1]) !== (yj > pt[1]) &&
+        pt[0] < ((xj - xi) * (pt[1] - yi)) / ((yj - yi) || 1e-9) + xi) inside = !inside;
+  }
+  return inside;
+}
+function certMovRoiHitTest(pt) {
+  const w = spatialCertWork;
+  if (!w.movRoi || w.movRoi.length < 3) return null;
+  const tol = MOV_HANDLE_SCREEN_PX * certMovRoiUnits();
+  const hs = certMovRoiHandles();
+  for (let i = 0; i < hs.length; i++) {
+    if (Math.hypot(pt[0] - hs[i][0], pt[1] - hs[i][1]) <= tol) return { mode: 'scale', handle: i };
+  }
+  return certPointInPoly(pt, w.movRoi) ? { mode: 'move' } : null;
+}
+function certMovRoiCentroid() {
+  const p = spatialCertWork.movRoi;
+  return [p.reduce((a, q) => a + q[0], 0) / p.length,
+          p.reduce((a, q) => a + q[1], 0) / p.length];
+}
+function certMovRoiBegin(hit, pt) {
+  const w = spatialCertWork;
+  const c = certMovRoiCentroid();
+  w.movRoiDrag = { ...hit, start: w.movRoi.map(q => q.slice()), origin: pt, centroid: c,
+                   startDist: Math.hypot(pt[0] - c[0], pt[1] - c[1]) };
+}
+function certMovRoiDragTo(pt) {
+  const w = spatialCertWork, d = w.movRoiDrag;
+  if (!d) return;
+  if (d.mode === 'move') {
+    const dx = pt[0] - d.origin[0], dy = pt[1] - d.origin[1];
+    w.movRoi = d.start.map(q => [q[0] + dx, q[1] + dy]);
+  } else {
+    const dist = Math.hypot(pt[0] - d.centroid[0], pt[1] - d.centroid[1]);
+    // Clamped so a grab that lands on the centroid cannot collapse the window to a point.
+    const k = Math.min(Math.max(dist / Math.max(d.startDist, 1e-6), 0.05), 20);
+    w.movRoi = d.start.map(q => [d.centroid[0] + (q[0] - d.centroid[0]) * k,
+                                 d.centroid[1] + (q[1] - d.centroid[1]) * k]);
+  }
+  spatialCertRoiUpdateBadge();
+  lmScheduleRender();
+}
+function certMovRoiEnd() { spatialCertWork.movRoiDrag = null; }
+
+// Shoelace area in µm², at that image's own pixel size.
+function certPolyAreaUm2(poly, umPx) {
+  if (!poly || poly.length < 3) return 0;
+  let a = 0;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    a += poly[j][0] * poly[i][1] - poly[i][0] * poly[j][1];
+  }
+  return Math.abs(a / 2) * umPx * umPx;
 }
 
 function certCancelDraw() {
@@ -6056,6 +6174,13 @@ function lmDown(side,e){
                                  side === 'ref' ? spatialCertWork.ref : spatialCertWork.mov);
     return;
   }
+  if (side === 'mov' && spatialCertMode === 'landmark') {
+    // Direct manipulation of the moving window, ahead of pan.
+    const pt = spatialCertPoint(e, document.getElementById('spatial-cert-mov'),
+                                spatialCertWork.mov);
+    const hit = certMovRoiHitTest(pt);
+    if (hit) { certMovRoiBegin(hit, pt); return; }
+  }
   const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY; }
 function lmMove(side,e){
   const d = certDraw();
@@ -6076,11 +6201,16 @@ function lmMove(side,e){
     }
     return;
   }
+  if (side === 'mov' && spatialCertWork.movRoiDrag) {
+    certMovRoiDragTo(spatialCertPoint(e, document.getElementById('spatial-cert-mov'),
+                                      spatialCertWork.mov));
+    return;
+  }
   const p=lmPanes[side]; if(!p.drag) return;
   const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
   p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY;
   lmClamp(side); lmApply(side); lmMirror(side); }
-function lmUp(side){ lmPanes[side].drag=false; }
+function lmUp(side){ lmPanes[side].drag=false; if(side==='mov') certMovRoiEnd(); }
 // Double-click zooms in on the spot, alt/shift-double-click out — the QuPath reflex.
 ['ref','mov'].forEach(side => {
   const st = document.getElementById('lm-stage-' + side);
