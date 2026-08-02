@@ -1,0 +1,138 @@
+{
+  "config": {
+    "n_rep": 15,
+    "n_perm": 99,
+    "null": "dense_morphology",
+    "statistic": "bands_ring",
+    "enrichments": [
+      1.25,
+      1.5,
+      1.75,
+      2.0,
+      2.5,
+      3.0,
+      4.0
+    ],
+    "target_power": 0.8
+  },
+  "curve": {
+    "ll477_cd8|contact|1.25": {
+      "power": 0.4,
+      "n": 15
+    },
+    "ll477_cd8|contact|1.5": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|contact|1.75": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|contact|2.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|contact|2.5": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|contact|3.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|contact|4.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|regional|1.25": {
+      "power": 0.0,
+      "n": 15
+    },
+    "ll477_cd8|regional|1.5": {
+      "power": 0.067,
+      "n": 15
+    },
+    "ll477_cd8|regional|1.75": {
+      "power": 0.6,
+      "n": 15
+    },
+    "ll477_cd8|regional|2.0": {
+      "power": 0.933,
+      "n": 15
+    },
+    "ll477_cd8|regional|2.5": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|regional|3.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "ll477_cd8|regional|4.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|contact|1.25": {
+      "power": 0.4,
+      "n": 15
+    },
+    "keren_p13|contact|1.5": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|contact|1.75": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|contact|2.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|contact|2.5": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|contact|3.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|contact|4.0": {
+      "power": 1.0,
+      "n": 13
+    },
+    "keren_p13|regional|1.25": {
+      "power": 0.067,
+      "n": 15
+    },
+    "keren_p13|regional|1.5": {
+      "power": 0.267,
+      "n": 15
+    },
+    "keren_p13|regional|1.75": {
+      "power": 0.4,
+      "n": 15
+    },
+    "keren_p13|regional|2.0": {
+      "power": 0.667,
+      "n": 15
+    },
+    "keren_p13|regional|2.5": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|regional|3.0": {
+      "power": 1.0,
+      "n": 15
+    },
+    "keren_p13|regional|4.0": {
+      "power": 1.0,
+      "n": 15
+    }
+  },
+  "enrichment_for_target_power": {
+    "ll477_cd8|contact": 1.42,
+    "ll477_cd8|regional": 1.9,
+    "keren_p13|contact": 1.42,
+    "keren_p13|regional": 2.2
+  }
+}

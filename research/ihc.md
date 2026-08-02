@@ -1596,7 +1596,12 @@ would have put synthetic coordinates back into a "real tissue" test.
 | dense_morphology | bands | 0.00 | **1.00** | 0.00 |
 | dense_morphology | bands_pcf | 0.02 | 0.66 | 0.44 |
 | dense_morphology | bands_annulus | 0.04 | 0.04 | 0.06 |
-| **dense_morphology** | **bands_ring** | **0.02** | **0.06** | **0.38** |
+| **dense_morphology** | **bands_ring** | **0.02** | **0.06** | **0.38\*** |
+
+\* the power column is the WORST cell across all substrates and both truths, and 0.38 is
+the **synthetic** substrate's regional cell. On the two REAL substrates the same combination
+gives contact 1.00 and regional 0.60–0.90 at the same 2.0× enrichment (§ 15.8). Quoting 0.38
+for real tissue would understate the test.
 
 The shipped statistic fails in *both* directions, and the second failure was not predicted
 by § 13: a **regional-only truth is detected in its own band at 0.06**. Same cumulative
@@ -1738,3 +1743,30 @@ ROI workflow does, shrink the window until a similarity fits. Right conclusion, 
 * § 12.5's contradiction between § 8 and the shipped behaviour is still open, and now needs
   re-deciding against these results rather than the pre-§ 12.4 ones.
 * Association is imposed, never observed: the substrates are real, the truths are not.
+
+### 15.8 Power versus effect size
+
+`validate_band_power_curve.py`. A single power number is uninterpretable: 0.38 is fine or
+disqualifying depending entirely on how large the effect had to be to reach it. The shipped
+combination (`dense_morphology` + `bands_ring`), swept over per-band enrichment:
+
+| enrichment | 1.25 | 1.5 | 1.75 | 2.0 | 2.5 | 3.0 | 4.0 |
+|---|---|---|---|---|---|---|---|
+| ll477 contact | 0.40 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| ll477 regional | 0.00 | 0.07 | 0.60 | 0.93 | 1.00 | 1.00 | 1.00 |
+| keren contact | 0.40 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 |
+| keren regional | 0.07 | 0.27 | 0.40 | 0.67 | 1.00 | 1.00 | 1.00 |
+
+**80 % power at 1.42× enrichment for contact scale, 1.9–2.2× for regional.** The contact
+band — the tab's headline claim — is the *more* sensitive of the two, which is the useful
+direction.
+
+The asymmetry is geometric, not a defect: the regional band (20–50 µm) is wide and the
+regional truth (30–40 µm) fills only part of it, so the surrounding depleted radii dilute
+the signal. A regional truth that filled its band would behave like the contact one.
+
+**What this is for.** It is not a claim about what enrichment real CD8/TIM-3 tissue carries
+— nothing here measures that. It is what makes a NULL result readable: "no association
+detected" means something different at power 0.9 than at 0.3, and without this curve there
+is no way to say which regime a run was in. Any reported absence should name the effect the
+test could have found.

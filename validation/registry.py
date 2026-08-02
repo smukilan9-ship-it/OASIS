@@ -153,6 +153,32 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "band_power_curve",
+        "title": "Band test — power versus effect size",
+        "category": "statistical",
+        "claim": "The shipped band test reaches 80 % power at 1.42x per-band enrichment for "
+                 "contact scale and 1.9-2.2x for regional; on real tissue at 2.0x it is "
+                 "1.00 (contact) and 0.60-0.90 (regional).",
+        "purpose": "Sweep per-band enrichment for dense_morphology + bands_ring on both real "
+                   "substrates and report the power curve for each band.",
+        "why": "A single power number is uninterpretable — 0.38 is fine or disqualifying "
+               "depending on how large the effect had to be. This is also what makes a NULL "
+               "result readable: 'no association detected' means something different at "
+               "power 0.9 than at 0.3.",
+        "datasets": ["LL477 detections", "Keren TNBC scaffold"],
+        "assumptions": "Enrichment imposed by thinning on real cells; levels above the "
+                       "geometric cap (1/p for an annulus holding fraction p) are reported "
+                       "unreachable rather than silently clipped.",
+        "limitations": "Says nothing about what enrichment real CD8/TIM-3 tissue carries. "
+                       "The regional band is wide and the regional truth fills only part of "
+                       "it, so its curve is diluted by geometry, not by a defect.",
+        "interpretation": "Read a reported absence against the enrichment the test could "
+                          "have detected.",
+        "expected": "contact 80 % power at ~1.42x; regional at ~1.9-2.2x.",
+        "runner": {"kind": "script", "script": "validate_band_power_curve.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "radius_floor_calibration",
         "title": "Radius floor — calibrating the interpretation floor and the analysability gate",
         "category": "statistical",
