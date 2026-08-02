@@ -48,6 +48,7 @@ must be validated externally.)
 
 Requires torch + kornia. Weight download may need SSL_CERT_FILE=$(python -m certifi).
 """
+import math
 import numpy as np
 
 _MATCHER = {}
@@ -89,6 +90,14 @@ _RAW_CACHE_MAX = 512
 # already exists — `p_value_fle_too_high` in the FW certification rejects a declared FLE the
 # residuals cannot support, which is what matters when a pair is genuinely well registered and
 # σ_fit approaches FLE.
+# Agreement required between a REGION's local transform and the whole-field provisional one.
+# Calibrated from the cohort: well-registered pairs hold their regions to 0.22-0.36 deg of
+# rotation spread and 0.002-0.007 in scale, while broken ones reach 61.9 deg and 0.53. The
+# thresholds sit an order of magnitude above the good pairs and an order below the bad, so
+# genuine local deformation is never mistaken for a bad fit.
+GLOBAL_AGREEMENT_MAX_DEG = 5.0
+GLOBAL_AGREEMENT_MAX_SCALE = 0.05
+
 FLE_WORKING_PX = 0.16
 
 
@@ -606,6 +615,44 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     # Report the trim explicitly. A silently shrunk window is how the certified area and the
     # analysed area came apart in the first place; the operator drew a region and should be
     # told that part of it has no counterpart on the moving section.
+    # DOES THIS REGION'S FIT AGREE WITH THE WHOLE-FIELD ONE?
+    #
+    # A local fit is certified on its own residual, and a similarity fitted to
+    # correspondences packed into one small region can absorb a large rotation or scale error
+    # while still fitting those points well — the residual cannot see it, because the error
+    # is in the parameters rather than in the points. Nothing asked whether the regions of a
+    # pair agreed with EACH OTHER, and they frequently do not: measured across the cohort's
+    # certifying windows, rotation spread within a single pair reached 61.9 deg and scale
+    # spread 0.53, while genuinely well-registered pairs sit at 0.22-0.36 deg and 0.002-0.007.
+    #
+    # Two serial sections of one block differ by ONE placement rotation and ONE scale. Local
+    # deformation bends tissue; it does not rotate one region 40 deg relative to its
+    # neighbour. So a local fit that disagrees with the provisional whole-field transform is
+    # wrong, however small its residual, and the disagreement is reported as the diagnostic
+    # it is rather than hidden behind a passing verdict.
+    if provisional_matrix is not None and cert.get("local_matrix") is not None:
+        try:
+            Lm = np.asarray(cert["local_matrix"], float)
+            La, Lb = float(Lm[0, 0]), float(Lm[0, 1])
+            Ga, Gb = float(A[0, 0]), float(A[0, 1])
+            rot = abs(math.degrees(math.atan2(-Lb, La) - math.atan2(-Gb, Ga)))
+            rot = min(rot, 360.0 - rot)
+            sg = math.hypot(Ga, Gb)
+            sl = math.hypot(La, Lb)
+            cert["rotation_vs_global_deg"] = round(rot, 2)
+            cert["scale_vs_global"] = round(sl / sg, 4) if sg > 0 else None
+            if rot > GLOBAL_AGREEMENT_MAX_DEG or (
+                    sg > 0 and abs(sl / sg - 1.0) > GLOBAL_AGREEMENT_MAX_SCALE):
+                cert["verdict"] = "NOT_CERTIFIABLE"
+                cert["reason"] = (
+                    f"this region's own transform disagrees with the whole-field one by "
+                    f"{rot:.1f} deg and a factor of {sl / max(sg, 1e-9):.3f} in scale. Two "
+                    f"serial sections of one block share a single rotation and scale, so a "
+                    f"local fit this different is wrong however well it fits its own "
+                    f"correspondences — a small patch of matches can absorb a large "
+                    f"rotation error without raising the residual.")
+        except Exception:
+            pass
     cert["roi_clipped_to_moving_frac"] = round(float(roi_clip_frac), 4)
     if roi_clip_frac < 0.999:
         cert["roi_polygon_drawn"] = np.asarray(roi_polygon_ref, float).reshape(-1, 2).tolist()

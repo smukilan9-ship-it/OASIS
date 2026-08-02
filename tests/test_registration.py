@@ -751,3 +751,52 @@ def test_both_panes_show_the_same_tissue_after_clipping():
                                  work_max_dim=400)
     assert clean["roi_clipped_to_moving_frac"] == 1.0
     assert clean.get("roi_clip_note") is None
+
+
+def test_a_region_fit_that_disagrees_with_the_whole_field_is_refused():
+    """A per-region residual cannot see an error that lives in the PARAMETERS.
+
+    A similarity fitted to correspondences packed into one small region can absorb a large
+    rotation or scale error while still fitting those points well, so the residual stays
+    small and the region certifies. Nothing asked whether the regions of a pair agreed with
+    EACH OTHER, and measured across the cohort's certifying windows they often did not:
+    rotation spread within a single pair reached 61.9 deg and scale spread 0.53, while
+    genuinely well-registered pairs sit at 0.22-0.36 deg and 0.002-0.007.
+
+    Two serial sections of one block differ by ONE placement rotation and ONE scale. Local
+    deformation bends tissue; it does not rotate one region 40 deg relative to its neighbour.
+    """
+    import math
+
+    import cv2
+    import numpy as np
+    from oasis.spatial import loftr_matcher as lm
+
+    rng = np.random.default_rng(0)
+    ref = (rng.random((400, 500, 3)) * 255).astype("uint8")
+    th = np.deg2rad(20.0)
+    R = np.array([[math.cos(th), -math.sin(th)], [math.sin(th), math.cos(th)]])
+    mov = cv2.warpAffine(ref, np.hstack([R, np.array([[40.0], [10.0]])]), (500, 400))
+    roi = np.array([[120.0, 120.0], [340.0, 120.0], [340.0, 300.0], [120.0, 300.0]])
+
+    # the whole-field transform says ~0 deg; a local fit claiming 20 deg must be refused
+    prov = np.array([[1.0, 0.0, 40.0], [0.0, 1.0, 10.0]])
+    c = lm.certify_local_roi(ref, mov, roi, 0.7519, provisional_matrix=prov, work_max_dim=400)
+    assert c.get("rotation_vs_global_deg") is not None, "agreement is no longer measured"
+    assert c["rotation_vs_global_deg"] > lm.GLOBAL_AGREEMENT_MAX_DEG
+    assert c["verdict"] == "NOT_CERTIFIABLE", (
+        f"a {c['rotation_vs_global_deg']} deg disagreement certified anyway")
+    assert "whole-field" in (c.get("reason") or "")
+
+
+def test_the_agreement_thresholds_sit_between_the_measured_populations():
+    """The thresholds are calibrated, not picked: an order of magnitude above the good pairs
+    and an order below the bad, so genuine local deformation is never called a bad fit."""
+    from oasis.spatial import loftr_matcher as lm
+
+    # well-registered pairs measured at <=0.36 deg / <=0.007 scale spread
+    assert lm.GLOBAL_AGREEMENT_MAX_DEG > 0.36 * 5
+    assert lm.GLOBAL_AGREEMENT_MAX_SCALE > 0.007 * 5
+    # broken pairs measured at >=18 deg / >=0.17 scale spread
+    assert lm.GLOBAL_AGREEMENT_MAX_DEG < 18.0
+    assert lm.GLOBAL_AGREEMENT_MAX_SCALE < 0.17
