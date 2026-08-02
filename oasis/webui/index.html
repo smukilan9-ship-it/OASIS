@@ -5903,8 +5903,11 @@ function spatialCertSetMode(mode) {
   // (.cert-only-loftr panel); 'landmark' is the manual validated gate.
   spatialCertMode = (mode === 'loftr') ? 'loftr' : 'landmark';
   const regionEngine = (spatialCertMode === 'loftr');
+  // Landmark controls stay visible in BOTH modes: placement now works in both, and hiding
+  // the count/undo/clear while clicks silently did nothing was most of why this read as
+  // "landmarks are broken".
   document.querySelectorAll('.cert-only-landmark').forEach(el =>
-    el.classList.toggle('cert-hidden', spatialCertMode !== 'landmark'));
+    el.classList.remove('cert-hidden'));
   document.querySelectorAll('.cert-only-loftr').forEach(el =>
     el.classList.toggle('cert-hidden', !regionEngine));
   ['landmark', 'loftr'].forEach(m => {
@@ -5999,7 +6002,18 @@ async function spatialCertHandleRefClick(e) {
     w.roiPoints.push(spatialCertPoint(e, e.currentTarget, w.ref));
     spatialCertRoiUpdateBadge(); spatialCertRender(); return;
   }
-  if (spatialCertMode !== 'landmark') return;          // region-engine modes: no manual landmark placement
+  // THE TWO ROUTES COMPOSE. This used to be `if (spatialCertMode !== 'landmark') return;`,
+  // which made manual landmarks unreachable from the region view — and the region view is
+  // where the Certify button and the region list live, so it is where the operator actually
+  // works. Landmarks could not be placed there at all, and the controls were hidden too, so
+  // nothing on screen said why.
+  //
+  // They were never really exclusive: drawing a region is a TOOL gesture (certDraw /
+  // loftrMode / roiMode, all handled above) and placing a landmark is a plain click. So the
+  // rule is simply "no drawing tool owns this click", which is true in both modes. LoFTR can
+  // certify what it can and the operator adds landmarks where it could not — on the same
+  // pair, in the same view, without switching anything.
+  if (certDraw().tool) return;                         // a drawing tool owns this gesture
   const clickPt = spatialCertPoint(e, e.currentTarget, w.ref);
   if (w.pending) return;
   // MANUAL placement. OASIS does NOT guess the matching point on the moving section:
@@ -6321,7 +6335,12 @@ function lmMove(side,e){
   const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
   p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY;
   lmClamp(side); lmApply(side); lmMirror(side); }
-function lmUp(side){ lmPanes[side].drag=false;
+function lmUp(side){ const p=lmPanes[side]; p.drag=false;
+  // Clear the drag distance on the NEXT tick, after the click event this
+  // release generates has been evaluated against it. Leaving it set meant a
+  // pan could poison every later click until the next pointerdown happened to
+  // reset it — a latent way for placement to look dead for no visible reason.
+  setTimeout(() => { p.moved = 0; }, 0);
   if(side==='mov'){ certMovRoiEnd(); spatialCertWork.movRoiPending=null; } }
 // Double-click zooms in on the spot, alt/shift-double-click out — the QuPath reflex.
 ['ref','mov'].forEach(side => {

@@ -1589,6 +1589,7 @@ class API:
             r_min_um = float(np.sqrt(_min_frac * W * H / 4.0) * px_t)   # square tile, side 2R
             size_policy, sel_floor = "operator_specified", None
             probe_hits = {}          # rung size -> centre where the size probe certified
+            probe_verdicts = {}      # rung size -> that probe's verdict
             if not auto_size:
                 region_um = float(requested)
             else:
@@ -1646,10 +1647,30 @@ class API:
                         # the 33-pair 10X set certified here and were then reported as zero
                         # regions because this result was discarded.
                         probe_hits[s] = (pcx, pcy)
-                        if f is not None and f <= contact_um:
-                            break        # largest certifying rung, contact scale intact
+                        probe_verdicts[s] = probe.get("verdict")
+                        if probe.get("verdict") == "CERTIFIED":
+                            break        # largest FULLY CERTIFIED rung — nothing beats it
+                # PREFER A CERTIFIED RUNG, then contact scale, then raw size.
+                #
+                # This used to break out on the first rung whose floor merely resolved the
+                # contact scale, and that test is coupled to _RADIUS_FLOOR_FACTOR: the floor
+                # is factor x cell_error, so `floor <= 20` meant "cell error <= 6.67 µm" at
+                # factor 3.0 and means "cell error <= 20 µm" at the calibrated 1.0. Loosening
+                # the floor therefore silently loosened this too, and the ladder began
+                # stopping at the LARGEST rung almost immediately — returning big regions at
+                # 7-9 µm error as RADIUS_LIMITED instead of descending to a smaller rung that
+                # would have certified outright. Measured as a visible drop in certified
+                # coverage after the floor was recalibrated.
+                #
+                # Keying on the VERDICT instead makes the preference explicit and immune to
+                # the floor's scale: a certified region is strictly better than a
+                # radius-limited one of any size, because it carries the full claim.
+                certified = [s for s, _ in probed if probe_verdicts.get(s) == "CERTIFIED"]
                 resolving = [(s, f) for s, f in probed if f is not None and f <= contact_um]
-                if resolving:
+                if certified:
+                    region_um = max(certified)
+                    size_policy = "largest_certified"
+                elif resolving:
                     region_um = max(s for s, _ in resolving)
                     size_policy = "contact_scale_resolved"
                 elif probed:
