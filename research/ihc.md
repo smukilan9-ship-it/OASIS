@@ -727,9 +727,14 @@ honest compartment-vs-engagement separation.
   underpowered (3 pairs, one cohort, nothing survives cohort FDR).
 - Certs are single-annotator LOO, n=8 provisional; one annotator-independent number only.
 - Segmentation recall ~0.75 non-randomly thins dense infiltrate → biases the pattern.
-- Reweighted null mildly anti-conservative; 75 µm architecture-scale is now measured
-  per image, but dense tissues still fail closed until the morphology-conditioned
-  candidate is validated on real H-DAB/hematoxylin morphology fields.
+- Reweighted null anti-conservative — measured at size 0.24 on real tissue (§ 15.1), not
+  "mild". The 75 µm architecture-scale is measured per image and now routes both
+  `dense_tissue` AND `caution` away from it (§ 15.3); the morphology-conditioned null it
+  routes to **is** validated on real H-DAB-derived morphology fields (size 0.02, and immune
+  to a saturated marker), so that bullet is discharged.
+- The two-band decomposition was not two claims until 2026-08-02 (§ 15.1): a contact-only
+  truth fired the co-infiltration band at 0.98 and a regional-only truth was found in its own
+  band at 0.06. Any two-band claim published from a run before that date is not supportable.
 - DAB not quantitative; membrane accuracy on DAB extrapolated from IF proxies.
 
 **Paper framing**: a **methods/tools paper** (pipeline + honest null framework + fail-
@@ -1333,18 +1338,32 @@ The useful next step is no longer calibration but a feature: derive the certifia
 from the field's spatial range, so the app answers "certifiable below ~N µm" instead of
 "RADIUS_LIMITED". `registration.md` § 11.5.
 
-### 12.5 § 8 contradicts the shipped behaviour — unresolved
+### 12.5 § 8 contradicts the shipped behaviour — RESOLVED 2026-08-02
 
-§ 8 states the CD8/TIM-3 claim is *"underpowered (3 pairs, one cohort, nothing survives cohort
-FDR)"*. A full run this session reported **2 of 2 significant after Benjamini–Hochberg**
-(q = 0.002, 0.038), because the pipeline now auto-switches to the dense morphology-conditioned
-null when the 75 µm pre-flight fails. § 8 also says dense tissues *"still fail closed until the
-morphology-conditioned candidate is validated"*, while § 3 records that candidate as validated
-on CODEX, a rendered-pixel bridge and a Keren TNBC stress test.
+§ 8 states the CD8/TIM-3 claim is *"underpowered (3 pairs, one cohort, nothing survives
+cohort FDR)"*, while this section recorded a full run reporting **2 of 2 significant after
+Benjamini–Hochberg**. Both statements were true — of **different runs**, and the artifacts
+settle which one counts:
 
-Both bullets are stale relative to the code. **Left unedited deliberately**: which is true is a
-scientific judgement, and the run that produced those q-values used the pre-§12.4 certification,
-so it must be repeated after FLE is settled before § 8 is rewritten.
+| artifact | date | pixel size | cohort FDR |
+|---|---|---|---|
+| `~/Desktop/assets/new` | 2026-07-09 | **0.641 µm** | 2 tested, q = 0.026 / 0.038, **2 significant** |
+| `~/Desktop/ihc_spatial_results` | 2026-07-20 | **0.7519 µm** | 1 tested, q = 0.088, **0 significant** |
+
+The run behind "2 of 2" used the **pre-scale-bar pixel size** (§ 12.1). 0.641 against the
+corrected 0.7519 is a 17 % linear error, so every radius in it is physically misplaced — the
+10–50 µm DCLF band actually covered 11.7–58.6 µm of tissue. Its `interaction` block is also
+`None`: the two-band decomposition did not exist yet, so its claim rests entirely on the
+global test.
+
+**§ 8 stands and this section's counter-claim is withdrawn.** The current, correctly-scaled
+artifact is one ROI-restricted pair at q = 0.088, not significant. The "2 of 2" figure must
+not be quoted again.
+
+§ 8's other stale bullet — dense tissues *"still fail closed until the morphology-conditioned
+candidate is validated on real H-DAB/hematoxylin morphology fields"* — **is now discharged**:
+§ 15 validates that candidate on exactly such fields (OASIS's own LL477 detections plus Keren
+TNBC), measuring size 0.02 and immunity to a saturated marker. § 8 has been updated.
 
 ### 12.6 Re-validation required
 
