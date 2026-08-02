@@ -705,3 +705,49 @@ def test_the_drag_estimator_uses_a_scale_free_consistency_test():
     assert sr.transform_drag_um(ref[:2], ref[:2], np.array([[1.0, 0, 0], [0, 1.0, 0]]),
                                 (1000, 1000), 0.5) is None
     assert sr.transform_drag_um(ref, ref.copy(), None, (1000, 1000), 0.5) is None
+
+
+def test_both_panes_show_the_same_tissue_after_clipping():
+    """The reference outline and the moving outline must be counterparts of each other.
+
+    certify_local_roi trims the reference ROI to the moving frame's footprint, because the
+    part of a drawn region with no moving tissue cannot be measured. But the API mapped the
+    ORIGINAL roi to moving space and reported the ORIGINAL roi as the reference window, so
+    the clip never reached the UI: the operator saw a full rectangle on the reference and a
+    truncated one on the moving section, covering different tissue, with nothing saying why.
+
+    With a 150 px shift on a 500 px-wide moving image, the drawn region x 20-300 maps to
+    moving x -130..150 — a third of it off-frame. Clipped, the reference becomes x 150-300
+    and maps to moving x 0..150, entirely inside. The cut on one side implies the cut on the
+    other, which is the property this pins.
+    """
+    import numpy as np
+    from oasis.spatial import loftr_matcher as lm
+
+    rng = np.random.default_rng(0)
+    ref = (rng.random((400, 500, 3)) * 255).astype("uint8")
+    mov = ref.copy()
+    M = np.array([[1.0, 0.0, 150.0], [0.0, 1.0, 0.0]])
+    roi = np.array([[20.0, 60.0], [300.0, 60.0], [300.0, 340.0], [20.0, 340.0]])
+
+    c = lm.certify_local_roi(ref, mov, roi, 0.7519, provisional_matrix=M, work_max_dim=400)
+    eff = np.asarray(c["roi_polygon"], float)
+    drawn = np.asarray(c["roi_polygon_drawn"], float)
+
+    assert c["roi_clipped_to_moving_frac"] < 1.0
+    assert c["roi_clip_note"], "a silently shrunk window is what caused the confusion"
+    assert drawn[:, 0].min() < eff[:, 0].min(), "the reference was not cut"
+
+    # the clipped reference must map ENTIRELY inside the moving image
+    A, t = M[:2, :2], M[:2, 2]
+    mov_eff = (eff - t) @ np.linalg.inv(A).T
+    assert mov_eff[:, 0].min() >= -0.5, (
+        f"clipped region still maps off the moving frame at x={mov_eff[:, 0].min():.1f}")
+    assert mov_eff[:, 0].max() <= mov.shape[1] + 0.5
+
+    # a region wholly inside the moving frame must be left alone
+    clean = lm.certify_local_roi(ref, mov, roi, 0.7519,
+                                 provisional_matrix=np.array([[1.0, 0, 0], [0, 1.0, 0]]),
+                                 work_max_dim=400)
+    assert clean["roi_clipped_to_moving_frac"] == 1.0
+    assert clean.get("roi_clip_note") is None

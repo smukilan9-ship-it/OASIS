@@ -1444,9 +1444,18 @@ class API:
                 local_t = cert.get("local_matrix")
                 mov_roi_full = None
                 local_full = None
+                # USE THE CLIPPED REGION FOR BOTH PANES.
+                #
+                # certify_local_roi trims the reference ROI to the moving frame's footprint
+                # (the part with no moving tissue cannot be measured), but this mapped the
+                # ORIGINAL roi_t and reported the ORIGINAL roi -- so the clip never reached
+                # the UI and the two rectangles showed different tissue with nothing saying
+                # why. Mapping the clipped polygon makes the moving outline the true
+                # counterpart of the reference one.
+                roi_eff_t = np.asarray(cert.get("roi_polygon") or roi_t, float).reshape(-1, 2)
                 if local_t is not None:
                     local_full = _thumb_to_full(np.asarray(local_t, float))
-                    mov_roi_t = _map_roi_to_mov(roi_t, np.asarray(local_t, float))
+                    mov_roi_t = _map_roi_to_mov(roi_eff_t, np.asarray(local_t, float))
                     mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
                 v = cert.get("verdict")
                 cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
@@ -1460,7 +1469,10 @@ class API:
                     "cell_error_um": cell,
                     "fle_um": cert.get("fle_um_loftr"),
                     "reason": cert.get("reason"),
-                    "roi_polygon": roi.tolist(),
+                    "roi_polygon": (roi_eff_t / max(ref_scale, 1e-9)).tolist(),
+                    "roi_polygon_drawn": roi.tolist(),
+                    "roi_clipped_to_moving_frac": cert.get("roi_clipped_to_moving_frac"),
+                    "roi_clip_note": cert.get("roi_clip_note"),
                     "mov_roi_polygon": mov_roi_full,
                     "local_matrix": local_full,
                     "is_intersection": bool(wr.get("is_intersection")),
@@ -1789,11 +1801,14 @@ class API:
                     continue
                 local_t = cert.get("local_matrix")
                 local_full = mov_roi_full = None
+                # Same as the multi-region path: map the CLIPPED region, not the drawn one,
+                # so the moving outline is the true counterpart of the reference outline.
+                roi_eff_t = np.asarray(cert.get("roi_polygon") or roi_t, float).reshape(-1, 2)
                 if local_t is not None:
                     A = np.asarray(local_t, float)[:2, :2]
                     t = np.asarray(local_t, float)[:2, 2]
                     local_full = np.hstack([A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
-                    mov_roi_t = (roi_t - t) @ np.linalg.inv(A).T
+                    mov_roi_t = (roi_eff_t - t) @ np.linalg.inv(A).T
                     mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
                 cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
                         or cert.get("tre_median_um"))
@@ -1814,7 +1829,10 @@ class API:
                     "contact_scale_resolved": (
                         cert.get("min_interpretable_radius_um") is not None
                         and cert.get("min_interpretable_radius_um") <= 20.0),
-                    "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
+                    "roi_clipped_to_moving_frac": cert.get("roi_clipped_to_moving_frac"),
+                    "roi_clip_note": cert.get("roi_clip_note"),
+                    "roi_polygon_drawn": (roi_t / max(ref_scale, 1e-9)).tolist(),
+                    "roi_polygon": (roi_eff_t / max(ref_scale, 1e-9)).tolist(),
                     "mov_roi_polygon": mov_roi_full, "local_matrix": local_full,
                 })
             # `contact_scale_resolved` travels with the result because it is a CLAIM boundary,
