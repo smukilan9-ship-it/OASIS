@@ -63,7 +63,17 @@ CERTIFICATION_GATES = {
     "loo_max_um": 5.0,
     "fit_max_um": 5.0,
     "deformed_loo_um": 15.0,
-    "min_roi_frac": 0.10,
+    # CALIBRATED (validate_window_size_gate.py), not inherited. 0.10 was reused from the
+    # LOCALLY_CERTIFIED hull check and had no measured basis here. Swept on real tissue: the
+    # cross-K null's SIZE never inflates, staying 0.03-0.10 at every window down to 2 % of
+    # the field on both substrates — a small window does NOT manufacture a finding, so this
+    # gate was never protecting validity. Only POWER degrades, and it holds to ~0.06 (0.73
+    # and 0.97 at 0.10; below 0.50 only at 0.06 and under, on the worse substrate).
+    #
+    # It matters: a measured run had regions at 228,443 / 165,322 / 121,895 um² on a 1.56 mm²
+    # field, and the third was rejected at 7.8 % despite having the BEST registration of the
+    # three (7.2 um against 7.9 and 8.4). It was thrown out on area alone.
+    "min_roi_frac": 0.06,
     # RADIUS_LIMITED: a pair whose landmarks agree on ONE similarity, but only to within
     # TRE > loo_max_um. The cross-K test remains correctly sized under that error — it
     # loses power, not validity (validation/validate_radius_floor.py) — so the pair is
@@ -1403,11 +1413,23 @@ def _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac):
     ok = final is not None and final.is_valid and (not final.is_empty) and final.area > 0
     frac = (final.area / float(image_wh[0] * image_wh[1])) if (ok and image_wh) else 0.0
     if not ok or (image_wh and frac < min_roi_frac):
+        # SAY WHICH PROBLEM IT IS. This previously read "improve the landmarks inside it",
+        # which points at registration when the registration may be excellent — the measured
+        # case that prompted the fix had the BEST error of its three regions and was rejected
+        # purely on area. A degenerate window and a merely small one are also different
+        # failures and were sharing one message.
+        degenerate = not ok
         out.update(verdict="NOT_CERTIFIABLE", roi_polygon=None,
                    certified_window_source=None,
-                   reason="certified region (drawn ROI ∩ landmark-supported area) is too "
-                          "small to analyse — enlarge the Certification ROI or improve the "
-                          "landmarks inside it")
+                   window_frac=round(float(frac), 4),
+                   reason=("the drawn ROI and the landmark-supported area do not overlap in "
+                           "a usable window — they may not cover the same tissue"
+                           if degenerate else
+                           f"the certified window covers {frac * 100:.1f}% of the field, "
+                           f"below the {min_roi_frac * 100:.0f}% minimum. This is an AREA "
+                           f"limit, not a registration one — the transform here may be "
+                           f"fine. Draw a larger region, or accept it knowing the test is "
+                           f"underpowered at this size."))
         return out
     geom = final
     if geom.geom_type == "MultiPolygon":

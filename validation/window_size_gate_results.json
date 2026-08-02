@@ -1,0 +1,142 @@
+{
+  "config": {
+    "n_rep": 40,
+    "n_perm": 199,
+    "fracs": [
+      0.02,
+      0.04,
+      0.06,
+      0.1,
+      0.15,
+      0.25,
+      0.4,
+      0.7
+    ],
+    "null": "dense_morphology",
+    "statistic": "bands_ring",
+    "shipped_min_roi_frac": 0.1
+  },
+  "grid": {
+    "ll477_cd8|0.02": {
+      "independent": 0.0,
+      "n_a": 15,
+      "n_b": 20,
+      "area_um2": 31142.928140539992,
+      "contact": 0.525
+    },
+    "ll477_cd8|0.04": {
+      "independent": 0.05,
+      "n_a": 15,
+      "n_b": 25,
+      "area_um2": 62285.85628107999,
+      "contact": 0.375
+    },
+    "ll477_cd8|0.06": {
+      "independent": 0.025,
+      "n_a": 22,
+      "n_b": 37,
+      "area_um2": 93428.78442161997,
+      "contact": 0.4
+    },
+    "ll477_cd8|0.1": {
+      "independent": 0.05,
+      "n_a": 37,
+      "n_b": 61,
+      "area_um2": 155714.64070269998,
+      "contact": 0.875
+    },
+    "ll477_cd8|0.15": {
+      "independent": 0.05,
+      "n_a": 53,
+      "n_b": 88,
+      "area_um2": 233571.96105404993,
+      "contact": 0.9
+    },
+    "ll477_cd8|0.25": {
+      "independent": 0.075,
+      "n_a": 87,
+      "n_b": 145,
+      "area_um2": 389286.60175674985,
+      "contact": 1.0
+    },
+    "ll477_cd8|0.4": {
+      "independent": 0.05,
+      "n_a": 135,
+      "n_b": 225,
+      "area_um2": 622858.5628107999,
+      "contact": 1.0
+    },
+    "ll477_cd8|0.7": {
+      "independent": 0.05,
+      "n_a": 216,
+      "n_b": 361,
+      "area_um2": 1090002.4849188996,
+      "contact": 1.0
+    },
+    "keren_p13|0.02": {
+      "independent": 0.1,
+      "n_a": 15,
+      "n_b": 20,
+      "area_um2": 19714.643885363144,
+      "contact": 0.6206896551724138
+    },
+    "keren_p13|0.04": {
+      "independent": 0.05,
+      "n_a": 18,
+      "n_b": 30,
+      "area_um2": 39429.28777072629,
+      "contact": 0.825
+    },
+    "keren_p13|0.06": {
+      "independent": 0.025,
+      "n_a": 27,
+      "n_b": 46,
+      "area_um2": 59143.93165608944,
+      "contact": 0.75
+    },
+    "keren_p13|0.1": {
+      "independent": 0.075,
+      "n_a": 49,
+      "n_b": 82,
+      "area_um2": 98573.2194268157,
+      "contact": 0.975
+    },
+    "keren_p13|0.15": {
+      "independent": 0.075,
+      "n_a": 73,
+      "n_b": 123,
+      "area_um2": 147859.82914022356,
+      "contact": 1.0
+    },
+    "keren_p13|0.25": {
+      "independent": 0.075,
+      "n_a": 120,
+      "n_b": 200,
+      "area_um2": 246433.04856703928,
+      "contact": 1.0
+    },
+    "keren_p13|0.4": {
+      "independent": 0.025,
+      "n_a": 190,
+      "n_b": 316,
+      "area_um2": 394292.8777072628,
+      "contact": 1.0
+    },
+    "keren_p13|0.7": {
+      "independent": 0.05,
+      "n_a": 325,
+      "n_b": 542,
+      "area_um2": 690012.5359877099,
+      "contact": 1.0
+    }
+  },
+  "size_break": {
+    "ll477_cd8": null,
+    "keren_p13": null
+  },
+  "power_break": {
+    "ll477_cd8": 0.06,
+    "keren_p13": null
+  },
+  "implied_min_frac": 0.06
+}

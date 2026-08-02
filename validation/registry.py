@@ -153,6 +153,36 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "window_size_gate",
+        "title": "Analysis-window size — where the statistic actually breaks",
+        "category": "statistical",
+        "claim": "min_roi_frac was not protecting validity. The cross-K null's size never "
+                 "inflates down to 2 % of the field; only power degrades, and it holds to "
+                 "~0.06. The shipped 0.10 rejected well-registered regions on area alone.",
+        "purpose": "Sweep the analysis window from 2 % to 70 % of the field on real tissue, "
+                   "measuring size (independent truth) and power (contact truth) plus the "
+                   "cell counts that come with each size.",
+        "why": "A measured run had three regions at 228,443 / 165,322 / 121,895 µm² on a "
+               "1.56 mm² field; the third was rejected at 7.8 % despite the BEST "
+               "registration of the three (7.2 µm against 7.9 and 8.4). 0.10 was inherited "
+               "from the LOCALLY_CERTIFIED hull check with no measured basis here.",
+        "datasets": ["LL477 detections", "Keren TNBC scaffold"],
+        "assumptions": "Association imposed INSIDE the window, so window size is not "
+                       "confounded with a truth truncated by the crop. Enrichment is capped "
+                       "by geometry (1/p) and unreachable combinations are skipped rather "
+                       "than retried weaker.",
+        "limitations": "Speaks only to whether the STATISTIC survives a small window. The "
+                       "separate question — certifying a transform over a window larger "
+                       "than the landmarks supporting it — is § 15.9's hull check.",
+        "interpretation": "Size inflating would mean small windows manufacture findings and "
+                          "the gate is real; power falling means the window is useless, "
+                          "which should be REPORTED as underpowered, not silently dropped.",
+        "expected": "Size 0.03–0.10 at every fraction (never inflates); power 0.73/0.97 at "
+                    "0.10 and below 0.50 only at 0.06 and under.",
+        "runner": {"kind": "script", "script": "validate_window_size_gate.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "band_power_curve",
         "title": "Band test — power versus effect size",
         "category": "statistical",
