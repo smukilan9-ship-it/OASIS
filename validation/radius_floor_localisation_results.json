@@ -1,0 +1,218 @@
+{
+  "config": {
+    "n_rep": 60,
+    "n_perm": 199,
+    "eps_um": [
+      0.0,
+      3.0,
+      5.0,
+      8.0,
+      12.0,
+      20.0
+    ],
+    "corr_length_um": 200.0,
+    "leak_tolerance": 0.1,
+    "shipped_factor": 3.0,
+    "coloc_band_um": [
+      10.0,
+      20.0
+    ]
+  },
+  "regional_only": {
+    "smooth field": {
+      "0.0": {
+        "coloc_attraction": 0.0,
+        "coinfil_attraction": 0.55,
+        "coloc_csr_only": 0.08333333333333333
+      },
+      "3.0": {
+        "coloc_attraction": 0.016666666666666666,
+        "coinfil_attraction": 0.55,
+        "coloc_csr_only": 0.05
+      },
+      "5.0": {
+        "coloc_attraction": 0.016666666666666666,
+        "coinfil_attraction": 0.5166666666666667,
+        "coloc_csr_only": 0.15
+      },
+      "8.0": {
+        "coloc_attraction": 0.06666666666666667,
+        "coinfil_attraction": 0.48333333333333334,
+        "coloc_csr_only": 0.1
+      },
+      "12.0": {
+        "coloc_attraction": 0.08333333333333333,
+        "coinfil_attraction": 0.36666666666666664,
+        "coloc_csr_only": 0.16666666666666666
+      },
+      "20.0": {
+        "coloc_attraction": 0.06666666666666667,
+        "coinfil_attraction": 0.23333333333333334,
+        "coloc_csr_only": 0.3333333333333333
+      }
+    },
+    "iid noise": {
+      "0.0": {
+        "coloc_attraction": 0.0,
+        "coinfil_attraction": 0.55,
+        "coloc_csr_only": 0.08333333333333333
+      },
+      "3.0": {
+        "coloc_attraction": 0.016666666666666666,
+        "coinfil_attraction": 0.5666666666666667,
+        "coloc_csr_only": 0.1
+      },
+      "5.0": {
+        "coloc_attraction": 0.016666666666666666,
+        "coinfil_attraction": 0.5166666666666667,
+        "coloc_csr_only": 0.15
+      },
+      "8.0": {
+        "coloc_attraction": 0.016666666666666666,
+        "coinfil_attraction": 0.4166666666666667,
+        "coloc_csr_only": 0.13333333333333333
+      },
+      "12.0": {
+        "coloc_attraction": 0.06666666666666667,
+        "coinfil_attraction": 0.38333333333333336,
+        "coloc_csr_only": 0.13333333333333333
+      },
+      "20.0": {
+        "coloc_attraction": 0.05,
+        "coinfil_attraction": 0.36666666666666664,
+        "coloc_csr_only": 0.26666666666666666
+      }
+    }
+  },
+  "contact_only": {
+    "smooth field": {
+      "0.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.9666666666666667,
+        "coloc_csr_only": 0.0
+      },
+      "3.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.9666666666666667,
+        "coloc_csr_only": 0.0
+      },
+      "5.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.9666666666666667,
+        "coloc_csr_only": 0.0
+      },
+      "8.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.95,
+        "coloc_csr_only": 0.0
+      },
+      "12.0": {
+        "coloc_attraction": 0.9833333333333333,
+        "coinfil_attraction": 0.95,
+        "coloc_csr_only": 0.016666666666666666
+      },
+      "20.0": {
+        "coloc_attraction": 0.7666666666666667,
+        "coinfil_attraction": 0.8166666666666667,
+        "coloc_csr_only": 0.23333333333333334
+      }
+    },
+    "iid noise": {
+      "0.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.9666666666666667,
+        "coloc_csr_only": 0.0
+      },
+      "3.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.95,
+        "coloc_csr_only": 0.0
+      },
+      "5.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.9666666666666667,
+        "coloc_csr_only": 0.0
+      },
+      "8.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.9333333333333333,
+        "coloc_csr_only": 0.0
+      },
+      "12.0": {
+        "coloc_attraction": 1.0,
+        "coinfil_attraction": 0.95,
+        "coloc_csr_only": 0.0
+      },
+      "20.0": {
+        "coloc_attraction": 0.9166666666666666,
+        "coinfil_attraction": 0.9166666666666666,
+        "coloc_csr_only": 0.08333333333333333
+      }
+    }
+  },
+  "control_eps0": {
+    "smooth field": 0.0,
+    "iid noise": 0.0
+  },
+  "control_ok": true,
+  "calibration": {
+    "smooth field": {
+      "eps_star_um": 20.0,
+      "implied_factor": 1.0,
+      "censored_at_sweep_max": true
+    },
+    "iid noise": {
+      "eps_star_um": 20.0,
+      "implied_factor": 1.0,
+      "censored_at_sweep_max": true
+    }
+  },
+  "verdict": "No displacement up to 20 um moved a regional-only truth into the contact band: the false-engagement rate stayed <= 0.08 against a 0.10 tolerance. Registration error does not MANUFACTURE a cell-scale claim, so the floor is not needed for the job it was introduced for, and 3.0 is over-strict by at least 3x within the tested range. Where leakage begins beyond 20 um is UNMEASURED.",
+  "band_independence": {
+    "radii": {
+      "6": {
+        "L_minus_r": 10.86,
+        "null_upper_L": 6.1,
+        "outside": true,
+        "g": 7.11
+      },
+      "10": {
+        "L_minus_r": 17.17,
+        "null_upper_L": 7.72,
+        "outside": true,
+        "g": 7.57
+      },
+      "16": {
+        "L_minus_r": 19.4,
+        "null_upper_L": 9.09,
+        "outside": true,
+        "g": 1.49
+      },
+      "20": {
+        "L_minus_r": 17.99,
+        "null_upper_L": 10.38,
+        "outside": true,
+        "g": 1.59
+      },
+      "30": {
+        "L_minus_r": 16.9,
+        "null_upper_L": 12.19,
+        "outside": true,
+        "g": 1.27
+      },
+      "40": {
+        "L_minus_r": 15.94,
+        "null_upper_L": 13.67,
+        "outside": true,
+        "g": 1.45
+      },
+      "50": {
+        "L_minus_r": 15.74,
+        "null_upper_L": 15.39,
+        "outside": true,
+        "g": 1.33
+      }
+    },
+    "bands_independent": false
+  }
+}

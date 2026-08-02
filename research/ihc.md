@@ -1355,3 +1355,100 @@ demonstration, and the three-pair spatial results.
 Unaffected: ANHIR (§ 7.1), CODEX, DeepLIIF, Keren, HNSCC.
 
 Version rather than overwrite — `validation_reports/<name>/pre-scalebar-fix/`.
+
+---
+
+## 13. Session 2026-08-02 — the radius floor is over-strict, and the bands are not independent
+
+Two findings, from one question: the Spatial Association tab exists to claim **cell-scale
+engagement** — that two populations are close enough to plausibly overlap — and the constant
+deciding whether it may make that claim had never been derived.
+
+`_RADIUS_FLOOR_FACTOR = 3.0` is the tab's only statement of a required registration accuracy.
+Contact scale is claimable iff `factor × TRE ≤ _COLOC_RMAX_UM` (20 µm), so 3.0 encodes a spec
+of **TRE ≤ 6.67 µm**. Every matcher comparison and certification threshold in this repo has
+been aimed at a target that constant defines, and § 12.4's measured LL477 residual
+(median 4.14 µm, p90 7.57 µm) straddles it: the claim is *permitted at the median and withheld
+at the p90*, on the constant rather than on the data.
+
+`validate_radius_floor.py` had measured **size** and **power** on the single 10–50 µm band.
+Neither addresses **localisation**, which is the only thing a floor is for.
+
+### 13.1 The floor is not doing the job it was introduced for
+
+`validation/validate_radius_floor_localisation.py`. Two annulus truths on a shared-architecture
+substrate — CONTACT-ONLY (0–12 µm) and REGIONAL-ONLY (25–45 µm) — displaced under two models,
+read through the production reweighted primary with the floor disabled.
+
+The displacement model matters and the earlier harness had it wrong. registration.md § 11.4b
+measured the real residual as **98 % spatially structured** (nugget/sill 0.021), so B is
+displaced by a smooth field, not iid noise. Verified on the harness: neighbouring B points move
+coherently (mean cos 0.96, 2.1 µm relative slip at 12 µm absolute) where iid gives cos ≈ 0 and
+15.9 µm slip. A smooth field translates a neighbourhood of B *as a block* relative to A, which
+is the mechanism that could relocate an excess between bands; iid merely blurs amplitude.
+
+**REGIONAL-ONLY truth → rate of a false contact-scale engagement claim** (60 reps × 199 perms):
+
+| model | ε=0 | ε=3 | ε=5 | ε=8 | ε=12 | ε=20 |
+|---|---|---|---|---|---|---|
+| smooth field | 0.00 | 0.02 | 0.02 | 0.07 | 0.08 | 0.07 |
+| iid noise | 0.00 | 0.02 | 0.02 | 0.02 | 0.07 | 0.05 |
+
+Never above the 0.10 tolerance, at any ε, under either model. The ε=0 control is 0.00 while the
+co-infiltration band correctly detects the truth at 0.55, so the construction discriminates.
+
+**Registration error does not manufacture a cell-scale claim.** Within the tested range 3.0 is
+over-strict by at least 3×. It is an upper bound, not a point estimate: ε\* is **censored at the
+sweep maximum of 20 µm**, and where leakage begins beyond that is unmeasured.
+
+Consistent with the other direction — the CONTACT-ONLY truth is still found in the contact band
+at 0.98 at ε=12 and 0.77 at ε=20, so large error does not blind the band either. Measured on a
+strong truth (30 % recruitment); a weak one would degrade sooner.
+
+### 13.2 The two-band decomposition is not two independent claims
+
+The same sweep exposed a defect with nothing to do with registration. At **ε = 0**, with the
+truth confined to 0–12 µm, the **co-infiltration band (20–50 µm) claims attraction at 0.97**.
+
+Both bands are DCLF tests on the *same* L−r curve, and L derives from K, which is **cumulative**
+— K(r) counts every pair closer than r, so an excess at 6 µm raises K(r) at every larger r.
+Writing the surplus as a constant c, `L(r) − r = √(r² + c/π) − r ≈ c/(2πr)`: it decays but never
+returns to zero. Measured on a contact-only truth at ε = 0:
+
+| r (µm) | 6 | 10 | 16 | 20 | 30 | 40 | 50 |
+|---|---|---|---|---|---|---|---|
+| obs L−r | 10.82 | 17.53 | 19.96 | 18.58 | 17.59 | 16.58 | 16.04 |
+| null upper | 6.13 | 7.91 | 9.21 | 10.65 | 12.62 | 13.96 | 15.84 |
+| outside? | YES | YES | YES | YES | YES | YES | YES |
+| obs g(r) | 7.16 | 7.83 | 1.57 | 1.59 | 1.28 | 1.46 | 1.33 |
+
+`g(r)`, the derivative of K, carries no such memory and collapses from 7.8 to ~1.3 beyond the
+contact band — the density of the excess really is localised. L−r does not follow it.
+
+So the decomposition is asymmetric in the wrong direction. A regional truth correctly stays out
+of the contact band (§ 13.1, 0.00 at ε=0), but **a contact-scale truth is reported as regional
+co-infiltration as well**, essentially always. § 15.6's promise — *"a pair can co-localize at
+short range without regional co-infiltration"* — does not hold as implemented.
+
+**Diagnosed, not fixed.** The indicated repair is to decompose on `g(r)` rather than L−r
+(`_pcf_from_k` already computes it), but the DCLF machinery, its null envelope and its
+calibration are all built on L−r, so that is a change to the primary statistic and needs its
+own calibration first. Nothing was changed in `spatial_stats.py`.
+
+### 13.3 What this means for registration and correspondences
+
+Correspondences matter **only** through cell-error p90, and cell-error p90 matters **only**
+relative to `_COLOC_RMAX_UM / factor`. That ratio is the registration specification, and it had
+never been written down.
+
+§ 12.4 already establishes that LL477's 4.14 µm median residual is at the published ceiling —
+ANHIR's best methods give 3.4–6.9 µm on this image diagonal, and the old ≤5 µm gate needed
+≤1.6 µm, "2–4× better than the best published automatic histology registration". So the matcher
+work is pushing against a wall that the state of the art also hits, while § 13.1 says the floor
+is withholding claims that the error does not actually corrupt. **The lever is the constant,
+not the correspondence engine.**
+
+Not yet done, and required before the factor is changed: the sweep is synthetic, ε\* is censored
+at 20 µm, and § 13.2 means the co-infiltration verdict is unreliable regardless of the floor.
+
+

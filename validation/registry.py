@@ -81,6 +81,47 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "radius_floor_localisation",
+        "title": "Radius-floor calibration — band leakage, and band independence",
+        "category": "statistical",
+        "claim": "_RADIUS_FLOOR_FACTOR = 3.0 is over-strict: registration error up to 20 µm "
+                 "never moves a regional-only association into the contact band, so the "
+                 "floor is not needed for the job it was introduced for. Separately, the "
+                 "two-band decomposition is NOT two independent claims.",
+        "purpose": "Displace B by ε under two models — a smooth deformation field matched to "
+                   "the measured residual (98 % spatially structured) and iid noise — for a "
+                   "CONTACT-ONLY truth (0–12 µm annulus) and a REGIONAL-ONLY truth (25–45 µm "
+                   "annulus), then read which of the pipeline's two bands claims attraction.",
+        "why": "The factor is the only statement of a required registration accuracy in the "
+               "codebase: contact scale is claimable iff factor × TRE ≤ 20 µm, so at 3.0 the "
+               "implicit spec is TRE ≤ 6.67 µm. Every matcher and certification decision "
+               "aims at a target this uncalibrated constant defines, and LL477's measured "
+               "4.14 µm median residual sits right on the boundary it draws. "
+               "validate_radius_floor.py measured size and power on the single 10–50 µm "
+               "band; neither speaks to LOCALISATION, which is what a floor is for.",
+        "datasets": [],
+        "assumptions": "Synthetic patterns on a shared-architecture substrate (both markers "
+                       "prefer the same compartments, at 180 µm — above the reweighted "
+                       "null's 75 µm bandwidth, so the null absorbs the architecture as "
+                       "intended). Annulus truths, not Gaussian, so each truth is confined "
+                       "to one band. Points displaced out of the window are dropped.",
+        "limitations": "ε* is CENSORED at the sweep maximum of 20 µm — the factor is an "
+                       "upper bound, not a point estimate, and where leakage begins beyond "
+                       "20 µm is unmeasured. Power was measured on a strong truth (30 % "
+                       "recruitment); a weak one would degrade sooner. Synthetic only.",
+        "interpretation": "The regional-only truth's rate of significant ATTRACTION in the "
+                          "colocalization band is the false cell-scale-engagement rate; "
+                          "ε=0 is the control and must sit at ≈α. PASS requires both a clean "
+                          "control and independent bands.",
+        "expected": "False-engagement rate 0.00–0.08 at every ε ≤ 20 µm (tolerance 0.10) → "
+                    "factor ≤ 1.0, censored. Band independence FAILS: a contact-only truth "
+                    "fires the co-infiltration band at 0.97, because K is cumulative — "
+                    "g(r) falls 7.8 → 1.3 beyond the contact band while L−r stays outside "
+                    "the envelope out to 50 µm.",
+        "runner": {"kind": "script", "script": "validate_radius_floor_localisation.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "deformation_estimator",
         "title": "Patch-flow deformation estimator — negative result, and its containment",
         "category": "registration",
