@@ -5516,6 +5516,21 @@ function certCommitShape(pts, tool, side) {
 function certSeedMovingRoi() {
   const w = spatialCertWork;
   if (!w.ref || !w.mov || (w.roiPoints || []).length < 3) return;
+  // MAP THROUGH THE TRANSFORM, not to the image centre.
+  //
+  // This used to drop the region at the centre of the moving image with only a pixel-size
+  // scale applied — no translation at all — so on any pair whose sections are offset (which
+  // is all of them) the displayed window sat somewhere the operator never drew. That reads
+  // as "registration is badly broken" when it is not: certify_local_roi is handed the
+  // REFERENCE roi plus a provisional matrix and computes the true moving polygon itself
+  // (returned as mov_roi_polygon). Only the on-screen seed was wrong, and it made every pair
+  // look mis-registered before anything had been certified.
+  const M = lmRefToMovMatrix();
+  if (M) {
+    w.movRoi = w.roiPoints.map(p => [M[0][0] * p[0] + M[0][1] * p[1] + M[0][2],
+                                     M[1][0] * p[0] + M[1][1] * p[1] + M[1][2]]);
+    return;
+  }
   const k = spatialCertPixelSize() / Math.max(spatialCertMovPixelSize(), 1e-9);
   const cx = w.roiPoints.reduce((a, p) => a + p[0], 0) / w.roiPoints.length;
   const cy = w.roiPoints.reduce((a, p) => a + p[1], 0) / w.roiPoints.length;
@@ -6471,6 +6486,9 @@ function spatialCertApplyCertification(c, source) {
   const w = spatialCertWork;
   spatialCertifications[w.pair.sample_id] = c;
   if (c.roi_polygon) w.roiPoints = c.roi_polygon;
+  // The backend maps the region into moving space with the certified transform; that is
+  // strictly better than any client-side seed, so take it whenever it comes back.
+  if (c.mov_roi_polygon) w.movRoi = c.mov_roi_polygon;
   spatialCertRoiUpdateBadge(); spatialCertRender();
   const badge = document.getElementById('spatial-cert-badge');
   badge.textContent = c.status;
