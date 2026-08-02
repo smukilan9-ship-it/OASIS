@@ -2503,9 +2503,15 @@ statistics side rather than the registration side.
 * **Closed-form null moments.** KAMP Theorem 2.1 gives E and Var of K under the label-
   permutation null analytically, and — elegantly — **E(K) is just Ripley's K computed on all
   cells**, so existing software computes it directly. Measured cost on their data: permutation
-  562 min → KAMP 3.6 min → KAMP lite 0.6 min; per image 213.1 s → 1.6 s → 0.2 s. OASIS runs
-  199 Monte Carlo permutations for the same null. **This is a ~100× speedup available for a
-  null OASIS already uses**, and it would remove Monte Carlo error from the verdict entirely.
+  562 min → KAMP 3.6 min → KAMP lite 0.6 min; per image 213.1 s → 1.6 s → 0.2 s.
+
+  > **The speedup does not transfer; the expectation does — see § 18.7.** Two reasons the
+  > variance half is not available to us. First, `_BAND_STATISTIC = bands_ring` is a
+  > *difference* of K at adjacent radii, `d_i = [K(r_i) − K(r_{i−1})] / (π(r_i² − r_{i−1}²))`,
+  > so its variance needs `Cov(K(r_i), K(r_{i−1}))`, which Theorem 2.1 does not give —
+  > deriving it is original work, not adoption. Second, we are not compute-bound: 1000
+  > permutations on one ROI take **~1.8 s** (§ 18.7), against the 562 minutes KAMP exists to
+  > fix. The *expectation* half, however, transfers immediately and has now been used.
 * **Multi-ROI aggregation.** spagg exists because OASIS's exact situation — several regions
   per sample, one conclusion wanted — is a real statistical problem. Its finding matters:
   Landau weights win when intensity varies across ROIs (ours does), and a **resampling
@@ -2533,9 +2539,11 @@ propagated and reported (the MDE curve) rather than assumed to be zero.**
    change. If it does, measure it on the § 15 substrates before the paper cites it.
 2. **Measure size under the holed intersection window** against an inscribed rectangle
    (§ 18.3.2). This is a validation, not a change — but it may force one.
-3. **Adopt KAMP's closed-form moments for the `dense_morphology` null.** Large speedup,
-   removes Monte Carlo error, same null. Must reproduce the § 15.1 size/leak/power table
-   within Monte Carlo error before replacing anything.
+3. ~~**Adopt KAMP's closed-form moments for the `dense_morphology` null.**~~ **CORRECTED —
+   the variance half is blocked and the speedup is not needed (§ 18.4, § 18.7).** `bands_ring`
+   differences K at adjacent radii, so it needs a covariance Theorem 2.1 does not supply, and
+   1000 permutations cost ~1.8 s. What was actually worth taking is the *expectation*, and it
+   has been taken: **§ 18.7 uses it as an exact test of the sampler, which passes.**
 4. **Add a minimum-evidence gate in the B-KAMP form** — ≥ √m of each marker and a background
    floor — reported alongside the existing ≥ 5. Changes which windows produce numbers, so it
    needs the § 16.9 treatment.
@@ -2545,3 +2553,56 @@ propagated and reported (the MDE curve) rather than assumed to be zero.**
 
 Nothing here is implemented. Items 3–5 all change what the statistics report and are subject
 to the standing rule that they are validated first.
+
+### 18.7 MEASURED — the dense null is the null it claims to be, and the jitter is benign
+
+`validation/validate_dense_null_expectation.py`. KAMP's identity says the null expectation
+needs no permutation. Derived for the null OASIS actually implements — which is **not**
+KAMP's, because `cross_k_dense_morphology_test` holds **A fixed** and redraws only B, i.i.d.
+with replacement from the all-cell support:
+
+```
+E[K_null(r)] = (|W| / (n_A n_B)) · n_B · Σ_{i∈A} P(one B* draw lands within r of a_i)
+             = (|W| / (n_A n_supp)) · Σ_{i∈A} #{s ∈ support : |s − a_i| ≤ r}
+             = K_cross(A, support)(r)                                    [jitter = 0]
+```
+
+KAMP re-labels both populations and so gets the *univariate* K of the pooled pattern; ours is
+conditional on the observed A and so gets a **cross-K against the whole support**. With the
+jitter off this is exact, so it is a test of the sampler rather than an approximation.
+
+| substrate | jitter | max \|z\| vs MC error | median rel. deviation | rel. deviation in contact band |
+|---|---|---|---|---|
+| ll477_cd8 | **0 µm** | **1.67** | +0.068 % | +0.309 % |
+| ll477_cd8 | 2 µm *(shipped)* | 165.73 | +0.054 % | **+0.110 %** |
+| ll477_cd8 | 5 µm | 496.24 | −0.039 % | −0.539 % |
+| keren_p13 | **0 µm** | **2.20** | +0.058 % | +0.077 % |
+| keren_p13 | 2 µm *(shipped)* | 147.72 | +0.064 % | **+0.402 %** |
+| keren_p13 | 5 µm | 351.48 | +0.008 % | −0.331 % |
+
+**Result 1 — the sampler is correct.** At jitter = 0 the 1000-permutation mean reproduces its
+closed form to within Monte Carlo error on both substrates (max |z| of 1.67 and 2.20 across
+50 radii is exactly what a correct sampler gives). The null being *simulated* is the null the
+docstring *describes*, and by § 18.2 it is the null KAMP, B-KAMP and SpaceANOVA independently
+converged on. That chain — documented null = implemented null = field's null — was previously
+asserted and is now measured.
+
+**Result 2 — the 2 µm jitter costs almost nothing, and this had never been measured.**
+`_DENSE_MORPHOLOGY_JITTER_UM = 2.0` has been shipped since the null was introduced. It moves
+the null by **+0.11 % (LL477) and +0.40 % (Keren) at contact scale** — real, but far too small
+to make the test meaningfully conservative where the biology is.
+
+**Read the huge |z| in the jitter rows correctly.** They are not a failure. With 1000
+permutations the Monte Carlo standard error is minuscule, so *any* systematic shift is
+hundreds of standard errors; the |z| column says only that the jitter's effect is real and
+deterministic, which it obviously is. The **relative** columns are the ones that carry the
+magnitude, and they are fractions of a percent.
+
+The sign flip is a sensible physical check on the whole measurement: at 2 µm the contact-band
+deviation is **positive** on both substrates, at 5 µm **negative** on both. Nuclei have a
+minimum separation, so a small jitter fills in the very-short-range gap and slightly raises
+close-range density, while a large one smears clusters apart and lowers it. Nothing was tuned
+to produce that; it fell out.
+
+**Cost of the check: 13 s total, ~1.8 s per 1000-permutation run** — which is also the number
+that retires the KAMP speedup argument in § 18.6 item 3.
