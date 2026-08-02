@@ -60,6 +60,28 @@ _MORAN_EFFECT_FLOOR = 0.10
 CERTIFICATION_GATES = {
     "min_n": 6,
     "target_n": 12,
+    # STAYS AT 5.0, and the reason is the ESTIMATOR, not the accuracy it names.
+    #
+    # Deriving this from the bands gives 10.0 (the floor is 1x TRE, so below 10 um the whole
+    # reported band is readable and nothing is "radius limited"). That was applied and then
+    # REVERTED, because measuring it exposed why 5.0 was really there: the held-out LOO TRE
+    # is biased low under contamination. With 4 of 12 landmarks grossly torn, outliers drag
+    # the fit AND the leave-one-out prediction together, so LOO cannot see them --
+    #
+    #     reported TRE  7.79 um  ->  would CERTIFY at a 10 um gate
+    #     TRUE error    median 10.40 um, p90 15.40 um across the field
+    #
+    # -- and the contamination is plainly visible in signals the gate does not read:
+    # n_good/n falls 1.00 -> 0.58 and tre_p90 is 29.17 um against a 7.79 um median. So 5.0
+    # was compensating for a weak estimator rather than measuring what a pair can resolve,
+    # and raising it only exposed the bias.
+    #
+    # Loosening this needs the estimator fixed first -- either gate the LOO path on landmark
+    # consistency (n_good/n) as well as on the median, or route these pairs through the
+    # Fitzpatrick-West budget, which separates localisation noise from deformation by
+    # variance decomposition and would show the contamination as deformation. Not done here:
+    # a threshold change that widens what gets certified must not ship ahead of the check
+    # that makes it safe.
     "loo_max_um": 5.0,
     "fit_max_um": 5.0,
     "deformed_loo_um": 15.0,
@@ -1399,6 +1421,19 @@ def _points_inside(pts, poly):
     return np.array([poly.covers(Point(float(x), float(y))) for x, y in pts], bool)
 
 
+def _mde(accuracy_um):
+    """Smallest enrichment this pair could still detect, for reporting alongside a verdict.
+
+    Surfaced on every analysable verdict because it is what makes a NULL result readable:
+    "no association detected" means something different at 1.6x sensitivity than at 2.7x, and
+    without it a reader cannot tell an absence from a miss. A bare power figure would be
+    worse than nothing here — power depends on the effect size it is quoted against, so 0.28
+    against a weak effect reads as "useless" when the same pair finds a strong one at 1.00.
+    """
+    from oasis.spatial.spatial_stats import minimum_detectable_enrichment
+    return minimum_detectable_enrichment(accuracy_um)
+
+
 def _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac):
     """When the operator drew a Certification ROI, the certified analysis window is the
     ROI intersected with any tighter LOCALLY_CERTIFIED hull. Fail closed (downgrade to
@@ -1559,6 +1594,7 @@ def _certify_fitzpatrick_west(out, ref, mov, M, pixel_size_um, fle_um, image_wh,
         return out
 
     if accuracy_um <= loo_max_um:
+        out["min_detectable_enrichment"] = _mde(accuracy_um)
         out.update(verdict="CERTIFIED", reason=budget_txt)
         if roi_poly is None:
             out["roi_polygon"] = eval_roi          # the hull IS the certified window
@@ -1603,6 +1639,7 @@ def _certify_fitzpatrick_west(out, ref, mov, M, pixel_size_um, fle_um, image_wh,
                and (max_radius_um - r_gate) >= min_interpretable_band_frac * max_radius_um)
     if band_ok:
         contact = " Direct cell-cell contact (~10–20 µm) is NOT resolved." if r_min > 20 else ""
+        out["min_detectable_enrichment"] = _mde(accuracy_um)
         out.update(verdict="RADIUS_LIMITED",
                    reason=f"{budget_txt} — above the ≤{loo_max_um} µm gate, so inter-cell "
                           f"distances below {r_min} µm cannot be resolved; the curve there "
@@ -1835,6 +1872,7 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
     if accuracy_um <= accuracy_max_um:
         reason = (f"held-out TRE median {med} µm (p90 {out['tre_p90_um']}), "
                   f"fit-residual {fr} µm, n={n}{tier}")
+        out["min_detectable_enrichment"] = _mde(accuracy_um)
         out.update(verdict="CERTIFIED", reason=reason)
         if roi_poly is None:
             # THE HULL IS THE CERTIFIED WINDOW, matching _certify_fitzpatrick_west, which
@@ -1922,6 +1960,7 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
     if band_ok:
         contact = " Direct cell-cell contact (~10–20 µm) is NOT resolved." if r_min > 20 else ""
         basis = "held-out landmark TRE"
+        out["min_detectable_enrichment"] = _mde(accuracy_um)
         out.update(verdict="RADIUS_LIMITED",
                    reason=f"{basis} is {accuracy_um} µm, above the ≤{accuracy_max_um} µm "
                           f"gate, so inter-cell distances below {r_min} µm (≈3× that error) "

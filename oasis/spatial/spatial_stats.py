@@ -155,18 +155,56 @@ _RADIUS_FLOOR_FACTOR = 1.0
 #
 # _ANALYSABILITY_FACTOR is initialised to _RADIUS_FLOOR_FACTOR so this split changes NO
 # behaviour on its own; it only makes the two independently settable. See research/ihc.md.
-# The analysability gate, MEASURED and uncensored. Power on a real association holds at 1.00
-# to eps = 5 um, 0.68 at 10, then falls off a cliff: 0.28 at 15, 0.25 at 20, 0.10 at 30. Both
-# real substrates put the last eps with power >= 0.5 at 10 um, so
+# The analysability gate, derived from the BANDS THIS TOOL REPORTS.
 #
-#     factor = max_radius * (1 - band_frac) / eps* = 50 / 10 = 5.0
+# It was 5.0, from "the last eps with power >= 0.5", which put the boundary at TRE <= 10 um.
+# Two things were wrong with that. It made RADIUS_LIMITED unreachable once loo_max_um was
+# derived honestly (both landed on 10), recreating in a new form the empty-branch bug fixed
+# earlier. And it treated power as a property of the pair, which it is not: at TRE 20 um the
+# test still detects a 2.7x enrichment at 80 % power (validate_detectable_effect.py). Error
+# costs SENSITIVITY TO WEAK EFFECTS, never validity — so withholding the pair discards a test
+# that can still find a real association, and "underpowered" is a thing to REPORT, not a
+# reason to refuse.
 #
-# This TIGHTENS the gate (3.0 admitted pairs out to TRE 16.7 um, where power is ~0.25), and
-# it contradicts the guess that a lower factor would rescue DEFORMED windows: on the real 10X
-# windows it reclassifies 84 of 123 (68 %) from RADIUS_LIMITED to DEFORMED. Those pairs were
-# being analysed with a test that could not detect anything in them, which is worse than
-# declining them — a null result from an underpowered test reads as evidence of absence.
-_ANALYSABILITY_FACTOR = 5.0
+# The boundary is therefore taken from the reported bands rather than from a power threshold
+# chosen after seeing the answer: past TRE 20 um the floor exceeds _COLOC_RMAX_UM, so the
+# entire colocalization band is unreadable and there is genuinely nothing left at contact
+# scale to report. factor = max_radius*(1-band_frac)/20 = 50/20 = 2.5.
+_ANALYSABILITY_FACTOR = 2.5
+
+
+# Minimum detectable enrichment vs registration error, MEASURED
+# (validate_detectable_effect.py: eps x effect size swept jointly on both real substrates,
+# 80 % power target, the worse substrate taken at each point).
+#
+# This is what a result should carry instead of a bare power number. Power is not a property
+# of a pair, it is a property of a pair AND an effect size: the same error that gives 0.28
+# power against a 2.0x enrichment gives 1.00 against 2.5x. Quoting "power 0.28" reads as
+# "this test is useless" when it means "this would miss a weak association and catch a strong
+# one" — the opposite conclusion for someone deciding whether to trust a null.
+_MDE_CURVE = ((0.0, 1.50), (5.0, 1.70), (10.0, 2.13), (15.0, 2.60), (20.0, 2.70))
+
+
+def minimum_detectable_enrichment(tre_um):
+    """Smallest cross-type enrichment this pair could still find at 80 % power.
+
+    Linear between measured points; beyond the measured range it extrapolates on the last
+    segment and is flagged by the caller rather than silently trusted. Returns None when the
+    error is unknown, so callers fail closed instead of quoting a fabricated sensitivity.
+    """
+    if tre_um is None:
+        return None
+    t = float(tre_um)
+    if not np.isfinite(t) or t < 0:
+        return None
+    xs = [p[0] for p in _MDE_CURVE]
+    ys = [p[1] for p in _MDE_CURVE]
+    if t <= xs[0]:
+        return ys[0]
+    if t >= xs[-1]:
+        slope = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+        return round(ys[-1] + slope * (t - xs[-1]), 2)
+    return round(float(np.interp(t, xs, ys)), 2)
 
 
 def analysability_radius(tre_um, factor: float = _ANALYSABILITY_FACTOR):

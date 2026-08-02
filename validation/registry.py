@@ -153,6 +153,34 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "detectable_effect",
+        "title": "Minimum detectable enrichment — sensitivity vs registration error",
+        "category": "statistical",
+        "claim": "Registration error costs sensitivity to WEAK effects, not validity. Even at "
+                 "20 µm error the test finds a 2.7× enrichment at 80 % power; at 0 µm it "
+                 "finds 1.5×.",
+        "purpose": "Sweep registration error and effect size JOINTLY on real tissue, and "
+                   "report the smallest enrichment still detectable at 80 % power for each "
+                   "error level.",
+        "why": "Power is not a property of a pair — it is a property of a pair AND an effect "
+               "size. The same error giving 0.28 power against 2.0× gives 1.00 against 2.5×, "
+               "so quoting bare power reads as 'this test is useless' when it means 'this "
+               "would miss a weak association and catch a strong one'. The minimum "
+               "detectable enrichment is what makes a NULL result readable, and it is now "
+               "surfaced on every analysable verdict.",
+        "datasets": ["LL477 detections", "Keren TNBC scaffold"],
+        "assumptions": "Smooth deformation field matched to the measured residual; "
+                       "dense_morphology + bands_ring; enrichment capped by geometry.",
+        "limitations": "Contact band only. The curve is interpolated between five measured "
+                       "error levels and extrapolated beyond 20 µm.",
+        "interpretation": "Report an absence against this number: 'no association of X× or "
+                          "more was detectable here', never a bare 'no association'.",
+        "expected": "1.50× at 0 µm, 1.70× at 5, 2.13× at 10, 2.46–2.60× at 15, "
+                    "2.64–2.70× at 20; both substrates agree.",
+        "runner": {"kind": "script", "script": "validate_detectable_effect.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "window_size_gate",
         "title": "Analysis-window size — where the statistic actually breaks",
         "category": "statistical",
