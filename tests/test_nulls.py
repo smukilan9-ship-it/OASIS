@@ -166,3 +166,32 @@ def test_the_architecture_verdict_still_distinguishes_three_regimes():
     assert architecture_scale_verdict(None)["status"] == "unknown"
     # `ok` is the only status that reports ok=True, which is what the router now keys on.
     assert architecture_scale_verdict(1.2 * bw)["ok"] is False
+
+
+def test_no_valid_primary_null_fails_closed():
+    """A pair with no valid primary null must be withheld, not answered by the rejected one.
+
+    _build_precheck_null_plan documents this outcome — "none (fail-closed) ... dense fallback
+    gates fail; no robust primary null -> run withheld" — but the association loop had no
+    `continue`, so a pair whose 75 um pre-flight had just been declared INVALID, and whose
+    dense fallback was then unavailable, fell through and ran on the REWEIGHTED primary: the
+    null the pre-flight had rejected for that tissue.
+
+    Measured end to end on LL477 without a support CSV, that printed
+    "primary(reweighted) SIGNIFICANT association (p=0.01) ROBUSTNESS=robust" on tissue where
+    the reweighted null's size is 0.24. Section 15.3's routing change makes this reachable
+    more often, since `caution` pairs now arrive here too.
+    """
+    import inspect
+
+    from oasis.spatial import spatial as sp
+
+    src = inspect.getsource(sp.run_spatial_association)
+    assert '"error": "no_valid_primary_null"' in src, (
+        "the fail-closed branch for a missing primary null is gone")
+    # it must come BEFORE the statistic runs, or it withholds nothing
+    i_block = src.index('"no_valid_primary_null"')
+    i_stat = src.index("cross_k_all_nulls(")
+    assert i_block < i_stat, (
+        "the fail-closed check must precede cross_k_all_nulls, otherwise the rejected null "
+        "has already produced a verdict")

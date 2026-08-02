@@ -1172,6 +1172,37 @@ def run_spatial_association(
                         + ", ".join(failed))
                     print(f"  {key}: support null unavailable — {dense_info['reason']}")
 
+            # FAIL CLOSED when no valid primary null survives.
+            #
+            # _build_precheck_null_plan already documents this outcome — "none (fail-closed)
+            # … dense fallback gates fail; no robust primary null → run withheld" — but the
+            # loop did not enforce it. There was no `continue` here, so a pair whose 75 µm
+            # pre-flight had just been declared INVALID, and whose dense fallback was then
+            # unavailable, fell through to cross_k_all_nulls and ran on the reweighted
+            # primary anyway: the very null the pre-flight had rejected for this tissue.
+            # Measured end to end on LL477 without a support CSV, that printed
+            # "primary(reweighted) SIGNIFICANT association (p=0.01) ROBUSTNESS=robust" on
+            # tissue where the reweighted null's size is 0.24 (research/ihc.md § 15.1).
+            #
+            # Pre-existing, but § 15.3's routing change makes it reachable more often: pairs
+            # in the `caution` band now come here too, so routing them away from the
+            # reweighted null only helps if the fallback actually exists. Without this the
+            # earlier fix was incomplete.
+            if (not bandwidth_precheck.get("valid")
+                    and not dense_info.get("selected")
+                    and dense_auto_null):
+                reason = (dense_info.get("reason")
+                          or "no primary null is valid for this pair's architecture")
+                print(f"  {key}: BLOCKED — {reason}")
+                association[key] = {
+                    "error": "no_valid_primary_null",
+                    "reason": reason,
+                    "bandwidth_precheck": bandwidth_precheck,
+                    "dense": dense_info,
+                    "n_a": int(len(p_a)), "n_b": int(len(p_b)),
+                }
+                continue
+
             # Smallest inter-cell distance this pair's registration error can resolve.
             # This is a REPORTING boundary, not a gate on the test: validation shows the
             # DCLF test stays correctly sized under registration error, and narrowing the
