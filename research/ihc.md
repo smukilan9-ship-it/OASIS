@@ -1871,3 +1871,269 @@ already behaved this way.
 **Still open:** RADIUS_LIMITED keeps the whole field by design, so it carries a milder form
 of the same extrapolation — at coverage 0.29 it reports an 8.7 µm floor where the realized
 field error is 28 µm. That is a weaker claim than CERTIFIED and was left in scope-discipline.
+
+---
+
+## 16. Session 2026-08-02d — the matcher: measured, then shopped
+
+The operator's verdict after seeing three auto-found regions fail was *"loftr
+correspondences officially suck"*. This section establishes how much of that is true, how
+much is the certificate failing to notice, what the physical ceiling is regardless of
+matcher, and what the literature actually offers. Nothing here is implemented yet; § 16.8 is
+a plan and § 16.9 is the gate it has to pass first.
+
+### 16.1 The certificate is blind to a spun fit, and the blindness scales with window size
+
+The three production sweeps already in the repo (`validation/roi_production_arm_{4X,10X,20X}.json`,
+`arm = register_similarity`) record the matrix of every window that reached a certifying
+verdict. Nobody had ever looked at what those matrices *say*. Decomposing each into rotation
+and isotropic scale:
+
+| arm | window radius | windows | reached a verdict | physically implausible | rate | \|rot\| med / max | scale min..max | n_corr median |
+|---|---|---|---|---|---|---|---|---|
+| 4X | 600 µm | 162 | 26 | 0 | **0 %** | 0.1° / 3.1° | 0.986 .. 1.020 | 95 |
+| 10X | 238 µm | 324 | 24 | 12 | **50 %** | 2.5° / 58.4° | 0.641 .. 1.245 | 30 |
+| 20X | 139 µm | 112 | 10 | 10 | **100 %** | 14.0° / 32.3° | 0.537 .. 1.123 | 12 |
+
+*implausible* = |rotation| > 5° or |scale − 1| > 0.05. These are serial sections from one
+block, imaged on one scanner at one objective. A 32° rotation or a 0.54 scale is not tissue.
+
+Every 20X window, itemised, with what the certificate claimed about it:
+
+| pair | verdict | n | rotation | scale | **claimed cell error p90** |
+|---|---|---|---|---|---|
+| LL478_junction_20X_1 | CERTIFIED | 8 | 4.0° | 0.797 | 3.68 µm |
+| LL478_junction_20X_1 | RADIUS_LIMITED | 12 | 14.4° | 0.537 | 8.20 µm |
+| LL478_junction_20X_1 | RADIUS_LIMITED | 12 | 14.8° | 0.560 | 9.50 µm |
+| LL478_junction_20X_2 | CERTIFIED | 11 | 19.2° | 0.678 | 4.32 µm |
+| LL478_junction_20X_2 | RADIUS_LIMITED | 9 | 16.7° | 1.018 | 5.19 µm |
+| LL480_Liver_20X_2 | RADIUS_LIMITED | 13 | 7.4° | 1.123 | 6.19 µm |
+| LL480_Liver_20X_2 | RADIUS_LIMITED | 9 | 32.3° | 0.592 | 7.24 µm |
+| LL480_Tumor_20X_3 | RADIUS_LIMITED | 13 | 11.8° | 0.717 | 9.13 µm |
+| LL480_Tumor_20X_3 | CERTIFIED | 16 | 13.6° | 0.894 | 4.80 µm |
+| LL480_Tumor_20X_3 | CERTIFIED | 9 | 5.4° | 1.051 | **2.32 µm** |
+
+The last row is the clearest statement of the defect: a window certified at **2.32 µm**
+whose transform shrinks the section by 5 % and rotates it by 5.4°.
+
+**This is § 15.9 again with a different cause.** There the certificate was blind because the
+landmarks were collinear — *"a residual can only measure the transform where the landmarks
+are"*. Here the correspondences are neither collinear nor few enough to be degenerate; they
+are **clustered and contaminated**. A similarity fitted to 9 clustered points with blunders
+has a small residual *at those 9 points* and is unconstrained everywhere else. The residual
+gate cannot see it, by construction, and no threshold on the residual ever will.
+
+The monotone column is the finding: **the failure is a function of how much tissue the
+window spans, not of the matcher's average quality.** At 600 µm the same matcher on the same
+slides is flawless. The certification design — shrink the window until the error gate passes
+— walks straight into the regime where its own evidence stops constraining it.
+
+### 16.2 Three separate things were being called "LoFTR sucks"
+
+1. **A new cross-check refusing fits that previously certified.** Regions that certified at
+   06:10 now return DEFORMED. That is not new breakage becoming visible; it is old breakage
+   becoming visible, and § 16.1 says the old certificates were the wrong ones.
+2. **Genuinely poor correspondences on this cohort.** Real, and quantified in § 16.5 —
+   13.6 % gross on LL477 against 1.1 % on HyReCo's CD8↔CD45.
+3. **An estimator that lets a handful of blunders determine four parameters.** Addressed
+   by constraining rotation and scale to the whole-field transform (measured: constrained
+   residual 0.83–0.99 against free 0.89–1.20 on clustered correspondences with blunders,
+   and it recovers the true translation 24.95 / −11.81 against a true 25 / −12).
+   **Currently half-wired** — `M_local` is constrained but `landmark_register_and_verify`
+   still fits its own unconstrained similarity to the same points, so the transform that is
+   *reported* and the transform that sets the *verdict* are different matrices. On the test
+   case the verdict's matrix still carries 19.8°.
+
+Only (2) is a matcher problem. (1) and (3) are ours, and (3) is the one that turns a bad
+correspondence set into a confident wrong number.
+
+### 16.3 The ceiling nobody's matcher crosses
+
+Before shopping, the honest bound. The field's own controlled comparison of **consecutive
+versus re-stained** sections (Jansen *et al.*, *J. Med. Imaging* 10(6):067501, 2023;
+HyReCo, 86 slide pairs, 5 404 manual landmarks, 4 µm cuts):
+
+| section relationship | best achieved median landmark error |
+|---|---|
+| re-stained (same physical section, bleached and re-stained) | **0.9 µm** |
+| consecutive (adjacent cuts) | **6.5 µm** |
+| ANHIR consecutive | 24.1 µm |
+
+and their limiting statement, which is about biology and not about software:
+
+> an MTRE of 1.0 µm allows nucleus-level alignment, which is infeasible in serial sections
+> where the same nucleus is often not present on the next slide
+
+The two current best methods land in the same place from opposite directions. **RegWSI**,
+winner of ACROBAT 2023 (Wodziński *et al.*, *Comput. Methods Programs Biomed.* 250:108187):
+HyReCo re-stained **0.59 µm**, HyReCo consecutive **4.96 µm**. **CORE** (Nov 2025):
+re-stained **0.41 ± 1.27 µm**, consecutive **4.35 ± 3.67 µm**.
+
+**LL477/LL478/LL480 CD8↔TIM-3 are consecutive sections.** So the floor for this data is
+~4.4–5.0 µm even with the world's best pipeline and a 24 GB GPU, and OASIS's own certified
+windows land at 4.8–9.8 µm cell error. **We are within roughly 1–2× of the state of the art
+on the same class of problem.** A matcher swap cannot move a 4.4 µm floor, and the contact
+band this app tests (0–10 µm) sits *on* that floor. That is the single most important
+paper-grade sentence in this section, and it reframes the target: the win available is not
+lower error, it is **refusing the windows where the error is secretly enormous**.
+
+### 16.4 What the field's best pipelines actually use
+
+| pipeline | matcher / primitive | reported accuracy | notes |
+|---|---|---|---|
+| **RegWSI** (ACROBAT 2023 winner) | **SuperPoint + SuperGlue**, *not* fine-tuned, run **multi-scale and multi-angle**, keeping the rotation/scale with the most matches; then instance-optimisation with local NCC | ANHIR MMrTRE 0.0017; ACROBAT median 137 µm; HyReCo 4.96 / 0.59 µm | RTX 3090, <2 min at 8192² |
+| **DeeperHistReg** | framework wrapping the above | "podium at ANHIR, won ACROBAT" | CC-BY-SA, pip + Docker, A6000 |
+| **CORE** (2025) | **XFeat** for global refinement, then **nuclei centroids + shape-aware rigid + Coherent Point Drift** | ANHIR AArTRE 0.0034; consecutive 4.35 µm; Cyc-IF 1.76 µm | A100; coarse stage 12–14 s |
+| **VALIS** (*Nat. Commun.* 2023) | VGG features + BRISK, rigid then non-rigid, plus micro-registration | state of the art on ANHIR at publication | the most widely deployed |
+| **DFBR** / TIAToolbox | VGG16 features from three layers, then SimpleITK non-rigid | "comparable to the ANHIR winner" when swapped into its first two stages | |
+| **ZeroReg3D** (2025) | zero-shot keypoint matching + optimisation-based affine/non-rigid | — | explicitly argues learned registration "suffers from limited generalizability" on consecutive histology |
+
+Three things follow, and all three are actionable.
+
+**(a) The challenge winner uses a detector-based sparse matcher, not a detector-free one.**
+OASIS's own conclusion that "detector-based matching failed on this data" was reached with
+SIFT+mutual-NN, then DISK+LightGlue. It was never tested with SuperPoint or ALIKED, which
+are different detectors with far more permissive firing.
+
+**(b) The winner's real trick is not the matcher, it is the search.** SuperPoint/SuperGlue
+are not rotation- or scale-invariant, so RegWSI *brute-forces* over rotations and
+resolutions and keeps the hypothesis with the most matches. OASIS does a single pass at a
+single scale and a single orientation. Given § 16.1 shows our failures manifest as wrong
+rotation and wrong scale, an explicit search over rotation and scale is the most directly
+targeted fix in this entire section.
+
+**(c) Both 2025 pipelines fall back to nuclei, not pixels, for the fine stage.** CORE and
+the Warwick point-set paper (Jeyasangar *et al.*, MICCAI 2024) both register **nuclei
+centroids** with CPD, because hematoxylin counterstain is present in *both* sections whereas
+DAB is not. **OASIS already segments every nucleus in both sections.** This primitive is
+sitting unused in the repo, and it is stain-invariant by construction — precisely the
+property LoFTR lacks here.
+
+### 16.5 The matcher measurements we already have, restated
+
+From `validation/matchers_on_cohort_results.json` (LL477 CD8↔TIM-3, three pairs, 800 px
+crops — what `certify_local_roi` actually runs) and `hyreco_field_blunders_results.json`:
+
+| matcher | LL477 matches per pair | LL477 gross frac | ANHIR blunders | verdict |
+|---|---|---|---|---|
+| LoFTR (shipped) | 144 / 77 / 632 | 0.083 / 0.221 / 0.103 | 2.10 % | only one that works on cohort |
+| DISK + LightGlue | 0 / 0 / 35 | — / — / 0.629 | **0.34 %** | dead on target tissue |
+| DeDoDe + LightGlue | 633 / 130 / 3019 | 0.371 / 0.669 / 0.185 | — | plentiful and wrong |
+| SIFT + LightGlue | 0 / 0 / 0 | — | — | dead |
+| KeyNet + HardNet | 87 / 89 / 92 | **1.00 / 1.00 / 0.989** | — | totally wrong |
+
+And the slide-quality control that stops this being a LoFTR indictment: on HyReCo's
+professionally prepared **CD8↔CD45**, the same LoFTR returns **2 481–5 168 correspondences
+at 1.3–5.5 % gross**; on HyReCo **CD8↔HE** it degrades to 152–1 106 at 1.3–53 %. Same
+matcher, same stain class, same magnification — **an order of magnitude difference driven by
+the slides, not the algorithm** (§ 12, and the commit *"HyReCo says the blunders are our
+slides, not the matcher"*).
+
+### 16.6 The candidates, with licences — the filter that eliminates the obvious answer
+
+OASIS is MIT and headed for JOSS, so licence is a hard gate, not a footnote.
+
+| candidate | venue | type | licence | CPU-viable | already installed? |
+|---|---|---|---|---|---|
+| **MatchAnything-ELoFTR** | arXiv 2501.07556 (2025) | semi-dense, cross-modality pre-trained | **Apache-2.0** (HF weights) | **yes — 16 M params, HF documents CPU** | no (needs `transformers`) |
+| Efficient LoFTR | CVPR 2024 | semi-dense | **Apache-2.0** | 2.5× faster than LoFTR | no |
+| XFeat | CVPR 2024 | sparse + semi-dense | **Apache-2.0** | **designed for CPU**, real-time VGA | **yes — `kornia.feature.XFeat`** |
+| ALIKED (+ LightGlue) | IEEE TIM 2023 | sparse | **BSD-3-Clause** | light | **yes — `kornia.feature.ALIKED`** |
+| DeDoDe v2 | 3DV 2024 | sparse | MIT (DINOv2 parts Apache-2.0) | moderate | **yes** (measured: 37–67 % gross here) |
+| RoMa / RoMa v2 | CVPR 2024 / arXiv 2511.15706 | dense | **MIT** (DINOv2/v3 Apache-2.0) | no — 303 ms *on GPU* | no |
+| MASt3R | ECCV 2024 | 3D-grounded dense | CC-BY-NC (check) | no | no |
+| **SuperPoint + SuperGlue** | CVPR 2018/2020 | sparse | **non-commercial research only (Magic Leap)** | yes | **excluded** |
+
+**The ACROBAT winner's exact recipe is unusable by OASIS.** SuperPoint and SuperGlue are
+licensed for non-commercial academic research only, and that restriction propagates to
+LightGlue *when run with SuperPoint weights*. This is not hypothetical fussiness — it is why
+DeeperHistReg's own licence reads "CC-BY-SA **with exceptions for optional deep learning
+models**". LightGlue with **ALIKED, DISK or SIFT** weights is unencumbered; with SuperPoint
+it is not. Any future note recommending "just use SuperPoint like the winner" should be
+answered with this row.
+
+Also worth recording: **kornia 0.8.3, already a dependency, ships ALIKED, XFeat, DeDoDe,
+LoFTR, LightGlue and LightGlueMatcher.** Two of the strongest permissively-licensed
+candidates cost zero new dependencies.
+
+### 16.7 The one candidate with direct, published histology evidence
+
+**MatchAnything** (He *et al.*, arXiv 2501.07556) pre-trains detector-free matchers on
+~800 M synthetically cross-modalised pairs, so the network learns to match *structure*
+rather than appearance — which is exactly the CD8-vs-TIM-3 problem, where the shared signal
+is hematoxylin morphology and the differing signal is chromogen.
+
+It reports **ANHIR cross-stain histology** directly, against the challenge's own winners:
+
+| method | Average-Average rTRE | Average-Median rTRE |
+|---|---|---|
+| Elastix | ~0.095 | ~0.078 |
+| MEVIS (ANHIR 1st) | ~0.088 | ~0.072 |
+| AGH (ANHIR 2nd) | ~0.087 | ~0.070 |
+| DeepHistReg | ~0.082 | ~0.062 |
+| **RoMa + MatchAnything** | **~0.061** | **~0.047** |
+| **ELoFTR + MatchAnything** | **~0.058** | **~0.045** |
+
+with a stated **55.3 % relative improvement for ELoFTR over its own base weights** on this
+task, and single-weight generalisation across eight unseen cross-modal tasks. Inference cost
+is unchanged from the base architecture (ELoFTR ~40 ms at 640×480 on GPU).
+
+Practical route: the weights are on HuggingFace as `zju-community/matchanything_eloftr`
+under **Apache-2.0**, 16 M parameters, and are wired into `transformers` as
+`AutoModelForKeypointMatching` with post-processing that returns per-match confidence — HF's
+own tutorial states the model runs on CPU. Confidence per correspondence is separately
+useful to us: it is a filter the current pipeline does not have.
+
+**Caveat recorded honestly:** the GitHub repository `zju3dv/MatchAnything` has **no LICENSE
+file** (GitHub's API reports no detected licence); only the HuggingFace weight card states
+Apache-2.0. Before adopting, that needs resolving — the weights are the part we would ship.
+
+### 16.8 What to do, in priority order, with what each does and does not fix
+
+1. **Finish wiring the constrained fit through certification.** The verdict and the reported
+   transform must be the same matrix. Fixes: confident wrong certificates from spun local
+   fits. Does not fix: bad correspondences.
+2. **Reject a window whose transform disagrees with the field.** § 16.1 gives a directly
+   calibrated gate — at 4X, where correspondences are plentiful, *nothing* exceeds 3.1° or
+   2 % scale. That is an empirical tolerance, not an invented constant. Fixes: the entire
+   20X table above. Costs: coverage, which is the correct trade for a fail-closed tool.
+3. **Search over rotation and scale (the RegWSI recipe).** Cheapest large win, no new
+   dependency, no licence question, and aimed exactly at how our failures present.
+4. **Add MatchAnything-ELoFTR as a second matcher arm** and A/B it on the existing harness
+   (`validate_matchers_on_cohort.py` already runs synthetic-warp + real-pair, which is the
+   right two-test design and is what killed DISK).
+5. **Nuclei-centroid point-set registration as an independent arm** (CORE / Warwick recipe),
+   using OASIS's own segmentations. Stain-invariant by construction; also gives a *second
+   opinion* transform, and two independent estimates that agree is far stronger evidence
+   than one estimate with a small residual.
+6. **MAGSAC++ (`cv2.USAC_MAGSAC`) in place of the hand-rolled robust fit** — marginalises
+   over the inlier threshold instead of committing to one. Marginal on 9 points; do it last,
+   if at all.
+
+### 16.9 The gate this has to pass first
+
+Standing rule: **any change to the spatial association statistics must be validated before
+implementing.** Steps 1, 2, 3 and 6 touch registration, not the statistic, but step 2 changes
+*which windows produce numbers at all*, so it changes what the paper can claim. It needs the
+same treatment the null models got: a measured effect on ANHIR (where expert landmarks give
+truth) plus the LL477 cohort, reported as coverage lost against blunders caught, before it
+ships. Steps 4 and 5 are new arms and must be measured on both the synthetic-warp and
+real-pair tests before either becomes a default.
+
+### 16.10 What this section does not settle
+
+* **No new matcher has been run.** Every number in § 16.6 and § 16.7 is from the literature
+  or from vendor documentation. The only measurements on *our* tissue are the ones already
+  in the repo, restated in § 16.5.
+* **The RUBIK benchmark PDF exceeded the fetch limit**, so its comparison table is
+  summarised second-hand and is not cited for any specific number.
+* **ANHIR rTRE is relative to image diagonal**, so the MatchAnything table is not directly
+  comparable in µm to the HyReCo numbers in § 16.3. Do not mix them in the paper.
+* **"Mismatched" (arXiv 2408.16445) is a standing warning against exactly the reasoning in
+  § 16.7**: it evaluated 20 matchers and found leaderboard rank a poor predictor
+  out-of-domain — SP-LG-GIM drops from 0.560 mAA in-domain to 0.161 out-of-domain. A
+  published ANHIR win is evidence that MatchAnything is worth *testing* on LL477. It is not
+  evidence that it will work on LL477.
+* **The ceiling in § 16.3 is not removable by any item in § 16.8.** Consecutive sections are
+  ~4.4 µm at best. If the biology needs finer than that, the answer is re-stained sections,
+  not a better matcher.
