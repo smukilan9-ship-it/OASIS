@@ -1779,3 +1779,55 @@ the signal. A regional truth that filled its band would behave like the contact 
 detected" means something different at power 0.9 than at 0.3, and without this curve there
 is no way to say which regime a run was in. Any reported absence should name the effect the
 test could have found.
+
+### 15.9 A certificate that claimed field the landmarks never spanned
+
+Found while fixing § 15.4 and deliberately deferred, then investigated.
+
+`landmark_register_and_verify` returned **CERTIFIED with `roi_polygon = None` — the whole
+field — for any landmark set that fit well**, with no spatial-support requirement. A
+similarity is mathematically determined by ≥2 distinct collinear points, so the fit is not
+degenerate and the residuals are legitimately ~0. That is exactly what makes it dangerous:
+**a residual can only measure the transform where the landmarks are.**
+
+Demonstrated with a deformation chosen to be invisible to the landmark set — a vertical
+scaling about the same line the landmarks sit on:
+
+| scale k | verdict | fit residual | claimed TRE | **realized field TRE p90** |
+|---|---|---|---|---|
+| 1.02 | CERTIFIED | 0.0 µm | 0.0 µm | **11.7 µm** |
+| 1.05 | CERTIFIED | 0.0 µm | 0.0 µm | **29.3 µm** |
+| 1.20 | CERTIFIED | 0.0 µm | 0.0 µm | **117.0 µm** |
+
+The certificate claims 0.0 µm while cells are displaced by up to 117 µm. Not optimistic —
+**blind by construction**, because the landmarks lie on the deformation's invariant line.
+This is the precise failure a fail-closed tool exists to prevent.
+
+**The evidence was already in the repo and gated nothing.** `coverage_frac` is computed
+(`_hull_area(ref)/field_area`), reads 0.0 for the collinear set, is displayed in the UI as
+*"fraction of the fixed tissue field spatially supported by the landmark layout"*, and is
+used only to rank guided candidates. There was also an inversion: **LOCALLY_CERTIFIED
+required `roi_frac ≥ min_roi_frac` while field-wide CERTIFIED required nothing** — the
+stronger claim carried the weaker support requirement.
+
+**The fix needed no new constant and no new threshold**, because the sibling path already
+did the right thing: `_certify_fitzpatrick_west` sets `roi_polygon = eval_roi` with the
+comment *"the hull IS the certified window"*. Only the legacy LOO path extrapolated. It now
+matches:
+
+* `coverage_frac ≥ min_roi_frac` → **CERTIFIED over the landmark hull**, and the reason says
+  so. Inside that hull the claimed error is honest — for the ±120 px layout the field-wide
+  error is ~28 µm while the hull's own error is a few µm, which is what the certificate now
+  reports.
+* below it → **NOT_CERTIFIABLE**, not RADIUS_LIMITED. Falling through to the deformation
+  cascade was wrong twice: it produced a whole-field verdict from landmarks spanning none of
+  it, and printed *"held-out TRE is 0.0 µm, above the ≤5.0 µm gate"*, which is neither true
+  nor the problem. The pair is not deformed; the evidence is too thin.
+
+**Cost to real work: none.** Real ANHIR landmark sets cover 0.41–0.67 of the field
+(median 0.57), far above the 0.10 floor, and LL477 certified through the FW path, which
+already behaved this way.
+
+**Still open:** RADIUS_LIMITED keeps the whole field by design, so it carries a milder form
+of the same extrapolation — at coverage 0.29 it reports an 8.7 µm floor where the realized
+field error is 28 µm. That is a weaker claim than CERTIFIED and was left in scope-discipline.

@@ -546,3 +546,77 @@ def test_a_certification_without_an_explicit_floor_still_yields_one():
     # unknown stays unknown — callers fail closed on None and must keep being able to
     assert _radius_floor_from_cell_error({"verdict": "LOCALLY_CERTIFIED"}) is None
     assert _radius_floor_from_cell_error(None) is None
+
+
+def test_a_certificate_never_claims_field_the_landmarks_do_not_span():
+    """A residual can only measure the transform where the landmarks are.
+
+    This path used to return roi_polygon=None — the WHOLE FIELD — from any landmark set that
+    fit well, with no support requirement at all. Demonstrated failure: 10 collinear
+    landmarks on y=500, under a vertical scaling about that same line, certify at
+    fit-residual 0.0 um and held-out TRE 0.0 um while the realized error at cells across the
+    field reaches 117 um. The landmarks sit exactly on the deformation's invariant line, so
+    the certificate is blind by construction rather than merely optimistic.
+
+    _certify_fitzpatrick_west had always made the hull the certified window; only this legacy
+    LOO path extrapolated. `coverage_frac` already measured the problem (0.0 for the
+    collinear set) and gated nothing.
+    """
+    import numpy as np
+    from oasis.spatial.serial_registration import (landmark_register_and_verify,
+                                                   CERTIFICATION_GATES)
+
+    wh = (1920, 1440)
+    collinear = np.column_stack([np.linspace(100, 1800, 10), np.full(10, 500.0)])
+    out = landmark_register_and_verify(collinear, collinear + np.array([5.0, 2.0]),
+                                       0.7519, image_wh=wh)
+    assert out["verdict"] == "NOT_CERTIFIABLE", out["verdict"]
+    assert out["coverage_frac"] == 0.0
+    assert "hull covers only" in out["reason"]
+
+    # A well-spread set still certifies — and over its hull, not the whole field.
+    rng = np.random.default_rng(0)
+    good = rng.uniform(150, 1750, (12, 2))
+    ok = landmark_register_and_verify(good, good + np.array([6.0, -3.0])
+                                      + rng.normal(0, 1.0, good.shape), 0.7519, image_wh=wh)
+    assert ok["verdict"] == "CERTIFIED", ok["verdict"]
+    assert ok["coverage_frac"] >= CERTIFICATION_GATES["min_roi_frac"]
+    assert ok["roi_polygon"] is not None, "CERTIFIED must name the window it certifies"
+    assert ok["certified_window_source"] == "landmark_hull"
+
+
+def test_the_hull_window_matches_what_the_landmarks_can_actually_see():
+    """Certifying the hull is not cosmetic — inside it the claimed error is honest.
+
+    With landmarks spread +-200 px about y=500 and a 1.05 vertical scaling, the field-wide
+    error reaches ~28 um while the error INSIDE the hull is a few um, because the
+    deformation grows with distance from the line. Certifying the hull reports the error
+    that region actually has; certifying the field reported 3.9 um for a 28 um situation.
+    """
+    import numpy as np
+    from oasis.spatial.serial_registration import (landmark_register_and_verify,
+                                                   _apply_affine)
+
+    # Deterministic layout, not a seeded random one: this test depends on landing in the
+    # narrow band where the fit still passes the 5 um gate but the hull is small, and a
+    # reseeded draw silently walks out of it.
+    x = np.linspace(120, 1800, 12)
+    y = 500.0 + 120.0 * np.where(np.arange(12) % 2 == 0, 1.0, -1.0)
+    ref = np.column_stack([x, y])
+    mov = ref.copy()
+    mov[:, 1] = 500.0 + 1.05 * (mov[:, 1] - 500.0)
+    rng = np.random.default_rng(0)
+    out = landmark_register_and_verify(ref, mov, 0.7519, image_wh=(1920, 1440))
+    assert out["verdict"] == "CERTIFIED"
+    assert out["roi_polygon"] is not None
+
+    M = np.asarray(out["matrix"], float)
+    inside = np.column_stack([rng.uniform(200, 1700, 200),
+                              500.0 + rng.uniform(-110, 110, 200)])
+    warped = inside.copy()
+    warped[:, 1] = 500.0 + 1.05 * (warped[:, 1] - 500.0)
+    err_in = np.linalg.norm(_apply_affine(warped, M) - inside, axis=1) * 0.7519
+    # the certificate's claim must not understate the error inside the window it certified
+    assert np.percentile(err_in, 90) <= max(3.0 * out["tre_median_um"], 12.0), (
+        f"claimed {out['tre_median_um']} µm but the hull's own p90 is "
+        f"{np.percentile(err_in, 90):.1f} µm")

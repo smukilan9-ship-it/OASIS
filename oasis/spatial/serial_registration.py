@@ -1814,8 +1814,58 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
         reason = (f"held-out TRE median {med} µm (p90 {out['tre_p90_um']}), "
                   f"fit-residual {fr} µm, n={n}{tier}")
         out.update(verdict="CERTIFIED", reason=reason)
-        # A drawn ROI becomes the certified analysis window (whole field otherwise).
-        return _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac)
+        if roi_poly is None:
+            # THE HULL IS THE CERTIFIED WINDOW, matching _certify_fitzpatrick_west, which
+            # has always done this. This path used to return roi_polygon=None — the WHOLE
+            # FIELD — from landmarks that might span none of it, and the residual check
+            # cannot see that, because a residual only measures where landmarks are.
+            #
+            # Demonstrated: 10 collinear landmarks on y=500 under a vertical scaling about
+            # that same line certify at fit-residual 0.0 µm and held-out TRE 0.0 µm, while
+            # the realized error at cells across the field reaches 117 µm. The landmarks sit
+            # exactly on the deformation's invariant line, so the certificate is not merely
+            # optimistic — it is blind by construction. False certification at 0.0 µm is the
+            # precise failure a fail-closed tool exists to prevent.
+            #
+            # Certifying the hull instead of the field is not a new gate and needs no new
+            # constant: it states what the landmarks actually support. Anything beyond the
+            # hull is extrapolation and was never measured.
+            #
+            # `coverage_frac` already measured this (it reads 0.0 for the collinear set) and
+            # the UI already labels it "fraction of the fixed tissue field spatially
+            # supported by the landmark layout" — it was computed, displayed, and gated
+            # nothing. Real ANHIR landmark sets cover 0.41–0.67 of the field, so a hull
+            # window costs correctly-placed sets nothing.
+            hull_frac = (_hull_area(ref) / float(image_wh[0] * image_wh[1])
+                         if image_wh else 0.0)
+            if hull_frac < min_roi_frac:
+                # NOT_CERTIFIABLE, not RADIUS_LIMITED. Falling through to the deformation
+                # cascade was wrong twice over: it produced a whole-field verdict from
+                # landmarks that span none of it, and it printed "held-out TRE is 0.0 µm,
+                # above the ≤5.0 µm gate", which is not true and not the problem. The pair
+                # is not deformed — the evidence is too thin to say anything about the
+                # field, which is what NOT_CERTIFIABLE means everywhere else here.
+                out.update(
+                    verdict="NOT_CERTIFIABLE",
+                    reason=(f"the landmarks fit one transform to {med} µm, but their hull "
+                            f"covers only ~{hull_frac * 100:.1f}% of the field "
+                            f"(minimum {min_roi_frac * 100:.0f}%) — a residual can only "
+                            f"measure the transform where landmarks are, so deformation "
+                            f"away from them is unmeasured, not absent. Spread the "
+                            f"landmarks over the region you intend to analyse. This is NOT "
+                            f"evidence the sections are unrelated."))
+                return out
+            else:
+                out["roi_polygon"] = [[float(x), float(y)] for x, y in
+                                      cv2.convexHull(ref.astype(np.float32)).reshape(-1, 2)]
+                out["certified_window_source"] = "landmark_hull"
+                out["reason"] = (reason + f"; certified over the landmark hull "
+                                          f"(~{hull_frac * 100:.0f}% of field), not the "
+                                          f"whole field — the transform is unmeasured "
+                                          f"outside it")
+                return out
+        if out.get("verdict") == "CERTIFIED":
+            return _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac)
     # Locally certified? a spatially-coherent subset of good points (LOO case only).
     # Preferred over RADIUS_LIMITED: a smaller window that keeps the contact scale says
     # more than the whole field with the contact scale removed.
