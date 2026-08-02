@@ -2711,3 +2711,43 @@ input silently.
 * The operator has still not re-certified LL477–480 under any of this. 227 unit tests pass and
   passed throughout the period when 20X windows were certifying impossible transforms, so they
   are not evidence about outcomes.
+
+### 19.6 CORRECTION — the actual reason landmarks could not be placed
+
+§ 19.4 was wrong, and so were the two fixes before it. The armed drawing tool is real and the
+button for it is worth keeping, but it was not why the operator could never place a landmark.
+
+**The blocker was `lmMove`'s drag detector, and it had nothing to do with modes or tools:**
+
+```js
+p.moved += Math.abs(dx) + Math.abs(dy);     // accumulated PATH LENGTH
+...
+if ((lmPanes.ref.moved || 0) > 4) return;   // "it was a pan, not a click"
+```
+
+A trackpad click is not a still pointer. Finger pressure changes emit several `pointermove`
+events of 1–2 px each, and **summing their absolute deltas passes 4 px on essentially every
+click**. So the press panned the image slightly and was then discarded as a drag — in every
+mode, with no tool armed, on both panes, silently. That is the whole bug, and it is why
+"landmarks are broken" survived two fixes aimed at mode routing and gesture priority.
+
+Path length is the wrong measure. **Net displacement from the press origin** is what "did the
+pointer actually go somewhere" means: jitter that returns to where it started nets ~0. `lmDown`
+now records the origin, `lmMove` measures `hypot` from it, and the threshold is a named
+`CLICK_SLOP_PX = 8` — generous, because measuring from the origin means a generous slop cannot
+turn a genuine drag into a placement.
+
+Verified by driving the real page rather than reasoning about it:
+
+| gesture | net movement | landmark placed |
+|---|---|---|
+| trackpad click (press, wobble ±2 px, release in place) | 0 | **yes** |
+| genuine drag | 67 px | no — pans, as it should |
+| click with a drawing tool armed | 0 | no — **and now says why** |
+| click after pressing 📍 Place landmarks | 0 | **yes** |
+
+**The durable part is the last column.** Placement has now been reported broken three times and
+each time the blocker was a *different* silent `return` in `spatialCertHandleRefClick` — a
+stale pan distance, a mode check, an armed tool. The bug was never any one guard; it was that a
+click could be refused with nothing on screen. Every guard now names its reason in the result
+panel, so whatever the next cause is, it announces itself instead of costing another week.

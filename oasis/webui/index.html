@@ -5461,6 +5461,11 @@ function spatialCertRoiClear() {
 //     pts   the shape so far, in that image's full-resolution pixels
 //     drag  whether this gesture has become a freehand stroke
 const DRAW_FREEHAND_PX = 4;          // pointer travel that turns a click into a stroke
+// NET pointer displacement past which a press stops counting as a click. A trackpad click
+// wanders a few px while finger pressure changes, so 4 px rejected real clicks; this is
+// measured from the press ORIGIN (see lmMove), not summed along the path, so it can be
+// generous without making a genuine drag place a landmark.
+const CLICK_SLOP_PX = 8;
 
 function certDraw() { return spatialCertWork.draw || (spatialCertWork.draw = {tool:null, side:null, pts:[], drag:false, moved:0}); }
 
@@ -6068,10 +6073,29 @@ document.getElementById('spatial-cert-ref').addEventListener('click', e => {
   spatialCertHandleRefClick(e);
 });
 
+// EVERY refused click says why. Landmark placement has now been reported broken three times,
+// and each time the actual blocker was a different silent `return` in this function — a stale
+// pan distance, a mode check, an armed tool. The bug was never that one guard; it was that a
+// click could be swallowed with nothing on screen. Whatever the next cause is, it announces
+// itself here.
+function spatialCertExplainIgnoredClick(why) {
+  const msg = {
+    pan: 'That was read as a drag, not a click — the pointer moved more than '
+         + CLICK_SLOP_PX + ' px. Click without moving, or zoom in first.',
+    tool: 'A drawing tool is active, so it owns your clicks. Press 📍 Place landmarks '
+          + '(or Esc) to place landmarks instead.',
+    noimg: 'Load both sections first.',
+  }[why] || 'That click was ignored.';
+  const el = document.getElementById('spatial-cert-result');
+  if (el) el.innerHTML = `<span style="color:#b45309">${msg}</span>`;
+  if (why === 'tool') showToast('A drawing tool is active — press 📍 Place landmarks');
+}
+
 async function spatialCertHandleRefClick(e) {
   const w = spatialCertWork;
-  if (!w.ref) return;
-  if ((lmPanes.ref.moved || 0) > 4) return;            // it was a pan, not a click
+  if (!w.ref) { spatialCertExplainIgnoredClick('noimg'); return; }
+  if ((lmPanes.ref.moved || 0) > CLICK_SLOP_PX) {      // it was a pan, not a click
+    spatialCertExplainIgnoredClick('pan'); return; }
   if (w.loftrMode) {                                    // add a vertex to the active LoFTR region
     w.loftrDraft.push(spatialCertPoint(e, e.currentTarget, w.ref));
     loftrRoiSync(); return;
@@ -6091,7 +6115,7 @@ async function spatialCertHandleRefClick(e) {
   // rule is simply "no drawing tool owns this click", which is true in both modes. LoFTR can
   // certify what it can and the operator adds landmarks where it could not — on the same
   // pair, in the same view, without switching anything.
-  if (certDraw().tool) return;                         // a drawing tool owns this gesture
+  if (certDraw().tool) { spatialCertExplainIgnoredClick('tool'); return; }
   const clickPt = spatialCertPoint(e, e.currentTarget, w.ref);
   if (w.pending) return;
   // MANUAL placement. OASIS does NOT guess the matching point on the moving section:
@@ -6106,7 +6130,7 @@ async function spatialCertHandleRefClick(e) {
 document.getElementById('spatial-cert-mov').addEventListener('click', e => {
   const w = spatialCertWork;
   if (!w.mov || !w.pending) return;
-  if ((lmPanes.mov.moved || 0) > 4) return;
+  if ((lmPanes.mov.moved || 0) > CLICK_SLOP_PX) { spatialCertExplainIgnoredClick('pan'); return; }
   w.refPoints.push(w.pending);
   w.movPoints.push(spatialCertPoint(e, e.currentTarget, w.mov));
   w.pending = null;
@@ -6350,7 +6374,10 @@ function lmDown(side,e){
                                  side === 'ref' ? spatialCertWork.ref : spatialCertWork.mov);
     return;
   }
-  const p=lmPanes[side]; p.drag=true; p.moved=0; p.px=e.clientX; p.py=e.clientY;
+  // ox/oy is the press ORIGIN, kept so lmMove can measure net displacement rather than
+  // accumulated path length. px/py is the previous event, used only to pan.
+  const p=lmPanes[side]; p.drag=true; p.moved=0;
+  p.px=e.clientX; p.py=e.clientY; p.ox=e.clientX; p.oy=e.clientY;
   if (side === 'mov' && spatialCertMode === 'landmark') {
     // CANDIDATE window drag — never consumes the press.
     //
@@ -6397,9 +6424,9 @@ function lmMove(side,e){
   const p=lmPanes[side];
   if (side === 'mov' && spatialCertWork.movRoiPending) {
     const pend = spatialCertWork.movRoiPending;
-    p.moved += Math.abs(e.clientX - p.px) + Math.abs(e.clientY - p.py);
+    p.moved = Math.hypot(e.clientX - (p.ox ?? p.px), e.clientY - (p.oy ?? p.py));
     p.px = e.clientX; p.py = e.clientY;
-    if (p.moved > 4) {                       // same threshold the click handler uses
+    if (p.moved > CLICK_SLOP_PX) {           // same threshold the click handler uses
       certMovRoiBegin(pend.hit, pend.pt);
       spatialCertWork.movRoiPending = null; p.drag = false;
       // Apply this event too, or the window sits still for one frame and then jumps —
@@ -6410,7 +6437,21 @@ function lmMove(side,e){
     return;
   }
   if(!p.drag) return;
-  const dx=e.clientX-p.px, dy=e.clientY-p.py; p.moved+=Math.abs(dx)+Math.abs(dy);
+  const dx=e.clientX-p.px, dy=e.clientY-p.py;
+  // NET displacement from where the press started — NOT accumulated path length.
+  //
+  // This line used to read `p.moved += Math.abs(dx)+Math.abs(dy)`, summing every jitter of
+  // the whole gesture, and the click handler rejects a click when moved > slop. A trackpad
+  // click emits several pointermove events of 1-2 px each as finger pressure changes, so the
+  // sum passed the threshold on essentially every click: the press panned the image a little
+  // and was then thrown away as "it was a pan, not a click". Landmarks could not be placed at
+  // all, in any mode, with no tool armed and nothing on screen to explain it — the operator
+  // reported it as broken for weeks and two earlier fixes aimed at modes and tools missed it
+  // because the blocker was neither.
+  //
+  // Net displacement is what "did the pointer actually go somewhere" means. Jitter that
+  // returns to where it started nets ~0 and is correctly read as a click.
+  p.moved = Math.hypot(e.clientX - (p.ox ?? p.px), e.clientY - (p.oy ?? p.py));
   p.tx+=dx; p.ty+=dy; p.px=e.clientX; p.py=e.clientY;
   lmClamp(side); lmApply(side); lmMirror(side); }
 function lmUp(side){ const p=lmPanes[side]; p.drag=false;
