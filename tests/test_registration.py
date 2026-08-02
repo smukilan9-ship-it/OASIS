@@ -140,7 +140,16 @@ def test_auto_local_roi_recovers_deformed_global_landmarks():
     mov = np.vstack([clean_mov, bad_mov])
     global_res = sr.landmark_register_and_verify(
         ref, mov, pixel_size_um=0.5, image_wh=(2000, 2000))
-    assert global_res["verdict"] in ("DEFORMED", "NOT_CERTIFIABLE")
+    # THE INVARIANT IS "NEVER CLAIM THE WHOLE FIELD", not a specific failing verdict.
+    # LOCALLY_CERTIFIED is now a legitimate outcome here and a better one: with the accuracy
+    # gate derived from the bands, the six clean landmarks are recognised as a consistent
+    # subset and their hull is certified directly, so the pair is recovered instead of
+    # discarded. Verified separately that the ROI is exactly the clean region — 6/6 clean
+    # landmarks inside, 0/6 deformed ones inside, 9 % of the field. Asserting DEFORMED would
+    # be pinning the failure rather than the property.
+    assert global_res["verdict"] != "CERTIFIED", "must not claim the whole field"
+    if global_res["verdict"] == "LOCALLY_CERTIFIED":
+        assert global_res.get("roi_polygon"), "a local certification must name its window"
 
     r = API().suggest_local_certification_roi({
         "ref_points": ref.tolist(),
@@ -620,3 +629,79 @@ def test_the_hull_window_matches_what_the_landmarks_can_actually_see():
     assert np.percentile(err_in, 90) <= max(3.0 * out["tre_median_um"], 12.0), (
         f"claimed {out['tre_median_um']} µm but the hull's own p90 is "
         f"{np.percentile(err_in, 90):.1f} µm")
+
+
+def test_a_fit_dragged_by_bad_landmarks_cannot_hide_behind_its_residual():
+    """Held-out TRE is blind to a fit dragged by a systematically wrong SUBSET.
+
+    Dropping one landmark at a time leaves the other outliers still pulling the fit, so every
+    held-out prediction is wrong in the same direction as the fit and the residual stays
+    small. Measured on 12 points with 4 torn corners: LOO reported 7.79 um while the
+    transform displaced cells by a median of 10.4 um and a p90 of 15.4 um. That is why the
+    accuracy gate could not simply be loosened — it was compensating for the blind spot
+    rather than measuring accuracy.
+
+    transform_drag_um refits on the landmarks that agree with each other and measures how far
+    the two transforms diverge across the FIELD, which is exactly what holding points out
+    cannot reveal.
+    """
+    import numpy as np
+    from oasis.spatial import serial_registration as sr
+
+    def build(contaminate):
+        rng = np.random.default_rng(2)
+        c = np.array([1000.0, 1000.0])
+        clean = c + rng.uniform(-500, 500, size=(8, 2))
+        torn = np.array([[120.0, 1880.0], [1880.0, 120.0],
+                         [110.0, 110.0], [1890.0, 1890.0]])
+        ref = np.vstack([clean, torn])
+        mov = ref + rng.normal(0, 0.4, ref.shape)
+        if contaminate:
+            mov[8:] += rng.normal(0, 40.0, (4, 2))
+        return ref, mov
+
+    ref, mov = build(False)
+    clean_out = sr.landmark_register_and_verify(ref, mov, 0.5, image_wh=(2000, 2000))
+    assert clean_out["transform_drag_um"] < 0.5, (
+        "a consistent landmark set must show no drag — a false alarm here would refuse "
+        "good registrations")
+    assert clean_out["verdict"] == "CERTIFIED"
+
+    ref, mov = build(True)
+    bad = sr.landmark_register_and_verify(ref, mov, 0.5, image_wh=(2000, 2000))
+    assert bad["transform_drag_um"] > bad["tre_median_um"], (
+        f"drag {bad['transform_drag_um']} did not exceed the held-out TRE "
+        f"{bad['tre_median_um']} — the blind spot is open again")
+    assert bad["accuracy_limited_by"] == "transform_drag"
+    assert bad["verdict"] != "CERTIFIED", "a dragged fit must not certify"
+
+
+def test_the_drag_estimator_uses_a_scale_free_consistency_test():
+    """An absolute residual cutoff collapses on the case this exists to catch.
+
+    When the fit is dragged badly enough, EVERY landmark exceeds a fixed threshold, the
+    consistent subset empties, and the check silently reports "no drag" — the failure mode is
+    worst exactly where the answer matters most. A median + k*MAD rule asks whether a point
+    disagrees with the BULK, which stays well defined however large the errors get.
+
+    Its known breakdown is ~50 % contamination, where MAD itself is inflated and nothing
+    looks like an outlier; held-out TRE covers that regime instead, since wholesale
+    disagreement is what LOO is good at. The two are complementary and accuracy takes the
+    worse of them.
+    """
+    import inspect
+
+    import numpy as np
+    from oasis.spatial import serial_registration as sr
+
+    src = inspect.getsource(sr.transform_drag_um)
+    assert "np.median(np.abs(resid - med))" in src, "consistency test is no longer MAD-based"
+
+    # identical residuals: nothing can be dragging, and it must not divide by zero
+    ref = np.array([[100.0, 100.0], [900.0, 120.0], [120.0, 900.0], [900.0, 900.0]])
+    assert sr.transform_drag_um(ref, ref.copy(), np.array([[1.0, 0, 0], [0, 1.0, 0]]),
+                                (1000, 1000), 0.5) == 0.0
+    # unknown stays None rather than defaulting to a comfortable zero
+    assert sr.transform_drag_um(ref[:2], ref[:2], np.array([[1.0, 0, 0], [0, 1.0, 0]]),
+                                (1000, 1000), 0.5) is None
+    assert sr.transform_drag_um(ref, ref.copy(), None, (1000, 1000), 0.5) is None

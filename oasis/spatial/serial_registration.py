@@ -60,29 +60,27 @@ _MORAN_EFFECT_FLOOR = 0.10
 CERTIFICATION_GATES = {
     "min_n": 6,
     "target_n": 12,
-    # STAYS AT 5.0, and the reason is the ESTIMATOR, not the accuracy it names.
+    # DERIVED FROM THE BANDS, now that the estimator can support it.
     #
-    # Deriving this from the bands gives 10.0 (the floor is 1x TRE, so below 10 um the whole
-    # reported band is readable and nothing is "radius limited"). That was applied and then
-    # REVERTED, because measuring it exposed why 5.0 was really there: the held-out LOO TRE
-    # is biased low under contamination. With 4 of 12 landmarks grossly torn, outliers drag
-    # the fit AND the leave-one-out prediction together, so LOO cannot see them --
+    # 5.0 was never a statement about accuracy — it was compensating for a blind spot. The
+    # held-out LOO TRE cannot see a fit dragged by a systematically wrong SUBSET of
+    # landmarks, because the outliers pull the fit and the held-out prediction together:
+    # measured, 4 torn corners in 12 gave a reported 7.79 µm against a true 10.4 µm median
+    # and 15.4 µm p90. A tight threshold hid that by refusing almost everything, at the cost
+    # of also refusing good registrations — ANHIR's best methods give 3.4-6.9 µm on this
+    # image diagonal (§ 12.4), so state-of-the-art work was being labelled a failure.
     #
-    #     reported TRE  7.79 um  ->  would CERTIFY at a 10 um gate
-    #     TRUE error    median 10.40 um, p90 15.40 um across the field
+    # transform_drag_um closes the blind spot: accuracy is now max(held-out TRE, drag), and
+    # on that same contaminated set it reports 10.98 µm — recovering the error LOO missed —
+    # while a clean set measures 0.05 µm and is unaffected. With the estimator honest, the
+    # threshold can finally mean what it says.
     #
-    # -- and the contamination is plainly visible in signals the gate does not read:
-    # n_good/n falls 1.00 -> 0.58 and tre_p90 is 29.17 um against a 7.79 um median. So 5.0
-    # was compensating for a weak estimator rather than measuring what a pair can resolve,
-    # and raising it only exposed the bias.
-    #
-    # Loosening this needs the estimator fixed first -- either gate the LOO path on landmark
-    # consistency (n_good/n) as well as on the median, or route these pairs through the
-    # Fitzpatrick-West budget, which separates localisation noise from deformation by
-    # variance decomposition and would show the contamination as deformation. Not done here:
-    # a threshold change that widens what gets certified must not ship ahead of the check
-    # that makes it safe.
-    "loo_max_um": 5.0,
+    # 10.0 is read off the bands this tool reports: the floor is 1x accuracy, so below 10 µm
+    # the floor sits under _COLOC_RMIN_UM and the ENTIRE reported range is readable — nothing
+    # is "radius limited" about such a pair. Above it the floor genuinely eats into the
+    # contact band, which is what RADIUS_LIMITED should mean; past 20 µm the band is gone
+    # entirely and the pair is DEFORMED. Three contiguous states, every boundary derived.
+    "loo_max_um": 10.0,
     "fit_max_um": 5.0,
     "deformed_loo_um": 15.0,
     # CALIBRATED (validate_window_size_gate.py), not inherited. 0.10 was reused from the
@@ -1421,6 +1419,57 @@ def _points_inside(pts, poly):
     return np.array([poly.covers(Point(float(x), float(y))) for x, y in pts], bool)
 
 
+def transform_drag_um(ref, mov, M_full, image_wh, pixel_size_um, mad_mult=3.0):
+    """How far inconsistent landmarks pull the fitted transform, in µm across the FIELD.
+
+    THE BLIND SPOT THIS CLOSES. Held-out (leave-one-out) TRE measures the landmark set's
+    self-consistency, not the registration's accuracy, and the two come apart precisely when
+    it matters. If a SUBSET of landmarks is systematically wrong — a torn corner, a
+    mis-clicked cluster — dropping one at a time leaves the rest still dragging the fit, so
+    every held-out prediction is wrong in the same direction as the fit and the residual
+    stays small. Measured on a 12-point set with 4 torn corners: LOO reported 7.79 µm while
+    the transform was displacing cells by a median of 10.4 µm and a p90 of 15.4 µm.
+
+    WHAT IS MEASURED INSTEAD. Refit on the landmarks that agree with each other, then compare
+    that transform with the full-set one over the WHOLE FIELD. The disagreement is exactly
+    what LOO cannot see, because it is a property of the transform rather than of the points
+    that produced it — no amount of holding points out reveals it.
+
+    THE CONSISTENCY TEST IS SCALE-FREE, deliberately. An absolute cutoff (residual ≤ some µm)
+    collapses on the very case this exists to catch: when the fit is dragged badly enough,
+    EVERY landmark looks inconsistent, the subset empties and the check silently returns
+    "no drag". A median + k·MAD rule asks whether a point disagrees with the BULK, which is
+    well defined however large the errors are.
+
+    Returns the p90 disagreement in µm, or None when it genuinely cannot be computed, so
+    callers fail closed rather than assume zero drag.
+    """
+    ref = np.asarray(ref, float)
+    mov = np.asarray(mov, float)
+    if image_wh is None or len(ref) < 4 or M_full is None:
+        return None
+    resid = np.linalg.norm(_apply_affine(mov, np.asarray(M_full, float)) - ref, axis=1)
+    med = float(np.median(resid))
+    mad = float(np.median(np.abs(resid - med)))
+    scale = 1.4826 * mad                      # MAD -> sigma for a normal bulk
+    if not np.isfinite(scale) or scale <= 0:
+        return 0.0                            # residuals identical: nothing is dragging
+    keep = resid <= med + mad_mult * scale
+    if keep.all():
+        return 0.0                            # every landmark agrees with the bulk
+    if int(keep.sum()) < 3:
+        return None                           # cannot refit; unknown, not zero
+    M_good = _fit_similarity_robust(mov[keep], ref[keep])
+    if M_good is None:
+        return None
+    W, H = float(image_wh[0]), float(image_wh[1])
+    gx, gy = np.meshgrid(np.linspace(0.0, W, 12), np.linspace(0.0, H, 12))
+    grid = np.column_stack([gx.ravel(), gy.ravel()])
+    d = np.linalg.norm(_apply_affine(grid, np.asarray(M_full, float))
+                       - _apply_affine(grid, M_good), axis=1) * float(pixel_size_um)
+    return round(float(np.percentile(d, 90)), 3)
+
+
 def _mde(accuracy_um):
     """Smallest enrichment this pair could still detect, for reporting alongside a verdict.
 
@@ -1858,7 +1907,25 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
     # The verdict is decided on held-out landmark TRE. This over-states a cell's true
     # registration error (it carries the landmarks' own picking noise σ), and we accept
     # that: erring toward more error is the only safe direction for a fail-closed tool.
-    accuracy_um, accuracy_max_um = med, loo_max_um
+    # ACCURACY IS THE WORSE OF TWO THINGS THE LANDMARKS CAN TELL US.
+    #
+    # `med` is the held-out TRE, which is fit-unbiased but blind to a fit dragged by a
+    # systematically wrong SUBSET (see transform_drag_um). `drag` is how far the full-set
+    # transform diverges from the one the consistent landmarks agree on, measured over the
+    # field. Taking the max means a clean set is unaffected — drag is ~0 when every landmark
+    # is consistent — while a dragged fit can no longer hide behind a small residual.
+    #
+    # This is what makes the loo_max_um gate mean accuracy rather than compensate for a weak
+    # estimator: with the blind spot closed the threshold can be about what a pair resolves.
+    drag = transform_drag_um(ref, mov, M, image_wh, pixel_size_um)
+    out["transform_drag_um"] = drag
+    accuracy_um = med if drag is None else round(max(float(med), float(drag)), 3)
+    # NOT `accuracy_basis` — that key already names the VALIDATION scheme
+    # ("leave_one_out_landmark_tre" vs a held-out set) and overwriting it silently
+    # destroyed that provenance. This names which of the two error terms won.
+    out["accuracy_limited_by"] = ("held_out_tre" if drag is None or drag <= med
+                                  else "transform_drag")
+    accuracy_max_um = loo_max_um
 
     # Smallest radius whose cross-K value survives this pair's registration error.
     out["min_interpretable_radius_um"] = registration_radius_floor(accuracy_um)
