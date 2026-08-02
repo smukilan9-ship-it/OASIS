@@ -6052,7 +6052,21 @@ async function loftrAutoFind() {
     showToast('Could not certify at cell scale.');
     return;
   }
-  (r.regions || []).forEach(reg => w.loftrRois.push({ points: reg.roi_polygon, cert: reg }));
+  // REPLACE the auto-found set, never append to it.
+  //
+  // This used to push unconditionally, so every press of Certify added another copy of the
+  // same regions: one press produced a duplicate whole-field region (verified against the API,
+  // which returned exactly n=1 while the list showed 2), and a second press would have
+  // doubled it again. That is not cosmetic — each certified region becomes its OWN analysis
+  // window in run_spatial_association, so a duplicate analyses the same tissue twice and
+  // reports it twice. The sibling path (loftrRoiCertifyAll) has always replaced; only this
+  // one appended.
+  //
+  // Regions the operator DREW are kept: auto-certify recomputes its own answer and should not
+  // silently discard hand-drawn windows, so only previously auto-found entries are dropped.
+  w.loftrRois = (w.loftrRois || []).filter(x => !x.auto);
+  (r.regions || []).forEach(reg => w.loftrRois.push(
+    { points: reg.roi_polygon, cert: reg, auto: true }));
   loftrRoiCommitCertifications();
   loftrRoiSync();
   if (r.mode === 'global') {
