@@ -5835,9 +5835,28 @@ function loftrRoiLayerSvg(side) {
   let out = '';
   const showCorr = (typeof loftrShowCorr === 'function') && loftrShowCorr();
   (w.loftrRois || []).forEach((r, i) => {
-    const poly = side === 'ref' ? r.points : (r.cert && r.cert.mov_roi_polygon);
+    // DRAW THE CERTIFIED REGION ON BOTH PANES, not the drawn one on the reference and the
+    // clipped one on the moving section. The backend trims the reference ROI to the moving
+    // frame (the part with no moving tissue cannot be measured) and returns both the trimmed
+    // `roi_polygon` and the original `roi_polygon_drawn` — but this drew `r.points` for the
+    // reference, so the moving outline was cut and the reference outline was not, and the
+    // two rectangles visibly covered different tissue with nothing explaining it.
+    const poly = side === 'ref'
+      ? ((r.cert && r.cert.roi_polygon) || r.points)
+      : (r.cert && r.cert.mov_roi_polygon);
     if (!poly || poly.length < 3) return;
     const col = loftrRoiColor(r.cert);
+    // Show what was excluded rather than letting it silently disappear: the operator drew
+    // that area and is entitled to see why it is not in the window.
+    if (side === 'ref' && r.cert && r.cert.roi_polygon_drawn
+        && (r.cert.roi_clipped_to_moving_frac || 1) < 0.999) {
+      const dp = r.cert.roi_polygon_drawn;
+      if (dp && dp.length >= 3) {
+        out += `<polygon points="${dp.map(p => `${p[0]},${p[1]}`).join(' ')}" fill="none"`
+             + ` stroke="${col}" stroke-opacity="0.45" stroke-width="${sw}"`
+             + ` stroke-dasharray="${6 * u / sc},${5 * u / sc}"/>`;
+      }
+    }
     const pstr = poly.map(p => `${p[0]},${p[1]}`).join(' ');
     const cx = poly.reduce((s, p) => s + p[0], 0) / poly.length;
     const cy = poly.reduce((s, p) => s + p[1], 0) / poly.length;

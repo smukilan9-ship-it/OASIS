@@ -272,3 +272,28 @@ def test_copy_that_sends_you_to_a_step_names_the_right_one(ui):
                                      f"{' '.join(unit.split())[:120]}")
                 break
     assert not offenders, "copy points at the wrong wizard step:\n  " + "\n  ".join(offenders)
+
+
+def test_the_reference_pane_draws_the_certified_region_not_the_drawn_one(ui):
+    """Both panes must outline the SAME tissue.
+
+    The backend trims the reference ROI to the moving frame — the part of a drawn region
+    with no moving counterpart cannot be measured — and returns the trimmed `roi_polygon`
+    beside the original `roi_polygon_drawn`. But the region layer drew `r.points` for the
+    reference and `mov_roi_polygon` for the moving section, so the moving outline was cut and
+    the reference outline was not. On screen that is two rectangles over visibly different
+    tissue with nothing explaining it, which reads as broken registration.
+
+    The excluded part is drawn dashed rather than dropped: the operator drew that area and
+    is entitled to see why it is not in the window.
+    """
+    layer = re.search(r"function loftrRoiLayerSvg\(side\)\s*\{(.*?)\n\}",
+                      ui["script"], re.S)
+    assert layer, "loftrRoiLayerSvg has been renamed — re-check which polygon each pane draws"
+    src = layer.group(1)
+    assert "r.cert.roi_polygon) || r.points" in src.replace("(", "").replace(" ", "") \
+        or "r.cert && r.cert.roi_polygon" in src, (
+        "the reference pane is drawing the drawn region again instead of the certified one")
+    assert "roi_polygon_drawn" in src, "the excluded area is no longer shown"
+    assert "roi_clipped_to_moving_frac" in src, (
+        "the dashed outline must only appear when something was actually clipped")
