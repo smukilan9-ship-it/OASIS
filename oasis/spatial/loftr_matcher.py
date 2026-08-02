@@ -428,6 +428,43 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     else:
         roi_mov = roi.copy()
 
+    # CUT THE REFERENCE ROI TO WHERE MOVING TISSUE ACTUALLY EXISTS.
+    #
+    # _roi_bbox clamps the MOVING crop to the moving image, but the reference crop was taken
+    # from the full drawn ROI — so when the transform pushes part of the region off the
+    # moving frame, LoFTR matched a full reference patch against a truncated moving one and
+    # the whole reference polygon was still reported as certified. The strip with no moving
+    # counterpart got certified on evidence that could not cover it, and every cell in it
+    # entered the analysis window with no possible partner.
+    #
+    # run_spatial_association removes that strip later via the A∩B tissue intersection, so
+    # the certified area and the analysed area silently disagreed. Cutting it here makes the
+    # certificate describe the window that is actually analysed.
+    roi_eff, roi_clip_frac = roi, 1.0
+    try:
+        from shapely.geometry import Polygon as _P
+        mov_rect = np.array([[0.0, 0.0], [Wm, 0.0], [Wm, Hm], [0.0, Hm]], float)
+        # moving frame -> reference space (M0 maps moving onto reference)
+        if provisional_matrix is not None:
+            footprint = mov_rect @ A.T + t
+        else:
+            footprint = mov_rect
+        pr, pf = _P(roi).buffer(0), _P(footprint).buffer(0)
+        inter = pr.intersection(pf)
+        if (not inter.is_empty) and inter.area > 0 and pr.area > 0:
+            roi_clip_frac = float(inter.area / pr.area)
+            if roi_clip_frac < 0.999:
+                g = max(inter.geoms, key=lambda x: x.area) if \
+                    inter.geom_type == "MultiPolygon" else inter
+                roi_eff = np.asarray(g.exterior.coords[:-1], float)
+                roi = roi_eff
+                if provisional_matrix is not None:
+                    roi_mov = (roi - t) @ Ainv.T
+                else:
+                    roi_mov = roi.copy()
+    except Exception:
+        pass                      # geometry unavailable: fall back to the drawn ROI
+
     rx0, ry0, rx1, ry1 = _roi_bbox(roi, Wr, Hr, pad)
     mx0, my0, mx1, my1 = _roi_bbox(roi_mov, Wm, Hm, pad)
     crop_r = ref_rgb[ry0:ry1, rx0:rx1]
@@ -566,6 +603,18 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     cert["local_drop_frac"] = c.get("local_drop_frac")
     cert["loftr_funnel"] = {k: c.get(k) for k in
                             ("n_raw", "n_after_cycle", "n_after_scale", "n_after_local")}
+    # Report the trim explicitly. A silently shrunk window is how the certified area and the
+    # analysed area came apart in the first place; the operator drew a region and should be
+    # told that part of it has no counterpart on the moving section.
+    cert["roi_clipped_to_moving_frac"] = round(float(roi_clip_frac), 4)
+    if roi_clip_frac < 0.999:
+        cert["roi_polygon_drawn"] = np.asarray(roi_polygon_ref, float).reshape(-1, 2).tolist()
+        cert["roi_polygon"] = np.asarray(roi_eff, float).tolist()
+        cert["roi_clip_note"] = (
+            f"{(1 - roi_clip_frac) * 100:.0f}% of the drawn region maps off the moving "
+            f"section and was excluded — it has no corresponding tissue, so nothing there "
+            f"could be measured. The certificate and the analysis window are the remaining "
+            f"{roi_clip_frac * 100:.0f}%.")
     cert["ok"] = cert.get("verdict") in ("CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED")
     if return_correspondences:            # the LoFTR points used for the fit (image coords in)
         cert["corr_ref"] = np.asarray(ref_pts, float).tolist()
