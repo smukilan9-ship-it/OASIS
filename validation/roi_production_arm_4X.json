@@ -492,5 +492,133 @@
   "distant_disagree_median_um": 4.17,
   "distant_disagree_max_um": 9.67,
   "pair": "LL477_Liver_4X_2"
+ },
+ {
+  "objective": "4X",
+  "radius_um": 600.0,
+  "arm": "register_similarity",
+  "grid": [
+   9,
+   6
+  ],
+  "n_windows": 54,
+  "n_certifying": 4,
+  "tally": {
+   "RADIUS_LIMITED": 4,
+   "DEFORMED": 50
+  },
+  "windows": [
+   {
+    "cx": 319.1828917969997,
+    "cy": 319.1828917969997,
+    "verdict": "RADIUS_LIMITED",
+    "n_correspondences": 795,
+    "deformation_rms_um": 4.7061,
+    "cell_error_p90_um": 8.369,
+    "matrix": [
+     [
+      1.0014096771374756,
+      -0.04495420022258291,
+      13.509531668997056
+     ],
+     [
+      0.04495420022258299,
+      1.0014096771374752,
+      -26.264569097817628
+     ]
+    ]
+   },
+   {
+    "cx": 638.3657835939994,
+    "cy": 319.1828917969997,
+    "verdict": "RADIUS_LIMITED",
+    "n_correspondences": 850,
+    "deformation_rms_um": 5.0286,
+    "cell_error_p90_um": 9.792,
+    "matrix": [
+     [
+      0.9996106526379919,
+      -0.04780897918429129,
+      14.454851552789933
+     ],
+     [
+      0.047808979184291354,
+      0.9996106526379919,
+      -26.884115897908146
+     ]
+    ]
+   },
+   {
+    "cx": 319.1828917969997,
+    "cy": 478.7743376954995,
+    "verdict": "RADIUS_LIMITED",
+    "n_correspondences": 638,
+    "deformation_rms_um": 5.2928,
+    "cell_error_p90_um": 9.624,
+    "matrix": [
+     [
+      1.000970207076404,
+      -0.04402598363833202,
+      12.409084468487492
+     ],
+     [
+      0.044025983638332065,
+      1.0009702070764037,
+      -25.839501260002464
+     ]
+    ]
+   },
+   {
+    "cx": 478.7743376954995,
+    "cy": 478.7743376954995,
+    "verdict": "RADIUS_LIMITED",
+    "n_correspondences": 825,
+    "deformation_rms_um": 5.2493,
+    "cell_error_p90_um": 9.36,
+    "matrix": [
+     [
+      1.001011825710942,
+      -0.04492418237634444,
+      12.082471992132923
+     ],
+     [
+      0.04492418237634443,
+      1.0010118257109417,
+      -25.52089773600858
+     ]
+    ]
+   }
+  ],
+  "n_with_a_neighbour": 4,
+  "nearest_neighbour_um": 300.0,
+  "overlap_disagree_n": 5,
+  "overlap_disagree_median_um": 1.64,
+  "overlap_disagree_max_um": 3.15,
+  "distant_disagree_n": 1,
+  "distant_disagree_median_um": 0.47,
+  "distant_disagree_max_um": 0.47,
+  "pair": "LL477_Liver_4X_3"
+ },
+ {
+  "objective": "10X",
+  "radius_um": 600.0,
+  "arm": "register_similarity",
+  "grid": [
+   1,
+   0
+  ],
+  "n_windows": 0,
+  "n_certifying": 0,
+  "tally": {},
+  "windows": [],
+  "n_with_a_neighbour": 0,
+  "nearest_neighbour_um": null,
+  "overlap_disagree_n": 0,
+  "overlap_disagree_median_um": null,
+  "overlap_disagree_max_um": null,
+  "distant_disagree_n": 0,
+  "distant_disagree_median_um": null,
+  "distant_disagree_max_um": null,
+  "pair": "LL477_x4_2_scale"
  }
 ]

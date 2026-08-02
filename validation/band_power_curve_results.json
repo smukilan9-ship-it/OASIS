@@ -1,7 +1,7 @@
 {
   "config": {
-    "n_rep": 15,
-    "n_perm": 99,
+    "n_rep": 40,
+    "n_perm": 199,
     "null": "dense_morphology",
     "statistic": "bands_ring",
     "enrichments": [
@@ -18,121 +18,121 @@
   "curve": {
     "ll477_cd8|contact|1.25": {
       "power": 0.4,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|contact|1.5": {
-      "power": 1.0,
-      "n": 15
+      "power": 0.975,
+      "n": 40
     },
     "ll477_cd8|contact|1.75": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|contact|2.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|contact|2.5": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|contact|3.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|contact|4.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|regional|1.25": {
-      "power": 0.0,
-      "n": 15
+      "power": 0.05,
+      "n": 40
     },
     "ll477_cd8|regional|1.5": {
-      "power": 0.067,
-      "n": 15
+      "power": 0.275,
+      "n": 40
     },
     "ll477_cd8|regional|1.75": {
-      "power": 0.6,
-      "n": 15
+      "power": 0.65,
+      "n": 40
     },
     "ll477_cd8|regional|2.0": {
-      "power": 0.933,
-      "n": 15
+      "power": 0.925,
+      "n": 40
     },
     "ll477_cd8|regional|2.5": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|regional|3.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "ll477_cd8|regional|4.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|contact|1.25": {
-      "power": 0.4,
-      "n": 15
+      "power": 0.325,
+      "n": 40
     },
     "keren_p13|contact|1.5": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|contact|1.75": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|contact|2.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|contact|2.5": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|contact|3.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|contact|4.0": {
       "power": 1.0,
-      "n": 13
+      "n": 38
     },
     "keren_p13|regional|1.25": {
-      "power": 0.067,
-      "n": 15
+      "power": 0.025,
+      "n": 40
     },
     "keren_p13|regional|1.5": {
-      "power": 0.267,
-      "n": 15
+      "power": 0.25,
+      "n": 40
     },
     "keren_p13|regional|1.75": {
-      "power": 0.4,
-      "n": 15
+      "power": 0.375,
+      "n": 40
     },
     "keren_p13|regional|2.0": {
-      "power": 0.667,
-      "n": 15
+      "power": 0.625,
+      "n": 40
     },
     "keren_p13|regional|2.5": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|regional|3.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     },
     "keren_p13|regional|4.0": {
       "power": 1.0,
-      "n": 15
+      "n": 40
     }
   },
   "enrichment_for_target_power": {
     "ll477_cd8|contact": 1.42,
-    "ll477_cd8|regional": 1.9,
-    "keren_p13|contact": 1.42,
-    "keren_p13|regional": 2.2
+    "ll477_cd8|regional": 1.89,
+    "keren_p13|contact": 1.43,
+    "keren_p13|regional": 2.23
   }
 }
