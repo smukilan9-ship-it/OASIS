@@ -23,6 +23,25 @@ from oasis.common.worker import configure_stdio
 # CONFIG LOADER
 # ==========================================================
 
+def _radius_floor_from_cell_error(cert):
+    """Derive the interpretation floor from a certification that did not carry one.
+
+    Certifications reach here from several paths and they do not all emit
+    `min_interpretable_radius_um` -- the LoFTR-ROI path records `cell_error_um` and stops.
+    The floor is a pure function of the cell error, so deriving it is exact, not a guess.
+    Returns None when no error is recorded, which callers already treat as "unknown" and
+    fail closed on.
+    """
+    if not isinstance(cert, dict):
+        return None
+    for key in ("cell_error_p90_um", "cell_error_um", "tre_p90_um", "tre_median_um"):
+        v = cert.get(key)
+        if isinstance(v, (int, float)) and v >= 0:
+            from oasis.spatial.spatial_stats import registration_radius_floor
+            return registration_radius_floor(float(v))
+    return None
+
+
 def load_config(config_path="config.yaml"):
     if not os.path.exists(config_path):
         print(f"ERROR: Config file not found: {config_path}")
@@ -1355,10 +1374,22 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                 landmark_certified=bool(landmark_cert.get("is_certified")),
                 dense_min_positive=int(cfg.get("dense_min_positive", 30)),
                 dense_min_support=int(cfg.get("dense_min_support", 500)),
-                # Radii below ~3×TRE are destroyed by this pair's registration error;
+                # Radii below the floor are destroyed by this pair's registration error;
                 # the certification measured that floor, the statistic enforces it.
-                registration_radius_floor_um=landmark_cert.get(
-                    "min_interpretable_radius_um"),
+                #
+                # Fall back to deriving it from the cell error when the certification did
+                # not carry the floor itself. Not hypothetical: the shipped LL477 run
+                # certified LOCALLY_CERTIFIED via the LoFTR-ROI path with a cell error of
+                # 2.352 µm, and its stored certification has `cell_error_um` but no
+                # `min_interpretable_radius_um` — so the floor arrived as None and the run
+                # recorded `contact_scale_resolved: false` for a pair registered to 2.35 µm.
+                # A missing key silently withheld the tab's headline claim from one of its
+                # best-registered pairs. None still means unknown, and callers still fail
+                # closed on it.
+                registration_radius_floor_um=(
+                    landmark_cert.get("min_interpretable_radius_um")
+                    if landmark_cert.get("min_interpretable_radius_um") is not None
+                    else _radius_floor_from_cell_error(landmark_cert)),
             )
         except Exception as e:
             print(f"  Spatial association error: {e}")

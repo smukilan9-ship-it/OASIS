@@ -1,0 +1,89 @@
+[
+ {
+  "objective": "4X",
+  "radius_um": 600.0,
+  "arm": "register_similarity",
+  "grid": [
+   9,
+   6
+  ],
+  "n_windows": 54,
+  "n_certifying": 3,
+  "tally": {
+   "DEFORMED": 51,
+   "RADIUS_LIMITED": 2,
+   "CERTIFIED": 1
+  },
+  "windows": [
+   {
+    "cx": 1436.3230130864986,
+    "cy": 478.7743376954995,
+    "verdict": "RADIUS_LIMITED",
+    "n_correspondences": 24,
+    "deformation_rms_um": 2.9663,
+    "cell_error_p90_um": 5.817,
+    "matrix": [
+     [
+      1.018830337218173,
+      -0.05208048002223455,
+      -70.62579847696065
+     ],
+     [
+      0.05208048002223457,
+      1.018830337218173,
+      -108.19268959827593
+     ]
+    ]
+   },
+   {
+    "cx": 1595.9144589849984,
+    "cy": 638.3657835939994,
+    "verdict": "RADIUS_LIMITED",
+    "n_correspondences": 44,
+    "deformation_rms_um": 6.8017,
+    "cell_error_p90_um": 9.936,
+    "matrix": [
+     [
+      1.0029003191006092,
+      -0.05455913341994365,
+      -48.479014541927654
+     ],
+     [
+      0.05455913341994355,
+      1.0029003191006087,
+      -107.5547839839561
+     ]
+    ]
+   },
+   {
+    "cx": 1595.9144589849984,
+    "cy": 1117.140121289499,
+    "verdict": "CERTIFIED",
+    "n_correspondences": 14,
+    "deformation_rms_um": 3.4567,
+    "cell_error_p90_um": 4.843,
+    "matrix": [
+     [
+      0.9857808610877177,
+      -0.004225418561411695,
+      -69.32874787946776
+     ],
+     [
+      0.004225418561411682,
+      0.9857808610877177,
+      -19.72325724112875
+     ]
+    ]
+   }
+  ],
+  "n_with_a_neighbour": 2,
+  "nearest_neighbour_um": 424.3,
+  "overlap_disagree_n": 1,
+  "overlap_disagree_median_um": 10.59,
+  "overlap_disagree_max_um": 10.59,
+  "distant_disagree_n": 2,
+  "distant_disagree_median_um": 22.01,
+  "distant_disagree_max_um": 28.02,
+  "pair": "LL477_Liver_4X_1"
+ }
+]

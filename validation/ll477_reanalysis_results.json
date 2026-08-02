@@ -1,0 +1,85 @@
+{
+  "faithful": true,
+  "n_a": 38,
+  "n_b": 34,
+  "shipped": {
+    "coloc": {
+      "verdict": "none",
+      "direction": "none",
+      "global_p_dclf": 0.1009,
+      "significant_primary": false,
+      "band_um": [
+        10.0,
+        20.0
+      ],
+      "label": "short-range colocalization",
+      "resolvable": true,
+      "summary": "No significant cross-type short-range colocalization at 10\u201320 \u00b5m under the calibrated primary null."
+    },
+    "coinfil": {
+      "verdict": "attraction",
+      "direction": "attraction",
+      "global_p_dclf": 0.02198,
+      "significant_primary": true,
+      "band_um": [
+        20.0,
+        50.0
+      ],
+      "label": "co-infiltration",
+      "resolvable": true,
+      "summary": "Significant attraction at 20\u201350 \u00b5m under the calibrated primary null."
+    }
+  },
+  "rerun": {
+    "bands": {
+      "colocalization": {
+        "direction": "none",
+        "p": 0.083,
+        "significant": false
+      },
+      "coinfiltration": {
+        "direction": "association",
+        "p": 0.033,
+        "significant": true
+      }
+    },
+    "bands_pcf": {
+      "colocalization": {
+        "direction": "none",
+        "p": 0.112,
+        "significant": false
+      },
+      "coinfiltration": {
+        "direction": "association",
+        "p": 0.019,
+        "significant": true
+      }
+    },
+    "bands_annulus": {
+      "colocalization": {
+        "direction": "none",
+        "p": 0.553,
+        "significant": false
+      },
+      "coinfiltration": {
+        "direction": "association",
+        "p": 0.005,
+        "significant": true
+      }
+    },
+    "bands_ring": {
+      "colocalization": {
+        "direction": "none",
+        "p": 0.064,
+        "significant": false
+      },
+      "coinfiltration": {
+        "direction": "association",
+        "p": 0.034,
+        "significant": true
+      }
+    }
+  },
+  "verdict_statistic": "bands_ring",
+  "note": "The claim SURVIVES the corrected statistic, so it was not an artefact of the cumulative L-r \u2014 it is a real regional-scale finding."
+}

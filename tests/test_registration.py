@@ -523,3 +523,26 @@ def test_unmeasurable_landmark_sets_are_still_not_certifiable():
     ref = np.array([[100.0, 100.0], [200.0, 150.0], [300.0, 120.0]])
     out = landmark_register_and_verify(ref, ref + 1.0, 0.7519, image_wh=(1920, 1440))
     assert out["verdict"] == "NOT_CERTIFIABLE", out["verdict"]
+
+
+def test_a_certification_without_an_explicit_floor_still_yields_one():
+    """A missing key must not silently withhold the contact-scale claim.
+
+    Certifications reach run_spatial_association from several paths and they do not all
+    emit `min_interpretable_radius_um`. The shipped LL477 run certified LOCALLY_CERTIFIED
+    through the LoFTR-ROI path with a cell error of 2.352 um, and its stored certification
+    carries `cell_error_um` but not the floor — so None was passed through and the run
+    recorded `contact_scale_resolved: false` for one of its best-registered pairs. The floor
+    is a pure function of the cell error, so deriving it is exact rather than a guess.
+    """
+    from run_pipeline import _radius_floor_from_cell_error
+    from oasis.spatial.spatial_stats import registration_radius_floor
+
+    assert _radius_floor_from_cell_error(
+        {"cell_error_um": 2.352}) == registration_radius_floor(2.352)
+    # p90 is preferred over the point estimate when both are present
+    assert _radius_floor_from_cell_error(
+        {"cell_error_p90_um": 9.0, "cell_error_um": 2.0}) == registration_radius_floor(9.0)
+    # unknown stays unknown — callers fail closed on None and must keep being able to
+    assert _radius_floor_from_cell_error({"verdict": "LOCALLY_CERTIFIED"}) is None
+    assert _radius_floor_from_cell_error(None) is None
