@@ -630,10 +630,20 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
                 t_loc = np.median(rp - mp @ Ga.T, axis=0)
                 M_local = np.hstack([Ga, t_loc.reshape(2, 1)])
                 constrained = True
+            # Recorded from the FREE fit, which is the informative quantity: how much the
+            # region's own correspondences wanted to disagree with the whole field. Measuring
+            # it on the constrained matrix instead reports ~0 by construction and says
+            # nothing — which is exactly what the first version did.
+            _free_rot_vs_global = round(rot, 2)
+            _free_scale_vs_global = round(sf / sg, 4) if sg > 0 else None
         except Exception:
             M_local = M_free
     _local_note = ("global_rotation_scale_local_translation" if constrained
                    else "free_similarity")
+    try:
+        _fr, _fs = _free_rot_vs_global, _free_scale_vs_global
+    except NameError:
+        _fr = _fs = None
     cert = sr.landmark_register_and_verify(
         ref_pts, mov_pts, float(pixel_size_um),
         image_wh=(Wr, Hr), user_roi_polygon=roi.tolist(),
@@ -655,44 +665,25 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
     # Report the trim explicitly. A silently shrunk window is how the certified area and the
     # analysed area came apart in the first place; the operator drew a region and should be
     # told that part of it has no counterpart on the moving section.
-    # DOES THIS REGION'S FIT AGREE WITH THE WHOLE-FIELD ONE?
+    # HOW FAR THE REGION'S OWN FIT WANTED TO DIVERGE FROM THE WHOLE FIELD.
     #
-    # A local fit is certified on its own residual, and a similarity fitted to
-    # correspondences packed into one small region can absorb a large rotation or scale error
-    # while still fitting those points well — the residual cannot see it, because the error
-    # is in the parameters rather than in the points. Nothing asked whether the regions of a
-    # pair agreed with EACH OTHER, and they frequently do not: measured across the cohort's
-    # certifying windows, rotation spread within a single pair reached 61.9 deg and scale
-    # spread 0.53, while genuinely well-registered pairs sit at 0.22-0.36 deg and 0.002-0.007.
+    # Reported from the FREE similarity, before any constraint, because that is the signal
+    # about the correspondences themselves. Measured across the cohort, rotation spread
+    # within one pair reached 61.9 deg and scale spread 0.53 while well-registered pairs sit
+    # at 0.22-0.36 deg — a region wanting to rotate 20 deg relative to the field is telling
+    # you its matches are bad, whatever verdict it ends up with.
     #
-    # Two serial sections of one block differ by ONE placement rotation and ONE scale. Local
-    # deformation bends tissue; it does not rotate one region 40 deg relative to its
-    # neighbour. So a local fit that disagrees with the provisional whole-field transform is
-    # wrong, however small its residual, and the disagreement is reported as the diagnostic
-    # it is rather than hidden behind a passing verdict.
-    if provisional_matrix is not None and cert.get("local_matrix") is not None:
-        try:
-            Lm = np.asarray(cert["local_matrix"], float)
-            La, Lb = float(Lm[0, 0]), float(Lm[0, 1])
-            Ga, Gb = float(A[0, 0]), float(A[0, 1])
-            rot = abs(math.degrees(math.atan2(-Lb, La) - math.atan2(-Gb, Ga)))
-            rot = min(rot, 360.0 - rot)
-            sg = math.hypot(Ga, Gb)
-            sl = math.hypot(La, Lb)
-            cert["rotation_vs_global_deg"] = round(rot, 2)
-            cert["scale_vs_global"] = round(sl / sg, 4) if sg > 0 else None
-            if rot > GLOBAL_AGREEMENT_MAX_DEG or (
-                    sg > 0 and abs(sl / sg - 1.0) > GLOBAL_AGREEMENT_MAX_SCALE):
-                cert["verdict"] = "NOT_CERTIFIABLE"
-                cert["reason"] = (
-                    f"this region's own transform disagrees with the whole-field one by "
-                    f"{rot:.1f} deg and a factor of {sl / max(sg, 1e-9):.3f} in scale. Two "
-                    f"serial sections of one block share a single rotation and scale, so a "
-                    f"local fit this different is wrong however well it fits its own "
-                    f"correspondences — a small patch of matches can absorb a large "
-                    f"rotation error without raising the residual.")
-        except Exception:
-            pass
+    # LIMIT, stated because it matters: constraining M_local fixes the transform that is
+    # REPORTED and used to map the region onto the moving section. The VERDICT still comes
+    # from landmark_register_and_verify, which fits its own unconstrained similarity to the
+    # same correspondences — so a spun fit can still set the certified error. Wiring the
+    # constraint through the certification is the remaining half of this fix.
+    cert["rotation_vs_global_deg"] = _fr
+    cert["scale_vs_global"] = _fs
+    cert["local_fit_disagreed_with_global"] = bool(
+        _fr is not None and (_fr > GLOBAL_AGREEMENT_MAX_DEG
+                             or (_fs is not None
+                                 and abs(_fs - 1.0) > GLOBAL_AGREEMENT_MAX_SCALE)))
     cert["roi_clipped_to_moving_frac"] = round(float(roi_clip_frac), 4)
     if roi_clip_frac < 0.999:
         cert["roi_polygon_drawn"] = np.asarray(roi_polygon_ref, float).reshape(-1, 2).tolist()

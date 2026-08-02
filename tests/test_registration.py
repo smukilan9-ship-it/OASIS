@@ -753,18 +753,20 @@ def test_both_panes_show_the_same_tissue_after_clipping():
     assert clean.get("roi_clip_note") is None
 
 
-def test_a_region_fit_that_disagrees_with_the_whole_field_is_refused():
+def test_a_region_fit_that_disagrees_with_the_whole_field_is_repaired():
     """A per-region residual cannot see an error that lives in the PARAMETERS.
 
     A similarity fitted to correspondences packed into one small region can absorb a large
     rotation or scale error while still fitting those points well, so the residual stays
-    small and the region certifies. Nothing asked whether the regions of a pair agreed with
-    EACH OTHER, and measured across the cohort's certifying windows they often did not:
-    rotation spread within a single pair reached 61.9 deg and scale spread 0.53, while
-    genuinely well-registered pairs sit at 0.22-0.36 deg and 0.002-0.007.
+    small and the region certifies. Measured across the cohort's certifying windows, rotation
+    spread within a single pair reached 61.9 deg and scale spread 0.53, while genuinely
+    well-registered pairs sit at 0.22-0.36 deg and 0.002-0.007.
 
-    Two serial sections of one block differ by ONE placement rotation and ONE scale. Local
-    deformation bends tissue; it does not rotate one region 40 deg relative to its neighbour.
+    The first fix REFUSED such regions. Constraining the local fit to the global rotation and
+    scale is better: it prevents the condition instead of detecting it, and recovers a region
+    that refusal would have discarded. The ordinary residual gate still decides the verdict
+    afterwards, so a genuinely bad region still fails — this only stops the transform being
+    spun by a handful of matches.
     """
     import math
 
@@ -779,14 +781,25 @@ def test_a_region_fit_that_disagrees_with_the_whole_field_is_refused():
     mov = cv2.warpAffine(ref, np.hstack([R, np.array([[40.0], [10.0]])]), (500, 400))
     roi = np.array([[120.0, 120.0], [340.0, 120.0], [340.0, 300.0], [120.0, 300.0]])
 
-    # the whole-field transform says ~0 deg; a local fit claiming 20 deg must be refused
-    prov = np.array([[1.0, 0.0, 40.0], [0.0, 1.0, 10.0]])
+    prov = np.array([[1.0, 0.0, 40.0], [0.0, 1.0, 10.0]])     # whole field says ~0 deg
     c = lm.certify_local_roi(ref, mov, roi, 0.7519, provisional_matrix=prov, work_max_dim=400)
-    assert c.get("rotation_vs_global_deg") is not None, "agreement is no longer measured"
-    assert c["rotation_vs_global_deg"] > lm.GLOBAL_AGREEMENT_MAX_DEG
-    assert c["verdict"] == "NOT_CERTIFIABLE", (
-        f"a {c['rotation_vs_global_deg']} deg disagreement certified anyway")
-    assert "whole-field" in (c.get("reason") or "")
+
+    # The DIAGNOSTIC reports the FREE fit — how far the region's own correspondences wanted
+    # to diverge — so here it should be large. That is the signal about the matches.
+    assert c["rotation_vs_global_deg"] > lm.GLOBAL_AGREEMENT_MAX_DEG, (
+        "the diagnostic is measuring the constrained matrix again, which agrees by "
+        "construction and therefore reports nothing")
+    assert c["local_fit_disagreed_with_global"] is True
+    assert c["local_fit"] == "global_rotation_scale_local_translation"
+
+    # The transform actually REPORTED and used to map the region must carry the global
+    # rotation, not the region's own.
+    L = np.asarray(c["local_matrix"], float)
+    G = prov[:2, :2]
+    rot_used = abs(math.degrees(math.atan2(-L[0, 1], L[0, 0])
+                                - math.atan2(-G[0, 1], G[0, 0])))
+    assert min(rot_used, 360 - rot_used) <= 1e-6, (
+        f"the local matrix kept {rot_used:.2f} deg of its own rotation")
 
 
 def test_the_agreement_thresholds_sit_between_the_measured_populations():
