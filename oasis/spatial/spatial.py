@@ -648,12 +648,36 @@ def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, win
         worst = "caution"
     else:
         worst = "ok"
-    valid = worst in ("ok", "caution")
+    # "caution" now routes to the DENSE fallback rather than the reweighted primary.
+    #
+    # It used to count as valid, on the reasoning that architecture only marginally coarser
+    # than the bandwidth is a soft warning — the reason string still says "treat the
+    # co-infiltration verdict with care". Measured, it is not soft. In
+    # validate_saturated_marker_null.py the levels where LL477 lands in `caution` are
+    # exactly where the reweighted null's FALSE cell-scale-engagement rate reaches 0.17 and
+    # 0.25 against a nominal 0.05, while the dense morphology-conditioned null stays at 0.00
+    # on the same draws. A warning string does not undo a 5x inflated false-positive rate on
+    # the tab's headline claim.
+    #
+    # The two failures also compound, which is how this stayed hidden. Saturating a marker
+    # (LL477's TIM-3 threshold marks ~95 % of cells positive) makes its point pattern
+    # resemble the whole cell population, which RAISES the estimated architecture scale out
+    # of `dense_tissue` and into `caution` — so the worst input is precisely the one that
+    # gets routed to the weaker null.
+    #
+    # dense_morphology is not a compromise here: on the same validation it is better on
+    # every axis (size 0.02 vs 0.18, leak 0.06 vs 0.10, power 0.38 vs 0.30). The cost is
+    # that it needs all-cell morphology support, and a pair without it now fails closed
+    # instead of being answered by a null that is wrong in this regime.
+    valid = worst == "ok"
     reason = {
         "ok": f"tissue architecture is coarser than {bw:.0f} µm — the reweighted "
               f"primary null is size-controlled within this window.",
-        "caution": f"architecture is only marginally coarser than {bw:.0f} µm — treat "
-                   f"the co-infiltration verdict with care.",
+        "caution": f"architecture is only marginally coarser than {bw:.0f} µm — the "
+                   f"{bw:.0f} µm reweighted null is measurably anti-conservative in this "
+                   f"regime (false cell-scale-engagement rate 0.17-0.25 against a nominal "
+                   f"0.05), so OASIS uses the dense morphology-conditioned null here, or "
+                   f"fails closed if its gates do not pass.",
         "dense_tissue_bandwidth_invalid": (
             f"fine/dense tissue architecture is at/inside the {bw:.0f} µm interaction "
             f"band — the 75 µm reweighted null is not the right primary here; OASIS "

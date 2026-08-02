@@ -1471,10 +1471,27 @@ stay unreachable from the UI, and `legacy/webui_guided_landmarks.js` keeps the r
 implementation. `tests/test_ui_wiring.py::test_the_manual_landmark_path_offers_no_suggestions`
 still guards this.
 
-This is the answer to a question § 13 could not settle. On the real 10X windows in
-`roi_certification_neighbourhood_results.json`, **42 of 54 returned NO_MATCHES** and 10
-DEFORMED. No statistic reaches those pairs. And the promotion path is already in
-`serial_registration.py`:
+This is the answer to a question § 13 could not settle — though the evidence for it needed
+correcting, and the correction changes the reason.
+
+**"42 of 54 returned NO_MATCHES" was one pair, the worst one, on a control arm.** That figure
+is `LL478_junction_10X_3` alone. Over all 14 pairs in
+`roi_certification_neighbourhood_results.json`:
+
+| arm | pairs | windows | certifying | NO_MATCHES | DEFORMED |
+|---|---|---|---|---|---|
+| `identity` (control — no provisional registration) | 12 | 503 | 24 % | 20 % | **56 %** |
+| `register_similarity` (production) | 2 | 82 | 2 % | 38 % | **60 %** |
+
+So the dominant failure is **DEFORMED, not NO_MATCHES** — LoFTR *did* find correspondences and
+they *did* agree on a similarity; the error was simply too large. Manual landmarks therefore
+help less than "no matches" implies for the majority case. What helps is what the ROI workflow
+does: shrink the window until a similarity fits. Right conclusion, wrong reason.
+
+Note also that only **2 of 14 pairs** ever ran the production path, so the production failure
+profile is essentially unmeasured (§ 14.5).
+
+And the promotion path is already in `serial_registration.py`:
 
 ```
 accuracy_um <= 5.0 µm                              → CERTIFIED

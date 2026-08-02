@@ -123,7 +123,17 @@ _DENSE_DCLF_RMAX_UM = 30.0
 # not a biological absence. The floor marks where the curve stops being readable. The
 # historical ≤5 µm certification gate is this same rule frozen at the default 10 µm band
 # start (10 ≈ 2 × 5), mis-encoded as permission to run at all.
-_RADIUS_FLOOR_FACTOR = 3.0
+# CALIBRATED, and the two constants moved in OPPOSITE directions — which is why they had to
+# be separated first. See validate_radius_floor_calibration.py and research/ihc.md § 15.
+#
+# The reporting floor. The leakage criterion does not bind anywhere in the tested range: a
+# regional-only truth produced a false contact-scale claim at 0.00-0.03 for every eps out to
+# 80 um on both real substrates, which bounds the factor at <= 0.25 and is still CENSORED at
+# the sweep maximum. It is NOT set to 0.25. A reporting boundary should not be justified only
+# by "no leakage was observed": you cannot resolve a separation smaller than your own
+# registration error, so 1.0 is the resolution limit and is the honest floor. That is 4x more
+# conservative than the leakage data requires and 3x looser than the value it replaces.
+_RADIUS_FLOOR_FACTOR = 1.0
 
 # ── The second job, split out ────────────────────────────────────────────────
 # One constant was doing two unrelated things, and they need different evidence:
@@ -145,7 +155,18 @@ _RADIUS_FLOOR_FACTOR = 3.0
 #
 # _ANALYSABILITY_FACTOR is initialised to _RADIUS_FLOOR_FACTOR so this split changes NO
 # behaviour on its own; it only makes the two independently settable. See research/ihc.md.
-_ANALYSABILITY_FACTOR = 3.0
+# The analysability gate, MEASURED and uncensored. Power on a real association holds at 1.00
+# to eps = 5 um, 0.68 at 10, then falls off a cliff: 0.28 at 15, 0.25 at 20, 0.10 at 30. Both
+# real substrates put the last eps with power >= 0.5 at 10 um, so
+#
+#     factor = max_radius * (1 - band_frac) / eps* = 50 / 10 = 5.0
+#
+# This TIGHTENS the gate (3.0 admitted pairs out to TRE 16.7 um, where power is ~0.25), and
+# it contradicts the guess that a lower factor would rescue DEFORMED windows: on the real 10X
+# windows it reclassifies 84 of 123 (68 %) from RADIUS_LIMITED to DEFORMED. Those pairs were
+# being analysed with a test that could not detect anything in them, which is worse than
+# declining them — a null result from an underpowered test reads as evidence of absence.
+_ANALYSABILITY_FACTOR = 5.0
 
 
 def analysability_radius(tre_um, factor: float = _ANALYSABILITY_FACTOR):

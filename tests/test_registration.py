@@ -266,7 +266,12 @@ def test_radius_floor_scales_with_tre_and_fails_closed_when_unknown():
 
 def test_radius_limited_keeps_the_field_but_surrenders_small_radii():
     """A pair too deformed to certify, but whose landmarks still agree on ONE similarity,
-    is analysable above ~3×TRE rather than discarded."""
+    is analysable above the reporting floor rather than discarded.
+
+    The floor multiple is read from _RADIUS_FLOOR_FACTOR, not hard-coded: it was 3.0 and is
+    now 1.0 (calibrated — see validate_radius_floor_calibration.py), and a test that pins a
+    calibrated constant by value fails for the wrong reason the moment it is calibrated.
+    """
     rng = np.random.default_rng(11)
     c = np.array([1000.0, 1000.0])
     ang = np.linspace(0, 2 * np.pi, 8, endpoint=False)
@@ -279,7 +284,9 @@ def test_radius_limited_keeps_the_field_but_surrenders_small_radii():
     if out["verdict"] == "RADIUS_LIMITED":
         r_min = out["min_interpretable_radius_um"]
         assert r_min is not None and 0 < r_min < out["max_radius_um"]
-        assert r_min == pytest.approx(3.0 * out["tre_median_um"], rel=1e-3)
+        from oasis.spatial.spatial_stats import registration_radius_floor
+        assert r_min == pytest.approx(
+            registration_radius_floor(out["tre_median_um"]), rel=1e-3)
         assert out["roi_polygon"] is None            # keeps the whole field
     else:
         # Whatever the verdict, an uncertifiable pair must never claim a resolvable radius.

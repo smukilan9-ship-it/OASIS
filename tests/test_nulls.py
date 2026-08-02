@@ -121,3 +121,48 @@ def test_type_i_error_controlled():
                         )["robustness"]["verdict"] == "robust"
     rate = np.mean([run(s) for s in range(16)])
     assert rate <= 0.25, f"type-I error inflated ({rate:.2f}) — null calibration regressed"
+
+
+def test_marginal_architecture_does_not_route_to_the_reweighted_primary():
+    """`caution` must NOT count as a valid 75 um bandwidth.
+
+    It used to. `valid = worst in ("ok", "caution")` sent architecture only marginally
+    coarser than the bandwidth to the reweighted primary with a "treat with care" string
+    attached. Measured in validate_saturated_marker_null.py, the levels that land in
+    `caution` are exactly where that null's FALSE cell-scale-engagement rate reaches
+    0.17-0.25 against a nominal 0.05, while the dense morphology-conditioned null stays at
+    0.00 on the same draws. A warning string does not undo a 5x inflated false-positive
+    rate on the tab's headline claim.
+
+    The two failure modes compound, which is how it stayed hidden: saturating a marker
+    makes its pattern resemble the whole cell population, which RAISES the estimated
+    architecture scale out of `dense_tissue` and into `caution` — so the worst input is the
+    one routed to the weaker null.
+    """
+    import inspect
+
+    from oasis.spatial import spatial as sp
+
+    src = inspect.getsource(sp)
+    assert 'valid = worst == "ok"' in src, (
+        "the bandwidth pre-flight accepts something other than 'ok' as valid again")
+    assert 'valid = worst in ("ok", "caution")' not in src, (
+        "'caution' routes to the reweighted primary again")
+
+
+def test_the_architecture_verdict_still_distinguishes_three_regimes():
+    """Routing changed; the CLASSIFIER did not, and `caution` must stay its own state.
+
+    Collapsing it into `dense_tissue` would lose the distinction the reason string needs
+    to explain itself, and would hide how close a pair sits to the usable regime.
+    """
+    from oasis.spatial.spatial_stats import (architecture_scale_verdict,
+                                             _REWEIGHT_BANDWIDTH_UM)
+
+    bw = _REWEIGHT_BANDWIDTH_UM
+    assert architecture_scale_verdict(3.0 * bw)["status"] == "ok"
+    assert architecture_scale_verdict(1.2 * bw)["status"] == "caution"
+    assert architecture_scale_verdict(0.4 * bw)["status"] == "dense_tissue"
+    assert architecture_scale_verdict(None)["status"] == "unknown"
+    # `ok` is the only status that reports ok=True, which is what the router now keys on.
+    assert architecture_scale_verdict(1.2 * bw)["ok"] is False
