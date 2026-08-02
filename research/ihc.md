@@ -1751,6 +1751,24 @@ ROI workflow does, shrink the window until a similarity fits. Right conclusion, 
   genuinely is the bad one. `LL477_x4_2_scale` yields no windows, as a scale-bar image
   should.
 
+  **WINDOW COUNTS ARE NOT REGION COUNTS — corrected after a user spotted it.** The sweep
+  grids probes at R/2 spacing with radius R, so adjacent probes overlap by 50 % and one
+  certifiable area yields many "certified windows". LL479_Liver_10X_2's 7 CERTIFIED windows
+  have a minimum pairwise centre separation of 158 px against a 316 px probe radius — they
+  are seven samples of **one** region, which is exactly what the app displays. Clustering
+  the windows by actual overlap:
+
+  | | windows | distinct regions |
+  |---|---|---|
+  | CERTIFIED | 16 | **9** |
+  | usable (CERT + RADIUS_LIMITED) | 60 | **13** |
+
+  So the cohort holds roughly **one usable region per pair**, occasionally two, and two
+  pairs with none — not the 60 the window count suggests. A high window count means the
+  region is LARGE (LL477_Liver_4X_2: 19 windows, 1 region), not that there are many. The
+  10 % window figure is a sampling density and must not be read as "10 % of the slide is
+  usable".
+
   The headline remains: **DEFORMED dominates at 74 %**, so the limiting factor is tissue
   deformation against a similarity model, not correspondence-finding.
 
