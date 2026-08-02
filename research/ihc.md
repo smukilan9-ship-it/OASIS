@@ -1732,7 +1732,29 @@ ROI workflow does, shrink the window until a similarity fits. Right conclusion, 
 
 ### 15.7 What is still not done
 
-* The production-arm re-run across all 14 pairs is in flight; only 2 of 14 had ever used it.
+* **DONE.** The production-arm re-run across all 14 pairs (598 windows) — only 2 of 14 had
+  ever used it:
+
+  | verdict | production arm | identity arm, re-scored |
+  |---|---|---|
+  | CERTIFIED | 16 (3 %) | 3 |
+  | RADIUS_LIMITED | 44 (7 %) | 34 |
+  | DEFORMED | 444 (74 %) | 466 |
+  | NO_MATCHES | 94 (16 %) | 101 |
+  | **analysable** | **60/598 (10 %)** | **37/503 (7 %)** |
+
+  Scored under the same constants the production arm is **better** than the identity
+  control, which is the expected direction and corrects an early single-pair read that
+  suggested the opposite (`LL477_Liver_4X_1` alone gives 3 of 54, but `LL479_Liver_10X_2`
+  gives 15 and `LL477_Liver_4X_2` gives 19). `LL478_junction_10X_3` — the pair behind the
+  retired "42 of 54" figure — still returns 0 certifying and 39 NO_MATCHES, so that pair
+  genuinely is the bad one. `LL477_x4_2_scale` yields no windows, as a scale-bar image
+  should.
+
+  The headline remains: **DEFORMED dominates at 74 %**, so the limiting factor is tissue
+  deformation against a similarity model, not correspondence-finding.
+
+* Superseded note, kept for the record: only 2 of 14 pairs had ever used the production arm.
   The comparison against the old identity numbers needs care, because those predate the
   § 15.2 tightening. **Re-scoring the identity arm under the new constants** (its stored
   per-window `cell_p90` makes this exact, with no re-run needed) gives:
