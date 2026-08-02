@@ -735,6 +735,65 @@ def certify_local_roi(ref_rgb, mov_rgb, roi_polygon_ref, pixel_size_um,
             f"section and was excluded — it has no corresponding tissue, so nothing there "
             f"could be measured. The certificate and the analysis window are the remaining "
             f"{roi_clip_frac * 100:.0f}%.")
+    # ── RECONCILE THE TWO WINDOWS SO THEY DESCRIBE THE SAME TISSUE ──────────────────────
+    #
+    # The operator's report: after auto-certify, the moving outline sat inset from the left
+    # edge with a visible strip of moving tissue outside it, while the reference outline still
+    # covered its whole frame. Two different pieces of tissue, presented as one certified
+    # region — "the fixed tissue should be cut on the right the same way the moving one is cut
+    # on the left".
+    #
+    # Two causes, one fix. The footprint clip above runs against the PROVISIONAL transform,
+    # while the moving outline is drawn with the FINAL local one, so the two polygons were
+    # never exact counterparts even when the clip fired. And each caller re-derived the moving
+    # polygon itself, so a caller that forgot to use the clipped reference (the whole-field
+    # path did) produced an outline that simply hung off the moving frame.
+    #
+    # So the reconciliation happens ONCE, here, against the transform actually certified, and
+    # both polygons are emitted together:
+    #     ref_eff = ref_roi  ∩  (moving frame → reference)
+    #     mov_eff = (ref_eff → moving)  ∩  moving frame
+    #     ref_eff = mov_eff → reference          ← makes them exact images of each other
+    # After that round trip the two windows are the same physical tissue by construction, and
+    # `roi_area_parity` is ~1.0. It is reported rather than gated: a mismatch means the WINDOW
+    # was wrong, not that the registration was, so it must improve the region and never fail
+    # the pair (which is what the operator asked for).
+    try:
+        from shapely.geometry import Polygon as _P2
+        _Ml = np.asarray(M_local, float)
+        _Al, _tl = _Ml[:2, :2], _Ml[:2, 2]
+        _Ali = np.linalg.inv(_Al)
+        _ref_poly = np.asarray(cert.get("roi_polygon") or roi, float).reshape(-1, 2)
+        _mov_frame = np.array([[0.0, 0.0], [Wm, 0.0], [Wm, Hm], [0.0, Hm]], float)
+
+        def _clip(poly, window):
+            g = _P2(poly).buffer(0).intersection(_P2(window).buffer(0))
+            if g.is_empty or g.area <= 0:
+                return None
+            if g.geom_type == "MultiPolygon":
+                g = max(g.geoms, key=lambda x: x.area)
+            return np.asarray(g.exterior.coords[:-1], float)
+
+        _to_mov = lambda p: (p - _tl) @ _Ali.T                     # noqa: E731
+        _to_ref = lambda p: p @ _Al.T + _tl                        # noqa: E731
+
+        _r = _clip(_ref_poly, _to_ref(_mov_frame))
+        _m = _clip(_to_mov(_r), _mov_frame) if _r is not None else None
+        if _m is not None and len(_m) >= 3:
+            _r2 = _to_ref(_m)
+            a_ref = _P2(_r2).buffer(0).area
+            a_mov = _P2(_m).buffer(0).area * (abs(np.linalg.det(_Al)) or 1.0)
+            cert["roi_polygon"] = _r2.tolist()
+            cert["mov_roi_polygon"] = _m.tolist()
+            cert["roi_area_parity"] = round(
+                float(min(a_ref, a_mov) / max(a_ref, a_mov)), 4) if max(a_ref, a_mov) > 0 else None
+            drawn = np.asarray(roi_polygon_ref, float).reshape(-1, 2)
+            a_drawn = _P2(drawn).buffer(0).area
+            if a_drawn > 0:
+                cert["roi_kept_frac"] = round(float(a_ref / a_drawn), 4)
+    except Exception:
+        pass                              # geometry unavailable: leave the polygons as they were
+
     cert["ok"] = cert.get("verdict") in ("CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED")
     if return_correspondences:            # the LoFTR points used for the fit (image coords in)
         cert["corr_ref"] = np.asarray(ref_pts, float).tolist()

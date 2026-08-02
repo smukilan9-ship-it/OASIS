@@ -1473,6 +1473,8 @@ class API:
                     "roi_polygon_drawn": roi.tolist(),
                     "roi_clipped_to_moving_frac": cert.get("roi_clipped_to_moving_frac"),
                     "roi_clip_note": cert.get("roi_clip_note"),
+                    "roi_area_parity": cert.get("roi_area_parity"),
+                    "roi_kept_frac": cert.get("roi_kept_frac"),
                     "mov_roi_polygon": mov_roi_full,
                     "local_matrix": local_full,
                     "is_intersection": bool(wr.get("is_intersection")),
@@ -1808,7 +1810,10 @@ class API:
                     A = np.asarray(local_t, float)[:2, :2]
                     t = np.asarray(local_t, float)[:2, 2]
                     local_full = np.hstack([A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
-                    mov_roi_t = (roi_eff_t - t) @ np.linalg.inv(A).T
+                    mov_roi_t = np.asarray(
+                        cert.get("mov_roi_polygon")
+                        if cert.get("mov_roi_polygon") is not None
+                        else (roi_eff_t - t) @ np.linalg.inv(A).T, float).reshape(-1, 2)
                     mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
                 cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
                         or cert.get("tre_median_um"))
@@ -1831,6 +1836,8 @@ class API:
                         and cert.get("min_interpretable_radius_um") <= 20.0),
                     "roi_clipped_to_moving_frac": cert.get("roi_clipped_to_moving_frac"),
                     "roi_clip_note": cert.get("roi_clip_note"),
+                    "roi_area_parity": cert.get("roi_area_parity"),
+                    "roi_kept_frac": cert.get("roi_kept_frac"),
                     "roi_polygon_drawn": (roi_t / max(ref_scale, 1e-9)).tolist(),
                     "roi_polygon": (roi_eff_t / max(ref_scale, 1e-9)).tolist(),
                     "mov_roi_polygon": mov_roi_full, "local_matrix": local_full,
@@ -1905,14 +1912,26 @@ class API:
                 global_roi = np.array([[0, 0], [W, 0], [W, H], [0, H]], float)
 
             def _to_full(cert, roi_t):
+                # USE THE CERTIFICATE'S OWN RECONCILED POLYGONS.
+                #
+                # This used to map the polygon it was HANDED — for the whole-field call that is
+                # the raw tissue contour, not the version certify_local_roi clipped to where
+                # moving tissue exists. So the reference outline covered the whole frame while
+                # its image hung off the moving frame, and the operator saw a strip of moving
+                # tissue outside the region with no matching cut on the reference. The two
+                # sibling paths already read cert["roi_polygon"]; this one did not.
                 local_t = cert.get("local_matrix")
                 local_full = mov_roi_full = None
+                roi_t = np.asarray(cert.get("roi_polygon") or roi_t, float).reshape(-1, 2)
                 if local_t is not None:
                     A = np.asarray(local_t, float)[:2, :2]
                     t = np.asarray(local_t, float)[:2, 2]
                     local_full = np.hstack(
                         [A, (t / max(ref_scale, 1e-9)).reshape(2, 1)]).tolist()
-                    mov_roi_t = (roi_t - t) @ np.linalg.inv(A).T
+                    mov_roi_t = np.asarray(
+                        cert.get("mov_roi_polygon")
+                        if cert.get("mov_roi_polygon") is not None
+                        else (roi_t - t) @ np.linalg.inv(A).T, float).reshape(-1, 2)
                     mov_roi_full = (mov_roi_t / max(mov_scale, 1e-9)).tolist()
                 cell = (cert.get("cell_error_p90_um") or cert.get("tre_p90_um")
                         or cert.get("tre_median_um"))
@@ -1920,6 +1939,10 @@ class API:
                         "source": cert.get("source"),
                         "n_correspondences": cert.get("n_correspondences"),
                         "cell_error_um": cell,
+                        "roi_area_parity": cert.get("roi_area_parity"),
+                        "roi_kept_frac": cert.get("roi_kept_frac"),
+                        "roi_clipped_to_moving_frac": cert.get("roi_clipped_to_moving_frac"),
+                        "roi_clip_note": cert.get("roi_clip_note"),
                         "roi_polygon": (roi_t / max(ref_scale, 1e-9)).tolist(),
                         "mov_roi_polygon": mov_roi_full, "local_matrix": local_full}
 

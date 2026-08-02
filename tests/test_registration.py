@@ -885,3 +885,63 @@ def test_a_local_fit_does_not_invent_its_own_rotation_and_scale():
         f"constraint is supposed to help, not cost accuracy")
     assert np.allclose(con[:, 2], truth, atol=2.0), (
         f"constrained translation {con[:, 2]} did not recover the truth {truth}")
+
+
+def test_the_two_certified_windows_describe_the_same_tissue():
+    """The reference and moving outlines must be images of each other, not two shapes.
+
+    Reported from the app after an auto-certify: the moving outline sat inset from the left
+    edge with a visible strip of moving tissue outside it, while the reference outline still
+    covered its whole frame — "the fixed tissue should be cut on the right the same way the
+    moving one is cut on the left". Two different pieces of tissue, presented as one certified
+    region, and every cell in the uncovered strip enters the analysis window with no possible
+    partner.
+
+    Two causes. The footprint clip ran against the PROVISIONAL transform while the moving
+    outline was drawn with the FINAL one, so the polygons were never exact counterparts; and
+    each caller re-derived the moving polygon itself, so the whole-field path — which was
+    handed the raw tissue contour rather than the clipped one — produced an outline that simply
+    hung off the moving frame.
+
+    certify_local_roi now reconciles both windows once, against the transform it certified, and
+    reports the area parity. Parity is REPORTED, never gated: a mismatch means the WINDOW was
+    wrong, not the registration, so it must improve the region and never fail the pair.
+    """
+    import cv2
+    import numpy as np
+    from shapely.geometry import Polygon
+    from oasis.spatial import loftr_matcher as lm
+
+    rng = np.random.default_rng(3)
+    H, W, SHIFT = 400, 500, 45.0
+    ref = cv2.GaussianBlur((rng.random((H, W, 3)) * 255).astype("uint8"), (5, 5), 0)
+    mov = cv2.warpAffine(ref, np.array([[1.0, 0.0, SHIFT], [0.0, 1.0, 0.0]]), (W, H),
+                         borderMode=cv2.BORDER_REFLECT)
+    roi = np.array([[0., 0.], [W, 0.], [W, H], [0., H]])      # whole frame, as auto-certify uses
+    prov = np.array([[1., 0., -SHIFT], [0., 1., 0.]])          # moving -> reference
+
+    c = lm.certify_local_roi(ref, mov, roi, 0.7519, provisional_matrix=prov, work_max_dim=500)
+    r = np.asarray(c["roi_polygon"], float)
+    m = np.asarray(c["mov_roi_polygon"], float)
+
+    # Same tissue, by construction.
+    assert c["roi_area_parity"] >= 0.98, (
+        f"the two windows differ in area by {(1 - c['roi_area_parity']) * 100:.1f}% — they are "
+        f"not describing the same tissue")
+
+    # The reference window is cut on the side opposite the moving one. With the moving section
+    # shifted +{SHIFT} px, the strip of reference tissue with no counterpart is on the RIGHT.
+    assert r[:, 0].max() < W - SHIFT * 0.8, (
+        f"the reference window still runs to x={r[:, 0].max():.0f} of {W} — the strip with no "
+        f"moving counterpart was certified anyway")
+    assert m[:, 0].min() > SHIFT * 0.8, "the moving window was not cut on its own side"
+
+    # And the moving window must actually lie on the moving section.
+    frame = Polygon([[0, 0], [W, 0], [W, H], [0, H]]).buffer(1.0)
+    assert Polygon(m).within(frame), "the moving window hangs off the moving frame"
+
+    # The area kept is the geometry, not a guess: a SHIFT-px shift on a W-px frame.
+    assert abs(c["roi_kept_frac"] - (1 - SHIFT / W)) < 0.02
+
+    # Parity must NOT be a gate — the operator asked for better regions, not fewer.
+    assert c.get("refused_by") != "roi_area_parity"
