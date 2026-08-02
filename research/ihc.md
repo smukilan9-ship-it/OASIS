@@ -2002,6 +2002,17 @@ single scale and a single orientation. Given § 16.1 shows our failures manifest
 rotation and wrong scale, an explicit search over rotation and scale is the most directly
 targeted fix in this entire section.
 
+> **CORRECTED by measurement — see § 16.12.** The last sentence is a non-sequitur and the
+> conclusion is wrong for this cohort. RegWSI searches because the *true* relative
+> orientation of two ACROBAT slides is unknown and can be large; it is a global
+> initialisation device. Our windows do not fail to *find* a rotation, they *invent* one,
+> because few clustered points underdetermine four parameters. § 16.12 measures the global
+> rotation on all three cohort pairs with three independent matchers: +0.07° to +2.56°, all
+> agreeing within 0.5°. There is no hidden rotation to search for. The observation that our
+> failures "present as wrong rotation and scale" was pattern-matched onto RegWSI's vocabulary
+> rather than onto its mechanism. The correct operation is the opposite one — *remove*
+> rotation and scale as local free parameters (§ 16.2 item 3).
+
 **(c) Both 2025 pipelines fall back to nuclei, not pixels, for the fine stage.** CORE and
 the Warwick point-set paper (Jeyasangar *et al.*, MICCAI 2024) both register **nuclei
 centroids** with CPD, because hematoxylin counterstain is present in *both* sections whereas
@@ -2058,6 +2069,10 @@ candidates cost zero new dependencies.
 
 ### 16.7 The one candidate with direct, published histology evidence
 
+> **TESTED AND REJECTED — see § 16.11.** Run on the cohort it loses to LoFTR at every
+> window size that matters and returns nothing at all at 139 µm. This subsection is kept
+> as the reasoning that justified the test, not as a recommendation.
+
 **MatchAnything** (He *et al.*, arXiv 2501.07556) pre-trains detector-free matchers on
 ~800 M synthetically cross-modalised pairs, so the network learns to match *structure*
 rather than appearance — which is exactly the CD8-vs-TIM-3 problem, where the shared signal
@@ -2097,11 +2112,12 @@ Apache-2.0. Before adopting, that needs resolving — the weights are the part w
    calibrated gate — at 4X, where correspondences are plentiful, *nothing* exceeds 3.1° or
    2 % scale. That is an empirical tolerance, not an invented constant. Fixes: the entire
    20X table above. Costs: coverage, which is the correct trade for a fail-closed tool.
-3. **Search over rotation and scale (the RegWSI recipe).** Cheapest large win, no new
-   dependency, no licence question, and aimed exactly at how our failures present.
-4. **Add MatchAnything-ELoFTR as a second matcher arm** and A/B it on the existing harness
-   (`validate_matchers_on_cohort.py` already runs synthetic-warp + real-pair, which is the
-   right two-test design and is what killed DISK).
+3. ~~**Search over rotation and scale (the RegWSI recipe).**~~ **WITHDRAWN — § 16.12.**
+   Measured: the global rotation is under 2.6° on every cohort pair and three independent
+   matchers agree to within 0.5°. There is nothing for the search to find.
+4. ~~**Add MatchAnything-ELoFTR as a second matcher arm.**~~ **DONE AND REJECTED — § 16.11.**
+   The A/B was run; it loses. The harness gained a third test (small windows) that the
+   original two-test design could not express, and that test is the reusable output.
 5. **Nuclei-centroid point-set registration as an independent arm** (CORE / Warwick recipe),
    using OASIS's own segmentations. Stain-invariant by construction; also gives a *second
    opinion* transform, and two independent estimates that agree is far stronger evidence
@@ -2137,3 +2153,253 @@ real-pair tests before either becomes a default.
 * **The ceiling in § 16.3 is not removable by any item in § 16.8.** Consecutive sections are
   ~4.4 µm at best. If the biology needs finer than that, the answer is re-stained sections,
   not a better matcher.
+
+### 16.11 MEASURED — MatchAnything on the cohort, and it does not win
+
+`validation/validate_matchanything_on_cohort.py`, three LL477 CD8↔TIM-3 pairs at the 800 px
+working size the app certifies at. It reuses `validate_matchers_on_cohort.py` verbatim for
+tests A and B, and adds test C — the small-window regime § 16.1 identified — which the
+original harness had no way to probe.
+
+**A. Synthetic warp, 3°, exact analytic truth.** LoFTR is an order of magnitude more precise:
+
+| matcher | n | err median | gross frac |
+|---|---|---|---|
+| loftr | 3098–3364 | **0.50–0.53 µm** | **0.000** |
+| matchanything (hema+CLAHE) | 6816–7090 | 5.40–5.46 µm | 0.004–0.005 |
+| matchanything (raw RGB) | 6992–7082 | 5.39–5.41 µm | 0.003–0.018 |
+
+**B. Real cross-stain pair, whole frame.** MatchAnything returns 8–16× more
+correspondences and a much higher blunder fraction:
+
+| matcher | matches per pair | gross frac per pair |
+|---|---|---|
+| loftr | 144 / 77 / 632 | 0.083 / **0.221** / 0.103 |
+| matchanything (hema) | 1249 / 1209 / 3281 | 0.370 / **0.681** / 0.226 |
+| matchanything (rgb) | 1232 / 815 / 3205 | 0.465 / **0.794** / 0.195 |
+
+**C. Small windows — the decisive test.** Nine window centres per radius per pair, each
+matched inside the crop, each fit compared with that arm's own whole-field transform. Pooled
+over the three pairs, *implausible* on § 16.1's criterion (Δrot > 5° or Δscale > 5 %):
+
+| matcher | 400 µm radius | 238 µm radius | 139 µm radius |
+|---|---|---|---|
+| loftr | 2/26 (**8 %**) | 6/25 (**24 %**) | 3/7 (**43 %**) |
+| matchanything (hema) | 0/27 (**0 %**) | 13/25 (**52 %**) | **0 windows produced a fit** |
+| matchanything (rgb) | 1/16 (6 %) | 10/16 (62 %) | **0 windows produced a fit** |
+
+**The verdict is no.** MatchAnything is better only at 400 µm, where nothing is broken;
+it is *twice as bad* as LoFTR at 238 µm despite returning 5× more correspondences; and at
+139 µm it returns nothing at all across 18 windows. § 16.7 recommended it on a published
+ANHIR win and § 16.10 warned that a leaderboard win is not transferable evidence. **The
+warning was the correct one.** The recommendation is withdrawn; nothing is being swapped.
+
+**The far more important result is what the two matchers have in common.** Both degrade
+monotonically as the window shrinks — LoFTR 8 % → 24 % → 43 %, MatchAnything 0 % → 52 % →
+total failure. This **independently reproduces § 16.1 on a different measurement**: § 16.1
+used production sweeps across three objectives, this uses one objective and shrinking crops,
+and both say the same thing. A state-of-the-art cross-modality matcher fails the same way in
+the same regime, which is as close to proof as this repo can get that **window size is the
+cause and the matcher is not**. "The correspondences suck" is true and is not the problem.
+
+**Limitations of this test, stated.** It exercises MatchAnything through the `transformers`
+port, which forces a fixed 832×832 square input — so a 139 µm-radius crop (278 px) is
+upsampled 3×, and that may be why it returns nothing there rather than anything intrinsic to
+the method. The original repo resizes differently. Also, test B's `gross_frac` is measured
+against a Huber fit, which is itself degraded when the outlier fraction is 68 %, so those
+numbers are indicative rather than exact; test C does not depend on them.
+
+### 16.12 MEASURED — the global stage is healthy, so the rotation search buys nothing
+
+Test C records each arm's whole-field transform before cropping. Three independent matchers,
+three pairs:
+
+| pair | loftr | matchanything (hema) | matchanything (rgb) |
+|---|---|---|---|
+| spindle-1 | +0.07° / 0.9971 | +0.45° / 0.9998 | +0.73° / 0.9924 |
+| spindle-2 | +0.32° / 1.0137 | +0.31° / 1.0101 | +0.25° / 1.0100 |
+| liver-3 | +2.56° / 0.9969 | +2.30° / 0.9967 | +2.18° / 0.9978 |
+
+Every pair's global rotation is under 2.6°, every scale within 1.4 % of unity, and **three
+independently-trained matchers agree to within 0.5° on every pair.** There is no large
+unknown orientation for a multi-angle search to discover, so RegWSI's brute-force over
+rotations and scales — proposed in § 16.4(b) as "the most directly targeted fix in this
+entire section" — is measured to be worth nothing here, and § 16.8 item 3 is withdrawn with
+it. It remains the right device for its own problem: whole-slide alignment where the two
+slides were placed on the scanner independently. That is not this cohort.
+
+This also *confirms* the premise the constrained local fit rests on (§ 16.2 item 3): the
+whole-field transform is trustworthy, so taking rotation and scale from it and fitting only
+the local translation is standing on solid ground.
+
+### 16.13 The port bug that nearly condemned a working matcher
+
+Recorded because it is the exact failure mode this document exists to prevent, and because
+the first run of § 16.11 produced numbers I would have reported as fact.
+
+`transformers.EfficientLoFTRImageProcessor.post_process_keypoint_matching` returns **int32
+coordinates snapped to the model's 1/8 coarse grid** — 8 px in the 832 px model frame,
+~7.7 px in ours — discarding the fine refinement that is Efficient LoFTR's headline
+contribution. Driving the model through it, against **an image warped from itself**:
+
+| rotation | via `post_process` | via raw float outputs |
+|---|---|---|
+| 0.0° | 0.00 px, 100 % inliers | 0.07 px, 100 % inliers |
+| 1.0° | 18.7 px, 8 % inliers | 3.3 px, 47 % inliers |
+| 3.0° | 22.4 px, 8 % inliers, recovered **+5.409°** | 3.0 px, 46 % inliers, recovered **+2.964°** |
+| 5.0° | — | 2.9 px, 49 % inliers, recovered **+5.106°** |
+
+The first column says the matcher is unusable. The second says it works. **The difference is
+entirely the port's post-processing.** The raw fields — `keypoints` (B, 2, N, 2) normalised
+to [0,1], `matches` (B, 2, N) with −1 for unmatched, `matching_scores` (B, 2, N) — carry the
+subpixel result; the helper throws it away.
+
+Two habits saved this. First, the number was *implausible* — a model that recovers a 12 px
+translation exactly cannot miss a 3° rotation by 29 px — and implausible results were
+checked rather than reported. Second, the **0° control**: it is exact through both paths,
+which is what proved the coordinate mapping was correct and forced the search elsewhere.
+Any future matcher evaluation in this repo should include an identity control for the same
+reason.
+
+Separately: the processor's default `do_resize` stretches to a 832×832 square, and an
+**anisotropic** resize turns a rotation into a non-similarity — which is the exact quantity
+the harness measures. The harness pads to square and resizes isotropically by hand instead.
+
+---
+
+## 17. PANORAMIC — the cohort layer OASIS does not have
+
+Chang, Espín Pérez, Molina, Khurana, Zhang, Tian & Plevritis (Stanford), *Multi-Sample and
+Multi-Group Spatial Colocalization Analysis Using PANORAMIC*, **Bioinformatics** 2026,
+`10.1093/bioinformatics/btag546`; read from the bioRxiv v2 preprint
+(`10.1101/2025.09.18.677135`, posted 1 June 2026 — the accepted version may differ in
+detail). Bioconductor-devel R package `panoramic`; analysis code `chang-jacob/panoramic-paper`.
+
+Read because it is the closest published thing to OASIS's spatial half, and because its
+opening sentence is the problem OASIS has been fighting from the other end: *most methods
+model between-sample variability while treating sample-level spatial estimates as
+error-free.*
+
+### 17.1 What it actually does
+
+**Statistic — edge-corrected neighbourhood enrichment, directional.** For an ordered pair
+a→b, each type-b anchor cell *i* gets a radius-*r* disc; with `n_i,a(r)` the type-a
+neighbours, `n_i,·(r)` all neighbours, `A_i(r) = |B(x_i, r) ∩ W|` the disc area inside the
+tissue window, and `λ̂_a` the sample-wide type-a density:
+
+```
+S_i,a→b(r) = 100 · [ n_i,a(r) − λ̂_a·A_i(r) ] / n_i,·(r)
+```
+
+averaged over anchors with ≥1 neighbour. **This is a composition statistic** — percentage
+points of local neighbourhood make-up — not a density statistic like cross-K, and it is
+asymmetric (a→b ≠ b→a).
+
+**No permutation null at all.** The expectation is analytic, and the paper states the
+assumption in the open: *"Assuming homogeneity, the edge-corrected expected number …"*
+Inference comes from a bootstrap SE and a Wald test, not from a null distribution.
+
+**Within-sample uncertainty — Loh-style overlap-weighted spatial block bootstrap.** The
+window is tiled with squares of side 2.5·r (62.5 µm at r = 25 µm); each tile is weighted by
+`|tile ∩ W| / |tile|` so partly-outside tiles are downweighted; anchors are assigned to
+tiles, tile means computed, and tiles resampled with replacement, B = 100. This yields a
+sample-level estimate `y_fk` and a **within-sample variance `v_fk`**.
+
+**Cohort layer — multilevel random-effects meta-analysis** (`metafor`, REML):
+
+```
+y_fk = Σ_c β_fc·1{c(k)=c} + u_f,m(k) + u_f,s(k) + ε_fk
+u_f,m ~ N(0, τ²)   patient random effect
+u_f,s ~ N(0, σ²)   sample-within-patient random effect
+ε_fk  ~ N(0, v_fk) the bootstrap variance
+```
+
+Group contrast by Wald Z, Benjamini–Hochberg across pairs. **Cell-type pairs are tested only
+when both types have ≥ 5 cells in the sample.**
+
+**Results.** Bootstrap-vs-empirical variance correlation 0.88 (uniform), 0.91 (clustered),
+**0.67 (opposing gradients)**. On a degradation ladder (cell thinning, directional cell-type
+bias, added sample heterogeneity), pooled-mean recovery is similar to naive — **the gain is
+in recovering patient-level heterogeneity τ², largest under severe and extreme degradation**,
+because the naive estimator "increasingly conflated within-sample noise and degraded sample
+variation with true between-patient heterogeneity". CRC (Schürch CODEX, 35 patients, 12 cell
+types): 144 directional pairs, 13 significant after BH; B→B, B→CD8⁺T and B→CD4⁺CD45RO⁺T
+stronger in Crohn's-like reaction; compactness Welch p = 0.00285. HNSCC: 324 pairs, 1 hit.
+
+### 17.2 What it independently confirms in OASIS
+
+* **The ≥ 5 cells per marker floor.** PANORAMIC applies exactly this rule. OASIS's
+  positivity floor and its "name which marker is under 5" reporting are not idiosyncratic.
+* **Edge correction as disc∩window area.** Same construction OASIS uses, and the same
+  reason: boundary truncation otherwise reads as depletion.
+* **Tissue masks and operator-defined regions matter.** PANORAMIC's *weakest* calibration is
+  the opposing-gradient regime (0.67), and their recommendation there is *"pathologist-defined
+  regions, tissue masks, or stratified analyses rather than relying on a single global tissue
+  window"* — which is the ROI workflow OASIS already built.
+* **Multi-radius sensitivity.** They re-run across 25–150 µm and report which findings
+  persist. OASIS's contact / co-infiltration / regional bands are a coarser form of the same
+  discipline, and § 15.1's band-leak work is the harder version of it.
+
+### 17.3 Where OASIS is stronger, and it is worth saying so in the paper
+
+**PANORAMIC's null assumes homogeneity.** Its expected count is `λ̂_a · A_i(r)` — a
+homogeneous-Poisson expectation with an edge correction. That is exactly the assumption
+§ "three null models" rejected for dense IHC tissue, where intensity varies enormously
+within a field. OASIS runs `cross_k_all_nulls` with a homogeneous CSR baseline, an
+**inhomogeneous Kinhom** null and a **toroidal** null, and reports a robust/csr_only verdict;
+it also selects `dense_morphology` (all-cell support with jitter) as a random-labelling null
+for tissue whose architecture sits below the 75 µm bandwidth.
+
+So the two are complementary in a way that is clean to state: **PANORAMIC is stronger at the
+cohort layer and assumes away the within-sample null problem; OASIS is stronger at the
+within-sample null and has no cohort layer at all.**
+
+### 17.4 The idea worth stealing — variance instead of a gate
+
+This is the part that matters, and it speaks directly to the failure diagnosed in § 16.
+
+OASIS handles registration quality with a **binary fail-closed gate**: CERTIFIED /
+LOCALLY_CERTIFIED / RADIUS_LIMITED / DEFORMED / NOT_CERTIFIABLE. § 16 traced the cascade
+that gate causes — the window shrinks until it passes the error gate, and by then it holds
+too few positive cells to test anything, and the fit that passed is underdetermined.
+
+PANORAMIC's architecture is the graded alternative. It does not exclude a bad sample; it
+gives it a larger `v_fk` so that, in the paper's own words, samples *"with unstable or
+spatially heterogeneous colocalization patterns … contribute less to pooled inference"*.
+And the framework is explicitly **statistic-agnostic**: *"any sample-level spatial statistic
+for which bootstrap replicate estimates can be computed, such as Ripley's K- and L-functions,
+may be propagated through the same hierarchical framework."* OASIS's cross-K band statistic
+is exactly such a statistic.
+
+That suggests a route in which a 9 µm-registered pair is **downweighted rather than
+discarded**, and several imperfect pairs can still support a cohort-level claim that no
+single one could support alone. Given the operator has many pairs (LL477–LL480) and today's
+binary gate certifies almost none of them, this is the most promising structural idea found
+in either session.
+
+### 17.5 Why it does not transfer as-is — stated before anyone builds on it
+
+**PANORAMIC has no registration error, at all.** Its data is multiplexed immunofluorescence:
+every marker is on the *same physical section*. Its `v_fk` measures **spatial heterogeneity**
+— which region of the tissue you happened to sample — not measurement error in cell
+positions. Its degradation ladder is cell thinning and cell-type bias, i.e. segmentation and
+annotation error. Nothing in it is validated against two markers on two different sections.
+
+So the **architecture** transfers and the **validation does not**. Making it work for OASIS
+means adding registration error as a further variance component and showing that the
+resulting weights are calibrated — which is a real piece of work, not a port. OASIS already
+has the raw material: `validate_detectable_effect.py` measures how registration error
+converts into loss of sensitivity (the MDE curve, ε = 0 → 1.50×, ε = 20 µm → 2.70×), and
+that is the natural bridge between a certified error in µm and a variance contribution.
+
+Two further cautions. The statistic differs in kind — PANORAMIC's normalises by total local
+neighbours and so answers *"what fraction of this cell's neighbourhood is type a"*, while
+OASIS's ring density answers *"are there more type-a cells within contact range than
+expected"*. The second is closer to the cell-scale engagement question this app exists to
+answer, so this is not an argument for switching statistics. And meta-analysis with few
+patients estimates τ² poorly — the paper says so itself — which bears directly on a cohort
+of four cases.
+
+**Standing rule applies:** any change to the spatial association statistics must be validated
+before implementation. Nothing here has been implemented, and § 17.4 is a direction, not a
+decision.

@@ -1,0 +1,2459 @@
+{
+  "config": {
+    "model": "zju-community/matchanything_eloftr",
+    "conf": 0.2,
+    "work_px": 800,
+    "gross_um": 15.0,
+    "radii_um": [
+      400.0,
+      238.0,
+      139.0
+    ],
+    "grid": 3,
+    "rot_max_deg": 5.0,
+    "scale_max": 0.05
+  },
+  "pairs": {
+    "spindle-1": {
+      "synthetic": {
+        "loftr": {
+          "n": 3364,
+          "seconds": 25.5,
+          "err_med_um": 0.532,
+          "err_p90_um": 0.951,
+          "gross_frac": 0.0
+        },
+        "matchanything_hema": {
+          "n": 7081,
+          "seconds": 22.3,
+          "err_med_um": 5.442,
+          "err_p90_um": 8.012,
+          "gross_frac": 0.0044
+        },
+        "matchanything_rgb": {
+          "n": 7082,
+          "seconds": 16.2,
+          "err_med_um": 5.413,
+          "err_p90_um": 7.961,
+          "gross_frac": 0.0031
+        }
+      },
+      "real": {
+        "loftr": {
+          "n": 144,
+          "seconds": 14.7,
+          "resid_med_um": 3.527,
+          "max_over_med": 6.89,
+          "gross_frac": 0.0833
+        },
+        "matchanything_hema": {
+          "n": 1249,
+          "seconds": 17.2,
+          "resid_med_um": 11.4,
+          "max_over_med": 11.51,
+          "gross_frac": 0.3699
+        },
+        "matchanything_rgb": {
+          "n": 1232,
+          "seconds": 16.7,
+          "resid_med_um": 13.81,
+          "max_over_med": 99.91,
+          "gross_frac": 0.4651
+        }
+      },
+      "windows": {
+        "loftr": {
+          "global_rot_deg": 0.07,
+          "global_scale": 0.9971,
+          "global_n": 144,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 63,
+              "d_rot_max_deg": 1.0,
+              "d_scale_max": 0.0395,
+              "resid_med_um_median": 4.424,
+              "rows": [
+                {
+                  "n": 40,
+                  "fit": true,
+                  "rot_deg": 0.56,
+                  "scale": 0.9577,
+                  "d_rot_vs_global_deg": 0.49,
+                  "d_scale_vs_global": 0.0395,
+                  "resid_med_um": 9.254,
+                  "implausible": false
+                },
+                {
+                  "n": 63,
+                  "fit": true,
+                  "rot_deg": 0.0,
+                  "scale": 1.0014,
+                  "d_rot_vs_global_deg": 0.07,
+                  "d_scale_vs_global": 0.0042,
+                  "resid_med_um": 4.021,
+                  "implausible": false
+                },
+                {
+                  "n": 45,
+                  "fit": true,
+                  "rot_deg": 0.37,
+                  "scale": 1.0219,
+                  "d_rot_vs_global_deg": 0.3,
+                  "d_scale_vs_global": 0.0249,
+                  "resid_med_um": 5.925,
+                  "implausible": false
+                },
+                {
+                  "n": 64,
+                  "fit": true,
+                  "rot_deg": 1.07,
+                  "scale": 0.9749,
+                  "d_rot_vs_global_deg": 1.0,
+                  "d_scale_vs_global": 0.0223,
+                  "resid_med_um": 8.539,
+                  "implausible": false
+                },
+                {
+                  "n": 76,
+                  "fit": true,
+                  "rot_deg": 0.14,
+                  "scale": 0.9968,
+                  "d_rot_vs_global_deg": 0.07,
+                  "d_scale_vs_global": 0.0004,
+                  "resid_med_um": 3.136,
+                  "implausible": false
+                },
+                {
+                  "n": 38,
+                  "fit": true,
+                  "rot_deg": 0.25,
+                  "scale": 1.0043,
+                  "d_rot_vs_global_deg": 0.18,
+                  "d_scale_vs_global": 0.0072,
+                  "resid_med_um": 4.424,
+                  "implausible": false
+                },
+                {
+                  "n": 40,
+                  "fit": true,
+                  "rot_deg": 0.3,
+                  "scale": 0.9868,
+                  "d_rot_vs_global_deg": 0.23,
+                  "d_scale_vs_global": 0.0104,
+                  "resid_med_um": 5.213,
+                  "implausible": false
+                },
+                {
+                  "n": 74,
+                  "fit": true,
+                  "rot_deg": 0.15,
+                  "scale": 0.9964,
+                  "d_rot_vs_global_deg": 0.08,
+                  "d_scale_vs_global": 0.0007,
+                  "resid_med_um": 2.927,
+                  "implausible": false
+                },
+                {
+                  "n": 80,
+                  "fit": true,
+                  "rot_deg": 0.19,
+                  "scale": 0.9979,
+                  "d_rot_vs_global_deg": 0.12,
+                  "d_scale_vs_global": 0.0008,
+                  "resid_med_um": 3.59,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 2,
+              "implausible_frac": 0.222,
+              "n_median": 17,
+              "d_rot_max_deg": 14.99,
+              "d_scale_max": 0.1984,
+              "resid_med_um_median": 4.776,
+              "rows": [
+                {
+                  "n": 10,
+                  "fit": true,
+                  "rot_deg": 15.06,
+                  "scale": 0.7993,
+                  "d_rot_vs_global_deg": 14.99,
+                  "d_scale_vs_global": 0.1984,
+                  "resid_med_um": 36.067,
+                  "implausible": true
+                },
+                {
+                  "n": 33,
+                  "fit": true,
+                  "rot_deg": 1.99,
+                  "scale": 1.0015,
+                  "d_rot_vs_global_deg": 1.92,
+                  "d_scale_vs_global": 0.0044,
+                  "resid_med_um": 7.615,
+                  "implausible": false
+                },
+                {
+                  "n": 13,
+                  "fit": true,
+                  "rot_deg": 0.18,
+                  "scale": 0.997,
+                  "d_rot_vs_global_deg": 0.11,
+                  "d_scale_vs_global": 0.0001,
+                  "resid_med_um": 2.989,
+                  "implausible": false
+                },
+                {
+                  "n": 27,
+                  "fit": true,
+                  "rot_deg": 0.58,
+                  "scale": 0.9717,
+                  "d_rot_vs_global_deg": 0.51,
+                  "d_scale_vs_global": 0.0255,
+                  "resid_med_um": 8.462,
+                  "implausible": false
+                },
+                {
+                  "n": 11,
+                  "fit": true,
+                  "rot_deg": 2.38,
+                  "scale": 0.9632,
+                  "d_rot_vs_global_deg": 2.31,
+                  "d_scale_vs_global": 0.0341,
+                  "resid_med_um": 2.342,
+                  "implausible": false
+                },
+                {
+                  "n": 11,
+                  "fit": true,
+                  "rot_deg": 0.58,
+                  "scale": 0.9997,
+                  "d_rot_vs_global_deg": 0.51,
+                  "d_scale_vs_global": 0.0025,
+                  "resid_med_um": 1.38,
+                  "implausible": false
+                },
+                {
+                  "n": 17,
+                  "fit": true,
+                  "rot_deg": 0.99,
+                  "scale": 0.9061,
+                  "d_rot_vs_global_deg": 0.92,
+                  "d_scale_vs_global": 0.0913,
+                  "resid_med_um": 7.978,
+                  "implausible": true
+                },
+                {
+                  "n": 17,
+                  "fit": true,
+                  "rot_deg": 0.63,
+                  "scale": 0.9945,
+                  "d_rot_vs_global_deg": 0.56,
+                  "d_scale_vs_global": 0.0026,
+                  "resid_med_um": 3.09,
+                  "implausible": false
+                },
+                {
+                  "n": 33,
+                  "fit": true,
+                  "rot_deg": 0.04,
+                  "scale": 1.0121,
+                  "d_rot_vs_global_deg": 0.03,
+                  "d_scale_vs_global": 0.015,
+                  "resid_med_um": 4.776,
+                  "implausible": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 1,
+              "implausible": 1,
+              "implausible_frac": 1.0,
+              "n_median": 6,
+              "d_rot_max_deg": 12.16,
+              "d_scale_max": 0.0547,
+              "resid_med_um_median": 5.253,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 6,
+                  "fit": true,
+                  "rot_deg": 12.23,
+                  "scale": 1.0517,
+                  "d_rot_vs_global_deg": 12.16,
+                  "d_scale_vs_global": 0.0547,
+                  "resid_med_um": 5.253,
+                  "implausible": true
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        },
+        "matchanything_hema": {
+          "global_rot_deg": 0.45,
+          "global_scale": 0.9998,
+          "global_n": 1249,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 884,
+              "d_rot_max_deg": 0.89,
+              "d_scale_max": 0.041,
+              "resid_med_um_median": 14.201,
+              "rows": [
+                {
+                  "n": 413,
+                  "fit": true,
+                  "rot_deg": 0.27,
+                  "scale": 1.0053,
+                  "d_rot_vs_global_deg": 0.18,
+                  "d_scale_vs_global": 0.0055,
+                  "resid_med_um": 16.21,
+                  "implausible": false
+                },
+                {
+                  "n": 927,
+                  "fit": true,
+                  "rot_deg": 0.4,
+                  "scale": 0.9953,
+                  "d_rot_vs_global_deg": 0.05,
+                  "d_scale_vs_global": 0.0045,
+                  "resid_med_um": 7.685,
+                  "implausible": false
+                },
+                {
+                  "n": 982,
+                  "fit": true,
+                  "rot_deg": 0.09,
+                  "scale": 1.0146,
+                  "d_rot_vs_global_deg": 0.35,
+                  "d_scale_vs_global": 0.0148,
+                  "resid_med_um": 10.152,
+                  "implausible": false
+                },
+                {
+                  "n": 505,
+                  "fit": true,
+                  "rot_deg": 1.33,
+                  "scale": 0.9822,
+                  "d_rot_vs_global_deg": 0.89,
+                  "d_scale_vs_global": 0.0177,
+                  "resid_med_um": 38.158,
+                  "implausible": false
+                },
+                {
+                  "n": 917,
+                  "fit": true,
+                  "rot_deg": 0.83,
+                  "scale": 0.9771,
+                  "d_rot_vs_global_deg": 0.38,
+                  "d_scale_vs_global": 0.0227,
+                  "resid_med_um": 14.421,
+                  "implausible": false
+                },
+                {
+                  "n": 851,
+                  "fit": true,
+                  "rot_deg": 1.24,
+                  "scale": 0.9588,
+                  "d_rot_vs_global_deg": 0.8,
+                  "d_scale_vs_global": 0.041,
+                  "resid_med_um": 27.98,
+                  "implausible": false
+                },
+                {
+                  "n": 793,
+                  "fit": true,
+                  "rot_deg": 0.52,
+                  "scale": 1.0023,
+                  "d_rot_vs_global_deg": 0.07,
+                  "d_scale_vs_global": 0.0025,
+                  "resid_med_um": 14.201,
+                  "implausible": false
+                },
+                {
+                  "n": 987,
+                  "fit": true,
+                  "rot_deg": 0.16,
+                  "scale": 0.9978,
+                  "d_rot_vs_global_deg": 0.28,
+                  "d_scale_vs_global": 0.002,
+                  "resid_med_um": 10.516,
+                  "implausible": false
+                },
+                {
+                  "n": 884,
+                  "fit": true,
+                  "rot_deg": 0.08,
+                  "scale": 0.9854,
+                  "d_rot_vs_global_deg": 0.36,
+                  "d_scale_vs_global": 0.0145,
+                  "resid_med_um": 13.529,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 5,
+              "implausible_frac": 0.556,
+              "n_median": 203,
+              "d_rot_max_deg": 5.3,
+              "d_scale_max": 0.0743,
+              "resid_med_um_median": 25.422,
+              "rows": [
+                {
+                  "n": 102,
+                  "fit": true,
+                  "rot_deg": 1.12,
+                  "scale": 0.9347,
+                  "d_rot_vs_global_deg": 0.67,
+                  "d_scale_vs_global": 0.0651,
+                  "resid_med_um": 52.407,
+                  "implausible": true
+                },
+                {
+                  "n": 156,
+                  "fit": true,
+                  "rot_deg": 2.98,
+                  "scale": 0.9369,
+                  "d_rot_vs_global_deg": 2.53,
+                  "d_scale_vs_global": 0.0629,
+                  "resid_med_um": 30.036,
+                  "implausible": true
+                },
+                {
+                  "n": 289,
+                  "fit": true,
+                  "rot_deg": 2.37,
+                  "scale": 1.058,
+                  "d_rot_vs_global_deg": 1.92,
+                  "d_scale_vs_global": 0.0581,
+                  "resid_med_um": 22.382,
+                  "implausible": true
+                },
+                {
+                  "n": 255,
+                  "fit": true,
+                  "rot_deg": 1.87,
+                  "scale": 0.9917,
+                  "d_rot_vs_global_deg": 1.42,
+                  "d_scale_vs_global": 0.0081,
+                  "resid_med_um": 20.627,
+                  "implausible": false
+                },
+                {
+                  "n": 386,
+                  "fit": true,
+                  "rot_deg": 0.87,
+                  "scale": 1.0126,
+                  "d_rot_vs_global_deg": 0.42,
+                  "d_scale_vs_global": 0.0128,
+                  "resid_med_um": 13.162,
+                  "implausible": false
+                },
+                {
+                  "n": 203,
+                  "fit": true,
+                  "rot_deg": 1.62,
+                  "scale": 1.0259,
+                  "d_rot_vs_global_deg": 1.17,
+                  "d_scale_vs_global": 0.026,
+                  "resid_med_um": 14.535,
+                  "implausible": false
+                },
+                {
+                  "n": 103,
+                  "fit": true,
+                  "rot_deg": 5.75,
+                  "scale": 0.9255,
+                  "d_rot_vs_global_deg": 5.3,
+                  "d_scale_vs_global": 0.0743,
+                  "resid_med_um": 38.928,
+                  "implausible": true
+                },
+                {
+                  "n": 290,
+                  "fit": true,
+                  "rot_deg": 0.72,
+                  "scale": 1.0664,
+                  "d_rot_vs_global_deg": 0.27,
+                  "d_scale_vs_global": 0.0666,
+                  "resid_med_um": 34.002,
+                  "implausible": true
+                },
+                {
+                  "n": 124,
+                  "fit": true,
+                  "rot_deg": 1.63,
+                  "scale": 0.9603,
+                  "d_rot_vs_global_deg": 1.18,
+                  "d_scale_vs_global": 0.0395,
+                  "resid_med_um": 25.422,
+                  "implausible": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 0,
+              "implausible": 0,
+              "implausible_frac": null,
+              "n_median": 0,
+              "d_rot_max_deg": 0.0,
+              "d_scale_max": 0.0,
+              "resid_med_um_median": null,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        },
+        "matchanything_rgb": {
+          "global_rot_deg": 0.73,
+          "global_scale": 0.9924,
+          "global_n": 1232,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 8,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 220,
+              "d_rot_max_deg": 1.9,
+              "d_scale_max": 0.0482,
+              "resid_med_um_median": 19.037,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 17,
+                  "fit": true,
+                  "rot_deg": 2.63,
+                  "scale": 0.9727,
+                  "d_rot_vs_global_deg": 1.9,
+                  "d_scale_vs_global": 0.0199,
+                  "resid_med_um": 4.464,
+                  "implausible": false
+                },
+                {
+                  "n": 138,
+                  "fit": true,
+                  "rot_deg": 0.67,
+                  "scale": 1.0308,
+                  "d_rot_vs_global_deg": 0.06,
+                  "d_scale_vs_global": 0.0387,
+                  "resid_med_um": 14.626,
+                  "implausible": false
+                },
+                {
+                  "n": 646,
+                  "fit": true,
+                  "rot_deg": 2.62,
+                  "scale": 0.9491,
+                  "d_rot_vs_global_deg": 1.89,
+                  "d_scale_vs_global": 0.0436,
+                  "resid_med_um": 26.653,
+                  "implausible": false
+                },
+                {
+                  "n": 596,
+                  "fit": true,
+                  "rot_deg": 0.07,
+                  "scale": 0.9608,
+                  "d_rot_vs_global_deg": 0.67,
+                  "d_scale_vs_global": 0.0318,
+                  "resid_med_um": 23.448,
+                  "implausible": false
+                },
+                {
+                  "n": 562,
+                  "fit": true,
+                  "rot_deg": 0.27,
+                  "scale": 0.9446,
+                  "d_rot_vs_global_deg": 0.46,
+                  "d_scale_vs_global": 0.0482,
+                  "resid_med_um": 32.453,
+                  "implausible": false
+                },
+                {
+                  "n": 143,
+                  "fit": true,
+                  "rot_deg": 1.14,
+                  "scale": 0.9766,
+                  "d_rot_vs_global_deg": 0.41,
+                  "d_scale_vs_global": 0.0159,
+                  "resid_med_um": 14.002,
+                  "implausible": false
+                },
+                {
+                  "n": 239,
+                  "fit": true,
+                  "rot_deg": 0.54,
+                  "scale": 0.9971,
+                  "d_rot_vs_global_deg": 0.2,
+                  "d_scale_vs_global": 0.0048,
+                  "resid_med_um": 7.318,
+                  "implausible": false
+                },
+                {
+                  "n": 202,
+                  "fit": true,
+                  "rot_deg": 1.38,
+                  "scale": 0.9653,
+                  "d_rot_vs_global_deg": 0.64,
+                  "d_scale_vs_global": 0.0273,
+                  "resid_med_um": 30.338,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 6,
+              "implausible_frac": 0.667,
+              "n_median": 144,
+              "d_rot_max_deg": 6.56,
+              "d_scale_max": 0.0766,
+              "resid_med_um_median": 28.506,
+              "rows": [
+                {
+                  "n": 133,
+                  "fit": true,
+                  "rot_deg": 6.37,
+                  "scale": 1.0096,
+                  "d_rot_vs_global_deg": 5.64,
+                  "d_scale_vs_global": 0.0173,
+                  "resid_med_um": 49.719,
+                  "implausible": true
+                },
+                {
+                  "n": 110,
+                  "fit": true,
+                  "rot_deg": 0.53,
+                  "scale": 0.923,
+                  "d_rot_vs_global_deg": 0.21,
+                  "d_scale_vs_global": 0.0699,
+                  "resid_med_um": 26.276,
+                  "implausible": true
+                },
+                {
+                  "n": 146,
+                  "fit": true,
+                  "rot_deg": 5.24,
+                  "scale": 0.9754,
+                  "d_rot_vs_global_deg": 4.51,
+                  "d_scale_vs_global": 0.0171,
+                  "resid_med_um": 29.041,
+                  "implausible": false
+                },
+                {
+                  "n": 123,
+                  "fit": true,
+                  "rot_deg": 7.29,
+                  "scale": 1.0341,
+                  "d_rot_vs_global_deg": 6.56,
+                  "d_scale_vs_global": 0.0421,
+                  "resid_med_um": 28.506,
+                  "implausible": true
+                },
+                {
+                  "n": 218,
+                  "fit": true,
+                  "rot_deg": 1.7,
+                  "scale": 0.9164,
+                  "d_rot_vs_global_deg": 0.96,
+                  "d_scale_vs_global": 0.0766,
+                  "resid_med_um": 15.327,
+                  "implausible": true
+                },
+                {
+                  "n": 164,
+                  "fit": true,
+                  "rot_deg": 0.8,
+                  "scale": 0.9757,
+                  "d_rot_vs_global_deg": 0.07,
+                  "d_scale_vs_global": 0.0168,
+                  "resid_med_um": 21.327,
+                  "implausible": false
+                },
+                {
+                  "n": 144,
+                  "fit": true,
+                  "rot_deg": 3.07,
+                  "scale": 0.9416,
+                  "d_rot_vs_global_deg": 2.34,
+                  "d_scale_vs_global": 0.0511,
+                  "resid_med_um": 26.418,
+                  "implausible": true
+                },
+                {
+                  "n": 191,
+                  "fit": true,
+                  "rot_deg": 1.32,
+                  "scale": 0.9299,
+                  "d_rot_vs_global_deg": 0.59,
+                  "d_scale_vs_global": 0.063,
+                  "resid_med_um": 29.968,
+                  "implausible": true
+                },
+                {
+                  "n": 106,
+                  "fit": true,
+                  "rot_deg": 0.76,
+                  "scale": 1.0034,
+                  "d_rot_vs_global_deg": 0.03,
+                  "d_scale_vs_global": 0.0111,
+                  "resid_med_um": 31.899,
+                  "implausible": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 0,
+              "implausible": 0,
+              "implausible_frac": null,
+              "n_median": 0,
+              "d_rot_max_deg": 0.0,
+              "d_scale_max": 0.0,
+              "resid_med_um_median": null,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "spindle-2": {
+      "synthetic": {
+        "loftr": {
+          "n": 3354,
+          "seconds": 7.6,
+          "err_med_um": 0.508,
+          "err_p90_um": 0.933,
+          "gross_frac": 0.0
+        },
+        "matchanything_hema": {
+          "n": 7090,
+          "seconds": 6.9,
+          "err_med_um": 5.455,
+          "err_p90_um": 7.955,
+          "gross_frac": 0.0049
+        },
+        "matchanything_rgb": {
+          "n": 6992,
+          "seconds": 5.9,
+          "err_med_um": 5.394,
+          "err_p90_um": 7.833,
+          "gross_frac": 0.0034
+        }
+      },
+      "real": {
+        "loftr": {
+          "n": 77,
+          "seconds": 5.1,
+          "resid_med_um": 8.279,
+          "max_over_med": 4.44,
+          "gross_frac": 0.2208
+        },
+        "matchanything_hema": {
+          "n": 1209,
+          "seconds": 6.0,
+          "resid_med_um": 25.825,
+          "max_over_med": 5.44,
+          "gross_frac": 0.6807
+        },
+        "matchanything_rgb": {
+          "n": 815,
+          "seconds": 5.2,
+          "resid_med_um": 27.579,
+          "max_over_med": 5.06,
+          "gross_frac": 0.7939
+        }
+      },
+      "windows": {
+        "loftr": {
+          "global_rot_deg": 0.32,
+          "global_scale": 1.0137,
+          "global_n": 77,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 8,
+              "implausible": 2,
+              "implausible_frac": 0.25,
+              "n_median": 27,
+              "d_rot_max_deg": 23.81,
+              "d_scale_max": 0.2705,
+              "resid_med_um_median": 13.194,
+              "rows": [
+                {
+                  "n": 9,
+                  "fit": true,
+                  "rot_deg": 0.03,
+                  "scale": 1.016,
+                  "d_rot_vs_global_deg": 0.29,
+                  "d_scale_vs_global": 0.0022,
+                  "resid_med_um": 6.505,
+                  "implausible": false
+                },
+                {
+                  "n": 28,
+                  "fit": true,
+                  "rot_deg": 0.06,
+                  "scale": 1.0016,
+                  "d_rot_vs_global_deg": 0.26,
+                  "d_scale_vs_global": 0.0119,
+                  "resid_med_um": 2.53,
+                  "implausible": false
+                },
+                {
+                  "n": 40,
+                  "fit": true,
+                  "rot_deg": 1.58,
+                  "scale": 0.997,
+                  "d_rot_vs_global_deg": 1.26,
+                  "d_scale_vs_global": 0.0165,
+                  "resid_med_um": 9.448,
+                  "implausible": false
+                },
+                {
+                  "n": 18,
+                  "fit": true,
+                  "rot_deg": 6.71,
+                  "scale": 1.0096,
+                  "d_rot_vs_global_deg": 6.38,
+                  "d_scale_vs_global": 0.004,
+                  "resid_med_um": 97.403,
+                  "implausible": true
+                },
+                {
+                  "n": 26,
+                  "fit": true,
+                  "rot_deg": 3.59,
+                  "scale": 1.0636,
+                  "d_rot_vs_global_deg": 3.26,
+                  "d_scale_vs_global": 0.0492,
+                  "resid_med_um": 53.023,
+                  "implausible": false
+                },
+                {
+                  "n": 44,
+                  "fit": true,
+                  "rot_deg": 1.04,
+                  "scale": 1.0094,
+                  "d_rot_vs_global_deg": 0.71,
+                  "d_scale_vs_global": 0.0043,
+                  "resid_med_um": 10.804,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 12,
+                  "fit": true,
+                  "rot_deg": 24.13,
+                  "scale": 0.7395,
+                  "d_rot_vs_global_deg": 23.81,
+                  "d_scale_vs_global": 0.2705,
+                  "resid_med_um": 43.311,
+                  "implausible": true
+                },
+                {
+                  "n": 43,
+                  "fit": true,
+                  "rot_deg": 2.9,
+                  "scale": 1.0358,
+                  "d_rot_vs_global_deg": 2.58,
+                  "d_scale_vs_global": 0.0218,
+                  "resid_med_um": 15.584,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 7,
+              "implausible": 4,
+              "implausible_frac": 0.571,
+              "n_median": 13,
+              "d_rot_max_deg": 35.19,
+              "d_scale_max": 0.3412,
+              "resid_med_um_median": 8.609,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 15,
+                  "fit": true,
+                  "rot_deg": 33.11,
+                  "scale": 0.882,
+                  "d_rot_vs_global_deg": 32.79,
+                  "d_scale_vs_global": 0.1299,
+                  "resid_med_um": 44.604,
+                  "implausible": true
+                },
+                {
+                  "n": 13,
+                  "fit": true,
+                  "rot_deg": 0.04,
+                  "scale": 0.9964,
+                  "d_rot_vs_global_deg": 0.29,
+                  "d_scale_vs_global": 0.0171,
+                  "resid_med_um": 2.254,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 7,
+                  "fit": true,
+                  "rot_deg": 4.83,
+                  "scale": 0.863,
+                  "d_rot_vs_global_deg": 4.51,
+                  "d_scale_vs_global": 0.1487,
+                  "resid_med_um": 4.601,
+                  "implausible": true
+                },
+                {
+                  "n": 14,
+                  "fit": true,
+                  "rot_deg": 2.16,
+                  "scale": 1.0063,
+                  "d_rot_vs_global_deg": 1.83,
+                  "d_scale_vs_global": 0.0073,
+                  "resid_med_um": 6.814,
+                  "implausible": false
+                },
+                {
+                  "n": 7,
+                  "fit": true,
+                  "rot_deg": 21.5,
+                  "scale": 0.6679,
+                  "d_rot_vs_global_deg": 21.17,
+                  "d_scale_vs_global": 0.3412,
+                  "resid_med_um": 137.071,
+                  "implausible": true
+                },
+                {
+                  "n": 6,
+                  "fit": true,
+                  "rot_deg": 35.51,
+                  "scale": 0.8317,
+                  "d_rot_vs_global_deg": 35.19,
+                  "d_scale_vs_global": 0.1795,
+                  "resid_med_um": 28.289,
+                  "implausible": true
+                },
+                {
+                  "n": 20,
+                  "fit": true,
+                  "rot_deg": 5.16,
+                  "scale": 1.0593,
+                  "d_rot_vs_global_deg": 4.84,
+                  "d_scale_vs_global": 0.045,
+                  "resid_med_um": 8.609,
+                  "implausible": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 1,
+              "implausible": 1,
+              "implausible_frac": 1.0,
+              "n_median": 9,
+              "d_rot_max_deg": 34.89,
+              "d_scale_max": 0.1165,
+              "resid_med_um_median": 23.197,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 9,
+                  "fit": true,
+                  "rot_deg": 35.21,
+                  "scale": 1.1318,
+                  "d_rot_vs_global_deg": 34.89,
+                  "d_scale_vs_global": 0.1165,
+                  "resid_med_um": 23.197,
+                  "implausible": true
+                }
+              ]
+            }
+          }
+        },
+        "matchanything_hema": {
+          "global_rot_deg": 0.31,
+          "global_scale": 1.0101,
+          "global_n": 1209,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 537,
+              "d_rot_max_deg": 2.54,
+              "d_scale_max": 0.0432,
+              "resid_med_um_median": 28.194,
+              "rows": [
+                {
+                  "n": 301,
+                  "fit": true,
+                  "rot_deg": 2.85,
+                  "scale": 1.0072,
+                  "d_rot_vs_global_deg": 2.54,
+                  "d_scale_vs_global": 0.0029,
+                  "resid_med_um": 28.94,
+                  "implausible": false
+                },
+                {
+                  "n": 435,
+                  "fit": true,
+                  "rot_deg": 0.45,
+                  "scale": 0.9665,
+                  "d_rot_vs_global_deg": 0.13,
+                  "d_scale_vs_global": 0.0432,
+                  "resid_med_um": 32.417,
+                  "implausible": false
+                },
+                {
+                  "n": 654,
+                  "fit": true,
+                  "rot_deg": 2.13,
+                  "scale": 1.0214,
+                  "d_rot_vs_global_deg": 1.81,
+                  "d_scale_vs_global": 0.0112,
+                  "resid_med_um": 22.129,
+                  "implausible": false
+                },
+                {
+                  "n": 537,
+                  "fit": true,
+                  "rot_deg": 0.31,
+                  "scale": 0.9676,
+                  "d_rot_vs_global_deg": 0.01,
+                  "d_scale_vs_global": 0.0421,
+                  "resid_med_um": 32.294,
+                  "implausible": false
+                },
+                {
+                  "n": 693,
+                  "fit": true,
+                  "rot_deg": 0.65,
+                  "scale": 1.0197,
+                  "d_rot_vs_global_deg": 0.34,
+                  "d_scale_vs_global": 0.0094,
+                  "resid_med_um": 28.194,
+                  "implausible": false
+                },
+                {
+                  "n": 695,
+                  "fit": true,
+                  "rot_deg": 0.84,
+                  "scale": 1.0061,
+                  "d_rot_vs_global_deg": 0.53,
+                  "d_scale_vs_global": 0.004,
+                  "resid_med_um": 24.212,
+                  "implausible": false
+                },
+                {
+                  "n": 418,
+                  "fit": true,
+                  "rot_deg": 0.61,
+                  "scale": 1.0286,
+                  "d_rot_vs_global_deg": 0.3,
+                  "d_scale_vs_global": 0.0183,
+                  "resid_med_um": 29.411,
+                  "implausible": false
+                },
+                {
+                  "n": 460,
+                  "fit": true,
+                  "rot_deg": 1.79,
+                  "scale": 1.0085,
+                  "d_rot_vs_global_deg": 1.47,
+                  "d_scale_vs_global": 0.0016,
+                  "resid_med_um": 25.794,
+                  "implausible": false
+                },
+                {
+                  "n": 720,
+                  "fit": true,
+                  "rot_deg": 0.66,
+                  "scale": 0.9873,
+                  "d_rot_vs_global_deg": 0.35,
+                  "d_scale_vs_global": 0.0226,
+                  "resid_med_um": 26.244,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 8,
+              "implausible_frac": 0.889,
+              "n_median": 97,
+              "d_rot_max_deg": 4.99,
+              "d_scale_max": 0.2114,
+              "resid_med_um_median": 37.257,
+              "rows": [
+                {
+                  "n": 50,
+                  "fit": true,
+                  "rot_deg": 1.73,
+                  "scale": 0.8855,
+                  "d_rot_vs_global_deg": 1.42,
+                  "d_scale_vs_global": 0.1233,
+                  "resid_med_um": 53.351,
+                  "implausible": true
+                },
+                {
+                  "n": 92,
+                  "fit": true,
+                  "rot_deg": 2.95,
+                  "scale": 0.9421,
+                  "d_rot_vs_global_deg": 2.63,
+                  "d_scale_vs_global": 0.0674,
+                  "resid_med_um": 47.405,
+                  "implausible": true
+                },
+                {
+                  "n": 157,
+                  "fit": true,
+                  "rot_deg": 0.63,
+                  "scale": 0.9299,
+                  "d_rot_vs_global_deg": 0.32,
+                  "d_scale_vs_global": 0.0794,
+                  "resid_med_um": 38.162,
+                  "implausible": true
+                },
+                {
+                  "n": 47,
+                  "fit": true,
+                  "rot_deg": 4.5,
+                  "scale": 0.7966,
+                  "d_rot_vs_global_deg": 4.18,
+                  "d_scale_vs_global": 0.2114,
+                  "resid_med_um": 39.266,
+                  "implausible": true
+                },
+                {
+                  "n": 75,
+                  "fit": true,
+                  "rot_deg": 2.24,
+                  "scale": 1.0407,
+                  "d_rot_vs_global_deg": 1.93,
+                  "d_scale_vs_global": 0.0303,
+                  "resid_med_um": 27.175,
+                  "implausible": false
+                },
+                {
+                  "n": 197,
+                  "fit": true,
+                  "rot_deg": 2.56,
+                  "scale": 0.9082,
+                  "d_rot_vs_global_deg": 2.25,
+                  "d_scale_vs_global": 0.1009,
+                  "resid_med_um": 28.499,
+                  "implausible": true
+                },
+                {
+                  "n": 102,
+                  "fit": true,
+                  "rot_deg": 3.57,
+                  "scale": 0.8797,
+                  "d_rot_vs_global_deg": 3.26,
+                  "d_scale_vs_global": 0.1292,
+                  "resid_med_um": 37.257,
+                  "implausible": true
+                },
+                {
+                  "n": 97,
+                  "fit": true,
+                  "rot_deg": 5.3,
+                  "scale": 0.9522,
+                  "d_rot_vs_global_deg": 4.99,
+                  "d_scale_vs_global": 0.0573,
+                  "resid_med_um": 29.175,
+                  "implausible": true
+                },
+                {
+                  "n": 369,
+                  "fit": true,
+                  "rot_deg": 0.67,
+                  "scale": 0.9024,
+                  "d_rot_vs_global_deg": 0.36,
+                  "d_scale_vs_global": 0.1066,
+                  "resid_med_um": 16.257,
+                  "implausible": true
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 0,
+              "implausible": 0,
+              "implausible_frac": null,
+              "n_median": 0,
+              "d_rot_max_deg": 0.0,
+              "d_scale_max": 0.0,
+              "resid_med_um_median": null,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        },
+        "matchanything_rgb": {
+          "global_rot_deg": 0.25,
+          "global_scale": 1.01,
+          "global_n": 815,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 3,
+              "implausible": 1,
+              "implausible_frac": 0.333,
+              "n_median": 121,
+              "d_rot_max_deg": 5.83,
+              "d_scale_max": 0.0258,
+              "resid_med_um_median": 34.4,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 150,
+                  "fit": true,
+                  "rot_deg": 4.12,
+                  "scale": 0.9839,
+                  "d_rot_vs_global_deg": 3.87,
+                  "d_scale_vs_global": 0.0258,
+                  "resid_med_um": 39.415,
+                  "implausible": false
+                },
+                {
+                  "n": 48,
+                  "fit": true,
+                  "rot_deg": 6.08,
+                  "scale": 0.9904,
+                  "d_rot_vs_global_deg": 5.83,
+                  "d_scale_vs_global": 0.0195,
+                  "resid_med_um": 34.4,
+                  "implausible": true
+                },
+                {
+                  "n": 121,
+                  "fit": true,
+                  "rot_deg": 2.71,
+                  "scale": 1.0105,
+                  "d_rot_vs_global_deg": 2.45,
+                  "d_scale_vs_global": 0.0005,
+                  "resid_med_um": 27.631,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 6,
+              "implausible": 4,
+              "implausible_frac": 0.667,
+              "n_median": 26,
+              "d_rot_max_deg": 41.23,
+              "d_scale_max": 0.4466,
+              "resid_med_um_median": 38.034,
+              "rows": [
+                {
+                  "n": 74,
+                  "fit": true,
+                  "rot_deg": 1.57,
+                  "scale": 1.0075,
+                  "d_rot_vs_global_deg": 1.32,
+                  "d_scale_vs_global": 0.0025,
+                  "resid_med_um": 44.631,
+                  "implausible": false
+                },
+                {
+                  "n": 18,
+                  "fit": true,
+                  "rot_deg": 2.45,
+                  "scale": 0.901,
+                  "d_rot_vs_global_deg": 2.19,
+                  "d_scale_vs_global": 0.108,
+                  "resid_med_um": 25.01,
+                  "implausible": true
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 30,
+                  "fit": true,
+                  "rot_deg": 17.76,
+                  "scale": 1.0137,
+                  "d_rot_vs_global_deg": 17.51,
+                  "d_scale_vs_global": 0.0036,
+                  "resid_med_um": 41.238,
+                  "implausible": true
+                },
+                {
+                  "n": 26,
+                  "fit": true,
+                  "rot_deg": 0.3,
+                  "scale": 1.0128,
+                  "d_rot_vs_global_deg": 0.04,
+                  "d_scale_vs_global": 0.0027,
+                  "resid_med_um": 22.086,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 12,
+                  "fit": true,
+                  "rot_deg": 41.49,
+                  "scale": 0.5589,
+                  "d_rot_vs_global_deg": 41.23,
+                  "d_scale_vs_global": 0.4466,
+                  "resid_med_um": 108.509,
+                  "implausible": true
+                },
+                {
+                  "n": 27,
+                  "fit": true,
+                  "rot_deg": 4.54,
+                  "scale": 0.8552,
+                  "d_rot_vs_global_deg": 4.29,
+                  "d_scale_vs_global": 0.1533,
+                  "resid_med_um": 34.83,
+                  "implausible": true
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 0,
+              "implausible": 0,
+              "implausible_frac": null,
+              "n_median": 0,
+              "d_rot_max_deg": 0.0,
+              "d_scale_max": 0.0,
+              "resid_med_um_median": null,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        }
+      }
+    },
+    "liver-3": {
+      "synthetic": {
+        "loftr": {
+          "n": 3098,
+          "seconds": 8.8,
+          "err_med_um": 0.503,
+          "err_p90_um": 0.965,
+          "gross_frac": 0.0
+        },
+        "matchanything_hema": {
+          "n": 6816,
+          "seconds": 7.2,
+          "err_med_um": 5.395,
+          "err_p90_um": 8.047,
+          "gross_frac": 0.0053
+        },
+        "matchanything_rgb": {
+          "n": 7001,
+          "seconds": 7.6,
+          "err_med_um": 5.404,
+          "err_p90_um": 8.21,
+          "gross_frac": 0.0177
+        }
+      },
+      "real": {
+        "loftr": {
+          "n": 632,
+          "seconds": 5.5,
+          "resid_med_um": 6.143,
+          "max_over_med": 4.92,
+          "gross_frac": 0.1028
+        },
+        "matchanything_hema": {
+          "n": 3281,
+          "seconds": 8.1,
+          "resid_med_um": 8.96,
+          "max_over_med": 8.19,
+          "gross_frac": 0.2255
+        },
+        "matchanything_rgb": {
+          "n": 3205,
+          "seconds": 6.4,
+          "resid_med_um": 8.82,
+          "max_over_med": 7.69,
+          "gross_frac": 0.1947
+        }
+      },
+      "windows": {
+        "loftr": {
+          "global_rot_deg": 2.56,
+          "global_scale": 0.9969,
+          "global_n": 632,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 201,
+              "d_rot_max_deg": 0.51,
+              "d_scale_max": 0.0139,
+              "resid_med_um_median": 7.621,
+              "rows": [
+                {
+                  "n": 227,
+                  "fit": true,
+                  "rot_deg": 2.56,
+                  "scale": 1.0057,
+                  "d_rot_vs_global_deg": 0.0,
+                  "d_scale_vs_global": 0.0089,
+                  "resid_med_um": 5.042,
+                  "implausible": false
+                },
+                {
+                  "n": 200,
+                  "fit": true,
+                  "rot_deg": 2.24,
+                  "scale": 0.9953,
+                  "d_rot_vs_global_deg": 0.31,
+                  "d_scale_vs_global": 0.0016,
+                  "resid_med_um": 8.629,
+                  "implausible": false
+                },
+                {
+                  "n": 129,
+                  "fit": true,
+                  "rot_deg": 3.07,
+                  "scale": 1.0107,
+                  "d_rot_vs_global_deg": 0.51,
+                  "d_scale_vs_global": 0.0139,
+                  "resid_med_um": 8.548,
+                  "implausible": false
+                },
+                {
+                  "n": 242,
+                  "fit": true,
+                  "rot_deg": 2.52,
+                  "scale": 0.9968,
+                  "d_rot_vs_global_deg": 0.04,
+                  "d_scale_vs_global": 0.0001,
+                  "resid_med_um": 4.461,
+                  "implausible": false
+                },
+                {
+                  "n": 201,
+                  "fit": true,
+                  "rot_deg": 2.68,
+                  "scale": 0.9962,
+                  "d_rot_vs_global_deg": 0.13,
+                  "d_scale_vs_global": 0.0006,
+                  "resid_med_um": 5.368,
+                  "implausible": false
+                },
+                {
+                  "n": 201,
+                  "fit": true,
+                  "rot_deg": 2.8,
+                  "scale": 0.9978,
+                  "d_rot_vs_global_deg": 0.24,
+                  "d_scale_vs_global": 0.001,
+                  "resid_med_um": 7.636,
+                  "implausible": false
+                },
+                {
+                  "n": 115,
+                  "fit": true,
+                  "rot_deg": 2.49,
+                  "scale": 0.9911,
+                  "d_rot_vs_global_deg": 0.06,
+                  "d_scale_vs_global": 0.0057,
+                  "resid_med_um": 5.341,
+                  "implausible": false
+                },
+                {
+                  "n": 131,
+                  "fit": true,
+                  "rot_deg": 2.78,
+                  "scale": 0.9838,
+                  "d_rot_vs_global_deg": 0.23,
+                  "d_scale_vs_global": 0.0131,
+                  "resid_med_um": 7.621,
+                  "implausible": false
+                },
+                {
+                  "n": 204,
+                  "fit": true,
+                  "rot_deg": 2.5,
+                  "scale": 1.0075,
+                  "d_rot_vs_global_deg": 0.06,
+                  "d_scale_vs_global": 0.0107,
+                  "resid_med_um": 7.901,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 40,
+              "d_rot_max_deg": 1.98,
+              "d_scale_max": 0.0458,
+              "resid_med_um_median": 6.269,
+              "rows": [
+                {
+                  "n": 98,
+                  "fit": true,
+                  "rot_deg": 3.18,
+                  "scale": 1.0017,
+                  "d_rot_vs_global_deg": 0.62,
+                  "d_scale_vs_global": 0.0049,
+                  "resid_med_um": 5.107,
+                  "implausible": false
+                },
+                {
+                  "n": 79,
+                  "fit": true,
+                  "rot_deg": 1.54,
+                  "scale": 1.014,
+                  "d_rot_vs_global_deg": 1.02,
+                  "d_scale_vs_global": 0.0172,
+                  "resid_med_um": 6.746,
+                  "implausible": false
+                },
+                {
+                  "n": 37,
+                  "fit": true,
+                  "rot_deg": 2.59,
+                  "scale": 1.0006,
+                  "d_rot_vs_global_deg": 0.03,
+                  "d_scale_vs_global": 0.0038,
+                  "resid_med_um": 6.269,
+                  "implausible": false
+                },
+                {
+                  "n": 40,
+                  "fit": true,
+                  "rot_deg": 0.58,
+                  "scale": 1.0013,
+                  "d_rot_vs_global_deg": 1.98,
+                  "d_scale_vs_global": 0.0044,
+                  "resid_med_um": 4.135,
+                  "implausible": false
+                },
+                {
+                  "n": 39,
+                  "fit": true,
+                  "rot_deg": 3.42,
+                  "scale": 1.0425,
+                  "d_rot_vs_global_deg": 0.86,
+                  "d_scale_vs_global": 0.0458,
+                  "resid_med_um": 6.379,
+                  "implausible": false
+                },
+                {
+                  "n": 55,
+                  "fit": true,
+                  "rot_deg": 1.7,
+                  "scale": 0.9932,
+                  "d_rot_vs_global_deg": 0.86,
+                  "d_scale_vs_global": 0.0037,
+                  "resid_med_um": 7.77,
+                  "implausible": false
+                },
+                {
+                  "n": 24,
+                  "fit": true,
+                  "rot_deg": 2.88,
+                  "scale": 0.9592,
+                  "d_rot_vs_global_deg": 0.33,
+                  "d_scale_vs_global": 0.0378,
+                  "resid_med_um": 2.946,
+                  "implausible": false
+                },
+                {
+                  "n": 26,
+                  "fit": true,
+                  "rot_deg": 0.83,
+                  "scale": 1.0002,
+                  "d_rot_vs_global_deg": 1.72,
+                  "d_scale_vs_global": 0.0034,
+                  "resid_med_um": 2.008,
+                  "implausible": false
+                },
+                {
+                  "n": 66,
+                  "fit": true,
+                  "rot_deg": 2.56,
+                  "scale": 1.0089,
+                  "d_rot_vs_global_deg": 0.0,
+                  "d_scale_vs_global": 0.012,
+                  "resid_med_um": 6.479,
+                  "implausible": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 5,
+              "implausible": 1,
+              "implausible_frac": 0.2,
+              "n_median": 9,
+              "d_rot_max_deg": 3.49,
+              "d_scale_max": 0.0719,
+              "resid_med_um_median": 6.051,
+              "rows": [
+                {
+                  "n": 25,
+                  "fit": true,
+                  "rot_deg": 5.26,
+                  "scale": 0.9765,
+                  "d_rot_vs_global_deg": 2.7,
+                  "d_scale_vs_global": 0.0204,
+                  "resid_med_um": 5.704,
+                  "implausible": false
+                },
+                {
+                  "n": 8,
+                  "fit": true,
+                  "rot_deg": 4.05,
+                  "scale": 1.0339,
+                  "d_rot_vs_global_deg": 1.5,
+                  "d_scale_vs_global": 0.0371,
+                  "resid_med_um": 8.292,
+                  "implausible": false
+                },
+                {
+                  "n": 9,
+                  "fit": true,
+                  "rot_deg": 6.05,
+                  "scale": 0.9251,
+                  "d_rot_vs_global_deg": 3.49,
+                  "d_scale_vs_global": 0.0719,
+                  "resid_med_um": 6.329,
+                  "implausible": true
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 9,
+                  "fit": true,
+                  "rot_deg": 2.75,
+                  "scale": 1.02,
+                  "d_rot_vs_global_deg": 0.19,
+                  "d_scale_vs_global": 0.0232,
+                  "resid_med_um": 6.051,
+                  "implausible": false
+                },
+                {
+                  "n": 12,
+                  "fit": true,
+                  "rot_deg": 1.07,
+                  "scale": 0.9551,
+                  "d_rot_vs_global_deg": 1.49,
+                  "d_scale_vs_global": 0.0419,
+                  "resid_med_um": 2.416,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        },
+        "matchanything_hema": {
+          "global_rot_deg": 2.3,
+          "global_scale": 0.9967,
+          "global_n": 3281,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 9,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 1286,
+              "d_rot_max_deg": 1.17,
+              "d_scale_max": 0.0116,
+              "resid_med_um_median": 7.789,
+              "rows": [
+                {
+                  "n": 1286,
+                  "fit": true,
+                  "rot_deg": 2.12,
+                  "scale": 0.9993,
+                  "d_rot_vs_global_deg": 0.17,
+                  "d_scale_vs_global": 0.0027,
+                  "resid_med_um": 5.285,
+                  "implausible": false
+                },
+                {
+                  "n": 1641,
+                  "fit": true,
+                  "rot_deg": 2.14,
+                  "scale": 1.006,
+                  "d_rot_vs_global_deg": 0.15,
+                  "d_scale_vs_global": 0.0093,
+                  "resid_med_um": 8.289,
+                  "implausible": false
+                },
+                {
+                  "n": 987,
+                  "fit": true,
+                  "rot_deg": 2.51,
+                  "scale": 1.0082,
+                  "d_rot_vs_global_deg": 0.22,
+                  "d_scale_vs_global": 0.0116,
+                  "resid_med_um": 8.247,
+                  "implausible": false
+                },
+                {
+                  "n": 1979,
+                  "fit": true,
+                  "rot_deg": 1.89,
+                  "scale": 1.0009,
+                  "d_rot_vs_global_deg": 0.41,
+                  "d_scale_vs_global": 0.0042,
+                  "resid_med_um": 7.173,
+                  "implausible": false
+                },
+                {
+                  "n": 1871,
+                  "fit": true,
+                  "rot_deg": 2.89,
+                  "scale": 0.9934,
+                  "d_rot_vs_global_deg": 0.59,
+                  "d_scale_vs_global": 0.0032,
+                  "resid_med_um": 8.192,
+                  "implausible": false
+                },
+                {
+                  "n": 1542,
+                  "fit": true,
+                  "rot_deg": 2.55,
+                  "scale": 0.987,
+                  "d_rot_vs_global_deg": 0.25,
+                  "d_scale_vs_global": 0.0097,
+                  "resid_med_um": 7.789,
+                  "implausible": false
+                },
+                {
+                  "n": 958,
+                  "fit": true,
+                  "rot_deg": 1.13,
+                  "scale": 0.9891,
+                  "d_rot_vs_global_deg": 1.17,
+                  "d_scale_vs_global": 0.0076,
+                  "resid_med_um": 12.669,
+                  "implausible": false
+                },
+                {
+                  "n": 781,
+                  "fit": true,
+                  "rot_deg": 2.21,
+                  "scale": 0.992,
+                  "d_rot_vs_global_deg": 0.09,
+                  "d_scale_vs_global": 0.0047,
+                  "resid_med_um": 7.149,
+                  "implausible": false
+                },
+                {
+                  "n": 90,
+                  "fit": true,
+                  "rot_deg": 3.29,
+                  "scale": 0.9968,
+                  "d_rot_vs_global_deg": 0.99,
+                  "d_scale_vs_global": 0.0002,
+                  "resid_med_um": 5.006,
+                  "implausible": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 7,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 41,
+              "d_rot_max_deg": 1.34,
+              "d_scale_max": 0.0473,
+              "resid_med_um_median": 8.382,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 41,
+                  "fit": true,
+                  "rot_deg": 2.03,
+                  "scale": 1.0092,
+                  "d_rot_vs_global_deg": 0.26,
+                  "d_scale_vs_global": 0.0126,
+                  "resid_med_um": 3.938,
+                  "implausible": false
+                },
+                {
+                  "n": 22,
+                  "fit": true,
+                  "rot_deg": 1.53,
+                  "scale": 0.9796,
+                  "d_rot_vs_global_deg": 0.77,
+                  "d_scale_vs_global": 0.0172,
+                  "resid_med_um": 3.853,
+                  "implausible": false
+                },
+                {
+                  "n": 372,
+                  "fit": true,
+                  "rot_deg": 2.1,
+                  "scale": 0.9852,
+                  "d_rot_vs_global_deg": 0.2,
+                  "d_scale_vs_global": 0.0115,
+                  "resid_med_um": 8.382,
+                  "implausible": false
+                },
+                {
+                  "n": 15,
+                  "fit": true,
+                  "rot_deg": 3.23,
+                  "scale": 1.041,
+                  "d_rot_vs_global_deg": 0.93,
+                  "d_scale_vs_global": 0.0445,
+                  "resid_med_um": 12.112,
+                  "implausible": false
+                },
+                {
+                  "n": 8,
+                  "fit": true,
+                  "rot_deg": 2.21,
+                  "scale": 0.9679,
+                  "d_rot_vs_global_deg": 0.08,
+                  "d_scale_vs_global": 0.0289,
+                  "resid_med_um": 2.204,
+                  "implausible": false
+                },
+                {
+                  "n": 375,
+                  "fit": true,
+                  "rot_deg": 2.48,
+                  "scale": 0.9774,
+                  "d_rot_vs_global_deg": 0.18,
+                  "d_scale_vs_global": 0.0193,
+                  "resid_med_um": 16.068,
+                  "implausible": false
+                },
+                {
+                  "n": 80,
+                  "fit": true,
+                  "rot_deg": 3.64,
+                  "scale": 0.9495,
+                  "d_rot_vs_global_deg": 1.34,
+                  "d_scale_vs_global": 0.0473,
+                  "resid_med_um": 10.283,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 0,
+              "implausible": 0,
+              "implausible_frac": null,
+              "n_median": 0,
+              "d_rot_max_deg": 0.0,
+              "d_scale_max": 0.0,
+              "resid_med_um_median": null,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        },
+        "matchanything_rgb": {
+          "global_rot_deg": 2.18,
+          "global_scale": 0.9978,
+          "global_n": 3205,
+          "per_radius": {
+            "400.0": {
+              "windows": 9,
+              "fitted": 5,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 340,
+              "d_rot_max_deg": 0.86,
+              "d_scale_max": 0.0134,
+              "resid_med_um_median": 5.681,
+              "rows": [
+                {
+                  "n": 340,
+                  "fit": true,
+                  "rot_deg": 2.11,
+                  "scale": 0.9996,
+                  "d_rot_vs_global_deg": 0.07,
+                  "d_scale_vs_global": 0.0019,
+                  "resid_med_um": 4.06,
+                  "implausible": false
+                },
+                {
+                  "n": 44,
+                  "fit": true,
+                  "rot_deg": 1.94,
+                  "scale": 1.0111,
+                  "d_rot_vs_global_deg": 0.24,
+                  "d_scale_vs_global": 0.0134,
+                  "resid_med_um": 7.283,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 1503,
+                  "fit": true,
+                  "rot_deg": 2.17,
+                  "scale": 0.9916,
+                  "d_rot_vs_global_deg": 0.01,
+                  "d_scale_vs_global": 0.0062,
+                  "resid_med_um": 5.681,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 1029,
+                  "fit": true,
+                  "rot_deg": 1.74,
+                  "scale": 0.9904,
+                  "d_rot_vs_global_deg": 0.44,
+                  "d_scale_vs_global": 0.0074,
+                  "resid_med_um": 8.67,
+                  "implausible": false
+                },
+                {
+                  "n": 14,
+                  "fit": true,
+                  "rot_deg": 1.32,
+                  "scale": 0.9906,
+                  "d_rot_vs_global_deg": 0.86,
+                  "d_scale_vs_global": 0.0072,
+                  "resid_med_um": 3.604,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            },
+            "238.0": {
+              "windows": 9,
+              "fitted": 1,
+              "implausible": 0,
+              "implausible_frac": 0.0,
+              "n_median": 171,
+              "d_rot_max_deg": 0.65,
+              "d_scale_max": 0.0154,
+              "resid_med_um_median": 3.816,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 171,
+                  "fit": true,
+                  "rot_deg": 2.83,
+                  "scale": 0.9824,
+                  "d_rot_vs_global_deg": 0.65,
+                  "d_scale_vs_global": 0.0154,
+                  "resid_med_um": 3.816,
+                  "implausible": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            },
+            "139.0": {
+              "windows": 9,
+              "fitted": 0,
+              "implausible": 0,
+              "implausible_frac": null,
+              "n_median": 0,
+              "d_rot_max_deg": 0.0,
+              "d_scale_max": 0.0,
+              "resid_med_um_median": null,
+              "rows": [
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                },
+                {
+                  "n": 0,
+                  "fit": false
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "summary": {
+    "loftr": {
+      "real_n_per_pair": [
+        144,
+        77,
+        632
+      ],
+      "min_n": 77,
+      "gross_frac_max": 0.2208,
+      "window_implausible": {
+        "400.0": {
+          "fitted": 26,
+          "implausible": 2,
+          "frac": 0.077
+        },
+        "238.0": {
+          "fitted": 25,
+          "implausible": 6,
+          "frac": 0.24
+        },
+        "139.0": {
+          "fitted": 7,
+          "implausible": 3,
+          "frac": 0.429
+        }
+      }
+    },
+    "matchanything_hema": {
+      "real_n_per_pair": [
+        1249,
+        1209,
+        3281
+      ],
+      "min_n": 1209,
+      "gross_frac_max": 0.6807,
+      "window_implausible": {
+        "400.0": {
+          "fitted": 27,
+          "implausible": 0,
+          "frac": 0.0
+        },
+        "238.0": {
+          "fitted": 25,
+          "implausible": 13,
+          "frac": 0.52
+        },
+        "139.0": {
+          "fitted": 0,
+          "implausible": 0,
+          "frac": null
+        }
+      }
+    },
+    "matchanything_rgb": {
+      "real_n_per_pair": [
+        1232,
+        815,
+        3205
+      ],
+      "min_n": 815,
+      "gross_frac_max": 0.7939,
+      "window_implausible": {
+        "400.0": {
+          "fitted": 16,
+          "implausible": 1,
+          "frac": 0.062
+        },
+        "238.0": {
+          "fitted": 16,
+          "implausible": 10,
+          "frac": 0.625
+        },
+        "139.0": {
+          "fitted": 0,
+          "implausible": 0,
+          "frac": null
+        }
+      }
+    }
+  }
+}
