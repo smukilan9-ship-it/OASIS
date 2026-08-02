@@ -1733,10 +1733,19 @@ ROI workflow does, shrink the window until a similarity fits. Right conclusion, 
 ### 15.7 What is still not done
 
 * The production-arm re-run across all 14 pairs is in flight; only 2 of 14 had ever used it.
-  Early result: `LL477_Liver_4X_1` gives 3 certifying of 54 under the **new** constants
-  against 20 of 54 on the old identity arm — but those are not comparable, because the old
-  numbers predate the § 15.2 tightening. A clean comparison needs the identity arm re-run
-  under the new constants too.
+  The comparison against the old identity numbers needs care, because those predate the
+  § 15.2 tightening. **Re-scoring the identity arm under the new constants** (its stored
+  per-window `cell_p90` makes this exact, with no re-run needed) gives:
+
+  | verdict | old factor 3.0 | new factor 5.0 |
+  |---|---|---|
+  | CERTIFIED | 3 | 3 |
+  | RADIUS_LIMITED | 118 | 34 |
+  | DEFORMED | 0 | 84 |
+  | **analysable** | **121 (100 %)** | **37 (31 %)** |
+
+  So the tightening, not the arm, explains most of any drop — that is the baseline the
+  production arm must be read against.
 * Power is characterised at **one** effect size (2.0× enrichment). A power curve versus
   effect size is what would let a reader judge "power 0.38" properly.
 * ε\* for the interpretation floor is still **censored** at 80 µm.
