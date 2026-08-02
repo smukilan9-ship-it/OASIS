@@ -1550,3 +1550,172 @@ errors; suite green.
 **Not done:** exercised with synthetic geometry, not on real slides — how well the seeded
 window lands on corresponding tissue in practice is unmeasured. Nothing in the spatial
 statistics was touched (§ 13.2 remains diagnosed and unfixed).
+
+---
+
+## 15. Session 2026-08-02c — the spatial statistic, audited on real tissue
+
+§ 13 diagnosed the band decomposition and could not fix it, and left the radius floor
+calibrated only as a censored upper bound on synthetic blobs. This session closes both,
+finds three further defects on the way, and re-runs the one real result to see what changes.
+
+The common thread: **every previous spatial calibration ran on a Gaussian-mixture
+substrate whose structure sits at 180 µm — above the null's 75 µm bandwidth, so the null
+absorbed it and everything looked easy.** Real tissue has structure below the bandwidth.
+`validation/spatial_substrates.py` replaces it with real segmented cells (OASIS's own LL477
+detections; Keren TNBC as an independent tissue and modality), imposing association by
+**thinning** so every coordinate is a real cell — generating recruited points from a Gaussian
+would have put synthetic coordinates back into a "real tissue" test.
+
+### 15.1 The band decomposition was broken two ways, and is fixed
+
+`validate_band_decomposition.py`, 50 draws × 199 permutations, three substrates:
+
+| null | statistic | size | contact→coinfil leak | power |
+|---|---|---|---|---|
+| reweighted | **bands** *(shipped)* | 0.24 | **0.98** | 0.06 |
+| dense_morphology | bands | 0.00 | **1.00** | 0.00 |
+| dense_morphology | bands_pcf | 0.02 | 0.66 | 0.44 |
+| dense_morphology | bands_annulus | 0.04 | 0.04 | 0.06 |
+| **dense_morphology** | **bands_ring** | **0.02** | **0.06** | **0.38** |
+
+The shipped statistic fails in *both* directions, and the second failure was not predicted
+by § 13: a **regional-only truth is detected in its own band at 0.06**. Same cumulative
+memory running backwards — a regional truth depletes contact scale, which drags L−r down
+across 20–50 µm and cancels the real excess. So `bands` both over-fires upward and goes
+blind to what it is supposed to find.
+
+Three candidates were added, all computed from the same null draws. `bands_pcf` (DCLF on
+g(r)) has no cumulative memory but `np.gradient`'s central difference smears across the band
+boundary. `bands_annulus` (K(hi)−K(lo)) cancels everything below the band exactly, but a
+truth filling only part of a wide band is cancelled by the depleted remainder. **`bands_ring`
+— DCLF on the per-bin ring density — has none of the three problems** and is what
+`_BAND_STATISTIC` now selects. `bands` stays in the payload and drives nothing.
+
+**Anti-hallucination checks**, because "K is cumulative" is an explanation and an explanation
+can be right about the symptom and wrong about the cause:
+
+* the algebra predicts the contaminating excess falls as r⁻¹ — **fitted −0.98**;
+* g(r) recomputed by direct annulus counting instead of differentiating K agrees at
+  **r = 0.92**, so it is a property of the pattern, not of `_pcf_from_k`;
+* independent bivariate Poisson recovers **K_AB(r) = πr² to 4 %**.
+
+Two harness bugs were found and fixed first, both of which would have flattered the wrong
+answer: the "both scales" truth ran at 1.8× enrichment while the single-band truths ran at
+3.9× (a flat boost does not equalise enrichment when annuli differ in occupancy —
+`solve_boost` inverts for it), and the contact truth sat mostly *below* the band under test.
+
+**A claim withdrawn before it was made.** The reweighted null *is* anti-conservative on real
+tissue (size 0.24). But the architecture pre-flight classifies all three substrates as
+`dense_tissue` (scale 28–34 µm against a 150 µm `min_ok`), so production never selects it
+there. The measurement **validates that routing** rather than exposing a defect.
+
+### 15.2 One constant was two constants, pulling opposite ways
+
+`_RADIUS_FLOOR_FACTOR` was doing two jobs: what radius may be **quoted**, and whether a pair
+is analysed **at all** (in `_certify_fitzpatrick_west` the analysability side is the direct
+`else` of `band_ok`, deciding DEFORMED vs RADIUS_LIMITED). They are now separate constants
+and were calibrated separately, on real tissue with the corrected statistic, sweeping ε to
+80 µm — the earlier sweep stopped at 20 and censored every answer.
+
+| | evidence | ε\* | factor |
+|---|---|---|---|
+| interpretation floor | leakage 0.00–0.03 at **every** ε to 80 µm | ≥80 (censored) | ≤0.25 → **set 1.0** |
+| analysability gate | power 1.00 → 0.68 (ε=10) → 0.28 (ε=15) → 0.10 (ε=30) | **10 µm** | **5.0** |
+
+The floor is **not** set to 0.25. A reporting boundary should not rest on "no leakage
+observed": you cannot resolve a separation below your own registration error, so 1.0 is the
+resolution limit — 4× more conservative than the data requires, 3× looser than the value it
+replaces.
+
+**The gate TIGHTENS**, which contradicts the guess made earlier in the session that a lower
+factor would rescue DEFORMED windows. On the real 10X windows it reclassifies **84 of 123
+(68 %)** from RADIUS_LIMITED to DEFORMED. Those pairs were being analysed by a test with
+~0.25 power, and a null result from an underpowered test reads as evidence of absence.
+Meanwhile the loosened floor takes contact-scale claims from **8 % to 100 %** of the windows
+that remain. Net: fewer pairs answered, but the ones answered can make the claim the tab
+exists for.
+
+Size is unaffected throughout (0.00–0.03 at every ε): registration error still cannot invent
+a finding.
+
+### 15.3 `caution` routed to the weak null, and saturation aimed at it
+
+`valid = worst in ("ok", "caution")` sent marginal architecture to the reweighted primary
+with a "treat with care" string. `validate_saturated_marker_null.py` measured what that
+costs — A held at LL477's real 3 % CD8 rate, B swept to 95 % of all cells, always chosen
+independently of A so every claim is a false positive:
+
+| B fraction | 5 % | 20 % | 50 % | 80 % | 95 % |
+|---|---|---|---|---|---|
+| reweighted (Keren) | 0.00 | 0.33 | 0.67 | 0.92 | **1.00** |
+| dense_morphology | 0.00 | 0.08 | 0.08 | 0.00 | **0.00** |
+
+The levels where LL477 lands in `caution` are exactly where the reweighted null's false
+**cell-scale-engagement** rate reaches 0.17–0.25. A warning string does not undo a 5×
+inflated false-positive rate on the headline claim, so `caution` now routes to the dense
+fallback (`valid = worst == "ok"`).
+
+**The two failures compound, which is how this hid.** Saturating a marker makes its pattern
+resemble the whole cell population, which *raises* the estimated architecture scale out of
+`dense_tissue` and into `caution` — so the worst input is precisely the one routed to the
+weaker null. Under the null production now selects, saturation costs **power** but does not
+manufacture an engagement claim.
+
+### 15.4 DEFORMED was unreachable
+
+`band_ok` covers TRE up to `max_radius·(1−band_frac)/floor_factor` = 100·0.5/3 = **16.67 µm**,
+and the DEFORMED arm below it additionally required TRE ≤ 15 — so the window [16.67, 15] was
+**empty whenever `image_wh` was supplied**, i.e. on every production call. Measured: TRE
+10.7 → RADIUS_LIMITED, TRE 16.8 → NOT_CERTIFIABLE, DEFORMED never issued.
+
+Not cosmetic. NOT_CERTIFIABLE tells the operator *"the landmarks do not agree on a single
+transform; insufficient correspondence"* — false for landmarks fitting one similarity to
+16.8 µm, and it points them at adding correspondences when the problem is deformation, on
+the manual path v1 ships with. DEFORMED is now the direct `else`, matching
+`_certify_fitzpatrick_west`. Both verdicts block analysis identically, so the diagnosis
+changes and nothing else. The gap widens as the floor factor drops, so it had to be closed
+before § 15.2.
+
+### 15.5 The one real result survives; a floor never arrived
+
+`validate_ll477_reanalysis.py` reproduces the shipped LL477 run exactly — n_a = 38, n_b = 34,
+window 243,200 µm², IoU 0.530 — before comparing anything. Two wrong reconstructions were
+rejected by that guard first (the ROI is not the analysis window; and `transform_polygon`
+silently returns the *untransformed* polygon when `scale_ref` is missing, which cost n_b
+34 → 15).
+
+**The co-infiltration claim survives.** All four statistics agree: `bands` p = 0.033 (what
+shipped), `bands_pcf` 0.019, `bands_annulus` 0.005, `bands_ring` 0.034 (what ships now).
+Colocalization stays "none" under all four. The recalibrated constants also leave the pair
+analysable and contact-claimable (cell error 2.352 µm), so nothing about the one real result
+is retroactively invalidated.
+
+Found while checking it: the run recorded `floor_um: null` and
+`contact_scale_resolved: false` for a pair registered to **2.352 µm**. `run_pipeline` reads
+`min_interpretable_radius_um` off the certification, and the LoFTR-ROI path records
+`cell_error_um` and stops — so None was passed through and the headline claim was silently
+withheld from one of the best-registered pairs in the repo. The floor is a pure function of
+the cell error and is now derived when the key is absent.
+
+### 15.6 The failure-mode record, corrected
+
+"**42 of 54 returned NO_MATCHES**" was one pair, the worst one, on the `identity` control
+arm. Over all 14 pairs the dominant failure is **DEFORMED (56 %), not NO_MATCHES (20 %)** —
+LoFTR did find correspondences and they did agree on a similarity. Manual landmarks
+therefore help less than "no matches" implies for the majority case; what helps is what the
+ROI workflow does, shrink the window until a similarity fits. Right conclusion, wrong reason.
+
+### 15.7 What is still not done
+
+* The production-arm re-run across all 14 pairs is in flight; only 2 of 14 had ever used it.
+  Early result: `LL477_Liver_4X_1` gives 3 certifying of 54 under the **new** constants
+  against 20 of 54 on the old identity arm — but those are not comparable, because the old
+  numbers predate the § 15.2 tightening. A clean comparison needs the identity arm re-run
+  under the new constants too.
+* Power is characterised at **one** effect size (2.0× enrichment). A power curve versus
+  effect size is what would let a reader judge "power 0.38" properly.
+* ε\* for the interpretation floor is still **censored** at 80 µm.
+* § 12.5's contradiction between § 8 and the shipped behaviour is still open, and now needs
+  re-deciding against these results rather than the pre-§ 12.4 ones.
+* Association is imposed, never observed: the substrates are real, the truths are not.
