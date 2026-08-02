@@ -1571,8 +1571,14 @@ def _certify_fitzpatrick_west(out, ref, mov, M, pixel_size_um, fle_um, image_wh,
                 return _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac)
 
     r_min = out["min_interpretable_radius_um"]
-    band_ok = (r_min is not None and image_wh is not None and r_min < max_radius_um
-               and (max_radius_um - r_min) >= min_interpretable_band_frac * max_radius_um)
+    # ANALYSABILITY uses its own radius, not the reported floor — see spatial_stats
+    # _ANALYSABILITY_FACTOR. r_min is what gets QUOTED; r_gate is what decides USABLE.
+    from oasis.spatial.spatial_stats import analysability_radius
+    r_gate = analysability_radius(out.get("cell_error_p90_um") if out.get(
+        "cell_error_p90_um") is not None else accuracy_um)
+    out["analysability_radius_um"] = r_gate
+    band_ok = (r_gate is not None and image_wh is not None and r_gate < max_radius_um
+               and (max_radius_um - r_gate) >= min_interpretable_band_frac * max_radius_um)
     if band_ok:
         contact = " Direct cell-cell contact (~10–20 µm) is NOT resolved." if r_min > 20 else ""
         out.update(verdict="RADIUS_LIMITED",
@@ -1787,7 +1793,8 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
                           f"sections are unrelated)")
         return out
     med, fr = out["tre_median_um"], out["fit_residual_um"]
-    from oasis.spatial.spatial_stats import registration_radius_floor
+    from oasis.spatial.spatial_stats import (registration_radius_floor,
+                                             _ANALYSABILITY_FACTOR)
 
     # The verdict is decided on held-out landmark TRE. This over-states a cell's true
     # registration error (it carries the landmarks' own picking noise σ), and we accept
@@ -1833,9 +1840,13 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
     # cross-K test stays correctly sized and only loses power. Keep the field; surrender
     # the distances the error cannot resolve, provided enough curve remains to read.
     r_min = out["min_interpretable_radius_um"]
-    band_ok = (r_min is not None and image_wh is not None
-               and r_min < max_radius_um
-               and (max_radius_um - r_min) >= min_interpretable_band_frac * max_radius_um)
+    # See the note in _certify_fitzpatrick_west: the radius that is REPORTED and the radius
+    # that decides whether the pair is analysable are different questions.
+    r_gate = registration_radius_floor(accuracy_um, factor=_ANALYSABILITY_FACTOR)
+    out["analysability_radius_um"] = r_gate
+    band_ok = (r_gate is not None and image_wh is not None
+               and r_gate < max_radius_um
+               and (max_radius_um - r_gate) >= min_interpretable_band_frac * max_radius_um)
     if band_ok:
         contact = " Direct cell-cell contact (~10–20 µm) is NOT resolved." if r_min > 20 else ""
         basis = "held-out landmark TRE"
@@ -1849,19 +1860,34 @@ def landmark_register_and_verify(ref_pts, mov_pts, pixel_size_um,
                           f"{r_min}–{max_radius_um:.0f} µm, with reduced sensitivity.")
         return _apply_certification_roi(out, roi_poly, image_wh, min_roi_frac)
 
-    if accuracy_um <= deformed_loo_um:
-        out.update(verdict="DEFORMED",
-                   reason=f"registration error {accuracy_um} µm exceeds the "
-                          f"≤{accuracy_max_um} µm gate, and the resulting {r_min} µm "
-                          f"resolution limit leaves under "
-                          f"{min_interpretable_band_frac*100:.0f}% of the "
-                          f"0–{max_radius_um:.0f} µm range readable — no interpretable "
-                          f"curve remains (no warp applied)")
-    else:
-        out.update(verdict="NOT_CERTIFIABLE",
-                   reason=f"registration error {accuracy_um} µm ≫ tolerance — the "
-                          f"landmarks do not agree on a single transform; insufficient "
-                          f"correspondence to certify")
+    # DEFORMED is the direct else, exactly as in _certify_fitzpatrick_west.
+    #
+    # It used to be gated on `accuracy_um <= deformed_loo_um` (15 µm), and that window was
+    # EMPTY whenever image_wh was supplied — which is every production call. band_ok already
+    # covers everything up to max_radius·(1−band_frac)/floor_factor = 100·0.5/3 = 16.67 µm,
+    # so the surviving branch only ever saw accuracy > 16.67, which never satisfies ≤ 15.
+    # Measured before the fix: TRE 10.7 µm → RADIUS_LIMITED, TRE 16.8 µm → NOT_CERTIFIABLE,
+    # with DEFORMED unreachable. That is not a cosmetic mislabel: NOT_CERTIFIABLE tells the
+    # operator "the landmarks do not agree on a single transform; insufficient
+    # correspondence", which is false for landmarks that fit one similarity to 16.8 µm, and
+    # it misdirects them toward adding correspondences when the actual problem is tissue
+    # deformation. The two verdicts also block analysis identically (`is_certified` excludes
+    # both), so this changes the diagnosis and nothing else.
+    #
+    # NOT_CERTIFIABLE keeps the cases that genuinely cannot be measured, and they are all
+    # handled ABOVE this point: too few correspondences, and a degenerate layout where
+    # accuracy_um comes back None.
+    #
+    # The gap widens if the floor factor is lowered, so this had to be fixed before the
+    # factor is touched (research/ihc.md § 15).
+    out.update(verdict="DEFORMED",
+               reason=f"registration error {accuracy_um} µm exceeds the "
+                      f"≤{accuracy_max_um} µm gate, and the resulting {r_min} µm "
+                      f"resolution limit leaves under "
+                      f"{min_interpretable_band_frac*100:.0f}% of the "
+                      f"0–{max_radius_um:.0f} µm range readable — the landmarks do agree "
+                      f"on one transform, but no interpretable curve remains "
+                      f"(no warp applied)")
     return out
 
 

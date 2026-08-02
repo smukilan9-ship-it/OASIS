@@ -467,3 +467,52 @@ def test_tile_grid_stays_inside_the_span():
     for half, stride in ((100, 50), (100, 100), (37, 19)):
         for c in tile_centres(0, 1000, half, stride):
             assert c - half >= -1e-9 and c + half <= 1000 + 1e-9
+
+
+def test_the_verdict_cascade_has_no_unreachable_state():
+    """DEFORMED must be reachable on the path production actually uses.
+
+    It was not. `band_ok` covers held-out TRE up to max_radius*(1-band_frac)/floor_factor =
+    100*0.5/3 = 16.67 um, and the DEFORMED arm below it additionally required TRE <= 15, so
+    the window [16.67, 15] was EMPTY whenever image_wh was supplied — i.e. on every
+    production call. Measured before the fix: TRE 10.7 -> RADIUS_LIMITED, TRE 16.8 ->
+    NOT_CERTIFIABLE, DEFORMED never issued.
+
+    That mislabels the diagnosis on the manual-landmark path v1 ships with: NOT_CERTIFIABLE
+    tells the operator the landmarks "do not agree on a single transform" and to add
+    correspondences, when they DO agree and the real problem is deformation. The gap also
+    widens whenever the floor factor is lowered, so it has to stay closed.
+    """
+    import numpy as np
+    from oasis.spatial.serial_registration import landmark_register_and_verify
+
+    rng = np.random.default_rng(0)
+    ref = rng.uniform(100, 1800, (14, 2))
+    seen = {}
+    for noise in (1, 3, 6, 9, 15, 25, 40):
+        mov = ref + np.array([12.0, -7.0]) + rng.normal(0, noise, ref.shape)
+        out = landmark_register_and_verify(ref, mov, 0.7519, image_wh=(1920, 1440))
+        seen.setdefault(out["verdict"], out["tre_median_um"])
+
+    assert "DEFORMED" in seen, (
+        f"DEFORMED is unreachable with image_wh set; only saw {sorted(seen)}")
+    assert "RADIUS_LIMITED" in seen and "CERTIFIED" in seen, sorted(seen)
+    # The fix must not open the gate: DEFORMED still blocks analysis exactly as before.
+    mov = ref + np.array([12.0, -7.0]) + rng.normal(0, 25, ref.shape)
+    out = landmark_register_and_verify(ref, mov, 0.7519, image_wh=(1920, 1440))
+    assert out["verdict"] == "DEFORMED"
+    assert out["verdict"] not in ("CERTIFIED", "LOCALLY_CERTIFIED", "RADIUS_LIMITED")
+
+
+def test_unmeasurable_landmark_sets_are_still_not_certifiable():
+    """NOT_CERTIFIABLE keeps the cases that genuinely cannot be measured.
+
+    Making DEFORMED the direct `else` would be wrong if it swallowed these too — the two
+    verdicts mean different things and both are needed.
+    """
+    import numpy as np
+    from oasis.spatial.serial_registration import landmark_register_and_verify
+
+    ref = np.array([[100.0, 100.0], [200.0, 150.0], [300.0, 120.0]])
+    out = landmark_register_and_verify(ref, ref + 1.0, 0.7519, image_wh=(1920, 1440))
+    assert out["verdict"] == "NOT_CERTIFIABLE", out["verdict"]
