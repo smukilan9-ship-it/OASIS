@@ -180,6 +180,20 @@ _NULL_SEED     = 0       # fixed seed → reproducible significance numbers
 _SPARSE_MIN_POSITIVE = 5
 
 
+def _named_counts(markers, per_image):
+    """"CD8: 3 positive, TIM-3: 1 positive" rather than "(CD8, TIM-3)".
+
+    Naming the marker without its count tells the operator which one to look at but not
+    whether it is 4 cells or 0 — and those call for completely different next steps
+    (re-threshold vs. this region genuinely has no signal). The count is already in
+    per_image; it was simply not being surfaced.
+    """
+    if not markers:
+        return "no marker"
+    return ", ".join(f"{m}: {int((per_image.get(m) or {}).get('n') or 0)} positive"
+                     for m in markers)
+
+
 def spatial_permutation_null(
     centroids_a: np.ndarray,
     centroids_b: np.ndarray,
@@ -683,14 +697,15 @@ def precheck_bandwidth_within_window(registered, layer_order, pixel_size_um, win
             f"band — the 75 µm reweighted null is not the right primary here; OASIS "
             f"will use the dense morphology-conditioned null if its gates pass."),
         "underpowered_sparse_marker": (
-            f"one marker is sparse ({', '.join(sparse_markers)}: <30 positives) while the "
+            f"one marker is sparse ({_named_counts(sparse_markers, per_image)}) while the "
             f"other is well-populated — the cross-type test runs on the marker-independent "
             f"all-cell support null (which does not need the sparse marker's own "
             f"intensity), so segregation/association is still reported, but the result is "
             f"UNDERPOWERED and flagged as such."),
         "marker_absent": (
-            f"a marker has <{_SPARSE_MIN_POSITIVE} positive cells in this window "
-            f"({', '.join(absent_markers)}) — there is no spatial arrangement to test. "
+            f"{_named_counts(absent_markers, per_image)} — below the "
+            f"{_SPARSE_MIN_POSITIVE}-cell minimum, so there is no spatial arrangement to "
+            f"test. "
             f"This is an ABUNDANCE/absence finding (report the count), not a failed test."),
         "architecture_not_estimable": (
             "the tissue architecture scale could not be estimated inside the certified "
@@ -1191,16 +1206,58 @@ def run_spatial_association(
             if (not bandwidth_precheck.get("valid")
                     and not dense_info.get("selected")
                     and dense_auto_null):
+                # ABSENCE IS A FINDING, NOT A FAILURE — and they are not the same state.
+                #
+                # `marker_absent` (<5 positives) and "no valid primary null" were both
+                # collapsed into one silent dead end. They mean different things:
+                #
+                #   absent   there is no spatial arrangement to test, because one or both
+                #            markers have almost no positive cells here. That IS the result.
+                #            An abundance/absence answer with the counts and the region the
+                #            operator analysed is genuinely useful — a drawn region with
+                #            nothing in it is itself informative — and calling it "no
+                #            association" would be wrong, since nothing was measured.
+                #   no null  the architecture is fine but no valid null could be built, so
+                #            nothing can be said either way. A real failure.
+                #
+                # An absence result therefore carries the window, the areas and the per
+                # marker counts, and only the STATISTIC is skipped.
+                is_absence = bool(bandwidth_precheck.get("worst_status") == "marker_absent")
                 reason = (dense_info.get("reason")
+                          or bandwidth_precheck.get("reason")
                           or "no primary null is valid for this pair's architecture")
-                print(f"  {key}: BLOCKED — {reason}")
-                association[key] = {
-                    "error": "no_valid_primary_null",
+                counts = {m: int(len(registered.get(m, ())))
+                          for m in (ref_marker, mov_marker) if m}
+                in_window = {ref_marker: int(len(p_a))}
+                if mov_marker:
+                    in_window[mov_marker] = int(len(p_b))
+                payload = {
                     "reason": reason,
                     "bandwidth_precheck": bandwidth_precheck,
                     "dense": dense_info,
                     "n_a": int(len(p_a)), "n_b": int(len(p_b)),
+                    "positives_total": counts,
+                    "positives_in_window": in_window,
+                    "analysis_window": (list(window.exterior.coords)
+                                        if window is not None and hasattr(window, "exterior")
+                                        else None),
+                    "tissue_area_um2": float(area_px) * pixel_size_um ** 2,
+                    "statistics_valid": False,
                 }
+                if is_absence:
+                    payload.update(
+                        finding="absence",
+                        absent_markers=bandwidth_precheck.get("absent_markers") or [],
+                        summary=("Abundance/absence result, not a spatial one: "
+                                 + reason
+                                 + " The analysis window is reported so the region examined "
+                                   "is on the record; no statistic was run, so this is NOT "
+                                   "evidence of 'no association'."))
+                    print(f"  {key}: ABSENCE finding — {reason}")
+                else:
+                    payload.update(error="no_valid_primary_null")
+                    print(f"  {key}: BLOCKED — {reason}")
+                association[key] = payload
                 continue
 
             # Smallest inter-cell distance this pair's registration error can resolve.

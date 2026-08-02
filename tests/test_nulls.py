@@ -187,11 +187,52 @@ def test_no_valid_primary_null_fails_closed():
     from oasis.spatial import spatial as sp
 
     src = inspect.getsource(sp.run_spatial_association)
-    assert '"error": "no_valid_primary_null"' in src, (
+    assert 'error="no_valid_primary_null"' in src, (
         "the fail-closed branch for a missing primary null is gone")
     # it must come BEFORE the statistic runs, or it withholds nothing
-    i_block = src.index('"no_valid_primary_null"')
+    i_block = src.index('no_valid_primary_null')
     i_stat = src.index("cross_k_all_nulls(")
     assert i_block < i_stat, (
         "the fail-closed check must precede cross_k_all_nulls, otherwise the rejected null "
         "has already produced a verdict")
+
+
+def test_absence_is_a_finding_and_not_the_same_state_as_a_missing_null():
+    """Two states were collapsed into one silent dead end, and they mean different things.
+
+    `marker_absent` (<5 positives) means there is no spatial arrangement to test — that IS
+    the result, and an abundance/absence answer with the counts and the region examined is
+    useful. Reporting it as "no association" would be wrong, because nothing was measured.
+    "No valid primary null" means the architecture is fine but no null could be built, so
+    nothing can be said either way. That is a genuine failure.
+
+    An absence result must therefore still carry the window and the counts, and skip only
+    the statistic.
+    """
+    import inspect
+
+    from oasis.spatial import spatial as sp
+
+    src = inspect.getsource(sp.run_spatial_association)
+    assert 'finding="absence"' in src, "absence no longer reports itself as a finding"
+    assert '"marker_absent"' in src, "absence is no longer distinguished from a missing null"
+    # the absence payload must carry the evidence, not just a message
+    for key in ("positives_total", "positives_in_window", "analysis_window"):
+        assert key in src, f"absence result does not report {key}"
+    # and it must never be presented as a measured null result
+    assert '"statistics_valid": False' in src
+
+
+def test_absent_and_sparse_markers_are_named_with_their_counts():
+    """"CD8: 3 positive" beats "(CD8, TIM-3)".
+
+    Naming the marker without its count says which one to look at but not whether it is 4
+    cells or 0 — and those call for different next steps (re-threshold vs. this region has
+    no signal). The count was already in per_image and simply was not surfaced.
+    """
+    from oasis.spatial.spatial import _named_counts
+
+    per_image = {"CD8": {"n": 3}, "TIM-3": {"n": 1}}
+    assert _named_counts(["CD8", "TIM-3"], per_image) == "CD8: 3 positive, TIM-3: 1 positive"
+    assert _named_counts(["TIM-3"], per_image) == "TIM-3: 1 positive"
+    assert _named_counts([], per_image) == "no marker"
