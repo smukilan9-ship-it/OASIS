@@ -1,0 +1,819 @@
+{
+  "config": {
+    "n_rep": 50,
+    "n_perm": 199,
+    "substrates": [
+      "ll477_cd8",
+      "keren_p13",
+      "synthetic"
+    ],
+    "nulls": [
+      "reweighted",
+      "dense_morphology",
+      "homogeneous"
+    ],
+    "target_enrichment": 2.0,
+    "boost": 6.0,
+    "power_min": 0.5,
+    "size_max": 0.15
+  },
+  "matrix": {
+    "reweighted|bands": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 0.82,
+          "coinfiltration": 0.74
+        },
+        "regional": {
+          "colocalization": 0.12,
+          "coinfiltration": 0.2
+        },
+        "both": {
+          "colocalization": 0.66,
+          "coinfiltration": 0.78
+        },
+        "independent": {
+          "colocalization": 0.14,
+          "coinfiltration": 0.24
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 0.96,
+          "coinfiltration": 0.98
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.1
+        },
+        "both": {
+          "colocalization": 0.64,
+          "coinfiltration": 0.98
+        },
+        "independent": {
+          "colocalization": 0.04,
+          "coinfiltration": 0.16
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 0.78,
+          "coinfiltration": 0.88
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.06
+        },
+        "both": {
+          "colocalization": 0.44,
+          "coinfiltration": 0.84
+        },
+        "independent": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.02
+        }
+      }
+    },
+    "reweighted|bands_pcf": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 0.92,
+          "coinfiltration": 0.12
+        },
+        "regional": {
+          "colocalization": 0.12,
+          "coinfiltration": 0.28
+        },
+        "both": {
+          "colocalization": 0.82,
+          "coinfiltration": 0.34
+        },
+        "independent": {
+          "colocalization": 0.22,
+          "coinfiltration": 0.12
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.44
+        },
+        "regional": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.88
+        },
+        "both": {
+          "colocalization": 0.98,
+          "coinfiltration": 0.8
+        },
+        "independent": {
+          "colocalization": 0.32,
+          "coinfiltration": 0.1
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 0.88,
+          "coinfiltration": 0.06
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.48
+        },
+        "both": {
+          "colocalization": 0.9,
+          "coinfiltration": 0.28
+        },
+        "independent": {
+          "colocalization": 0.04,
+          "coinfiltration": 0.0
+        }
+      }
+    },
+    "reweighted|bands_annulus": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 0.96,
+          "coinfiltration": 0.08
+        },
+        "regional": {
+          "colocalization": 0.08,
+          "coinfiltration": 0.46
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.28
+        },
+        "independent": {
+          "colocalization": 0.24,
+          "coinfiltration": 0.12
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.06
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.78
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.5
+        },
+        "independent": {
+          "colocalization": 0.24,
+          "coinfiltration": 0.2
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 0.98,
+          "coinfiltration": 0.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.4
+        },
+        "both": {
+          "colocalization": 0.98,
+          "coinfiltration": 0.28
+        },
+        "independent": {
+          "colocalization": 0.04,
+          "coinfiltration": 0.04
+        }
+      }
+    },
+    "reweighted|bands_ring": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 0.88,
+          "coinfiltration": 0.1
+        },
+        "regional": {
+          "colocalization": 0.1,
+          "coinfiltration": 0.3
+        },
+        "both": {
+          "colocalization": 0.82,
+          "coinfiltration": 0.18
+        },
+        "independent": {
+          "colocalization": 0.18,
+          "coinfiltration": 0.1
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 0.96,
+          "coinfiltration": 0.04
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.72
+        },
+        "both": {
+          "colocalization": 0.98,
+          "coinfiltration": 0.62
+        },
+        "independent": {
+          "colocalization": 0.14,
+          "coinfiltration": 0.02
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 0.82,
+          "coinfiltration": 0.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.36
+        },
+        "both": {
+          "colocalization": 0.82,
+          "coinfiltration": 0.16
+        },
+        "independent": {
+          "colocalization": 0.04,
+          "coinfiltration": 0.04
+        }
+      }
+    },
+    "dense_morphology|bands": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 0.5,
+          "coinfiltration": 0.96
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        },
+        "both": {
+          "colocalization": 0.2,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        },
+        "both": {
+          "colocalization": 0.72,
+          "coinfiltration": 0.96
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 0.6,
+          "coinfiltration": 0.96
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        },
+        "both": {
+          "colocalization": 0.08,
+          "coinfiltration": 0.84
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        }
+      }
+    },
+    "dense_morphology|bands_pcf": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.54
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.94
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.02
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.66
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.6
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.0
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.54
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.44
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.02
+        }
+      }
+    },
+    "dense_morphology|bands_annulus": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.02
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.32
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.74
+        },
+        "independent": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.0
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.06
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.26
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.04
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.08
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.32
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.04
+        }
+      }
+    },
+    "dense_morphology|bands_ring": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.06
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.9
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.02
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.06
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.6
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.94
+        },
+        "independent": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.0
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.04
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.38
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.96
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.02
+        }
+      }
+    },
+    "homogeneous|bands": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 1.0
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.18,
+          "coinfiltration": 0.96
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        },
+        "both": {
+          "colocalization": 0.92,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.0
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.34
+        },
+        "both": {
+          "colocalization": 0.98,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.14,
+          "coinfiltration": 0.54
+        }
+      }
+    },
+    "homogeneous|bands_pcf": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "regional": {
+          "colocalization": 0.08,
+          "coinfiltration": 1.0
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.78,
+          "coinfiltration": 0.98
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.78
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.68
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.28,
+          "coinfiltration": 0.0
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.96
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.96
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.18,
+          "coinfiltration": 0.5
+        }
+      }
+    },
+    "homogeneous|bands_annulus": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "regional": {
+          "colocalization": 0.04,
+          "coinfiltration": 1.0
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.74,
+          "coinfiltration": 0.98
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.18
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.1
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.34
+        },
+        "independent": {
+          "colocalization": 0.08,
+          "coinfiltration": 0.04
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.76
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 0.8
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.94
+        },
+        "independent": {
+          "colocalization": 0.22,
+          "coinfiltration": 0.66
+        }
+      }
+    },
+    "homogeneous|bands_ring": {
+      "ll477_cd8": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.98
+        },
+        "regional": {
+          "colocalization": 0.1,
+          "coinfiltration": 1.0
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.42,
+          "coinfiltration": 0.94
+        }
+      },
+      "keren_p13": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.08
+        },
+        "regional": {
+          "colocalization": 0.02,
+          "coinfiltration": 0.72
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.98
+        },
+        "independent": {
+          "colocalization": 0.1,
+          "coinfiltration": 0.02
+        }
+      },
+      "synthetic": {
+        "contact": {
+          "colocalization": 1.0,
+          "coinfiltration": 0.46
+        },
+        "regional": {
+          "colocalization": 0.0,
+          "coinfiltration": 1.0
+        },
+        "both": {
+          "colocalization": 1.0,
+          "coinfiltration": 1.0
+        },
+        "independent": {
+          "colocalization": 0.14,
+          "coinfiltration": 0.4
+        }
+      }
+    }
+  },
+  "scores": {
+    "reweighted|bands": {
+      "max_size": 0.24,
+      "max_leak": 0.98,
+      "min_power": 0.06,
+      "size_ok": false,
+      "attrib_ok": false,
+      "power_ok": false,
+      "pass": false
+    },
+    "reweighted|bands_pcf": {
+      "max_size": 0.32,
+      "max_leak": 0.44,
+      "min_power": 0.28,
+      "size_ok": false,
+      "attrib_ok": false,
+      "power_ok": false,
+      "pass": false
+    },
+    "reweighted|bands_annulus": {
+      "max_size": 0.24,
+      "max_leak": 0.08,
+      "min_power": 0.4,
+      "size_ok": false,
+      "attrib_ok": true,
+      "power_ok": false,
+      "pass": false
+    },
+    "reweighted|bands_ring": {
+      "max_size": 0.18,
+      "max_leak": 0.1,
+      "min_power": 0.3,
+      "size_ok": false,
+      "attrib_ok": true,
+      "power_ok": false,
+      "pass": false
+    },
+    "dense_morphology|bands": {
+      "max_size": 0.0,
+      "max_leak": 1.0,
+      "min_power": 0.0,
+      "size_ok": true,
+      "attrib_ok": false,
+      "power_ok": false,
+      "pass": false
+    },
+    "dense_morphology|bands_pcf": {
+      "max_size": 0.02,
+      "max_leak": 0.66,
+      "min_power": 0.44,
+      "size_ok": true,
+      "attrib_ok": false,
+      "power_ok": false,
+      "pass": false
+    },
+    "dense_morphology|bands_annulus": {
+      "max_size": 0.04,
+      "max_leak": 0.04,
+      "min_power": 0.06,
+      "size_ok": true,
+      "attrib_ok": true,
+      "power_ok": false,
+      "pass": false
+    },
+    "dense_morphology|bands_ring": {
+      "max_size": 0.02,
+      "max_leak": 0.06,
+      "min_power": 0.38,
+      "size_ok": true,
+      "attrib_ok": true,
+      "power_ok": false,
+      "pass": false
+    },
+    "homogeneous|bands": {
+      "max_size": 0.96,
+      "max_leak": 1.0,
+      "min_power": 0.0,
+      "size_ok": false,
+      "attrib_ok": false,
+      "power_ok": false,
+      "pass": false
+    },
+    "homogeneous|bands_pcf": {
+      "max_size": 0.98,
+      "max_leak": 1.0,
+      "min_power": 0.68,
+      "size_ok": false,
+      "attrib_ok": false,
+      "power_ok": true,
+      "pass": false
+    },
+    "homogeneous|bands_annulus": {
+      "max_size": 0.98,
+      "max_leak": 1.0,
+      "min_power": 0.1,
+      "size_ok": false,
+      "attrib_ok": false,
+      "power_ok": false,
+      "pass": false
+    },
+    "homogeneous|bands_ring": {
+      "max_size": 0.94,
+      "max_leak": 0.98,
+      "min_power": 0.72,
+      "size_ok": false,
+      "attrib_ok": false,
+      "power_ok": true,
+      "pass": false
+    }
+  },
+  "decay_exponent": {
+    "median_exponent": -0.9787122113114727,
+    "n": 8,
+    "consistent": true
+  },
+  "pcf_independent": {
+    "median_corr": 0.9163031256494143,
+    "n": 6,
+    "agree": true
+  },
+  "analytic": {
+    "median_rel_error": 0.03957793602264922,
+    "ok": true
+  },
+  "recommendation": "NOTHING passes all three. Best size: ('dense_morphology', 'bands') at 0.00. Best attribution: ('dense_morphology', 'bands_annulus') at 0.04. Fix size before shipping any two-band claim."
+}

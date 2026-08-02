@@ -122,6 +122,90 @@ VALIDATIONS = [
         "runtime_tier": "long", "external_deps": [],
     },
     {
+        "id": "band_decomposition",
+        "title": "Band decomposition — can colocalization and co-infiltration be told apart?",
+        "category": "statistical",
+        "claim": "The shipped two-band decomposition is not two independent claims. DCLF on "
+                 "L−r inherits K's cumulative memory, so a contact-only truth fires the "
+                 "co-infiltration band at 0.98 AND a regional-only truth is detected in its "
+                 "own band at only 0.06. Decomposing on the per-bin ring density fixes both.",
+        "purpose": "Score four band statistics × three nulls on a full attribution matrix "
+                   "(contact-only / regional-only / both / independent) over three "
+                   "substrates, two of them real tissue.",
+        "why": "§15.6 promises the two bands are distinct biological findings, and the tab's "
+               "headline claim — cell-scale engagement — depends on that separation being "
+               "real. It was not.",
+        "datasets": ["LL477 detections", "Keren TNBC scaffold"],
+        "assumptions": "Truths imposed on REAL segmented cells by thinning, so every "
+                       "coordinate is a real cell; annulus truths so each is confined to one "
+                       "band; per-band enrichment held at 2.0× across truths so the matrix "
+                       "compares like with like.",
+        "limitations": "Association is imposed, not observed — the substrates are real but "
+                       "the truth is constructed. Power is reported at one effect size.",
+        "interpretation": "SIZE (independent truth must not fire), ATTRIBUTION (a contact "
+                          "truth must not fire the upper band) and POWER are scored "
+                          "separately, because they fail for different reasons.",
+        "expected": "Shipped (reweighted, bands) fails all three: size 0.24, leak 0.98, "
+                    "power 0.06. dense_morphology + bands_ring: size 0.02, leak 0.06, "
+                    "power 0.38. Anti-hallucination checks: decay exponent −0.98 vs the "
+                    "predicted −1.00, independent pcf r=0.92, analytic K=πr² to 4 %.",
+        "runner": {"kind": "script", "script": "validate_band_decomposition.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
+        "id": "radius_floor_calibration",
+        "title": "Radius floor — calibrating the interpretation floor and the analysability gate",
+        "category": "statistical",
+        "claim": "The single _RADIUS_FLOOR_FACTOR was doing two unrelated jobs — what radius "
+                 "may be QUOTED, and whether a pair is analysed AT ALL — which need "
+                 "different evidence and are now separate constants.",
+        "purpose": "Sweep ε to 80 µm on real tissue with the corrected statistic, measuring "
+                   "leakage (sets the interpretation floor) and power (sets the "
+                   "analysability gate) separately.",
+        "why": "In _certify_fitzpatrick_west the analysability side is the direct else of "
+               "band_ok, so it decides DEFORMED vs RADIUS_LIMITED — 56 % of real 10X "
+               "windows land there. It governs far more output than the reporting floor.",
+        "datasets": ["LL477 detections", "Keren TNBC scaffold"],
+        "assumptions": "Smooth deformation field matched to the measured 98 % spatially "
+                       "structured residual, with iid as contrast; dense_morphology + "
+                       "bands_ring, because calibrating against the broken statistic would "
+                       "give a precisely wrong number.",
+        "limitations": "Synthetic displacement of real coordinates; one effect size.",
+        "interpretation": "interpretation factor = 20/ε_leak*, analysability factor = "
+                          "50/ε_power*. An ε* at the sweep maximum is CENSORED and bounds "
+                          "the factor rather than measuring it.",
+        "expected": "See radius_floor_calibration_results.json — the earlier sweep stopped "
+                    "at 20 µm and censored every answer.",
+        "runner": {"kind": "script", "script": "validate_radius_floor_calibration.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
+        "id": "saturated_marker_null",
+        "title": "Saturated positivity call — does it manufacture a cell-scale claim?",
+        "category": "statistical",
+        "claim": "A marker thresholded so that ~95 % of cells are positive costs POWER but "
+                 "does not manufacture a false cell-scale engagement claim under the null "
+                 "production actually selects.",
+        "purpose": "Hold A at LL477's real 3 % CD8 rate, sweep B from 5 % to 95 % of all "
+                   "cells chosen INDEPENDENTLY of A, and measure the false-attraction rate "
+                   "plus which null the architecture pre-flight would route to.",
+        "why": "LL477's TIM-3 threshold marks 11,584 of 12,224 cells positive. Whether that "
+               "call is right is not OASIS's problem, but the pipeline cannot tell a "
+               "saturated marker from a real one and will report a verdict either way. "
+               "Cross-K is linear in B, so contamination biases TOWARD attraction — the "
+               "dangerous direction, since that is the headline claim.",
+        "datasets": ["LL477 detections", "Keren TNBC scaffold"],
+        "assumptions": "B drawn independently of A at every level, so the truth is always "
+                       "'no association' and any claim is a false positive.",
+        "limitations": "Models contamination as an independent draw over all cells; a "
+                       "threshold biased toward dense regions would differ.",
+        "interpretation": "The reweighted column is only live behaviour where the pre-flight "
+                          "routes to it — a null that is never selected cannot cause harm.",
+        "expected": "See saturated_marker_null_results.json.",
+        "runner": {"kind": "script", "script": "validate_saturated_marker_null.py"},
+        "runtime_tier": "long", "external_deps": [],
+    },
+    {
         "id": "deformation_estimator",
         "title": "Patch-flow deformation estimator — negative result, and its containment",
         "category": "registration",

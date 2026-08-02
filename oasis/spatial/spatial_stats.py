@@ -53,6 +53,10 @@ _DCLF_RMAX_UM = 50.0
 #     (floor < _COLOC_RMAX_UM); otherwise reported as not-resolvable, never null.
 #   • Co-infiltration — 20–50 µm. Shared tissue-region occupancy beyond the
 #     immediate neighbourhood (regional co-occurrence / mutual infiltration).
+# Band statistic that DRIVES the reported verdict. See _assess_interaction for why this is
+# not "bands".
+_BAND_STATISTIC = "bands_ring"
+
 _COLOC_RMIN_UM   = _DCLF_RMIN_UM   # 10 µm — one cell diameter (hard-core floor)
 _COLOC_RMAX_UM   = 20.0            # ~2 cell diameters — matches contact_scale_resolved
 _COINFIL_RMIN_UM = 20.0
@@ -120,6 +124,42 @@ _DENSE_DCLF_RMAX_UM = 30.0
 # historical ≤5 µm certification gate is this same rule frozen at the default 10 µm band
 # start (10 ≈ 2 × 5), mis-encoded as permission to run at all.
 _RADIUS_FLOOR_FACTOR = 3.0
+
+# ── The second job, split out ────────────────────────────────────────────────
+# One constant was doing two unrelated things, and they need different evidence:
+#
+#   (a) INTERPRETATION FLOOR — the smallest inter-cell distance this pair may be QUOTED at.
+#       A reporting boundary. Wrong value => a readable radius is withheld, or an
+#       unmeasurable one is quoted as if it were biology. `_RADIUS_FLOOR_FACTOR`.
+#
+#   (b) ANALYSABILITY GATE — the error beyond which the pair is not worth analysing at all.
+#       In _certify_fitzpatrick_west this is the direct `else` of band_ok, so it decides
+#       DEFORMED vs RADIUS_LIMITED: whether the pair is USABLE. On the real 10X windows,
+#       56 % land on this branch, so it governs far more output than (a) does.
+#
+# Conflating them means a change made for a reporting reason silently re-decides which pairs
+# are analysable. They are also calibrated against different things: (a) against whether a
+# radius can be localised (validate_radius_floor_localisation.py), (b) against whether the
+# test retains POWER at that error — a pair is worth running while it can still detect
+# something, which is a statement about sensitivity, not about readability.
+#
+# _ANALYSABILITY_FACTOR is initialised to _RADIUS_FLOOR_FACTOR so this split changes NO
+# behaviour on its own; it only makes the two independently settable. See research/ihc.md.
+_ANALYSABILITY_FACTOR = 3.0
+
+
+def analysability_radius(tre_um, factor: float = _ANALYSABILITY_FACTOR):
+    """Radius used ONLY to decide whether enough curve remains to be worth analysing.
+
+    Deliberately separate from `registration_radius_floor`, which is what gets reported.
+    Returns None when TRE is unknown so callers fail closed.
+    """
+    if tre_um is None:
+        return None
+    tre = float(tre_um)
+    if not np.isfinite(tre) or tre < 0:
+        return None
+    return round(float(factor) * tre, 3)
 
 
 def registration_radius_floor(tre_um, factor: float = _RADIUS_FLOOR_FACTOR):
@@ -559,6 +599,13 @@ def _null_summary_from_k(radii_px, obs_k_px, obs_lmr_px, null_k, s, n_perm,
 
     # Two-scale decomposition from the SAME null envelope (no extra permutations):
     # short-range colocalization vs regional co-infiltration (see the band constants).
+    #
+    # WARNING — these are NOT two independent claims. L derives from K, which is CUMULATIVE:
+    # K(r) counts every pair closer than r, so an excess at 6 µm raises K(r) at every larger
+    # r and L−r never returns inside the envelope. Measured: a truth confined to 0–12 µm
+    # fires the 20–50 µm band at 0.97 with ZERO registration error. Contamination flows
+    # strictly upward, so `colocalization` (the lowest band) is clean and `coinfiltration`
+    # is not. See research/ihc.md § 13.2 and validate_band_decomposition.py.
     bands = {
         "colocalization": _global_dclf_summary(
             radii_px, obs_lmr_px, null_l_px, p_values, s,
@@ -567,6 +614,15 @@ def _null_summary_from_k(radii_px, obs_k_px, obs_lmr_px, null_k, s, n_perm,
             radii_px, obs_lmr_px, null_l_px, p_values, s,
             _COINFIL_RMIN_UM, _COINFIL_RMAX_UM),
     }
+
+    # ── Candidate replacements, reported but NOT consumed by any verdict ──────
+    # Both drop the cumulative memory that breaks `bands`. They are computed from the same
+    # null draws (no extra permutations) so they are directly comparable, and they stay
+    # inert until validate_band_decomposition.py picks one — changing the primary statistic
+    # on an untested hunch is exactly what put the defect above into production.
+    bands_pcf = _bands_from_pcf(radii_px, obs_k_px, null_k, s)
+    bands_annulus = _bands_from_annulus(radii_px, obs_k_px, null_k, s)
+    bands_ring = _bands_from_ring_density(radii_px, obs_k_px, null_k, s)
 
     return {
         "null_mean_K":  (null_mean_px * s * s).tolist(),
@@ -577,8 +633,139 @@ def _null_summary_from_k(radii_px, obs_k_px, obs_lmr_px, null_k, s, n_perm,
         "p_values":     p_values.tolist(),
         "global":       global_summary,
         "bands":        bands,
+        "bands_pcf":     bands_pcf,
+        "bands_annulus": bands_annulus,
+        "bands_ring":    bands_ring,
         "n_perm":       int(n_perm),
     }
+
+
+def _rank_two_sided(obs_u, null_u):
+    """MC p-value with the standard +1 correction, observed pooled with the nulls."""
+    return (1.0 + float(np.sum(np.asarray(null_u) >= obs_u))) / (1.0 + len(null_u))
+
+
+def _dclf_on_curve(radii_um, obs, null, rmin_um, rmax_um):
+    """DCLF over [rmin, rmax] on ANY curve, not just L−r.
+
+    Identical machinery to _global_dclf_summary — observed pooled with the nulls so it is
+    exchangeable under H0, deviations squared and summed over the band, ranked — but applied
+    to a curve the caller chooses. Only the curve differs, so a band result here is
+    comparable with the L−r one draw for draw.
+    """
+    band = (radii_um >= rmin_um) & (radii_um <= rmax_um) & np.isfinite(obs)
+    if not np.any(band):
+        return {"significant": False, "global_p_dclf": 1.0, "direction": "none",
+                "band_um": [float(rmin_um), float(rmax_um)], "n_radii": 0}
+    o = np.asarray(obs, float)[band]
+    nl = np.asarray(null, float)[:, band]
+    ok = np.isfinite(nl).all(axis=1)
+    nl = nl[ok]
+    if len(nl) < 2 or not np.isfinite(o).all():
+        return {"significant": False, "global_p_dclf": 1.0, "direction": "none",
+                "band_um": [float(rmin_um), float(rmax_um)], "n_radii": int(band.sum())}
+    allc = np.vstack([o[None, :], nl])
+    dev = allc - allc.mean(axis=0)[None, :]
+    u_two = np.sum(dev ** 2, axis=1)
+    u_pos = np.sum(np.clip(dev, 0.0, None) ** 2, axis=1)
+    u_neg = np.sum(np.clip(-dev, 0.0, None) ** 2, axis=1)
+    p = _rank_two_sided(u_two[0], u_two[1:])
+    p_a = _rank_two_sided(u_pos[0], u_pos[1:])
+    p_s = _rank_two_sided(u_neg[0], u_neg[1:])
+    sig = p < 0.05
+    return {"significant": bool(sig), "global_p_dclf": round(float(p), 5),
+            "direction": ("none" if not sig else
+                          ("association" if p_a <= p_s else "segregation")),
+            "band_um": [float(rmin_um), float(rmax_um)], "n_radii": int(band.sum())}
+
+
+def _bands_from_pcf(radii_px, obs_k_px, null_k, s):
+    """Band decomposition on g(r) — the DERIVATIVE of K, so it has no cumulative memory.
+
+    An excess at 6 µm raises K at every larger radius but raises g only near 6 µm, which is
+    the whole reason this is a candidate. The cost is that g is a finite-difference estimate
+    and therefore noisier than L−r, so it must be shown to keep power, not just to fix the
+    attribution — validate_band_decomposition.py checks both.
+    """
+    radii_um = np.asarray(radii_px, float) * s
+    obs_g = _pcf_from_k(np.asarray(obs_k_px, float), np.asarray(radii_px, float))
+    null_g = np.vstack([_pcf_from_k(row, np.asarray(radii_px, float)) for row in null_k])
+    return {
+        "colocalization": _dclf_on_curve(radii_um, obs_g, null_g,
+                                         _COLOC_RMIN_UM, _COLOC_RMAX_UM),
+        "coinfiltration": _dclf_on_curve(radii_um, obs_g, null_g,
+                                         _COINFIL_RMIN_UM, _COINFIL_RMAX_UM),
+    }
+
+
+def _bands_from_ring_density(radii_px, obs_k_px, null_k, s):
+    """DCLF on the per-bin RING DENSITY — non-cumulative and un-smoothed.
+
+    This is the pair correlation function computed the honest way for a binned estimate:
+
+        d_i = [K(r_i) - K(r_{i-1})] / (pi (r_i^2 - r_{i-1}^2))
+
+    It differs from `_bands_from_pcf` only in avoiding np.gradient, whose central difference
+    makes g at one radius depend on K at its NEIGHBOURS — which smears signal across the
+    boundary between two adjacent bands and is why the pcf variant leaks a contact-scale
+    truth upward. And it differs from `_bands_from_annulus` in keeping the per-radius
+    resolution instead of collapsing the band to one number: a truth that fills only part of
+    a wide band (30-40 um inside 20-50) has its excess cancelled by the depleted remainder
+    when the band is summed, which is exactly where the annulus statistic loses power.
+
+    So: no cumulative memory (unlike `bands`), no smoothing (unlike `bands_pcf`), no
+    within-band cancellation (unlike `bands_annulus`).
+    """
+    radii_um = np.asarray(radii_px, float) * s
+    r_lo, r_hi = radii_px[:-1], radii_px[1:]
+    ring = np.pi * (r_hi ** 2 - r_lo ** 2)
+    ring = np.where(ring > 0, ring, np.nan)
+    mid_um = 0.5 * (radii_um[:-1] + radii_um[1:])
+
+    obs_d = (np.asarray(obs_k_px, float)[1:] - np.asarray(obs_k_px, float)[:-1]) / ring
+    nk = np.asarray(null_k, float)
+    null_d = (nk[:, 1:] - nk[:, :-1]) / ring[None, :]
+    return {
+        "colocalization": _dclf_on_curve(mid_um, obs_d, null_d,
+                                         _COLOC_RMIN_UM, _COLOC_RMAX_UM),
+        "coinfiltration": _dclf_on_curve(mid_um, obs_d, null_d,
+                                         _COINFIL_RMIN_UM, _COINFIL_RMAX_UM),
+    }
+
+
+def _bands_from_annulus(radii_px, obs_k_px, null_k, s):
+    """Band decomposition on the ANNULUS INCREMENT K(hi) − K(lo).
+
+    This is the number of cross-type pairs whose separation falls INSIDE the band, and
+    nothing else — the cumulative terms below `lo` cancel exactly in the subtraction. No
+    derivative, so unlike g(r) it adds no finite-difference noise; the test is a plain
+    rank of one scalar among its null draws.
+    """
+    radii_um = np.asarray(radii_px, float) * s
+
+    def _one(lo_um, hi_um):
+        i_lo = int(np.argmin(np.abs(radii_um - lo_um)))
+        i_hi = int(np.argmin(np.abs(radii_um - hi_um)))
+        if i_hi <= i_lo:
+            return {"significant": False, "global_p_dclf": 1.0, "direction": "none",
+                    "band_um": [float(lo_um), float(hi_um)]}
+        obs_inc = float(obs_k_px[i_hi] - obs_k_px[i_lo])
+        null_inc = np.asarray(null_k)[:, i_hi] - np.asarray(null_k)[:, i_lo]
+        # Two-sided on |deviation from the pooled mean|, so the p-value is uniform under H0
+        # for the same reason the DCLF one is.
+        allc = np.concatenate([[obs_inc], null_inc])
+        dev = allc - allc.mean()
+        p = _rank_two_sided(abs(dev[0]), np.abs(dev[1:]))
+        sig = p < 0.05
+        return {"significant": bool(sig), "global_p_dclf": round(float(p), 5),
+                "direction": ("none" if not sig else
+                              ("association" if dev[0] > 0 else "segregation")),
+                "band_um": [float(lo_um), float(hi_um)],
+                "observed_increment": obs_inc,
+                "null_increment_mean": float(np.mean(null_inc))}
+
+    return {"colocalization": _one(_COLOC_RMIN_UM, _COLOC_RMAX_UM),
+            "coinfiltration": _one(_COINFIL_RMIN_UM, _COINFIL_RMAX_UM)}
 
 
 def _build_kde_sampler(points_b, tissue_polygon, bbox, bandwidth_px, max_cells=160):
@@ -1180,8 +1367,19 @@ def _assess_interaction(summaries: dict, primary: str = None,
                    else "dense_morphology" if "dense_morphology" in summaries
                    else "inhomogeneous" if "inhomogeneous" in summaries
                    else "homogeneous" if "homogeneous" in summaries else None)
-    prim_bands = (summaries.get(primary, {}) or {}).get("bands", {}) or {}
-    homog_bands = (summaries.get("homogeneous", {}) or {}).get("bands", {}) or {}
+    # WHICH band statistic the verdict reads. `bands` (DCLF on L-r) is retained in the
+    # payload for continuity but MUST NOT drive a verdict: L derives from the CUMULATIVE K,
+    # so a truth confined to the contact band raises L-r at every larger radius and the
+    # upper band fires anyway. Measured over 50 draws on three substrates, two of them real
+    # tissue: a contact-only truth produced a co-infiltration claim at 0.98, and a
+    # regional-only truth was detected in its OWN band at only 0.06 -- the same cumulative
+    # memory hides an upper-band signal when the lower band is depleted. `bands_ring` (DCLF
+    # on the per-bin ring density) leaks 0.06 and detects at 0.38 on the same draws.
+    # See validate_band_decomposition.py and research/ihc.md.
+    prim_bands = ((summaries.get(primary, {}) or {}).get(_BAND_STATISTIC)
+                  or (summaries.get(primary, {}) or {}).get("bands", {}) or {})
+    homog_bands = ((summaries.get("homogeneous", {}) or {}).get(_BAND_STATISTIC)
+                   or (summaries.get("homogeneous", {}) or {}).get("bands", {}) or {})
 
     def _dir_word(d):   # DCLF 'direction' → biological word
         return {"association": "attraction", "segregation": "segregation"}.get(d, "none")
