@@ -622,31 +622,39 @@ Stratified, CD8↔CD45 — the correct analogue for CD8↔TIM-3, both DAB on hae
 **2,686 correspondences at 1.1 % gross**, consistently across both cases (611: 1.7 %, 679:
 0.2 %).
 
-CD8↔CD45 is the correct analogue for CD8↔TIM-3 — both are DAB-on-haematoxylin IHC. On
-published, expert-annotated slides that pairing yields **4,754 correspondences at 0.7 % gross**.
-LL477's equivalent yields **77–632 at 13.6 %**: an order of magnitude fewer correspondences and
-twenty times the blunder rate, on the same class of stain pairing at the same magnification and
-pixel size.
+Against LL477's **77–632 correspondences at 13.6 % gross** on the same class of pairing, at
+the same magnification and pixel size, that is roughly an order of magnitude more
+correspondences and twelve times fewer blunders.
 
-**LL477's CD8↔TIM-3 behaves like a hard cross-modality pair rather than the IHC↔IHC pair it
-actually is.** Combined with § 12 of `ihc.md` — TIM-3 thresholded below its own background,
-4–58 callable cells reported as 11,584 — the conclusion is that the slides are the limiting
-factor, and no model work fixes a slide.
+**To be exact about what LL477 is: CD8 and TIM-3 are both DAB on haematoxylin — the same
+modality, the same chemistry, a different antibody. Nothing about that pairing is
+cross-modal.** That is the whole point: it should behave like HyReCo's CD8↔CD45, and instead
+it behaves worse than HyReCo's IHC↔H&E pairs, which are a genuinely harder problem. Combined
+with § 12 of `ihc.md` — TIM-3 thresholded below its own background, 4–58 callable cells
+reported as 11,584 — the slides are the limiting factor, and no model work fixes a slide.
 
-### 12.3 Correspondence density predicts blunders
+### 12.3 Density does NOT predict blunders — a retracted claim
 
-Across all 30 fields, log(n) against gross fraction gives **r = −0.66**:
+An interim reading of 30 fields gave r = −0.66 between log(n) and gross fraction, and was
+written up as "density predicts blunders … the mechanism behind everything chased this
+session". **It does not survive stratification.** Over all 50 fields:
 
 ```
-fields with n <  600 :  9 fields, mean gross 21.0 %
-fields with n >= 600 : 21 fields, mean gross  3.6 %
+ALL 50 fields pooled   r = −0.75      n <  600: 18 fields, mean gross 35.3 %
+                                      n >= 600: 32 fields, mean gross  2.5 %
+  within CD8/CD45      r = −0.05      (n = 25)
+  within CD8/HE        r = −0.75      (n = 25)
 ```
 
-This is the mechanism behind everything chased this session. Sparse correspondences do not
-merely weaken a fit — they are *contaminated*, because the local-smoothness filter has no
-dense neighbourhood to appeal to and `reject_local_residual_outliers` has no local consensus.
-Density is not a nice-to-have; below roughly 600 correspondences per field the blunder rate
-rises sixfold.
+Within the IHC↔IHC stratum — the one OASIS actually operates in — the correlation is
+**−0.05, i.e. none**. The pooled −0.75 is Simpson's paradox: CD8↔H&E is both sparse *and*
+blunder-prone, CD8↔CD45 is both dense *and* clean, and pooling them manufactures a
+relationship that exists within neither.
+
+So correspondence count is a symptom of how hard a pairing is, not a cause of blunders, and
+"get more correspondences and the blunders will fall" is not supported. Kept as a retraction
+rather than deleted: the pooled number is genuinely tempting and would be re-derived by anyone
+who repeats this without stratifying.
 
 ### 12.4 Getting more correspondences — do not fine-tune first
 
