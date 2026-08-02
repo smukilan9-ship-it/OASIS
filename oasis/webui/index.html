@@ -6069,7 +6069,20 @@ async function loftrAutoFind() {
 
 // Freehand region drawing: hold + drag on the reference to sketch, release to finish.
 
-document.getElementById('spatial-cert-ref').addEventListener('click', e => {
+// THE CLICK LANDS ON THE STAGE, NOT ON THE IMAGE.
+//
+// lmDown calls setPointerCapture on `#lm-stage-<side>` so a drag keeps delivering events after
+// it leaves the pane. Per the Pointer Events spec, while a pointer is captured the resulting
+// `click` is dispatched at the CAPTURING element — the stage — and `click` does not propagate
+// downward, so a listener on the <img> INSIDE the stage never ran. That is the whole reason
+// landmarks could not be placed: mode-independent, tool-independent, both panes, and immune to
+// how carefully you click. It also survived three earlier fixes because every one of them was
+// aimed at code that was never reached.
+//
+// It hid from testing too: a synthetic PointerEvent has a pointerId the browser never issued,
+// so setPointerCapture throws, the try/catch swallows it, and a scripted click reaches the
+// image exactly as intended. Only a real pointer reproduces it.
+document.getElementById('lm-stage-ref').addEventListener('click', e => {
   spatialCertHandleRefClick(e);
 });
 
@@ -6097,11 +6110,11 @@ async function spatialCertHandleRefClick(e) {
   if ((lmPanes.ref.moved || 0) > CLICK_SLOP_PX) {      // it was a pan, not a click
     spatialCertExplainIgnoredClick('pan'); return; }
   if (w.loftrMode) {                                    // add a vertex to the active LoFTR region
-    w.loftrDraft.push(spatialCertPoint(e, e.currentTarget, w.ref));
+    w.loftrDraft.push(spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref));
     loftrRoiSync(); return;
   }
   if (w.roiMode) {                                     // add an ROI vertex (full-res ref)
-    w.roiPoints.push(spatialCertPoint(e, e.currentTarget, w.ref));
+    w.roiPoints.push(spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref));
     spatialCertRoiUpdateBadge(); spatialCertRender(); return;
   }
   // THE TWO ROUTES COMPOSE. This used to be `if (spatialCertMode !== 'landmark') return;`,
@@ -6116,7 +6129,9 @@ async function spatialCertHandleRefClick(e) {
   // certify what it can and the operator adds landmarks where it could not — on the same
   // pair, in the same view, without switching anything.
   if (certDraw().tool) { spatialCertExplainIgnoredClick('tool'); return; }
-  const clickPt = spatialCertPoint(e, e.currentTarget, w.ref);
+  // e.currentTarget is the STAGE now, so name the image explicitly — the coordinate
+  // conversion needs the image's own rect, not the stage's.
+  const clickPt = spatialCertPoint(e, document.getElementById('spatial-cert-ref'), w.ref);
   if (w.pending) return;
   // MANUAL placement. OASIS does NOT guess the matching point on the moving section:
   // an auto-placed match the operator never confirmed is an unverified correspondence,
@@ -6127,12 +6142,12 @@ async function spatialCertHandleRefClick(e) {
   document.getElementById('spatial-cert-result').innerHTML =
     `<span style="color:#0e7490">Fixed point ${w.refPoints.length + 1} placed. Now click the <b>same anatomical structure</b> on the moving section. Undo cancels it.</span>`;
 }
-document.getElementById('spatial-cert-mov').addEventListener('click', e => {
+document.getElementById('lm-stage-mov').addEventListener('click', e => {   // stage, not img — see above
   const w = spatialCertWork;
   if (!w.mov || !w.pending) return;
   if ((lmPanes.mov.moved || 0) > CLICK_SLOP_PX) { spatialCertExplainIgnoredClick('pan'); return; }
   w.refPoints.push(w.pending);
-  w.movPoints.push(spatialCertPoint(e, e.currentTarget, w.mov));
+  w.movPoints.push(spatialCertPoint(e, document.getElementById('spatial-cert-mov'), w.mov));
   w.pending = null;
   spatialCertForgetCurrentCertification();
   spatialCertRender();
