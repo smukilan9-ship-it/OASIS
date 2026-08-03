@@ -1323,6 +1323,33 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
             continue
 
         # ── Registration ───────────────────────────────────────────────
+        #
+        # A CERTIFIED PAIR WHOSE CERTIFICATE CARRIES NO TRANSFORM MUST NOT BE RE-REGISTERED.
+        #
+        # The `elif` below falls back to compute_registration (SimpleITK) whenever the matrix
+        # is missing — including when the pair IS certified. That is the same defect as a
+        # region whose mapping and verdict came from different transforms (see
+        # loftr_matcher.certify_local_roi): the output would still say is_certified=true and
+        # carry the certified cell error, while every coordinate had actually been moved by a
+        # transform nothing ever certified. Measured: a 75-pair cohort run whose certificates
+        # were built without a top-level `matrix` reported registration_method="simpleitk" on
+        # all 36 certified pairs, and nothing anywhere said the certificate had been bypassed.
+        #
+        # Fail closed, and only where the operator asked for it: when
+        # require_landmark_certification is on, "certified" has to mean the certified
+        # transform was used.
+        if (landmark_cert.get("is_certified") and not landmark_cert.get("matrix")
+                and cfg.get("require_landmark_certification")):
+            msg = ("certificate claims CERTIFIED but carries no transform matrix — refusing to "
+                   "re-register with a transform that was never certified")
+            print(f"  BLOCKED: {sample_id} — {msg}")
+            spatial_results.append({
+                "sample_id": sample_id, "stain_a": stain_a, "stain_b": stain_b,
+                "spatial_association": None, "error": "certified_without_matrix",
+                "certification": landmark_cert, "blocked_reason": msg,
+            })
+            continue
+
         reg_result = None
         if landmark_cert.get("is_certified") and landmark_cert.get("matrix"):
             reg_result = {

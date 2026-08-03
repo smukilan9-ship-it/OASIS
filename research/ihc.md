@@ -2751,3 +2751,61 @@ each time the blocker was a *different* silent `return` in `spatialCertHandleRef
 stale pan distance, a mode check, an armed tool. The bug was never any one guard; it was that a
 click could be refused with nothing on screen. Every guard now names its reason in the result
 panel, so whatever the next cause is, it announces itself instead of costing another week.
+
+### 19.7 A certified pair was being analysed with an uncertified transform
+
+Found by running the whole cohort: 75 CD8/TIM-3 pairs under `~/Desktop/Region of interest`
+(LL477–LL481, 36×10X, 36×20X, 3×4X). 36 certified — 7 whole-field CERTIFIED, 29 locally, 53
+certified regions in total.
+
+Every one of those 36 result files then reported **`registration_method: "simpleitk"`**.
+
+`run_pipeline.py` uses the certified transform only when the certificate carries a top-level
+`matrix`:
+
+```python
+if landmark_cert.get("is_certified") and landmark_cert.get("matrix"):
+    reg_result = {... "method": "landmark" ...}
+elif cfg.get("enable_registration", True):
+    reg_result = compute_registration(path_a, path_b)     # SimpleITK, silently
+```
+
+The certificate that came out of `certify_spatial_auto` keeps its transform inside
+`regions[i]["local_matrix"]`; the GUI lifts it to the top level when it stores the
+certification (`index.html`, `spatialCertifications[...] = { matrix: certs[0].local_matrix …}`),
+and the cohort driver did not. So the pair certified, `require_landmark_certification` was on,
+`is_certified: true` and the certified cell error were both stamped on the output — **and every
+cell coordinate had been moved by a transform nothing ever certified.** Nothing anywhere said
+so.
+
+This is § 19.1 one level up. There the mapping and the verdict came from different transforms
+inside one region; here the certificate and the analysis came from different transforms across
+the whole pipeline. Same failure, same reason it survived: no one compared the two.
+
+**Fixed in both places.** The driver now builds the certificate in the same shape the GUI
+sends. And `run_pipeline` **refuses** rather than falling back: when
+`require_landmark_certification` is on and a certificate claims CERTIFIED but carries no
+matrix, the pair is blocked with `error: "certified_without_matrix"`. "Certified" now has to
+mean the certified transform was the one used.
+
+**The first cohort output is kept** as `spatial_SIMPLEITK_BYPASSED_CERT/` rather than deleted —
+it is the evidence for this section, and a useful A/B against the corrected re-run.
+
+### 19.8 What the cohort actually returned
+
+From the 36 certified pairs (first run; being re-run against the certified transforms):
+
+| | |
+|---|---|
+| pairs with a result file | 36 |
+| `statistics_valid: true` | **21** |
+| refused — `marker_absent` | 11 |
+| refused — `no_valid_primary_null` | 4 |
+| primary null used, on all 21 valid pairs | **`dense_morphology`** |
+
+Two things worth carrying into the paper. **Every valid pair selected the dense
+morphology-conditioned null** — the architecture pre-flight never once chose the 75 µm
+reweighted null on real IHC, which is exactly what § 18.2 predicted and what the operator said
+would happen. And **15 of 36 certified pairs still produced no statistic**, almost all because
+a marker was absent in the window; that is the fail-closed path doing its job, and it is a
+number the paper should report rather than hide.
