@@ -1214,9 +1214,11 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
           <div id="q-single-config" style="margin-top:14px">
             <div class="field"><label>Image file</label>
               <div class="input-with-btn">
-                <input type="text" id="q-single-image" placeholder="select an image…  (paste or Browse)">
+                <input type="text" id="q-single-image" placeholder="select an image…  (paste or Browse)"
+                       onchange="quantSingleImageTyped(this.value)">
                 <button class="btn sm" onclick="quantPickSingleImage()">Browse</button>
               </div>
+              <div class="field-error" id="q-single-image-err" style="display:none"></div>
             </div>
           </div>
 
@@ -1269,7 +1271,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
             <input type="radio" name="q-px" value="scale_match" onchange="onQuantPxChange()">
             <span><span class="q-term">Per-image scale bar</span>
               <span class="badge gray" style="margin-left:6px">recommended</span>
-              <span class="q-plain">Each image is matched to its own 100 µm bar and calibrated
+              <span class="q-plain">Each image is matched to its own scale-bar image and calibrated
                 separately. Most accurate — the scale can differ between images taken at the
                 same nominal magnification.</span></span>
           </label>
@@ -1310,7 +1312,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
           <label class="q-opt" id="q-px-scale-opt">
             <input type="radio" name="q-px" value="scale" onchange="onQuantPxChange()">
             <span><span class="q-term">One scale-bar image</span>
-              <span class="q-plain">A single 100 µm bar is measured and applied to everything
+              <span class="q-plain">One scale-bar image is measured and applied to everything
                 in this run.</span></span>
           </label>
           <div id="q-px-scale" style="display:none" class="q-sub">
@@ -1674,7 +1676,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card">
         <div class="card-title">Mode</div>
         <div class="seg-tabs">
-          <button class="seg-tab active" id="spatial-mode-single-btn" onclick="spatialAssocSetMode('single')">Single Pair</button>
+          <button class="seg-tab active" id="spatial-mode-single-btn" onclick="spatialAssocSetMode('single')">Single pair</button>
           <button class="seg-tab" id="spatial-mode-batch-btn" onclick="spatialAssocSetMode('batch')">Batch</button>
         </div>
       </div>
@@ -1688,7 +1690,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
           <!-- Image A -->
           <div class="card">
             <div class="card-title">Image A</div>
-            <div class="field"><label>Stain name</label>
+            <div class="field"><label>Marker</label>
               <input type="text" id="spatial-label-a" oninput="spatialPxSyncLabels()" placeholder="e.g. CD8" value="CD8">
             </div>
             <div class="field"><label>Analysis image</label>
@@ -1704,7 +1706,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
           <!-- Image B -->
           <div class="card">
             <div class="card-title">Image B</div>
-            <div class="field"><label>Stain name</label>
+            <div class="field"><label>Marker</label>
               <input type="text" id="spatial-label-b" oninput="spatialPxSyncLabels()" placeholder="e.g. TIM-3" value="TIM-3">
             </div>
             <div class="field"><label>Analysis image</label>
@@ -2349,7 +2351,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
           <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>1.</b> Per-image exception</td>
               <td style="color:var(--text2)">Set by hand for one image in the Quant pixel-size step. Always wins.</td></tr>
           <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>2.</b> Matched scale bar</td>
-              <td style="color:var(--text2)">Measured from that image's own 100 µm bar. Best evidence — scale varies between images even at one magnification.</td></tr>
+              <td style="color:var(--text2)">Measured from that image's own scale bar. Best evidence — scale varies between images even at one magnification.</td></tr>
           <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>3.</b> This run's value</td>
               <td style="color:var(--text2)">A single scale bar, or a number typed on the Quant step.</td></tr>
           <tr><td style="padding:4px 10px 4px 0;white-space:nowrap"><b>4.</b> Cohort pixel size</td>
@@ -4083,6 +4085,21 @@ function removeQuantOverride(fname) {
 // against its own histogram. The helpers moved to legacy/webui/quant_biomarker_rules.js.
 let quantBiomarkers = [];   // kept empty; read by the settings builder, never populated
 
+// Spatial checks a pasted path immediately and shows the reason inline; Quant accepted a
+// typo in silence and surfaced it minutes later, inside segmentation.
+async function quantSingleImageTyped(value) {
+  const err = document.getElementById('q-single-image-err');
+  const p = (value || '').trim().replace(/^file:\/\//, '');
+  if (err) { err.textContent = ''; err.style.display = 'none'; }
+  if (!p) return;
+  let chk = { ok: true };
+  try { chk = await window.pywebview.api.check_image_path(p); } catch (e) { return; }
+  if (!chk.ok && err) {
+    err.textContent = chk.msg || 'That path could not be used.';
+    err.style.display = 'block';
+  }
+}
+
 function quantSetMode(m) {
   // Switching between single and batch changes which images the run touches, so the
   // preview's normalization exclusions and the single-image scale bar stop applying. Both
@@ -4175,7 +4192,7 @@ async function runQuantAnalysis() {
   // Take the operator to the control, the way the pixel-size guard below does. The stain
   // lives on step 4 and Run is reachable from any step, so a bare toast left them on
   // whatever step they were on with no indication of where the missing field was.
-  if (!stainName) { quantWizardGoTo(4); showToast('Select or enter the stain type'); return; }
+  if (!stainName) { quantWizardGoTo(4); showToast('Select or enter the marker'); return; }
 
   // Membranous scoring requires a membrane classifier fitted on this cohort's own cells.
   // Ring completeness only separates positive from negative where the stain stands clear
@@ -8866,8 +8883,8 @@ function spatialAssocShowResults(data) {
 
   const outDir = (data && data.output_dir) || results[0]?.output_dir || '';
   document.getElementById('spatial-actions').innerHTML = [
-    outDir ? `<button class="btn amber" onclick="window.pywebview.api.open_folder('${esc(outDir)}')">Open Output Folder</button>` : '',
-    `<button class="btn" onclick="showView('spatial','config')">New Analysis</button>`,
+    outDir ? `<button class="btn amber" onclick="window.pywebview.api.open_folder('${esc(outDir)}')">Open output folder</button>` : '',
+    `<button class="btn" onclick="showView('spatial','config')">New analysis</button>`,
   ].join('');
 
   showView('spatial', 'results');
