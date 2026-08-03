@@ -2441,6 +2441,83 @@ class API:
             out.append(entry)
         return {"status": "ok", "images": out}
 
+    def spatial_review_data(self, config: dict) -> dict:
+        """Everything the Spatial runtime review screen needs, in one call.
+
+        MIRRORS QUANT'S RUNTIME STOP. Quant runs `--stage segment`, emits `review`, and the
+        operator sets the cutoff against each image's real histogram before any output exists
+        (`get_review_data`). Spatial now stops at the same place, and settles one extra thing
+        while it is stopped: WHICH NULL MODEL this tissue supports. Both questions are answered
+        by the same work — segment both sections, build the certified window — so doing them on
+        one screen costs nothing and doing them on separate wizard steps cost an InstanSeg pass
+        and two extra tabs.
+
+        `precheck_bandwidth_only` already performs exactly that work and returns the
+        architecture verdict without the Monte-Carlo statistic; the full run afterwards reuses
+        the same GeoJSONs. So this wraps it, reads the measured DAB back out of those GeoJSONs
+        for the histograms, and returns both together.
+        """
+        import glob as _glob
+        import numpy as np
+        from oasis.quant import reclassify as RC
+        try:
+            pre = self.run_spatial_association(config, precheck_only=True) or {}
+        except Exception as e:
+            return {"ok": False, "msg": f"{type(e).__name__}: {e}"}
+
+        out_dir = os.path.expanduser(config.get("output_dir") or "")
+        images = []
+        for key, label_keys, thr_key, role in (
+                ("image_a", ("label_a", "stain_a"), "dab_threshold_a", "A"),
+                ("image_b", ("label_b", "stain_b"), "dab_threshold_b", "B")):
+            path = config.get(key)
+            if not path:
+                continue
+            stem = Path(os.path.expanduser(path)).stem
+            hits = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
+                                     recursive=True))
+            entry = {"role": role, "name": os.path.basename(path),
+                     "marker": next((config.get(k) for k in label_keys if config.get(k)), role),
+                     "geojson": hits[0] if hits else None,
+                     "threshold": float(config.get(thr_key) or 0.2)}
+            if hits:
+                try:
+                    vals = RC.read_dab_values(hits[0])
+                    finite = vals[np.isfinite(vals)]
+                    entry.update({
+                        "n_cells": int(finite.size),
+                        "hist": RC.histogram(vals, bins=48),
+                        "p50": round(float(np.median(finite)), 4) if finite.size else None,
+                        "p90": round(float(np.percentile(finite, 90)), 4) if finite.size else None,
+                        "max": round(float(finite.max()), 4) if finite.size else None,
+                        "positive_cells": RC.positive_count(vals, entry["threshold"]),
+                    })
+                except (OSError, ValueError) as e:
+                    entry["msg"] = str(e)
+            images.append(entry)
+
+        # The null the run WOULD use, dug out of whatever shape the pre-flight returned, so the
+        # screen can name it instead of leaving the operator to infer it from a verdict later.
+        def _dig(o, k):
+            if isinstance(o, dict):
+                if k in o:
+                    return o[k]
+                for v in o.values():
+                    r = _dig(v, k)
+                    if r is not None:
+                        return r
+            return None
+        band = {"primary_null": _dig(pre, "primary_null"),
+                "worst_status": _dig(pre, "worst_status"),
+                "reason": _dig(pre, "reason") or _dig(pre, "error")}
+        return {"ok": True, "images": images, "band": band, "precheck": pre}
+
+    def spatial_apply_review(self, config: dict) -> dict:
+        """Run the statistic with the reviewed cutoffs, reusing the segmentation just made."""
+        cfg = dict(config or {})
+        cfg["reuse_existing_geojson"] = True
+        return self.run_spatial_association(cfg)
+
     def get_spatial_association_results(self, output_dir: str) -> dict:
         """Load spatial-association results (incl. null stats + QC overlay paths)."""
         output_dir = os.path.expanduser(output_dir)

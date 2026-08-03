@@ -1458,15 +1458,9 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span class="wstep-sep">&rarr;</span>
           <button type="button" class="wstep" data-step="4" onclick="spatialWizardGoTo(4)"><span class="wstep-n">4</span> Segmentation</button>
           <span class="wstep-sep">&rarr;</span>
-          <button type="button" class="wstep" data-step="5" onclick="spatialWizardGoTo(5)"><span class="wstep-n">5</span> Quantify</button>
-          <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="6" onclick="spatialWizardGoTo(6)"><span class="wstep-n">6</span> Histogram</button>
-          <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="7" onclick="spatialWizardGoTo(7)"><span class="wstep-n">7</span> Classification</button>
-          <span class="wstep-sep">→</span>
-          <button type="button" class="wstep" data-step="8" onclick="spatialWizardGoTo(8)"><span class="wstep-n">8</span> Band check</button>
+          <button type="button" class="wstep" data-step="5" onclick="spatialWizardGoTo(5)"><span class="wstep-n">5</span> Classification</button>
           <span class="wstep-sep">&rarr;</span>
-          <button type="button" class="wstep" data-step="9" onclick="spatialWizardGoTo(9)"><span class="wstep-n">9</span> Outputs</button>
+          <button type="button" class="wstep" data-step="6" onclick="spatialWizardGoTo(6)"><span class="wstep-n">6</span> Save &amp; run</button>
         </div>
         <div class="wstep-hint" id="spatial-wizard-hint"></div>
       </div>
@@ -1686,161 +1680,143 @@ td.muted { color: var(--text3); font-size: 11px; }
           <span>Certify registration</span>
           <span class="badge gray" id="spatial-cert-badge">NOT STARTED</span>
         </div>
-        <div class="science-summary" style="margin-bottom:12px">
-          <div class="science-summary-copy"><strong>Confirm the two serial sections are aligned before any spatial claim.</strong><br>The default automatic path (LoFTR) tries to certify the whole field first, then keeps any local regions that certify. If you need to certify a region by hand, switch to <em>Advanced · manual landmarks</em> — the scientifically validated gate. Certification uses anatomical structure, never individual cells, and never lowers the bar to force a pass.</div>
-          <!-- The landmark budget belongs to the manual path only. It sat here unconditionally,
-               beside a summary whose headline is that the DEFAULT path is automatic and needs
-               no clicking, so the first thing the operator read about the recommended workflow
-               was a six-click minimum that does not apply to it. Starts hidden; the existing
-               .cert-only-landmark mechanism reveals it when the manual path is selected. -->
-          <span class="science-chip cert-only-landmark cert-hidden" title="Certification uses anatomical structures, never individual nuclei. Grayscale reduces stain-colour bias. Manual landmarks: at least 6 well-spread pairs are required; more improve coverage.">manual: 6 min · 12 preferred</span>
-        </div>
+        <!-- CERTIFY REGISTRATION — rebuilt.
+             The previous version carried ~26 controls: three "Clear" buttons, three
+             "Certify" buttons, three drawing tools, a zoom bar that pushed the images
+             below the fold, and the same guidance written three times (summary, "How to
+             certify", and again per mode). The operator's verdict was that it was unusable.
+
+             Structure now: ONE primary action that changes with the mode, the two images
+             directly under it, and a single compact display bar beneath them. Everything
+             rare sits behind one disclosure. Every element id and handler from the old
+             markup is preserved — this is a layout rebuild, not a rewrite of behaviour. -->
+        <div class="science-summary" style="margin-bottom:10px"><div class="science-summary-copy">
+          <strong>Show the two sections are aligned.</strong> A finding is only trustworthy
+          inside a certified window. Certification uses anatomical structure, never individual
+          cells, and never lowers the bar to force a pass.</div></div>
+
         <div id="spatial-cert-pair-row" class="field" style="display:none">
           <label>Pair to certify</label><select id="spatial-cert-pair" onchange="spatialCertSelectPair()"></select>
         </div>
         <button class="btn amber" id="spatial-cert-load" onclick="spatialCertLoad()">Load the pair</button>
-        <button class="btn" id="spatial-cert-colour" onclick="spatialCertToggleColour()">Show colour</button>
+
         <div id="spatial-cert-work" style="display:none;margin-top:12px">
-          <!-- Two certification modes. Landmark = the validated manual/guided landmark
-               workflow. LoFTR = the automatic path (fully-automatic region finder, draw
-               regions freehand/polygon, LoFTR correspondences, options). -->
-          <!-- LoFTR is the path; manual landmarks is the advanced escape hatch. Presented
-               as default-vs-advanced rather than two equal tabs, because they are not equal:
-               one is what you press, the other is what you fall back to. -->
-          <div class="q-group" style="border-top:0;padding-top:0;margin-bottom:4px">
-            <div class="q-glabel">How to certify</div>
-            <div class="q-gplain">Automatic finds its own correspondences and needs no clicking.
-              Use manual landmarks when the automatic path cannot certify a pair you trust —
-              it is the validated gate, and it never guesses a match for you.</div>
-            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
-              <button class="btn sm cert-mode-tab" id="cert-mode-loftr-tab" onclick="spatialCertSetMode('loftr')"
-                      title="Automatic: LoFTR finds correspondences inside the field or a region and certifies each one independently. No manual clicking.">Automatic <span class="cert-mode-sub">· default</span></button>
-              <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab" onclick="spatialCertSetMode('landmark')"
-                      title="Advanced: place anatomical correspondences by hand. The scientifically validated gate; OASIS never guesses the matching point.">Manual landmarks <span class="cert-mode-sub">· advanced</span></button>
+
+          <!-- ONE ACTION ROW. The mode picker and the primary button live together, so there
+               is exactly one thing to press and it is always in the same place. -->
+          <div class="q-group" style="border-top:0;padding-top:0">
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <div style="display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+                <button class="btn sm cert-mode-tab" id="cert-mode-loftr-tab" style="border:0;border-radius:0"
+                        onclick="spatialCertSetMode('loftr')"
+                        title="LoFTR finds its own correspondences and certifies the whole field, then any local region that stands on its own. No clicking.">Automatic</button>
+                <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab" style="border:0;border-radius:0;border-left:1px solid var(--border)"
+                        onclick="spatialCertSetMode('landmark')"
+                        title="Place anatomical correspondences by hand. The validated gate; OASIS never guesses the matching point.">Manual landmarks</button>
+              </div>
+
+              <!-- automatic -->
+              <span class="cert-only-loftr" style="display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap">
+                <button class="btn amber" id="spatial-loftr-auto" onclick="loftrAutoFind()">Certify</button>
+                <span id="spatial-loftr-count" class="badge gray">0 regions</span>
+                <label style="font-size:11px;color:var(--text2)">Region size
+                  <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:66px"> µm</label>
+              </span>
+
+              <!-- manual -->
+              <span class="cert-only-landmark" style="display:inline-flex;gap:8px;align-items:center;flex-wrap:wrap">
+                <button class="btn sm" id="spatial-cert-lm-btn" onclick="certPlaceLandmarks()"
+                        title="Click the fixed section, then the same structure on the moving section.">📍 Place landmarks</button>
+                <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
+                <button class="btn sm" onclick="spatialCertUndo()" title="Remove the last landmark pair">Undo</button>
+                <button class="btn amber" onclick="spatialCertRun()" title="Fit the transform, measure held-out error and coverage, and issue the strongest defensible certificate">Fit &amp; certify</button>
+              </span>
             </div>
+            <div class="q-gplain cert-only-loftr" style="margin-top:6px">Tries the whole field
+              first, then keeps every local region that certifies on its own. Each certified
+              region becomes its own analysis window; failures are shown in red and excluded.</div>
+            <div class="q-gplain cert-only-landmark" style="margin-top:6px">Click the fixed
+              section, then the <b>same anatomical structure</b> on the moving section. OASIS
+              never places the matching point for you, and the verdict is re-measured after
+              every pair. At least 6 well-spread pairs; 12 is better.</div>
           </div>
-          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap">
-            <button class="btn sm" id="spatial-cert-fs-btn" onclick="spatialCertToggleFullscreen()" title="Expand both serial-section images to the full application window">⛶ Fullscreen</button>
-            <button class="btn sm" onclick="lmZoomBy(1/1.4)" title="Zoom out">−</button>
-            <span id="spatial-cert-zoom-label" style="font-size:11px;color:var(--text2);min-width:44px;text-align:center">100%</span>
-            <button class="btn sm" onclick="lmZoomBy(1.4)" title="Zoom in">+</button>
-            <button class="btn sm active" id="spatial-cert-matchzoom-btn" onclick="lmToggleMatchZoom()"
-                    title="Keep both sections at the same magnification. On by default — comparing structures at different magnifications is misleading.">Match magnification</button>
-            <button class="btn sm active" id="spatial-cert-syncpan-btn" onclick="lmToggleSyncPan()"
-                    title="Both sections move together, matched through the registration transform so they show the SAME TISSUE rather than the same pixel offset. Turn off only to look at two different places at once.">Unsync panes</button>
-            <span id="spatial-cert-cursor" style="font-size:11px;color:var(--text3);margin-left:auto;font-variant-numeric:tabular-nums"></span>
-            <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both tissue images to their viewing panes">Reset zoom</button>
-            <span class="cert-only-landmark" style="font-size:11px;color:var(--text2)"><b>Click the fixed section, then the matching structure on the moving section.</b> OASIS never places the matching point for you — the verdict is re-measured after every pair.</span>
-            <span class="cert-only-loftr cert-hide-fs" style="font-size:11px;color:var(--text2)"><b>No landmarks needed.</b> Press <b>Certify</b> — the whole field is tried first, then local regions.</span>
-          </div>
+
+          <div id="spatial-cert-armed" class="cert-hidden"
+               style="margin:8px 0;padding:7px 10px;border-radius:8px;font-size:11.5px;
+                      background:rgba(217,119,6,.10);border:1px solid rgba(217,119,6,.45);
+                      color:#b45309"></div>
+
           <div class="row2 lm-pair">
-            <!-- The pane's ROLE holds in both modes; the click order only applies to manual
-                 landmarks. These read "click first" / "matching point" unconditionally, which
-                 in the default automatic mode contradicted the line directly above them
-                 ("No landmarks needed"). The instruction is now carried by .cert-only-landmark
-                 and appears with the mode it belongs to. -->
             <div><div class="section-label">Reference — fixed<span class="cert-only-landmark"> · click first</span></div>
               <div class="lm-stage" id="lm-stage-ref"><div class="lm-world" id="lm-world-ref"><img id="spatial-cert-ref"><svg id="spatial-cert-ref-ov"></svg></div></div></div>
             <div><div class="section-label">Moving<span class="cert-only-landmark"> — matching point</span></div>
               <div class="lm-stage" id="lm-stage-mov"><div class="lm-world" id="lm-world-mov"><img id="spatial-cert-mov"><svg id="spatial-cert-mov-ov"></svg></div></div></div>
           </div>
-          <!-- Certification ROI: draw the trusted registration sub-field on the fixed
-               (reference) image. Landmark proposal + certification are restricted to it,
-               and it becomes the certified analysis window (burnt into the results). -->
-          <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap;padding:8px;border:1px dashed var(--border);border-radius:8px">
-            <span class="section-label" style="margin:0">Certification ROI</span>
-            <span id="spatial-cert-roi-badge" class="badge gray">none</span>
-            <button class="btn sm" data-draw-tool="roi" data-draw-side="ref"
-                    onclick="certSetTool('roi','ref')"
-                    title="Outline the sub-field on the FIXED section where the two truly correspond. Click points and double-click to close, or hold and drag to sketch.">✎ On reference</button>
-            <button class="btn sm" data-draw-tool="roi" data-draw-side="mov"
-                    onclick="certSetTool('roi','mov')"
-                    title="Place the matching window on the MOVING section. Seeded as the same PHYSICAL area as the reference window, so you only move it — never resize it.">✎ On moving</button>
-            <button class="btn sm" onclick="spatialCertRoiClear()" title="Remove both windows and return to the full landmark-supported area">Clear</button>
-            <span style="font-size:11px;color:var(--text3)">The reference window becomes the certified analysis window. The moving one is a check that your landmarks put it on the same tissue — it never feeds the transform.</span>
-          </div>
-          <!-- LoFTR automatic certification: fully-automatic region finder + draw-your-own
-               analysis regions (polygon or freehand). Each region is certified INDEPENDENTLY
-               by a local rigid fit from LoFTR correspondences inside it (no manual landmarks),
-               and each becomes its own analysis window. Certified regions feed the per-ROI
-               pipeline fan-out in run_spatial_association. -->
-          <div class="cert-only-loftr" style="margin-top:12px">
-            <!-- ONE action, not three nested boxes. This panel used to stack a cyan
-                 "Recommended · automatic" card inside an "Analysis regions" card next to an
-                 "Or draw regions yourself" card, then a tolerance row, then two more lines of
-                 prose — nine controls and five borders for a screen whose answer is almost
-                 always "press Certify". Drawing your own regions and the matcher tolerance are
-                 real but rare, so they sit behind one disclosure. -->
-            <div class="q-group" style="border-top:0;padding-top:0">
-              <div class="q-glabel">Certify the alignment
-                <span id="spatial-loftr-count" class="badge gray" style="margin-left:6px">0 regions</span>
-              </div>
-              <div class="q-gplain">Tries the whole field first, then keeps every local region
-                that certifies on its own. Each certified region becomes its own analysis
-                window; regions that fail are shown in red and excluded.</div>
-              <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
-                <button class="btn amber" id="spatial-loftr-auto" onclick="loftrAutoFind()">Certify</button>
-                <label style="font-size:11px;color:var(--text2)">Region size
-                  <input id="spatial-loftr-regionum" type="number" placeholder="auto" min="120" step="50" style="width:70px"> µm
-                  <span style="color:var(--text3)">— blank picks the largest that works</span></label>
-              </div>
-              <div id="spatial-loftr-list" style="margin-top:10px;display:flex;flex-direction:column;gap:4px"></div>
-            </div>
 
-            <details class="output-details" id="spatial-loftr-advanced">
-              <summary>Draw regions yourself, or change the matcher</summary>
-              <div class="q-group" style="border-top:0">
-                <div class="q-gplain">One tool, two gestures: <b>click points and double-click
-                  to close</b>, or <b>hold and drag to sketch freehand</b>. Esc cancels. Each
-                  region is certified on its own — the gate is never relaxed for one you drew.</div>
-                <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
-                  <button class="btn sm" data-draw-tool="region" data-draw-side="ref"
-                          onclick="certSetTool('region','ref')">✎ Draw region</button>
-                  <button class="btn sm" onclick="loftrRoiClearAll()">Clear all</button>
-                  <button class="btn sm" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()">Certify drawn regions</button>
-                </div>
-                <div id="spatial-draw-hint" style="font-size:11px;color:var(--text2);min-height:15px;margin-bottom:8px"></div>
-                <div id="spatial-loftr-only-opts" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text2)">
-                  <label>Match tolerance
-                    <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:56px"> µm
-                    <span style="color:var(--text3)">— tighter = stricter correspondences</span></label>
-                  <label style="display:inline-flex;align-items:center;gap:5px"><input id="spatial-loftr-showcorr" type="checkbox" onchange="spatialCertRender()"> show correspondence points</label>
-                </div>
-              </div>
-            </details>
+          <!-- ONE DISPLAY BAR, under the images instead of above them, so the tissue is the
+               first thing on screen. These change what you SEE and never what is measured. -->
+          <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:8px;
+                      font-size:11px;color:var(--text2)">
+            <button class="btn sm" onclick="lmZoomBy(1/1.4)" title="Zoom out">−</button>
+            <span id="spatial-cert-zoom-label" style="min-width:40px;text-align:center">100%</span>
+            <button class="btn sm" onclick="lmZoomBy(1.4)" title="Zoom in">+</button>
+            <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both images to their panes">Fit</button>
+            <button class="btn sm" id="spatial-cert-fs-btn" onclick="spatialCertToggleFullscreen()" title="Expand both sections to the full window">⛶ Fullscreen</button>
+            <span style="width:1px;height:16px;background:var(--border);margin:0 2px"></span>
+            <button class="btn sm active" id="spatial-cert-matchzoom-btn" onclick="lmToggleMatchZoom()"
+                    title="Keep both sections at the same magnification. Comparing structures at different magnifications is misleading.">Match magnification</button>
+            <button class="btn sm active" id="spatial-cert-syncpan-btn" onclick="lmToggleSyncPan()"
+                    title="Both sections move together, matched through the registration transform so they show the SAME TISSUE rather than the same pixel offset.">Unsync panes</button>
+            <button class="btn sm" id="spatial-cert-colour" onclick="spatialCertToggleColour()"
+                    title="Show the original stain colour instead of the grayscale used for matching">Show colour</button>
+            <span id="spatial-cert-cursor" style="margin-left:auto;color:var(--text3);font-variant-numeric:tabular-nums"></span>
           </div>
-          <!-- ARMED-TOOL STATUS. This line is the fix for landmarks being unplaceable.
-               A click-built polygon deliberately keeps its tool armed so the next click adds
-               another vertex — but the ONLY indicator of that was #spatial-draw-hint, which
-               lives inside a <details> inside .cert-only-loftr and is therefore invisible in
-               landmark mode and invisible whenever the disclosure is closed. So an armed tool
-               silently swallowed every landmark click (`if (certDraw().tool) return`) with
-               nothing on screen explaining it. It is now stated in the always-visible row,
-               next to a button that disarms it. -->
-          <div id="spatial-cert-armed" class="cert-only-landmark cert-hidden"
-               style="margin-top:10px;padding:7px 10px;border-radius:8px;font-size:11.5px;
-                      background:rgba(217,119,6,.10);border:1px solid rgba(217,119,6,.45);
-                      color:#b45309"></div>
-          <div class="cert-only-landmark" style="display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap">
-            <span id="spatial-cert-count" class="badge gray">0 landmarks</span>
-            <!-- The operator's own request: an explicit way back to placing landmarks after
-                 drawing a window. It disarms whatever tool is holding the gesture; landmark
-                 clicks then work because nothing owns them any more. -->
-            <button class="btn sm" id="spatial-cert-lm-btn" onclick="certPlaceLandmarks()"
-                    title="Stop drawing and go back to placing landmark pairs. Click the fixed section, then the same structure on the moving section.">📍 Place landmarks</button>
-            <!-- Guided suggestions could be ACCEPTED by clicking a candidate spot but never
-                 rejected: spatialCertRejectGuide() existed with nothing to call it, and a
-                 toast told the operator to "reject the suggestion" with no control to do
-                 it. Both buttons stay hidden until a candidate is actually pending. -->
-            <!-- Auto-propose is a working backend path (propose_landmarks) that had no way
-                 in, and spatialCertPropose() wrote to this id — so calling it at all threw
-                 on a null button. -->
-            <button class="btn sm" onclick="spatialCertUndo()" title="Remove the most recently accepted landmark pair">Undo</button>
-            <button class="btn sm" onclick="spatialCertClear()" title="Remove all landmarks and restart guided certification for this pair">Clear</button>
-            <button class="btn amber" onclick="spatialCertRun()" title="Fit the landmark transform, calculate TRE and coverage, and issue the strongest defensible certificate">Fit transform & certify</button>
-          </div>
-          <div id="spatial-cert-propose-note" class="cert-only-landmark" style="font-size:11px;color:var(--text3);margin-top:6px"><b>Place landmarks by hand:</b> click the fixed section, then the same structure on the moving section — OASIS never guesses the match for you, and the verdict is re-measured after every pair. This manual path is the scientifically validated gate; use it when the automatic LoFTR path can't certify a pair you trust.</div>
+
+          <div id="spatial-loftr-list" style="margin-top:10px;display:flex;flex-direction:column;gap:4px"></div>
           <div id="spatial-cert-result" class="cert-result-shell" style="font-size:12px;line-height:1.55"></div>
+
+          <!-- Everything rare, behind ONE disclosure: drawing your own windows (in either
+               mode) and the matcher tolerance. -->
+          <details class="output-details" id="spatial-loftr-advanced" style="margin-top:10px">
+            <summary>Draw a window yourself, or change the matcher</summary>
+            <div class="q-group" style="border-top:0">
+              <div class="q-gplain">One tool, two gestures: <b>click points and double-click to
+                close</b>, or <b>hold and drag to sketch freehand</b>. Esc cancels.</div>
+
+              <div class="cert-only-loftr" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+                <button class="btn sm" data-draw-tool="region" data-draw-side="ref"
+                        onclick="certSetTool('region','ref')">✎ Draw region</button>
+                <button class="btn sm" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()">Certify drawn regions</button>
+                <button class="btn sm" onclick="loftrRoiClearAll()">Clear regions</button>
+                <span style="font-size:11px;color:var(--text3)">Each region is certified on its
+                  own — the gate is never relaxed for one you drew.</span>
+              </div>
+
+              <div class="cert-only-landmark" style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:6px">
+                <span class="section-label" style="margin:0">Certification ROI</span>
+                <span id="spatial-cert-roi-badge" class="badge gray">none</span>
+                <button class="btn sm" data-draw-tool="roi" data-draw-side="ref"
+                        onclick="certSetTool('roi','ref')"
+                        title="Outline the sub-field on the FIXED section where the two truly correspond.">✎ On reference</button>
+                <button class="btn sm" data-draw-tool="roi" data-draw-side="mov"
+                        onclick="certSetTool('roi','mov')"
+                        title="Place the matching window on the MOVING section. Seeded as the same physical area, so you only move it.">✎ On moving</button>
+                <button class="btn sm" onclick="spatialCertRoiClear()">Clear ROI</button>
+                <button class="btn sm" onclick="spatialCertClear()" title="Remove all landmarks">Clear landmarks</button>
+                <span style="font-size:11px;color:var(--text3)">The reference window becomes the
+                  certified analysis window; the moving one checks it lands on the same tissue.</span>
+              </div>
+
+              <div id="spatial-draw-hint" style="font-size:11px;color:var(--text2);min-height:15px;margin-bottom:8px"></div>
+              <div id="spatial-loftr-only-opts" style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;font-size:11px;color:var(--text2)">
+                <label>Match tolerance
+                  <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:56px"> µm
+                  <span style="color:var(--text3)">— tighter = stricter correspondences</span></label>
+                <label style="display:inline-flex;align-items:center;gap:5px"><input id="spatial-loftr-showcorr" type="checkbox" onchange="spatialCertRender()"> show correspondence points</label>
+              </div>
+            </div>
+          </details>
+          <div id="spatial-cert-propose-note" class="cert-hidden"></div>
         </div>
       </div>
 
@@ -1880,55 +1856,10 @@ td.muted { color: var(--text3); font-size: 11px; }
       </div>
       </div><!-- /sp-step-4 -->
 
-      <!-- STEP 5 — QUANTIFY. Segment and MEASURE, without calling anything positive yet.
-           The wizard used to jump from segmentation straight to two DAB threshold boxes, so
-           the operator typed a cutoff before ever seeing the distribution it cuts. On this
-           cohort that is the difference between ~99 % positive and a callable result
-           (research/ihc.md, TIM-3 phase 1). One measurement pass here also feeds the
-           histogram (step 6) and the band check (step 8), so InstanSeg runs once, not three
-           times, and the full run reuses the same GeoJSONs. -->
+
+
+
       <div class="wizard-step" id="sp-step-5" data-step="5">
-      <div class="card">
-        <div class="q-step-head">
-          <h2>Quantify</h2>
-          <p>Measure DAB in every segmented cell, inside the certified window. <b>Nothing is
-             called positive yet</b> — this is the measurement your cutoff will be chosen
-             against on the next step.</p>
-        </div>
-        <div class="q-group">
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button class="btn amber" id="sp-measure-btn" onclick="spatialMeasureRun()">Measure both sections</button>
-            <span id="sp-measure-status" style="font-size:12px;color:var(--text2)"></span>
-          </div>
-          <div class="q-note" style="margin-top:10px">Segmentation is cached and shared: the
-            same cells feed the histogram, the band check and the run. They are never
-            segmented twice.</div>
-          <div id="sp-measure-out" style="margin-top:12px"></div>
-        </div>
-      </div>
-      </div><!-- /sp-step-5 (quantify) -->
-
-      <!-- STEP 6 — HISTOGRAM. What was actually measured, before any cutoff is chosen. -->
-      <div class="wizard-step" id="sp-step-6" data-step="6">
-      <div class="card">
-        <div class="q-step-head">
-          <h2>Histogram</h2>
-          <p>The DAB distribution of every measured cell, per section. Look at this before
-             choosing a cutoff — the dashed line is where the current cutoff would fall, and
-             the count beside it is what it would call positive.</p>
-        </div>
-        <div class="q-group">
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button class="btn sm" onclick="spatialHistogramRefresh()">Refresh</button>
-            <span id="sp-hist-status" style="font-size:12px;color:var(--text2)"></span>
-          </div>
-          <div id="sp-hist-out" style="margin-top:12px"></div>
-        </div>
-      </div>
-      </div><!-- /sp-step-6 (histogram) -->
-
-
-      <div class="wizard-step" id="sp-step-7" data-step="7">
       <div class="card">
         <div class="q-step-head">
           <h2>Classification</h2>
@@ -1981,36 +1912,12 @@ td.muted { color: var(--text3); font-size: 11px; }
                   Cross-type analysis reports two distinct findings — <b>short-range colocalization</b> (10–20 µm) and <b>co-infiltration</b> (20–50 µm) — each as attraction or segregation on the calibrated primary null. OASIS uses the 75 µm intensity-reweighted primary when its architecture check passes; if the tissue is fine/dense it switches to the dense morphology-conditioned null, and if one marker is sparse it runs on the all-cell support null (flagged UNDERPOWERED) so segregation is still reported. This is a population-level serial-section statistic; it does not imply single-cell co-expression, which requires multiplex imaging on the same section.
                 </div>
       </div>
-      </div><!-- /sp-step-7 (classification) -->
-
-      <!-- STEP 8 — BAND CHECK. Confirm the null fits this tissue BEFORE spending the run.
-           This is the 75 µm architecture-scale pre-flight: it segments (already cached from
-           step 5), builds the certified window and reports which primary null a full run
-           would use — or fails closed. Running it here means a pair that cannot support a
-           statistic is known in seconds instead of after a full Monte-Carlo run. -->
-      <div class="wizard-step" id="sp-step-8" data-step="8">
-      <div class="card">
-        <div class="q-step-head">
-          <h2>Band check</h2>
-          <p>Does the null model fit this tissue? OASIS names the primary null a full run
-             would use — or refuses and says why. This costs seconds; the run costs minutes.</p>
-        </div>
-        <div class="q-group">
-          <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
-            <button class="btn amber" id="sp-band-btn" onclick="spatialBandCheckRun()">Check the null</button>
-            <span id="sp-band-status" style="font-size:12px;color:var(--text2)"></span>
-          </div>
-          <div id="sp-band-out" style="margin-top:12px"></div>
-          <div class="q-note" style="margin-top:10px">Measured on this cohort: every pair that
-            produced a valid statistic selected the <b>dense morphology-conditioned</b> null —
-            the 75 µm reweighted null is validated for architecture coarser than 150 µm, which
-            dense IHC tissue does not have (research/ihc.md § 18.2).</div>
-        </div>
-      </div>
-      </div><!-- /sp-step-8 (band check) -->
+      </div><!-- /sp-step-5 -->
 
 
-      <div class="wizard-step" id="sp-step-9" data-step="9">
+
+
+      <div class="wizard-step" id="sp-step-6" data-step="6">
       <div class="card">
         <div class="q-step-head">
           <h2>Save and run</h2>
@@ -2056,6 +1963,29 @@ td.muted { color: var(--text3); font-size: 11px; }
   </div>
 
   <!-- RUNNING VIEW -->
+  <!-- SPATIAL REVIEW — the same runtime stop Quant makes, with the two things a spatial
+       run needs settled before the statistic is spent: the per-marker cutoffs judged against
+       their own histograms, and the null model this tissue actually supports, named. -->
+  <div class="view" id="spatial-review">
+    <div class="scroll">
+      <div class="science-summary"><div class="science-summary-copy">
+        <strong>Cells are measured. Set the cutoffs, and check the null.</strong><br>
+        Each section carries a different marker, so each gets its own cutoff — judge it on the
+        histogram, not just the count. The null model below is the one this tissue supports;
+        it is decided from the segmented cells, not assumed. Nothing is written until you
+        continue.
+      </div></div>
+
+      <div id="sp-review-band"></div>
+      <div id="sp-review-images"></div>
+    </div>
+    <div class="wizard-nav">
+      <button type="button" class="btn" onclick="showView('spatial','config')">← Back to setup</button>
+      <span class="wstep-progress" id="sp-review-summary"></span>
+      <button type="button" class="btn amber" onclick="spReviewApply()">Continue — run the statistic</button>
+    </div>
+  </div>
+
   <div class="view" id="spatial-running">
     <div class="progress-area">
       <div class="progress-label">
@@ -4784,7 +4714,7 @@ function exportQuantCSV() {
 
 // ── Spatial guided wizard (layout only — the science is unchanged) ──────────
 let spatialWizardStep = 1;
-const SPATIAL_WIZARD_STEPS = 9;
+const SPATIAL_WIZARD_STEPS = 6;
 // The order things actually happen to an image, matching Quant, plus the one step Quant
 // does not need: two serial sections have to be SHOWN to be aligned before any distance
 // measured between them means anything.
@@ -4793,11 +4723,8 @@ const SPATIAL_WIZARD_HINTS = {
   2: 'The physical scale. Every distance in the association statistic is in microns, so nothing downstream is valid without it.',
   3: 'Show that the two sections are aligned. A finding is only trustworthy inside a certified window; uncertified pairs are flagged, never reported as findings.',
   4: 'Find the cells. InstanSeg segments both sections and takes no tuning — the only choice is whether to correct the image first. This segmentation is reused by the null check and the run.',
-  5: 'Measure DAB in every segmented cell, in the certified window. Nothing is called positive yet — this is the measurement the cutoff will be chosen against.',
-  6: 'Look at what was measured before choosing a cutoff. A DAB threshold typed without seeing its distribution is a guess.',
-  7: 'Now decide which cells are positive, per marker, against the distribution you just saw. The two sections carry different markers, so each gets its own cutoff.',
-  8: 'Confirm the null model fits this tissue BEFORE spending the run. OASIS names the null it would use — or fails closed and says why.',
-  9: 'Where the results go, and run.',
+  5: 'Decide which cells are positive, per marker. The two sections carry different markers, so each gets its own cutoff — you will see each one\'s histogram after segmentation and can change it before anything is written.',
+  6: 'Where the results go, and run. Segmentation happens first and stops for review: the histograms, the null-model check and the cutoffs are all settled there before the statistic is spent.',
 };
 function spatialWizardGoTo(n) {
   n = Math.max(1, Math.min(SPATIAL_WIZARD_STEPS, Number(n) || 1));
@@ -6087,11 +6014,20 @@ function spatialCertSetMode(mode) {
   // (.cert-only-loftr panel); 'landmark' is the manual validated gate.
   spatialCertMode = (mode === 'loftr') ? 'loftr' : 'landmark';
   const regionEngine = (spatialCertMode === 'loftr');
-  // Landmark controls stay visible in BOTH modes: placement now works in both, and hiding
-  // the count/undo/clear while clicks silently did nothing was most of why this read as
-  // "landmarks are broken".
+  // ONE MODE'S CONTROLS AT A TIME.
+  //
+  // These were force-shown together as a workaround while landmark clicks were being
+  // swallowed — the reasoning being that hiding the count and Undo made a broken thing look
+  // deliberate. The actual cause was pointer capture delivering the click to the stage
+  // instead of the image, which is fixed, so the workaround is now just clutter: both action
+  // rows and both instruction paragraphs rendered at once, which is exactly the "too many
+  // buttons doing the same work" the screen was rebuilt to remove.
+  //
+  // Placement itself is NOT gated on the mode — spatialCertHandleRefClick has no mode check,
+  // so a click still places a landmark whichever mode is showing. The mode only decides which
+  // controls are on screen.
   document.querySelectorAll('.cert-only-landmark').forEach(el =>
-    el.classList.remove('cert-hidden'));
+    el.classList.toggle('cert-hidden', regionEngine));
   document.querySelectorAll('.cert-only-loftr').forEach(el =>
     el.classList.toggle('cert-hidden', !regionEngine));
   ['landmark', 'loftr'].forEach(m => {
@@ -6100,13 +6036,14 @@ function spatialCertSetMode(mode) {
   });
   // leaving a mode cancels any in-progress drawing in the other
   const w = spatialCertWork;
+  const loadBtn = document.getElementById('spatial-cert-load');
+  if (loadBtn) loadBtn.style.display = w.ref ? 'none' : '';
   if (spatialCertMode !== 'landmark') { w.roiMode = false; }
   if (!regionEngine) { w.loftrMode = false; w.freehand = false; w.loftrDraft = []; }
   if (typeof spatialCertRoiUpdateBadge === 'function') spatialCertRoiUpdateBadge();
   loftrRoiSync();
-  // MUST come after the blanket unhide above, which would otherwise leave the armed-tool
-  // banner (#spatial-cert-armed, itself a .cert-only-landmark) permanently on screen. This
-  // re-derives its visibility, and the Place-landmarks button's active state, from the tool.
+  // After the toggles above, so the armed-tool banner's visibility comes from whether a tool
+  // is armed rather than from the mode (it is no longer a .cert-only-landmark).
   certSyncToolButtons();
 }
 
@@ -7009,185 +6946,6 @@ function spatialBuildConfig(forceMode) {
 }
 
 
-// ── STEPS 5, 6, 8: quantify → histogram → band check ────────────────────────────────
-//
-// One measurement pass backs all three. `spatial_measure_pair` runs the bandwidth
-// pre-flight, which segments both sections, writes reusable GeoJSONs and returns the
-// architecture verdict without the Monte-Carlo statistic; the histogram then reads those
-// GeoJSONs and the band check reads that verdict. InstanSeg runs once for the whole
-// sequence, and the full run reuses the same GeoJSONs again.
-let spatialMeasure = { images: [], precheck: null, at: 0 };
-
-function spatialMeasureNeedsPair() {
-  if (spatialMode !== 'single' || !spatialImage.a || !spatialImage.b) {
-    showToast('Load a single pair on step 1 first'); return true;
-  }
-  return false;
-}
-
-async function spatialMeasureRun() {
-  if (spatialMeasureNeedsPair()) return;
-  const cfg = spatialBuildConfig('single');
-  if (!cfg) return;
-  const btn = document.getElementById('sp-measure-btn');
-  const st  = document.getElementById('sp-measure-status');
-  btn.disabled = true; btn.textContent = 'Measuring…';
-  st.textContent = 'segmenting both sections (InstanSeg) — this is the slow part';
-  let r;
-  try { r = await window.pywebview.api.spatial_measure_pair(cfg); }
-  catch (e) { r = { status: 'error', error: String(e) }; }
-  btn.disabled = false; btn.textContent = 'Measure both sections';
-  if (r.status !== 'ok') {
-    st.textContent = '';
-    document.getElementById('sp-measure-out').innerHTML =
-      `<div class="info-box amber">Could not measure: ${esc(r.error || 'unknown error')}</div>`;
-    return;
-  }
-  spatialMeasure = { images: r.images || [], precheck: r.precheck || null, at: Date.now() };
-  st.textContent = 'done';
-  const rows = spatialMeasure.images.map(i => `
-    <tr><td style="padding:4px 10px 4px 0"><b>${esc(i.role)}</b> · ${esc(i.marker || '')}</td>
-        <td style="padding:4px 10px 4px 0;color:var(--text2)">${esc(i.name)}</td>
-        <td style="padding:4px 10px 4px 0">${i.n_cells == null ? '<span style="color:var(--text3)">not measured</span>'
-                                                                : '<b>' + i.n_cells.toLocaleString() + '</b> cells'}</td></tr>`).join('');
-  document.getElementById('sp-measure-out').innerHTML =
-    `<table style="font-size:12px;border-collapse:collapse">${rows}</table>`
-    + `<div style="font-size:11px;color:var(--text3);margin-top:8px">Nothing has been called
-       positive. Go to <b>Histogram</b> to see the distribution before choosing a cutoff.</div>`;
-  spatialHistogramRefresh();
-}
-
-// A histogram drawn as inline SVG — no chart library, no network, and it prints.
-function spatialHistSvg(h, thr, colour) {
-  const counts = (h && h.counts) || [], edges = (h && h.edges) || [];
-  if (!counts.length) return '<div style="color:var(--text3);font-size:12px">no cells</div>';
-  const W = 460, H = 130, pad = 26, mx = Math.max(...counts) || 1;
-  const lo = edges[0], hi = edges[edges.length - 1], span = (hi - lo) || 1;
-  const bw = (W - pad - 6) / counts.length;
-  const bars = counts.map((c, i) =>
-    `<rect x="${(pad + i * bw).toFixed(1)}" y="${(H - 18 - (c / mx) * (H - 34)).toFixed(1)}"
-           width="${Math.max(1, bw - 0.6).toFixed(1)}" height="${((c / mx) * (H - 34)).toFixed(1)}"
-           fill="${colour}" opacity=".78"/>`).join('');
-  let line = '';
-  if (thr != null && thr >= lo && thr <= hi) {
-    const x = pad + ((thr - lo) / span) * (W - pad - 6);
-    line = `<line x1="${x.toFixed(1)}" y1="6" x2="${x.toFixed(1)}" y2="${H - 18}"
-                  stroke="#dc2626" stroke-width="1.6" stroke-dasharray="4 3"/>
-            <text x="${(x + 4).toFixed(1)}" y="14" font-size="10" fill="#dc2626">cutoff ${thr}</text>`;
-  }
-  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;max-width:${W}px;height:auto">
-    <line x1="${pad}" y1="${H - 18}" x2="${W - 6}" y2="${H - 18}" stroke="var(--border)"/>
-    ${bars}${line}
-    <text x="${pad}" y="${H - 5}" font-size="10" fill="var(--text3)">${lo.toFixed(2)}</text>
-    <text x="${W - 6}" y="${H - 5}" font-size="10" fill="var(--text3)" text-anchor="end">${hi.toFixed(2)} OD</text>
-  </svg>`;
-}
-
-async function spatialHistogramRefresh() {
-  const out = document.getElementById('sp-hist-out');
-  const st  = document.getElementById('sp-hist-status');
-  if (!spatialMeasure.images.length) {
-    out.innerHTML = `<div class="info-box">Nothing measured yet — run <b>Quantify</b> on step 5 first.</div>`;
-    return;
-  }
-  const thrA = parseFloat(document.getElementById('spatial-thresh-a').value) || null;
-  const thrB = parseFloat(document.getElementById('spatial-thresh-b').value) || null;
-  st.textContent = 'reading measured cells…';
-  let r;
-  try {
-    r = await window.pywebview.api.spatial_histogram({
-      bins: 48,
-      images: spatialMeasure.images.map(i => ({
-        ...i, threshold: i.role === 'A' ? thrA : thrB })) });
-  } catch (e) { r = { status: 'error', error: String(e) }; }
-  st.textContent = '';
-  if (r.status !== 'ok') {
-    out.innerHTML = `<div class="info-box amber">${esc(r.error || 'failed')}</div>`; return;
-  }
-  out.innerHTML = (r.images || []).map(i => {
-    if (!i.ok) return `<div class="info-box amber" style="margin-bottom:10px"><b>${esc(i.role)}</b> — ${esc(i.msg)}</div>`;
-    const at = i.at_threshold;
-    const pct = at ? (at.positive_frac * 100) : null;
-    // Saturation is the failure this screen exists to make visible: a cutoff that calls
-    // nearly everything positive is not a cutoff. Measured on TIM-3, a fixed DAB>0.1 called
-    // ~99 % of cells positive because counterstain cross-talk sits at 0.23-0.47 OD.
-    const warn = (pct != null && (pct > 90 || pct < 1))
-      ? `<div class="info-box amber" style="margin-top:6px;font-size:11px">This cutoff calls
-         <b>${pct.toFixed(1)}%</b> of cells positive — check it against the distribution before
-         running. A cutoff that keeps almost everything, or almost nothing, is not separating
-         anything.</div>` : '';
-    return `<div style="margin-bottom:16px">
-      <div style="font-size:12px;margin-bottom:4px"><b>${esc(i.role)}</b> · ${esc(i.marker || '')}
-        <span style="color:var(--text3)">— ${i.n_cells.toLocaleString()} cells ·
-        median ${i.p50} · p90 ${i.p90} · max ${i.max} OD</span></div>
-      ${spatialHistSvg(i.hist, at ? at.threshold : null, i.role === 'A' ? '#0e7490' : '#7c3aed')}
-      ${at ? `<div style="font-size:12px;margin-top:2px">At cutoff <b>${at.threshold}</b>:
-              <b>${at.positive_cells.toLocaleString()}</b> positive
-              (${(at.positive_frac * 100).toFixed(1)}%)</div>` : ''}
-      ${warn}</div>`;
-  }).join('') || '<div class="info-box">No measured images.</div>';
-}
-
-async function spatialBandCheckRun() {
-  const out = document.getElementById('sp-band-out');
-  const st  = document.getElementById('sp-band-status');
-  const btn = document.getElementById('sp-band-btn');
-  let pre = spatialMeasure.precheck;
-  if (!pre) {                                   // step 5 not run: do it now
-    if (spatialMeasureNeedsPair()) return;
-    const cfg = spatialBuildConfig('single');
-    if (!cfg) return;
-    btn.disabled = true; btn.textContent = 'Checking…'; st.textContent = 'segmenting and building the certified window';
-    try { const r = await window.pywebview.api.spatial_measure_pair(cfg);
-          if (r.status === 'ok') { spatialMeasure = { images: r.images || [], precheck: r.precheck, at: Date.now() }; pre = r.precheck; } }
-    catch (e) { pre = null; }
-    btn.disabled = false; btn.textContent = 'Check the null'; st.textContent = '';
-  }
-  if (!pre) { out.innerHTML = `<div class="info-box amber">Could not run the check.</div>`; return; }
-  out.innerHTML = spatialRenderBandCheck(pre);
-}
-
-// Reads whatever shape the pre-flight returns, and says plainly when it cannot find a
-// verdict rather than rendering an empty box that looks like a pass.
-function spatialRenderBandCheck(pre) {
-  const dig = (o, k) => {
-    if (!o || typeof o !== 'object') return null;
-    if (k in o) return o[k];
-    for (const v of Object.values(o)) { const r = dig(v, k); if (r != null) return r; }
-    return null;
-  };
-  const nul    = dig(pre, 'primary_null');
-  const worst  = dig(pre, 'worst_status');
-  const reason = dig(pre, 'reason') || dig(pre, 'error');
-  if (nul == null && worst == null) {
-    return `<div class="info-box amber">The pre-flight returned no verdict for this pair —
-      usually it is not certified (step 3), since the 75 µm check is only meaningful inside a
-      certified window.${reason ? ' <br>Reported: ' + esc(String(reason)) : ''}</div>`;
-  }
-  // THE HEADLINE KEYS ON WHETHER A PRIMARY NULL EXISTS — not on the 75 µm reweighted null's
-  // own validity. Those are different questions, and conflating them printed "Fails closed —
-  // no valid primary null" directly above a row naming dense_morphology as the null the run
-  // would use. `dense_tissue_bandwidth_invalid` is the EXPECTED result on IHC: it means the
-  // 75 µm reweighted null was correctly rejected because the tissue's architecture sits
-  // inside the interaction band, and the dense morphology-conditioned null takes over. On
-  // this cohort that happened on every pair that produced a statistic (§ 18.2).
-  const ok = !!nul;
-  const rejected75 = String(worst || '').indexOf('dense_tissue') === 0;
-  return `<div class="info-box ${ok ? '' : 'amber'}">
-    <div><b>${ok ? 'Null model selected — this pair can be analysed'
-                 : 'Fails closed — no valid primary null for this pair'}</b></div>
-    <table style="font-size:12px;margin-top:6px;border-collapse:collapse">
-      <tr><td style="padding:2px 12px 2px 0;color:var(--text2);vertical-align:top">primary null a run would use</td>
-          <td><b>${esc(String(nul ?? '—'))}</b></td></tr>
-      <tr><td style="padding:2px 12px 2px 0;color:var(--text2);vertical-align:top">architecture scale</td>
-          <td>${esc(String(worst ?? '—'))}${rejected75 ? ` <span style="color:var(--text3)">— expected on
-          dense tissue: the 75 µm reweighted null is rejected and the dense
-          morphology-conditioned null is used instead. This is not a failure of the pair.</span>` : ''}</td></tr>
-      ${reason ? `<tr><td style="padding:2px 12px 2px 0;color:var(--text2);vertical-align:top">reason</td>
-          <td>${esc(String(reason))}</td></tr>` : ''}
-    </table></div>`;
-}
-
 async function spatialAssocRun() {
   const config = spatialBuildConfig();
   if (!config) return;
@@ -7224,7 +6982,150 @@ async function spatialAssocRun() {
     showToast('Pixel size is the default 0.5 µm/px — verify it is correct for your images');
   }
 
-  await window.pywebview.api.run_spatial_association(config);
+  // STOP FOR REVIEW FIRST, exactly where Quant stops.
+  //
+  // Quant runs `--stage segment`, emits `review`, and lets the operator set the cutoff
+  // against each image's real histogram before any output exists. Spatial now does the same,
+  // and settles one extra thing while it is stopped: WHICH NULL MODEL this tissue supports.
+  // Both come out of the same work (segment both sections, build the certified window), so
+  // they belong on one screen — which is why they are NOT wizard steps.
+  //
+  // Single-pair only. A batch has no single histogram to review, so it runs straight through
+  // exactly as before.
+  if (spatialMode !== 'single') {
+    await window.pywebview.api.run_spatial_association(config);
+    return;
+  }
+  setProgress('spatial', 20, 'Segmenting both sections and checking the null…');
+  appendLog('spatial-log', 'Segmenting, building the certified window, and deciding the null model…', 'info');
+  let rev;
+  try { rev = await window.pywebview.api.spatial_review_data(config); }
+  catch (e) { rev = { ok: false, msg: String(e) }; }
+  if (!rev || !rev.ok) {
+    appendLog('spatial-log', 'Could not measure the pair: ' + ((rev && rev.msg) || 'unknown'), 'error');
+    showToast('Could not measure the pair'); showView('spatial', 'config'); return;
+  }
+  spReviewShow(rev, config);
+}
+
+// ── Spatial runtime review: histograms + the null model, on one screen ───────────────
+let spReviewState = { images: [], band: null, config: null };
+
+function spReviewShow(data, config) {
+  spReviewState = { images: data.images || [], band: data.band || null, config: config };
+  spReviewRenderBand();
+  spReviewRenderImages();
+  showView('spatial', 'review');
+}
+
+// Named explicitly, because "which null" decides what the result MEANS and the operator
+// should not have to infer it from a verdict after the fact.
+function spReviewRenderBand() {
+  const b = spReviewState.band || {};
+  const el = document.getElementById('sp-review-band');
+  if (!el) return;
+  const nul = b.primary_null, worst = b.worst_status;
+  const ok = !!nul;
+  // dense_tissue_* is the EXPECTED outcome on IHC: the 75 µm reweighted null is correctly
+  // rejected because the tissue's architecture sits inside the interaction band, and the
+  // dense morphology-conditioned null takes over. Saying only "invalid" reads as a failure.
+  const rejected75 = String(worst || '').indexOf('dense_tissue') === 0;
+  const pretty = { dense_morphology: 'Dense morphology-conditioned cross-K',
+                   reweighted: '75 µm intensity-reweighted cross-K',
+                   homogeneous: 'Homogeneous CSR' }[nul] || nul;
+  el.innerHTML = `<div class="card">
+    <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+      <b style="font-size:13px">Null model</b>
+      <span class="badge ${ok ? 'cyan' : 'amber'}">${ok ? esc(String(nul)) : 'none valid'}</span>
+    </div>
+    <div style="font-size:12px;margin-top:6px">${ok
+      ? `This run will be tested against the <b>${esc(String(pretty))}</b>.`
+      : `<b>No valid primary null for this pair</b> — the statistic will not be produced.`}</div>
+    ${worst ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">Architecture scale:
+      ${esc(String(worst))}${rejected75 ? ' — expected on dense tissue: the 75 µm reweighted null is'
+      + ' rejected and the dense morphology-conditioned null is used instead. Not a failure of the pair.' : ''}</div>` : ''}
+    ${b.reason ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">${esc(String(b.reason))}</div>` : ''}
+  </div>`;
+}
+
+function spReviewRenderImages() {
+  const host = document.getElementById('sp-review-images');
+  if (!host) return;
+  host.innerHTML = (spReviewState.images || []).map((img, i) => {
+    if (!img.hist) return `<div class="card" style="margin-bottom:10px"><b>${esc(img.marker)}</b>
+      — <span style="color:var(--text3)">${esc(img.msg || 'no measured cells')}</span></div>`;
+    const pct = img.n_cells ? (img.positive_cells / img.n_cells * 100) : 0;
+    // The saturation failure this screen exists to make visible: a cutoff that keeps almost
+    // everything, or almost nothing, is not separating anything. Measured on this cohort,
+    // TIM-3 at 0.10 OD sat above every cell in one image (0 of 2,917).
+    const warn = (pct > 90 || pct < 1)
+      ? `<div class="info-box amber" style="margin-top:8px;font-size:11px">This cutoff calls
+         <b>${pct.toFixed(1)}%</b> of cells positive. A cutoff that keeps almost everything, or
+         almost nothing, is not separating anything — check it against the shape above.</div>` : '';
+    return `<div class="card" style="margin-bottom:10px">
+      <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+        <b style="font-size:13px">${esc(img.marker)}</b>
+        <span style="font-size:11px;color:var(--text3)">${esc(img.name)}</span>
+        <span style="margin-left:auto;font-size:12px;color:var(--text2)"
+              id="sp-rev-count-${i}">${img.positive_cells.toLocaleString()} / ${img.n_cells.toLocaleString()} positive (${pct.toFixed(1)}%)</span>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin:2px 0 6px">median ${img.p50} ·
+        p90 ${img.p90} · max ${img.max} OD</div>
+      <div id="sp-rev-hist-${i}">${qrHistogramSVG(img.hist, img.threshold, 480, 64)}</div>
+      <div class="field" style="margin-top:8px">
+        <label>Cutoff — <b id="sp-rev-thr-${i}">${img.threshold.toFixed(2)}</b> OD</label>
+        <input type="range" min="1" max="80" value="${Math.round(img.threshold * 100)}"
+               oninput="spReviewThr(${i}, this.value/100)">
+      </div>${warn}</div>`;
+  }).join('') || '<div class="info-box">No measured images.</div>';
+  const s = document.getElementById('sp-review-summary');
+  if (s) s.textContent = (spReviewState.images || []).map(
+    im => `${im.marker} ${Number(im.threshold).toFixed(2)}`).join('  ·  ');
+}
+
+// Re-count from the server so the number shown is the number the run will write — the
+// histogram-interpolated estimate is fine for a slider but not for the decision.
+let spReviewThrTimer = null;
+function spReviewThr(i, v) {
+  const img = spReviewState.images[i];
+  if (!img) return;
+  img.threshold = Number(v);
+  document.getElementById('sp-rev-thr-' + i).textContent = img.threshold.toFixed(2);
+  document.getElementById('sp-rev-hist-' + i).innerHTML =
+    qrHistogramSVG(img.hist, img.threshold, 480, 64);
+  clearTimeout(spReviewThrTimer);
+  spReviewThrTimer = setTimeout(async () => {
+    try {
+      const r = await window.pywebview.api.spatial_histogram(
+        { bins: 48, images: [{ geojson: img.geojson, threshold: img.threshold }] });
+      const got = (r && r.images && r.images[0]) || null;
+      if (got && got.at_threshold) {
+        img.positive_cells = got.at_threshold.positive_cells;
+        const pct = img.n_cells ? (img.positive_cells / img.n_cells * 100) : 0;
+        document.getElementById('sp-rev-count-' + i).textContent =
+          `${img.positive_cells.toLocaleString()} / ${img.n_cells.toLocaleString()} positive (${pct.toFixed(1)}%)`;
+      }
+    } catch (_) {}
+    spReviewRenderImages.summaryOnly = true;
+    const s = document.getElementById('sp-review-summary');
+    if (s) s.textContent = spReviewState.images.map(
+      im => `${im.marker} ${Number(im.threshold).toFixed(2)}`).join('  ·  ');
+  }, 250);
+}
+
+async function spReviewApply() {
+  const cfg = { ...(spReviewState.config || {}) };
+  const a = spReviewState.images.find(x => x.role === 'A');
+  const b = spReviewState.images.find(x => x.role === 'B');
+  if (a) cfg.dab_threshold_a = a.threshold;
+  if (b) cfg.dab_threshold_b = b.threshold;
+  lastSpatialRunConfig = { ...cfg };
+  showView('spatial', 'running');
+  setProgress('spatial', 60, 'Running the association statistic…');
+  appendLog('spatial-log',
+    `Cutoffs applied — ${a ? a.marker + ' ' + a.threshold.toFixed(2) : ''}`
+    + `${b ? ' / ' + b.marker + ' ' + b.threshold.toFixed(2) : ''} OD`, 'info');
+  await window.pywebview.api.spatial_apply_review(cfg);
 }
 
 // Colour + label for a per-image bandwidth verdict chip.
