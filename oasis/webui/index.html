@@ -2014,7 +2014,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
               <div id="spatial-loftr-list" style="display:none"></div>
               <div id="spatial-cert-result" class="cert-result-shell"
                    style="flex:none;padding:6px 14px;font-size:11.5px;line-height:1.45;
-                          border-top:1px solid var(--border);max-height:44px;overflow:hidden"></div>
+                          border-top:1px solid var(--border);max-height:22vh;overflow-y:auto"></div>
               <div id="spatial-cert-propose-note" class="cert-hidden"></div>
             </div>
           </div>
@@ -6304,13 +6304,16 @@ function loftrRoiRemove(i) {
 async function loftrRoiCertifyAll() {
   const w = spatialCertWork;
   if (!w.pair || !w.ref) { showToast('Load the pair first'); return; }
-  if (w.loftrMode) { showToast('Finish the current region first (Finish region)'); return; }
+  if (w.loftrMode) { showToast('Close the region you are drawing first — double-click, or press Cancel drawing'); return; }
   const todo = (w.loftrRois || []).map((r, i) => ({ i, r }))
     .filter(x => (x.r.points || []).length >= 3);
   if (!todo.length) { showToast('Draw at least one region (≥3 vertices) first'); return; }
   const px = spatialCertPixelSize();
   if (!(px > 0)) { showToast('Set a valid pixel size first'); return; }
   const btn = document.getElementById('spatial-loftr-certify');
+  // Read the resting label back rather than restating it — the sibling auto button already
+  // does this, and a hard-coded restore went stale the moment the panel was rebuilt.
+  if (btn && !btn.dataset.label) btn.dataset.label = btn.textContent;
   btn.disabled = true; btn.textContent = 'Certifying regions…';
   const prev = spatialCertifications[w.pair.sample_id];
   // Reuse a prior LANDMARK transform as the patch locator, but never a LoFTR-local one.
@@ -6326,11 +6329,11 @@ async function loftrRoiCertifyAll() {
       partition: true });   // split any overlaps: each intersection becomes its own region
   } catch (e) {
     spatialCertRunning = false;
-    btn.disabled = false; btn.textContent = 'Certify all regions';
+    btn.disabled = false; btn.textContent = btn.dataset.label || 'Certify drawn';
     showToast('LoFTR region certification failed: ' + e); return;
   }
   spatialCertRunning = false;
-  btn.disabled = false; btn.textContent = 'Certify all regions';
+  btn.disabled = false; btn.textContent = btn.dataset.label || 'Certify drawn';
   if (resp.status !== 'ok') { showToast(resp.error || 'Region certification failed'); return; }
   // Partitioning may split overlapping regions into new faces, so REBUILD the region list
   // from the response (each face carries its own verdict + is_intersection flag).
@@ -6369,8 +6372,14 @@ function loftrRoiCommitCertifications() {
     roi_certifications: certs,
   };
   if (badge) {
-    badge.textContent = certs.length > 1 ? `${certs.length} ROIs CERTIFIED` : certs[0].verdict;
-    badge.className = 'badge ' + (certs.every(c => c.verdict === 'CERTIFIED') ? 'cyan' : 'amber');
+    // `certs` is filtered on is_certified, which INCLUDES RADIUS_LIMITED — so "3 ROIs
+    // CERTIFIED" could describe two certified regions and one that surrendered the contact
+    // scale. Say how many of each when they differ.
+    const full = certs.filter(c => /^(CERTIFIED|LOCALLY_CERTIFIED)$/.test(c.verdict || '')).length;
+    badge.textContent = certs.length === 1 ? certs[0].verdict
+      : (full === certs.length ? `${certs.length} REGIONS CERTIFIED`
+                               : `${full} CERTIFIED · ${certs.length - full} RADIUS-LIMITED`);
+    badge.className = 'badge ' + (full === certs.length ? 'cyan' : 'amber');
   }
   document.getElementById('spatial-cert-result').innerHTML =
     `<div class="science-summary"><div class="science-summary-copy"><strong>`
@@ -7448,7 +7457,7 @@ function spatialCertMovPixelSize() {
     if (matched > 0) return Number(matched);
     if (spatialBatchScale.px > 0) return Number(spatialBatchScale.px);
   }
-  const ov = spatialOverride.b;
+  const ov = spatialMode === 'single' ? spatialOverride.b : null;   // see spatialCertPixelSize
   if (ov?.mode === 'scale' && ov.scalePx) return ov.scalePx;
   if (ov?.mode === 'manual') {
     const v = parseFloat(document.getElementById('spatial-ov-px-b').value);
@@ -7466,7 +7475,7 @@ function spatialCertPixelSize() {
     if (matched > 0) return Number(matched);
     if (spatialBatchScale.px > 0) return Number(spatialBatchScale.px);
   }
-  const ov = spatialOverride.a;
+  const ov = spatialMode === 'single' ? spatialOverride.a : null;
   if (ov?.mode === 'scale' && ov.scalePx) return ov.scalePx;
   if (ov?.mode === 'manual') { const v=parseFloat(document.getElementById('spatial-ov-px-a').value); if(v>0)return v; }
   return spatialSessionPxMode === 'scale' ? spatialSessionScale.px : (parseFloat(document.getElementById('spatial-session-px-val').value)||0.5);
@@ -7595,7 +7604,7 @@ async function spatialCertTryAutoCertify(source, userRequested, opts = {}) {
   const w = spatialCertWork;
   if (!w.pair) return false;
   if (w.roiMode) {
-    if (userRequested) showToast('Finish the certification ROI first (Finish ROI)');
+    if (userRequested) showToast('Close the window you are drawing first — double-click, or press Cancel drawing');
     return false;
   }
   if (w.refPoints.length < spatialCertGates.min_n) {
@@ -8494,9 +8503,12 @@ function spatialAssocShowResults(data) {
           ${qcBanner}${certBanner}${bwBanner}
           <div style="margin:4px 0 10px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.55;
                border:1px solid #d97706;background:#fffbeb;color:#92400e">
-            <strong>⚠ No statistic was produced for this pair.</strong> OASIS failed closed:
-            this tissue supports no primary null it could test against, so nothing was
-            computed. <b>This is not "no association"</b> — it is the absence of a test.
+            <strong>⚠ No statistic was produced for this pair.</strong> ${a.error === 'blocked_uncertified'
+              ? `The registration between these two sections was never certified, so nothing was
+                 computed. Certify it on step 3 and run again.`
+              : `OASIS failed closed: this tissue supports no comparison model it could test
+                 against, so nothing was computed.`}
+            <b>This is not "no association"</b> — it is the absence of a test.
             ${why ? '<div style="margin-top:6px">' + esc(String(why)) + '</div>' : ''}
             ${gates}
           </div>

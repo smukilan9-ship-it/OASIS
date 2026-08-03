@@ -2557,10 +2557,60 @@ class API:
         return {"ok": True, "images": images, "band": band, "precheck": pre}
 
     def spatial_apply_review(self, config: dict) -> dict:
-        """Run the statistic with the reviewed cutoffs, reusing the segmentation just made."""
+        """Run the statistic with the reviewed cutoffs, reusing the segmentation just made.
+
+        THE CUTOFF HAS TO BE WRITTEN INTO THE CELLS, NOT JUST INTO THE CONFIG.
+
+        Reusing the segmentation is the whole point of the review stop — it is why the
+        screen can appear seconds after the pre-flight instead of segmenting twice. But
+        `reuse_existing_geojson` makes run_pipeline skip segmentation and return the summary
+        it already has, and the DAB cutoff is only ever applied INSIDE segmentation. The
+        statistic then reads the classifications baked into the GeoJSON
+        (`if cls != "Positive": continue`), which were written at the pre-flight's cutoff.
+
+        So the slider, the live re-count and the "cutoffs applied" log line all described a
+        number the run ignored. Quant's equivalent path has always rewritten the GeoJSON
+        first (`reclassify.apply_threshold`); this now does the same, per marker, and
+        reports how many cells each cutoff actually called.
+        """
+        import glob as _glob
+        from oasis.quant import reclassify as RC
         cfg = dict(config or {})
         cfg["reuse_existing_geojson"] = True
-        return self.run_spatial_association(cfg)
+
+        out_dir = os.path.expanduser(cfg.get("output_dir") or "")
+        applied = []
+        for key, thr_key in (("image_a", "dab_threshold_a"), ("image_b", "dab_threshold_b")):
+            path = cfg.get(key)
+            if not path:
+                continue
+            thr = cfg.get(thr_key)
+            if thr is None:
+                continue
+            stem = Path(os.path.expanduser(path)).stem
+            gj = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
+                                   recursive=True))
+            sm = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_summary.json"),
+                                   recursive=True))
+            if not gj:
+                # Nothing to rewrite: the run will segment from scratch and apply the cutoff
+                # the ordinary way, which is correct — just slower.
+                continue
+            try:
+                res = RC.apply_threshold(gj[0], (sm[0] if sm else None), float(thr),
+                                         cohort_threshold=float(thr),
+                                         output_dir=os.path.dirname(gj[0]), img_stem=stem)
+                applied.append({"image": os.path.basename(path), "threshold": float(thr),
+                                **(res or {})})
+            except (OSError, ValueError, KeyError, TypeError) as e:
+                # Fail loudly rather than analysing at the wrong cutoff.
+                return {"status": "error",
+                        "error": f"Could not apply the reviewed cutoff to "
+                                 f"{os.path.basename(path)}: {e}"}
+        out = self.run_spatial_association(cfg)
+        if isinstance(out, dict):
+            out["reviewed_cutoffs_applied"] = applied
+        return out
 
     def get_spatial_association_results(self, output_dir: str) -> dict:
         """Load spatial-association results (incl. null stats + QC overlay paths)."""
