@@ -2419,7 +2419,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <div class="q-gplain">Named in the saved classifier, and matched against the marker
           chosen in Quant.</div>
         <div class="q-inline">
-          <input id="cls-marker" placeholder="e.g. CD8" style="width:220px">
+          <input id="cls-marker" placeholder="e.g. CD8" style="width:220px"
+                 oninput="if (cls.fit) clsClearFit();">
           <select id="cls-kind" style="flex:1;min-width:280px;max-width:420px" onchange="clsKindNote()">
             <option value="nuclear">Nuclear — DAB inside the nucleus</option>
             <option value="membrane">Membranous — DAB in the cytoplasmic ring</option>
@@ -2430,9 +2431,11 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
       <div class="q-group">
         <div class="q-glabel">Pixel size <span style="font-weight:400;color:var(--text3)">— µm per pixel</span></div>
-        <div class="q-gplain">Used for every slide below unless one carries its own. The ring
-          width of a membranous marker is measured in microns, so this changes what gets
-          measured, not just what gets reported.</div>
+        <div class="q-gplain">Applied to each slide <b>as it is added</b> — the value is
+          recorded per slide, so changing it here affects the next one you add, not the ones
+          already in the list (each row shows its own). The ring width of a membranous marker
+          is measured in microns, so this changes what gets measured, not just what gets
+          reported. It starts from the cohort pixel size in Settings.</div>
         <input type="number" id="cls-px" value="0.5" step="0.01" min="0.01" style="width:140px">
       </div>
 
@@ -3202,6 +3205,10 @@ async function loadSetup() {
   if (gv) gv.textContent = quantGlobalPx;
   const spx = document.getElementById('spatial-session-px-val');
   if (spx) spx.value = s.pixel_size_x || 0.5;
+  // The Classifier tab's default was a hardcoded 0.5 that nothing ever seeded, so a
+  // 0.25 µm/px cohort trained its membranous rings at double width, silently.
+  const cpx = document.getElementById('cls-px');
+  if (cpx && s.pixel_size_x > 0) cpx.value = s.pixel_size_x;
 
   const home = s._home || '~';
   // Results go where the backend says (~/Documents/OASIS/results, or the platform
@@ -3315,6 +3322,8 @@ function clsAddImagePath(path) {
 }
 function clsRemoveImage(i) { cls.images.splice(i, 1); clsRenderImageList(); }
 function clsRenderImageList() {
+  // Adding or removing a slide changes what any fit was fitted to.
+  if (typeof clsClearFit === 'function' && cls.fit) clsClearFit();
   const n = cls.images.length;
   document.getElementById('cls-image-list').innerHTML = !n ? '' : cls.images.map((im, i) =>
     `<div class="q-fbrow">
@@ -3338,6 +3347,8 @@ async function clsSegment() {
   }
   cls.marker = marker;
   cls.kind = document.getElementById('cls-kind').value;
+  // Whatever is on screen was fitted to different cells. See clsClearFit.
+  clsClearFit();
 
   // Hand the shared labelling canvas this cohort, and tell it what Fit means here.
   calib.mode = 'classifier';
@@ -3448,8 +3459,27 @@ function clsRenderResults(r) {
     </div>`;
 }
 
+// Any change that invalidates the fit must take the result card with it. Otherwise:
+// fit CD8, change the marker to TIM-3, segment new slides, Cancel — and the CD8 card is
+// still on screen with a live Save button that would save the CD8 model.
+function clsClearFit() {
+  cls.fit = null;
+  const host = document.getElementById('cls-results');
+  if (host) host.innerHTML = '';
+}
+
 async function clsSave() {
   if (!cls.fit) return;
+  // save_classifier drops any existing entry with the same name, and this tab never lists
+  // them — so a second CD8 classifier replaced the first with no way to have known.
+  let existing = [];
+  try { existing = (await window.pywebview.api.list_classifiers()) || []; } catch (e) {}
+  const clash = (existing.classifiers || existing || []).some(c => c && c.name === cls.marker);
+  if (clash && !confirm(
+        `A classifier named "${cls.marker}" already exists.\n\n`
+        + `Saving replaces it. Any run that used the old one cannot be reproduced afterwards.`)) {
+    return;
+  }
   const r = await window.pywebview.api.save_classifier(
     cls.marker, cls.marker, cls.fit.model, cls.fit.report);
   if (!(r && r.ok)) { showToast('Save failed'); return; }
@@ -3570,7 +3600,20 @@ function calibZoom(f){ f=calibClampF(f); const st=document.getElementById('calib
   document.getElementById('calib-ov').addEventListener('contextmenu', _guard, true);
 })();
 function calibRelabel(){ calibShow('label'); calibBuild(); }
-function calibBack(){ calibShow('config'); }   // the Classifier tab owns its own slide list
+function calibBack() {
+  // Labels live only in memory (calib.state), re-entering re-segments from scratch, and
+  // this button sits beside "Fit →" in identical styling. Confirm before discarding, and
+  // offer the way back in — calibRelabel() existed and was reachable from nowhere.
+  const labelled = (calib.state || []).filter(v => v).length;
+  if (labelled && !confirm(
+        `Discard ${labelled} labelled cell${labelled === 1 ? '' : 's'}?\n\n`
+        + `Labels are not saved anywhere. Coming back means segmenting these slides again.`)) {
+    return;
+  }
+  calibShow('config');
+}
+// The way back in, now that something calls it.
+function calibResume() { calibShow('label'); calibBuild(); }
 
 // ── QUANTIFICATION ────────────────────────────────────────
 

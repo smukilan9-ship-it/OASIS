@@ -627,7 +627,14 @@ class API:
             qpath = os.path.expanduser(setup.get("qupath_binary", ""))
             checks.append({"name": "QuPath", "ok": bool(qpath and os.path.exists(qpath)),
                            "path": qpath})
-        checks.append({"name": "InstanSeg model", "ok": bool(model and os.path.exists(model)), "path": model})
+        # BLANK MEANS "USE THE BUNDLED MODEL" — the Settings label says so, and the worker
+        # already honours it ("only fall back when the key is absent or empty"). This gate
+        # did not: clearing the field, exactly as the label invites, made every Quant run
+        # abort on a pre-flight failure, permanently, with the only feedback a 2 s toast on
+        # a different tab. The UI gate was stricter than the engine it guards.
+        model_ok = os.path.exists(model) if model else os.path.exists(default_model_dir())
+        checks.append({"name": "InstanSeg model", "ok": bool(model_ok),
+                       "path": model or f"{default_model_dir()} (bundled)"})
         required = ["numpy", "cv2", "PIL", "yaml"]
         if native:
             required += ["torch"]
