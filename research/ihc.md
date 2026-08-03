@@ -3011,3 +3011,26 @@ pair is certifiable, segmentable, and untestable, and all three are now visible.
 The 6-step wizard, the runtime review and the results screen are verified by driving the app on
 real pairs. Not yet done: re-running the 75-pair cohort under the corrected flow, and §18.6
 items 1–2 (whether `Kinhom` ever decides a verdict; window size under the holed A∩B window).
+
+### 21.5 Three more, found by clicking rather than reading
+
+**A stale certificate survived its own images.** `spatialAssocImageTyped` has three rejection
+paths — cleared field, path that does not exist, scale-bar image chosen by mistake — and each
+cleared `spatialImage[side]` and disabled Run without touching the certification. Only the
+success path called `spatialCertResetView()`. Typing a nonexistent path therefore left step 3
+showing **CERTIFIED**, the region count and the certified overlay for a pair one of whose
+images was gone. The run was correctly blocked; the screen said the opposite. A certificate
+belongs to a specific pair of images, so every path that invalidates one now drops it.
+
+**The Certify button relabelled itself after every run.** `loftrAutoFind` restored a
+hard-coded `'✦ Certify (auto: whole field → regions)'`, which went stale the moment the panel
+was rebuilt — so a finished run replaced "Certify" with a sentence the panel above it already
+explains in prose. It now reads its resting label back from the DOM.
+
+**Esc could not be confirmed to reach the page.** The UI advertises Esc as the way out of an
+armed drawing tool, in three places. Driving the app, a synthetic Escape cancelled neither an
+armed tool nor fullscreen — and a synthetic key event may simply not be delivered the way a
+physical one is, so this is *not* a proof that the handler is broken. Either way an armed tool
+owns every click, and depending on one keystroke for the only exit is the trap the armed
+banner exists to prevent. The banner now carries a **Cancel drawing** button; Esc is still
+wired and still mentioned. Fullscreen already had its own on-screen exit in the floating bar.

@@ -5186,11 +5186,23 @@ async function spatialAssocPickImage(side) {
 // Quant accepts a pasted path; Spatial's image boxes were readonly, so a path on the
 // clipboard could only be used by walking a native file dialog to it. Same destination,
 // so route both through here rather than duplicating the scale-image guard.
+// A CERTIFICATE BELONGS TO A SPECIFIC PAIR OF IMAGES. Any change that invalidates a
+// selected image therefore invalidates it — including the rejection paths (cleared field,
+// path that does not exist, scale-bar image chosen by mistake). Those three used to clear
+// spatialImage[side] and disable Run without touching the certification, so step 3 went on
+// showing CERTIFIED, the region count and the overlay for a pair one of whose images was
+// gone. The run was correctly blocked; the screen said the opposite.
+function spatialCertDropForImageChange() {
+  spatialCertifications = {};
+  spatialCertResetView();
+}
+
 async function spatialAssocImageTyped(side, value) {
   const errEl = document.getElementById('spatial-image-err-' + side);
   const p = (value || '').trim().replace(/^file:\/\//, '');
   if (!p) {
     spatialImage[side] = '';
+    spatialCertDropForImageChange();
     if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
     spatialAssocUpdateRunBtn();
     return;
@@ -5201,6 +5213,7 @@ async function spatialAssocImageTyped(side, value) {
   try { chk = await window.pywebview.api.check_image_path(p); } catch (e) {}
   if (!chk.ok) {
     spatialImage[side] = '';
+    spatialCertDropForImageChange();
     if (errEl) {
       errEl.textContent = chk.msg || 'That path could not be used.';
       errEl.style.display = 'block';
@@ -5217,6 +5230,7 @@ function spatialAssocSetImage(side, p) {
   if (spatialAssocIsScaled(p)) {
     // Scaled calibration image — reject as an analysis image
     spatialImage[side] = '';
+    spatialCertDropForImageChange();
     document.getElementById('spatial-image-' + side).value = '';
     if (errEl) {
       errEl.textContent = "This appears to be a scaled calibration image. Please select the unscaled analysis image instead. Use 'Override pixel size' to use this image for calibration.";
@@ -5665,11 +5679,16 @@ function certSyncToolButtons() {
     armed.classList.toggle('cert-hidden', !on);
     if (on) {
       const what = d.tool === 'region' ? 'analysis region' : 'certification window';
+      // A BUTTON, not only a key. Esc is advertised here and in both panels, but a keypress
+      // could not be confirmed to reach the page from the app's own window while driving it,
+      // and an armed tool that owns every click with no visible way out is the exact trap
+      // this banner exists to prevent. The button always works.
       armed.innerHTML =
         `<b>Drawing the ${what} on the ${d.side === 'mov' ? 'moving' : 'reference'} section`
         + (d.pts.length ? ` — ${d.pts.length} point${d.pts.length === 1 ? '' : 's'} placed` : '')
-        + `.</b> Landmark clicks are paused while a tool is active. Double-click to close the `
-        + `shape, press Esc, or use <b>📍 Place landmarks</b> below.`;
+        + `.</b> Double-click to close the shape, or `
+        + `<button class="btn sm" style="vertical-align:baseline;margin:0 2px"`
+        + ` onclick="certCancelDraw()">Cancel drawing</button> (Esc also works).`;
     }
   }
   const lmBtn = document.getElementById('spatial-cert-lm-btn');
