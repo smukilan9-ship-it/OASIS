@@ -1544,6 +1544,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       </div>
       <div class="progress-track"><div class="progress-fill" id="quant-progress-fill"></div></div>
     </div>
+    <div id="quant-fail" class="info-box" style="display:none;margin:0 22px 12px;
+         border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
     <button class="btn sm" style="margin:0 22px 10px" onclick="toggleTechnicalLog('quant-tech-log',this)">Show activity log</button>
     <div class="terminal-wrap" id="quant-tech-log" style="display:none">
       <div class="terminal-header">
@@ -1551,8 +1553,6 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <span class="terminal-title">SYSTEM LOG</span>
         <button class="btn sm" style="margin-left:auto" onclick="copyLog('quant-log')">Copy</button>
       </div>
-      <div id="quant-fail" class="info-box" style="display:none;margin-bottom:10px;
-           border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
       <div class="terminal-body" id="quant-log"></div>
     </div>
   </div>
@@ -2243,6 +2243,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       </div>
       <div class="progress-track"><div class="progress-fill amber" id="spatial-progress-fill"></div></div>
     </div>
+    <div id="spatial-fail" class="info-box" style="display:none;margin:0 22px 12px;
+         border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
     <button class="btn sm" style="margin:0 22px 10px" onclick="toggleTechnicalLog('spatial-tech-log',this)">Show activity log</button>
     <div class="terminal-wrap" id="spatial-tech-log" style="display:none">
       <div class="terminal-header">
@@ -2250,8 +2252,6 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <span class="terminal-title">SPATIAL ASSOCIATION LOG</span>
         <button class="btn sm" style="margin-left:auto" onclick="copyLog('spatial-log')">Copy</button>
       </div>
-      <div id="spatial-fail" class="info-box" style="display:none;margin-bottom:10px;
-           border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
       <div class="terminal-body" id="spatial-log"></div>
     </div>
   </div>
@@ -2571,6 +2571,12 @@ let quantGlobalPx = 0.5;   // global default µm/px from Settings; used only if 
 let quantScaleImage = { path: '', px: null };
 let quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
 let activeMode     = 'quant';
+// WHICH TAB OWNS THE PIPELINE RIGHT NOW — separate from activeMode, which is only "which
+// tab am I looking at". They were the same variable, so navigating to the other tab and
+// pressing Run reassigned the event router mid-flight and the first run's completion was
+// handed to the second tab's renderer with the first tab's payload. Set when a run starts,
+// released on finish, failure or stop.
+let pipelineRunning = null;
 let resultsData    = { quant: null, spatial: null };
 let lastQuantRunConfig = null;
 let lastSpatialRunConfig = null;
@@ -2719,11 +2725,6 @@ function spatialToggleMembrane() {
   const on = isOn('spatial-membrane-toggle');
   document.getElementById('spatial-membrane-opts').style.display = on ? 'block' : 'none';
   if (on) { loadMembraneClassifiers('spatial-cls-a'); loadMembraneClassifiers('spatial-cls-b'); }
-}
-function setToggle(id, on) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  if (on) el.classList.add('on'); else el.classList.remove('on');
 }
 function toggleTechnicalLog(id, btn) {
   const el = document.getElementById(id), open = el.style.display === 'none';
@@ -3285,6 +3286,10 @@ async function saveSetup() {
     quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
     spatialSessionScale = { path: '', px: null };
     spatialBatchScale = { px: null, count: 0, map: {} };
+    // Clearing the state without clearing what it printed leaves "Detected 0.42 µm/px"
+    // on screen for a measurement that no longer exists, and the run then refuses.
+    const sres = document.getElementById('q-px-scale-result'); if (sres) sres.textContent = '';
+    if (typeof renderQuantScaleMatches === 'function') renderQuantScaleMatches();
     showToast('Scale-bar length changed — every pixel size measured from a bar must be re-measured');
   }
   quantGlobalPx = data.pixel_size_x || quantGlobalPx;
@@ -3522,9 +3527,12 @@ async function clsSave() {
   if (!cls.fit) return;
   // save_classifier drops any existing entry with the same name, and this tab never lists
   // them — so a second CD8 classifier replaced the first with no way to have known.
-  let existing = [];
-  try { existing = (await window.pywebview.api.list_classifiers()) || []; } catch (e) {}
-  const clash = (existing.classifiers || existing || []).some(c => c && c.name === cls.marker);
+  let saved = null;
+  try {
+    const r = await window.pywebview.api.list_classifiers();
+    saved = Array.isArray(r) ? r : ((r && r.saved) || []);
+  } catch (e) { saved = null; }
+  const clash = Array.isArray(saved) && saved.some(c => c && c.name === cls.marker);
   if (clash && !confirm(
         `A classifier named "${cls.marker}" already exists.\n\n`
         + `Saving replaces it. Any run that used the old one cannot be reproduced afterwards.`)) {
@@ -4166,7 +4174,15 @@ async function runQuantAnalysis() {
                         .filter(Boolean)
                         .filter(n => !/scale/i.test(n.replace(/\.[^.]+$/, '')));
       if (base.length) image_whitelist = base;
-    } catch (e) { /* leave null: the pre-existing behaviour, never worse than it was */ }
+    } catch (e) { /* fall through to the guard below */ }
+    if (!image_whitelist) {
+      // Without a whitelist the results step globs every summary in the output folder, so a
+      // shared folder pools a previous run's images into this run's table and CSV. Refuse
+      // rather than report a mixture.
+      quantWizardGoTo(1);
+      showToast('Could not list the images in that folder — check the path before running.');
+      return;
+    }
   }
 
   let matchedScaleOverrides = {};
@@ -4319,6 +4335,7 @@ async function runQuantAnalysis() {
 
   const preflight = await window.pywebview.api.preflight_check('quant');
   if (!preflight.ok) {
+    pipelineRunning = null;                 // never hold the lock on a run that did not start
     const failed = preflight.checks.filter(x => !x.ok).map(x => x.name).join(', ');
     showToast('Preflight failed: ' + failed + '. Check Settings.'); return;
   }
@@ -4992,13 +5009,6 @@ async function qrApply() {
     showView('quant', 'review');
   }
 }
-
-// WHICH TAB OWNS THE PIPELINE RIGHT NOW. `activeMode` was the router AND the "which tab
-// am I looking at" flag, so navigating to the other tab and pressing Run reassigned it
-// mid-flight: the first run's completion event was then handed to the second tab's results
-// renderer, with the first tab's payload. This is set when a run starts and cleared when it
-// ends, and it is the only thing the event router reads.
-let pipelineRunning = null;
 
 // A failed run needs a way out, and a reason that is visible without opening a log.
 function showRunFailure(mode, msg) {
@@ -7950,6 +7960,7 @@ async function spatialAssocRun() {
 
   const preflight = await window.pywebview.api.preflight_check('spatial');
   if (!preflight.ok) {
+    pipelineRunning = null;                 // see runQuantAnalysis
     const failed = preflight.checks.filter(x => !x.ok).map(x => x.name).join(', ');
     showToast('Preflight failed: ' + failed + '. Check Settings.'); return;
   }
@@ -8049,10 +8060,20 @@ function spReviewRenderBand() {
        : `<b>No valid primary null for this pair — the statistic will not be produced.</b>
           OASIS fails closed here rather than testing against a null this tissue does not support.`);
   const g = b.dense || {};
+  // These are backend field names. The results view already translates them; this screen
+  // was written before that pass and printed "min_support, n_positive_a" verbatim.
+  const GATE_WORDS = {
+    landmark_certified: 'the pair is certified', analysis_window: 'an analysis window exists',
+    support_csv: 'all-cell positions are available',
+    min_positive_a: 'enough positive cells of the first marker',
+    min_positive_b: 'enough positive cells of the second marker',
+    min_support: 'enough cells in the window to build the comparison model',
+  };
   const gateLine = (!ok && (g.failed_gates || []).length)
-    ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">Support-null gates that
-        failed: <b>${esc((g.failed_gates || []).join(', '))}</b> — positives A ${g.n_positive_a},
-        B ${g.n_positive_b} (need ${g.min_positive_required}); support cells ${g.n_support}
+    ? `<div style="font-size:11px;color:var(--text3);margin-top:4px">Checks that failed:
+        <b>${esc((g.failed_gates || []).map(k => GATE_WORDS[k] || k).join('; '))}</b> —
+        positive cells: ${g.n_positive_a} and ${g.n_positive_b} (need
+        ${g.min_positive_required}); cells available to build the model: ${g.n_support}
         (need ${g.min_support_required}).</div>` : '';
   el.innerHTML = `<div class="card">
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -8063,8 +8084,9 @@ function spReviewRenderBand() {
     <div style="font-size:12px;margin-top:6px">${head}</div>
     ${b.plan_reason ? `<div style="font-size:11px;color:var(--text2);margin-top:6px">${esc(String(b.plan_reason))}</div>` : ''}
     ${gateLine}
-    ${worst ? `<div style="font-size:11px;color:var(--text3);margin-top:6px"><b>Architecture scale:</b>
-      ${esc(String(worst))}${rejected75 ? ' — expected on dense tissue: the 75 µm reweighted null is'
+    ${worst ? `<div style="font-size:11px;color:var(--text3);margin-top:6px"><b>Tissue structure:</b>
+      ${esc(typeof spatialBandwidthStatusLabel === 'function'
+            ? spatialBandwidthStatusLabel(worst) : String(worst))}${rejected75 ? ' — expected on dense tissue: the 75 µm reweighted null is'
       + ' rejected and the dense morphology-conditioned null is used instead. Not a failure of the pair.' : ''}
       ${b.architecture_reason ? '<br>' + esc(String(b.architecture_reason)) : ''}</div>` : ''}
     ${b.error ? `<div style="font-size:11px;color:#b91c1c;margin-top:4px">${esc(String(b.error))}</div>` : ''}
@@ -8155,7 +8177,17 @@ async function spReviewApply() {
   appendLog('spatial-log',
     `Cutoffs applied — ${a ? a.marker + ' ' + a.threshold.toFixed(2) : ''}`
     + `${b ? ' / ' + b.marker + ' ' + b.threshold.toFixed(2) : ''} OD`, 'info');
-  await window.pywebview.api.spatial_apply_review(cfg);
+  const applied = await window.pywebview.api.spatial_apply_review(cfg);
+  // It returns {status:'error'} instead of launching when the reviewed cutoff cannot be
+  // written into the cells. Discarding that left the progress bar spinning with no 'done'
+  // event ever arriving.
+  if (applied && applied.status === 'error') {
+    pipelineRunning = null;
+    setProgress('spatial', 100, 'Failed');
+    appendLog('spatial-log', applied.error || 'Could not apply the reviewed cutoff', 'error');
+    showRunFailure('spatial', applied.error);
+    return;
+  }
 }
 
 // Colour + label for a per-image bandwidth verdict chip.

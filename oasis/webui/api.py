@@ -901,8 +901,15 @@ class API:
             return {"ok": False, "msg": "No segmented run to review"}
 
         cohort = float(cfg.get("dab_threshold", 0.2))
+        # Only this run's images. Without this the review listed every summary left in a
+        # shared output folder, and apply_review rewrote those files too.
+        wl = {os.path.splitext(str(w))[0] for w in (cfg.get("image_whitelist") or [])}
         images = []
         for summary_path in sorted(Path(output_dir).glob("*_summary.json")):
+            if wl:
+                stem = summary_path.stem.replace("_summary", "")
+                if not any(stem.startswith(w) for w in wl):
+                    continue
             try:
                 summary = json.loads(summary_path.read_text()) or {}
             except (OSError, ValueError):
