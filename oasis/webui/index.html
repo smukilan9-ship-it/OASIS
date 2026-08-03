@@ -1549,6 +1549,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <span class="terminal-title">SYSTEM LOG</span>
         <button class="btn sm" style="margin-left:auto" onclick="copyLog('quant-log')">Copy</button>
       </div>
+      <div id="quant-fail" class="info-box" style="display:none;margin-bottom:10px;
+           border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
       <div class="terminal-body" id="quant-log"></div>
     </div>
   </div>
@@ -2082,7 +2084,9 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <div class="q-group">
           <div style="margin-top:8px">
                     <div class="toggle-row"><span>Enable image registration</span>
-                      <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle')"></div></div>
+                      <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle'); spatialRegistrationChanged()"></div></div>
+                    <div id="spatial-reg-warn" class="info-box" style="display:none;margin-top:8px;
+                         border-color:var(--warn-line);background:var(--warn-weak);color:var(--warn)"></div>
                     <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Certification on step 3 is still the required quality gate for serial-section claims, by either path.</div>
                   </div>
         </div>
@@ -2244,6 +2248,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <span class="terminal-title">SPATIAL ASSOCIATION LOG</span>
         <button class="btn sm" style="margin-left:auto" onclick="copyLog('spatial-log')">Copy</button>
       </div>
+      <div id="spatial-fail" class="info-box" style="display:none;margin-bottom:10px;
+           border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
       <div class="terminal-body" id="spatial-log"></div>
     </div>
   </div>
@@ -2311,15 +2317,20 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card-title">Cohort pixel size</div>
       <div class="info-box amber" style="margin-bottom:12px">
         The µm/px for a cohort acquired on <b>one scope at one magnification</b>. Set it
-        once here and every run can take it without retyping. It is the weakest of the
-        three sources and is used only when nothing better is available.
+        once here and every run can take it without retyping. It is the weakest of the four
+        sources below, and a run only uses it when you pick it on that run's pixel-size
+        step — it is never applied on its own.
       </div>
       <div class="row3">
         <div class="field"><label>Pixel size X (µm/px)</label>
           <input type="number" id="s-px-x" value="0.50" step="0.01" min="0.01">
         </div>
-        <div class="field"><label>Pixel size Y (µm/px)</label>
+        <div class="field"><label>Pixel size Y (µm/px)
+            <span style="color:var(--text3);font-weight:400">— recorded only</span></label>
           <input type="number" id="s-px-y" value="0.50" step="0.01" min="0.01">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Every area and
+            density in OASIS is computed from X. Y is stored with the run for the record;
+            anisotropic pixels are not currently corrected for.</div>
         </div>
         <div class="field"><label>Objective this was measured at</label>
           <select id="s-objective">
@@ -3085,6 +3096,12 @@ function toggleVLog(id) {
 
 async function runValidation(id, force=false) {
   if (validationRunning) { showToast('A validation is already running'); return; }
+  // Cleared only by a 'done' event, so a crash or a dropped event latched it for the rest
+  // of the session and every later card refused to start.
+  clearTimeout(window._validationWatchdog);
+  window._validationWatchdog = setTimeout(() => {
+    if (validationRunning) { validationRunning = null; loadValidations(); }
+  }, 30 * 60 * 1000);
   validationRunning = id;
   const box = document.getElementById('vlog-' + id);
   box.innerHTML = ''; box.style.display = 'block';
@@ -3162,7 +3179,9 @@ function downloadCSV(rows, filename) {
 
 function stopPipeline() {
   window.pywebview.api.stop_pipeline?.();
-  appendLog(activeMode + '-log', 'Stop requested...', 'warn');
+  appendLog((pipelineRunning || activeMode) + '-log', 'Stop requested...', 'warn');
+  // Release the lock: a stopped run must not block the next one for the rest of the session.
+  pipelineRunning = null;
 }
 
 // ── Settings ──────────────────────────────────────────────
@@ -3239,19 +3258,43 @@ async function saveSetup() {
     instanseg_threads: parseInt(document.getElementById('s-threads').value) || 4,
     instanseg_model:   document.getElementById('s-model').value,
   };
+  // Silently substituting a default and then saying "saved ✓" tells the user their number
+  // was accepted. Name what was rejected instead.
+  const rejected = [];
+  const rawBar = document.getElementById('s-scale-bar-um').value;
+  const rawX   = document.getElementById('s-px-x').value;
+  const rawT   = document.getElementById('s-threads').value;
+  if (rawBar !== '' && !(parseFloat(rawBar) > 0)) rejected.push(`bar length "${rawBar}" → 100 µm`);
+  if (rawX   !== '' && !(parseFloat(rawX)   > 0)) rejected.push(`pixel size "${rawX}" → 0.5 µm/px`);
+  if (rawT   !== '' && !(parseInt(rawT)     > 0)) rejected.push(`threads "${rawT}" → 4`);
   await window.pywebview.api.save_setup(data);
   // THE SCREEN MUST AGREE WITH THE RUN. quantGlobalPx and the two places that print it
   // were written only at boot, so after saving a new cohort pixel size the Quant step-2
   // label and the step-5 pre-flight summary went on showing the OLD value while the run
   // re-fetched the setup and used the NEW one — on the single number that scales every
   // distance and area the app reports. Refresh them here, at the moment they change.
+  // A µm/px measured from a scale bar is (bar pixels ÷ bar microns). Change the microns
+  // and every such measurement on screen is stale — and a 'scale' run re-measures at launch,
+  // so the screen would show one number while the run used another.
+  const barChanged = Math.abs((data.scale_bar_um || 100) - (window._lastScaleBarUm || 100)) > 1e-9;
+  window._lastScaleBarUm = data.scale_bar_um || 100;
+  if (barChanged) {
+    quantScaleImage = { path: '', px: null };
+    quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
+    spatialSessionScale = { path: '', px: null };
+    spatialBatchScale = { px: null, count: 0, map: {} };
+    showToast('Scale-bar length changed — every pixel size measured from a bar must be re-measured');
+  }
   quantGlobalPx = data.pixel_size_x || quantGlobalPx;
   const gvNow = document.getElementById('q-px-global-val');
   if (gvNow) gvNow.textContent = quantGlobalPx;
   const spxNow = document.getElementById('spatial-session-px-val');
   if (spxNow && !spxNow.value) spxNow.value = quantGlobalPx;
   if (typeof quantBuildReview === 'function') quantBuildReview();
-  showToast('Settings saved ✓');
+  showToast(rejected.length
+    ? `Saved, but ${rejected.length} value${rejected.length === 1 ? ' was' : 's were'} not `
+      + `usable and fell back: ${rejected.join('; ')}`
+    : 'Settings saved ✓');
 }
 
 // ── CALIBRATE (native cutoff fitting) ─────────────────────
@@ -3841,6 +3884,10 @@ function quantOutputSummaryText() {
 function quantStainChanged() {
   const stain = document.getElementById('q-stain').value;
   document.getElementById('q-stain-other').style.display = stain === 'Other' ? 'block' : 'none';
+  // Only overwrite a cutoff the operator has not touched. Silently discarding a value
+  // they dragged — and only for two of the four markers — was worse than not helping.
+  const thrEl = document.getElementById('q-thresh');
+  if (thrEl && thrEl.dataset.userSet === '1') return;
   if (stain === 'CD8') document.getElementById('q-thresh').value = 20;
   if (stain === 'TIM-3') document.getElementById('q-thresh').value = 10;
   document.getElementById('q-thresh-display').textContent = (document.getElementById('q-thresh').value/100).toFixed(2);
@@ -4037,6 +4084,12 @@ function removeQuantOverride(fname) {
 let quantBiomarkers = [];   // kept empty; read by the settings builder, never populated
 
 function quantSetMode(m) {
+  // Switching between single and batch changes which images the run touches, so the
+  // preview's normalization exclusions and the single-image scale bar stop applying. Both
+  // used to survive: a batch's exclusion list was sent with a single-image run, and a
+  // previous slide's measured bar was displayed as current and used.
+  quantNormState = { images: [], i: 0, skip: new Set() };
+  quantScaleImage = { path: '', px: null };
   quantMode = m;
   const batch = m === 'batch';
   document.getElementById('q-single-config').style.display = batch ? 'none' : 'block';
@@ -4064,6 +4117,14 @@ async function quantPickSingleImage() {
 }
 
 async function runQuantAnalysis() {
+  // One pipeline at a time. Nothing gated the sidebar or the other tab's Run button, so a
+  // second run reassigned the event router and the first run's results were handed to the
+  // wrong renderer.
+  if (pipelineRunning) {
+    showToast(`A ${pipelineRunning === 'quant' ? 'Quant' : 'Spatial'} run is already going — `
+            + `wait for it, or press Stop.`);
+    return;
+  }
   let input, image_whitelist = null;
   if (quantMode === 'single') {
     const f = document.getElementById('q-single-image').value.trim();
@@ -4246,6 +4307,8 @@ async function runQuantAnalysis() {
   }
 
   activeMode = 'quant';
+  pipelineRunning = 'quant';   // this tab owns the pipeline until 'done'
+  const qf = document.getElementById('quant-fail'); if (qf) qf.style.display = 'none';
   showView('quant', 'running');
   document.getElementById('quant-log').innerHTML = '';
   setProgress('quant', 0, 'Starting pipeline...');
@@ -4491,6 +4554,12 @@ function qrHistogramSVG(h, thr, w, hgt, setter) {
 })();
 
 function qrShow(data) {
+  // A new review is a new set of images, whatever they are called. qrViewCache is keyed by
+  // bare FILENAME and was never cleared, so two cohorts both containing image1.tif served
+  // the first cohort's slide and cell polygons beside the second's histogram and counts —
+  // on the screen whose entire purpose is judging the calls against the tissue.
+  for (const k of Object.keys(qrViewCache)) delete qrViewCache[k];
+  for (const k of Object.keys(qrZoomState)) delete qrZoomState[k];
   qrState = { cohort: data.cohort_threshold, images: data.images || [], overrides: {} };
   for (const img of qrState.images) {
     if (img.threshold != null && Math.abs(img.threshold - qrState.cohort) > 1e-9 && !img.membrane)
@@ -4907,9 +4976,29 @@ async function qrApply() {
   }
 }
 
+// WHICH TAB OWNS THE PIPELINE RIGHT NOW. `activeMode` was the router AND the "which tab
+// am I looking at" flag, so navigating to the other tab and pressing Run reassigned it
+// mid-flight: the first run's completion event was then handed to the second tab's results
+// renderer, with the first tab's payload. This is set when a run starts and cleared when it
+// ends, and it is the only thing the event router reads.
+let pipelineRunning = null;
+
+// A failed run needs a way out, and a reason that is visible without opening a log.
+function showRunFailure(mode, msg) {
+  const host = document.getElementById(mode + '-fail');
+  if (host) {
+    host.style.display = 'block';
+    host.innerHTML = `<b>The run did not finish.</b> ${esc(msg || 'No reason was reported.')}`
+      + `<div style="margin-top:8px"><button class="btn sm" onclick="showView('${mode}','config')">`
+      + `← Back to setup</button></div>`;
+  }
+  showToast('The run did not finish — see the message above the log');
+}
+
 window.onPipelineEvent = function(event) {
   const { type, data } = event;
-  const m = activeMode;   // 'quant' or 'spatial'
+  // Fall back to activeMode only for events that arrive before a run is registered.
+  const m = pipelineRunning || activeMode;
   const logId = m + '-log';
 
   if (type === 'log') {
@@ -4945,17 +5034,26 @@ window.onPipelineEvent = function(event) {
     else { appendLog(logId, 'Could not load the measured distributions: '
                      + ((data && data.msg) || 'unknown'), 'error'); }
   } else if (type === 'done') {
-    setProgress(m, 100, 'Complete');
     if (data.ok) {
+      setProgress(m, 100, 'Complete');
+      pipelineRunning = null;
       appendLog(logId, 'Pipeline finished successfully ✓', 'ok');
       if (m === 'quant')        showQuantResults(data.results);
       else if (m === 'spatial') spatialAssocShowResults(data);
     } else {
+      // The bar used to be driven to 100 % labelled "Complete" BEFORE ok was tested, and
+      // the failure branch never left the running view — so a failed run left the operator
+      // on a finished-looking screen with a Stop button for a dead job, the reason folded
+      // inside a collapsed log, and no way back. Two sibling failure paths already recover
+      // by returning to config; this is the third.
+      setProgress(m, 100, 'Failed');
       appendLog(logId, 'Pipeline failed: ' + (data.msg || 'unknown error'), 'error');
-      showToast('Pipeline failed');
+      pipelineRunning = null;
+      showRunFailure(m, data.msg);
     }
   } else if (type === 'spatial_assoc_complete') {
     setProgress('spatial', 100, 'Complete');
+    pipelineRunning = null;
     appendLog('spatial-log', 'Spatial association finished ✓', 'ok');
     spatialAssocShowResults(data);
   }
@@ -5046,13 +5144,17 @@ function showQuantResults(r) {
     analysis_mode: lastQuantRunConfig.analysis_mode,
     stain_name: lastQuantRunConfig.stain_name,
     pixel_size_um: lastQuantRunConfig.default_pixel_size,
-    pixel_size_source: lastQuantRunConfig.pixel_size_mode,
+    // This is the CHOICE the operator made on step 2, not where each image's number came
+    // from — the per-image blocks below carry the resolved provenance. Say which it is,
+    // rather than letting the glossary's "where the calibration came from" describe it.
+    pixel_size_rule: lastQuantRunConfig.pixel_size_mode,
     dab_threshold: lastQuantRunConfig.dab_threshold,
     // Was hardcoded to 'fixed OD threshold'. This panel exists to be pasted into a methods
     // section, and the very same function renders a per-image cell reading "classifier" —
     // so on a classifier run the record contradicted the table two lines above it.
     nuclear_classifier: quantRunClassifierLabel(),
     preprocess_normalize: lastQuantRunConfig.preprocess_normalize,
+    normalize_excluded: (lastQuantRunConfig.normalize_exclude || []).length || undefined,
     membrane_measurement: lastQuantRunConfig.use_cytoplasm_measurement,
     calibration_profile: lastQuantRunConfig.calibration_name,
     generate_overlays: lastQuantRunConfig.generate_overlays,
@@ -5101,6 +5203,11 @@ function quantMethodParagraph(metrics) {
   bits.push(`Nuclei were segmented with <b>InstanSeg</b> across <b>${n}</b> image${n === 1 ? '' : 's'}`
     + (c.preprocess_normalize
         ? `, each white-balanced to its own background beforehand`
+          + ((c.normalize_exclude || []).length
+              ? ` except ${(c.normalize_exclude || []).length} slide`
+                + `${(c.normalize_exclude || []).length === 1 ? '' : 's'} excluded in the preview, `
+                + `which were measured as captured`
+              : '')
         : `, with no stain normalization applied`) + '.');
   // A MEMBRANOUS RUN SENDS NO COMPLETENESS CUTOFFS (see the run config: both are null on
   // purpose). Number(null) is 0, so this printed "at least 0.00 of that ring exceeded 0.00
@@ -7737,6 +7844,22 @@ function spatialAssocBuildOverride(side) {
 // Build the spatial-association config from the current UI. Returns null (after a
 // toast) on a validation error. Shared by the full run and the bandwidth pre-flight so
 // they segment/measure identically. `force` overrides mode (the pre-flight is per-pair).
+// A certificate is a statement ABOUT the registration. Switching it off afterwards leaves
+// step 3 reading CERTIFIED and the Run button saying "Run on the certified window" for a
+// run that will not use the mapping the certificate certifies.
+function spatialRegistrationChanged() {
+  const warn = document.getElementById('spatial-reg-warn');
+  if (!warn) return;
+  const off = !isOn('spatial-reg-toggle');
+  const certified = Object.values(spatialCertifications).some(c => c && c.is_certified);
+  warn.style.display = (off && certified) ? 'block' : 'none';
+  if (off && certified) {
+    warn.innerHTML = '<b>This pair is certified, and certification is a statement about the '
+      + 'registration you have just switched off.</b> Turn it back on, or re-certify, before '
+      + 'reporting anything from this run.';
+  }
+}
+
 function spatialBuildConfig(forceMode) {
   const mode = forceMode || spatialMode;
   const sessionManual = spatialSessionPxMode === 'manual'
@@ -7797,6 +7920,11 @@ function spatialBuildConfig(forceMode) {
 
 
 async function spatialAssocRun() {
+  if (pipelineRunning) {                      // see runQuantAnalysis
+    showToast(`A ${pipelineRunning === 'quant' ? 'Quant' : 'Spatial'} run is already going — `
+            + `wait for it, or press Stop.`);
+    return;
+  }
   const config = spatialBuildConfig();
   if (!config) return;
   // Reuse the segmentation the bandwidth pre-flight already produced for this pair.
@@ -7810,6 +7938,8 @@ async function spatialAssocRun() {
   }
 
   activeMode = 'spatial';
+  pipelineRunning = 'spatial';  // this tab owns the pipeline until 'done'
+  const sf = document.getElementById('spatial-fail'); if (sf) sf.style.display = 'none';
   showView('spatial', 'running');
   document.getElementById('spatial-log').innerHTML = '';
   setProgress('spatial', 0, 'Starting spatial association…');
