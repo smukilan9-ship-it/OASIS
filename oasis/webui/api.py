@@ -47,7 +47,20 @@ DEFAULT_SETUP = {
     "validation_data_dir": str(Path.home() / "oasis_validation_datasets"),
 }
 
-# Standard pixel sizes per magnification
+# NOMINAL pixel sizes per magnification — a last-resort fallback, NOT a measurement.
+#
+# These are textbook values for a 1.00 µm/px camera at 10X. Real scopes are nowhere near
+# them: this cohort's own burned-in bars measure 0.75188 µm/px at 10X (133 px per 100 µm),
+# 0.37736 at 20X (265 px) and 1.8868 at 4X (53 px) — so the 4x entry below is 32% larger
+# than the truth for that scope, and every Ripley's K radius derived from it would be
+# mis-scaled by a third. That is why this table is only reachable when the operator
+# explicitly asks for it (settings precedence rule 4, "never applied silently") and why a
+# measured scale bar always wins.
+#
+# One further caution, worst at low magnification: the bar is read to the nearest pixel, so
+# the fractional uncertainty is 1/bar_px — 0.4% at 20X, 0.8% at 10X, but 1.9% at 4X, where
+# a 100 µm bar is only ~53 px. The two 4X bars in this cohort differ by exactly one pixel
+# (52 vs 53 px, i.e. 1.9231 vs 1.8868 µm/px) for that reason alone.
 STANDARD_PIXEL_SIZE = {
     "4x": 2.50, "10x": 1.00, "20x": 0.50, "40x": 0.25, "60x": 0.165, "100x": 0.10
 }
@@ -1202,6 +1215,22 @@ class API:
                                f"Sample identifiers differ: {key_a} vs {key_b}")}
         except Exception as e:
             return {"status": "error", "compatible": False, "error": str(e)}
+
+    def certification_gates(self) -> dict:
+        """The gate constants the backend actually applies.
+
+        The UI used to keep its own literal copy and it drifted: it advertised a 5.0 µm
+        held-out bound and a 0.10 coverage minimum long after those were recalibrated to
+        10.0 and 0.06 (serial_registration.CERTIFICATION_GATES documents both changes).
+        The screen therefore told operators the bar was stricter than the one being
+        applied. There is now one source and the UI reads it.
+        """
+        try:
+            sys.path.insert(0, str(PROJECT_DIR))
+            from oasis.spatial.serial_registration import CERTIFICATION_GATES
+            return {"status": "ok", "gates": dict(CERTIFICATION_GATES)}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
 
     def certify_landmarks(self, payload: dict) -> dict:
         """Fit and certify a full-resolution moving→reference similarity transform."""
