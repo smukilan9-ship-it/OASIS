@@ -2809,3 +2809,103 @@ reweighted null on real IHC, which is exactly what § 18.2 predicted and what th
 would happen. And **15 of 36 certified pairs still produced no statistic**, almost all because
 a marker was absent in the window; that is the fail-closed path doing its job, and it is a
 number the paper should report rather than hide.
+
+---
+
+## 20. Overnight session 2026-08-03 — the whole cohort, driven end to end
+
+Run unattended while the operator slept, with the GUI driven by hand for bug-finding and the
+backend driven by `validation/run_full_cohort_overnight.py` for coverage. Everything below was
+measured; nothing was inferred.
+
+### 20.1 The cohort, three ways
+
+75 complete CD8/TIM-3 pairs under `~/Desktop/Region of interest` (LL477–LL481; 36 × 10X,
+36 × 20X, 3 × 4X). **36 certified** — 7 whole-field CERTIFIED, 29 locally, 53 certified regions.
+39 did not certify, all with "neither the whole field nor any sub-region could be certified".
+
+| arm | registration used | valid statistic | `marker_absent` | `no_valid_primary_null` |
+|---|---|---|---|---|
+| certificate bypassed (§ 19.7 bug) | `simpleitk` ×36 | 21 | 11 | 4 |
+| **certified transform, fixed 0.20/0.10** | **`landmark` ×36** | **12** | **21** | 3 |
+| certified transform, per-image Otsu | `landmark` ×36 | 15 | 17 | 4 |
+
+Three things follow, and the ordering matters.
+
+**Using the right transform produced FEWER results, not more** — 21 → 12. That is the correct
+direction: the certified window is a sub-region of the field, so fewer pairs hold enough
+positive cells inside it. The 21 was flattering because it analysed the whole field with a
+transform nobody certified.
+
+**Most refusals are the cutoff, not the biology.** `marker_absent` dominates, and switching
+the fixed 0.20/0.10 cutoffs for per-image Otsu moved 4 pairs from refused to analysable
+(12 → 15) while changing nothing else. § 20.2 shows why.
+
+**Every pair that produced a statistic selected `dense_morphology`** — in all three arms. The
+architecture pre-flight never once chose the 75 µm reweighted null on real IHC, which is what
+§ 18.2 predicted from the literature and what the operator predicted from the tissue.
+
+### 20.2 The shipped cutoffs sit in the tail of this cohort
+
+The new Quantify → Histogram steps (§ 19 rework) were built to make the cutoff visible before
+it is chosen. On the first pair they were pointed at, they immediately showed why:
+
+| | cells | median | p90 | max | at the shipped cutoff |
+|---|---|---|---|---|---|
+| CD8 (0.20 OD) | 12,942 | 0.0605 | 0.0816 | 0.6485 | **239 positive — 1.8 %** |
+| TIM-3 (0.10 OD) | 12,224 | 0.0418 | 0.0552 | 0.3295 | **58 positive — 0.5 %** |
+
+Confirmed independently by the Quant batches driven through the UI:
+
+* **CD8**, 4 images, 31,023 cells → 1.8 % positive (1.1–2.6 % across images).
+* **TIM-3**, 4 images, 28,540 cells → 0.7 % positive (0.0–2.6 %). One image, `LL477_Liver_Tim3_10X_1`,
+  came out at **exactly 0 positive of 2,917** — its measured maximum is 0.0977 OD, below the
+  0.10 cutoff entirely.
+
+That last image is the whole argument for the reorder in one line: a cutoff can sit above
+every cell in an image, and before this screen existed nothing said so until the result was
+empty.
+
+### 20.3 Bugs found by driving the app, in the order they were found
+
+1. **§ 19.6 — landmarks unplaceable.** `setPointerCapture` on the stage sends the `click` to
+   the stage; the listener was on the `<img>` inside it, so the handler never ran. Three earlier
+   fixes had all aimed at code that was never reached.
+2. **Duplicate regions.** One press of Certify produced two identical regions; the API returned
+   `n=1`. Each region becomes its own analysis window, so a duplicate double-counts the tissue.
+3. **§ 19.7 — a certified pair analysed with an uncertified transform.** The most serious one.
+4. **Band check contradicted itself** — "Fails closed — no valid primary null" printed directly
+   above a row naming `dense_morphology` as the null the run would use.
+5. **Positive counts derived instead of counted.** `preview_threshold` and the new
+   `spatial_histogram` reported `round(frac × n)`; a CD8 image previewed 120/4,521 and the run
+   wrote 119.
+6. **Overflow counted as positive above the plotted range.** `qrFracFromHistogram` treated
+   overflow cells as always-positive; on `LL477_Liver_Tim3_10X_1` it showed "~15 positive"
+   under its own caption saying the cutoff was above every cell. The run wrote 0. This was on
+   the screen where the cutoff is chosen.
+
+Bugs 4, 5 and 6 are one family: **a number and a statement about that number, disagreeing on
+the same screen.** So is § 19.1 and so is § 19.7. That is now the thing to look for first.
+
+### 20.4 Classifiers — the honest position
+
+**No CD8 or TIM-3 classifier was trained, and none should have been.** Training needs
+hand-labelled cells, no label set exists on this machine, and which cells are genuinely
+positive is a pathology judgement. A classifier fitted to labels I invented would carry an
+AUC, a fingerprint and a leave-one-image-out report, and would encode nothing but my guesses —
+the "well-dressed guess" `fit_classifier`'s own docstring warns about.
+
+What was verified instead is that the honesty machinery works, on controlled data:
+
+| case | pooled AUC | fold F1 spread | worst fold | applied cohort-wide? |
+|---|---|---|---|---|
+| real signal | 1.000 | 0.003 | — | yes |
+| **labels are noise** | **0.443** | — | — | **no** (gate: AUC ≥ 0.75) |
+| **one slide unlike the rest** | 0.822 *(passes)* | **0.390** | **0.00** | flagged by spread |
+
+The third row is the one worth keeping: **a classifier can clear the AUC gate while being
+useless on an entire slide**, and only the per-fold spread reveals it. The warning that fires
+there is doing real work.
+
+To train these for real, the labelling harness is the prerequisite — that is the operator's
+call and their labels, not something to be manufactured overnight.
