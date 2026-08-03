@@ -2755,7 +2755,7 @@ panel, so whatever the next cause is, it announces itself instead of costing ano
 ### 19.7 A certified pair was being analysed with an uncertified transform
 
 Found by running the whole cohort: 75 CD8/TIM-3 pairs under `~/Desktop/Region of interest`
-(LL477–LL481, 36×10X, 36×20X, 3×4X). 36 certified — 7 whole-field CERTIFIED, 29 locally, 53
+(LL477/478/479/480 plus a 4X folder — `LL481` is an empty directory; 36×10X, 36×20X, 3×4X). 36 certified — 7 whole-field CERTIFIED, 29 locally, 53
 certified regions in total.
 
 Every one of those 36 result files then reported **`registration_method: "simpleitk"`**.
@@ -2820,8 +2820,13 @@ measured; nothing was inferred.
 
 ### 20.1 The cohort, three ways
 
-75 complete CD8/TIM-3 pairs under `~/Desktop/Region of interest` (LL477–LL481; 36 × 10X,
-36 × 20X, 3 × 4X). **36 certified** — 7 whole-field CERTIFIED, 29 locally, 53 certified regions.
+75 complete CD8/TIM-3 pairs under `~/Desktop/Region of interest`, found by taking every
+directory holding both a `cd8`-matching and a `tim.?3`-matching TIF (excluding `scale` files).
+Four cases — LL477 (18), LL478 (18), LL479 (18), LL480 (18) — plus `LL477_Lea image_4X` (3);
+36 × 10X, 36 × 20X, 3 × 4X. `LL481` exists as a directory but is EMPTY and contributed
+nothing. The arithmetic closes with nothing unaccounted for: 153 non-scale TIFs in the tree =
+150 paired + 3 orphans, and no directory held more than one CD8 or one TIM-3, so no pairing
+was ever chosen arbitrarily. **36 certified** — 7 whole-field CERTIFIED, 29 locally, 53 certified regions.
 39 did not certify, all with "neither the whole field nor any sub-region could be certified".
 
 | arm | registration used | valid statistic | `marker_absent` | `no_valid_primary_null` |
