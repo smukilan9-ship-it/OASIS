@@ -3034,3 +3034,92 @@ physical one is, so this is *not* a proof that the handler is broken. Either way
 owns every click, and depending on one keystroke for the only exit is the trap the armed
 banner exists to prevent. The banner now carries a **Cancel drawing** button; Esc is still
 wired and still mentioned. Fullscreen already had its own on-screen exit in the floating bar.
+
+---
+
+## 22. Session 2026-08-04 — the UI, audited blind, ten times
+
+The operator's brief: make the design consistent across all four tabs, critique before
+adding, iterate at least ten times, and use subagents as **audit-only** instruments —
+they read, I change. Functionality and UX above aesthetics; do not break the science.
+
+Nine blind audits ran across the ten rounds: information architecture, language, visual
+consistency (×2), Quant end-to-end, Classifier + Settings, Spatial end-to-end, cross-tab,
+and a final adversarial verification of the fixes themselves. Every finding had to cite
+`file:line` or it did not count.
+
+### 22.1 What the audits were actually for
+
+The interesting result is not the fix list. It is that **eight of the findings were
+correctness bugs wearing UI clothes** — cases where the screen and the run disagreed, and
+nothing failed:
+
+| the screen said | the run did |
+|---|---|
+| the cohort pixel size you saw before saving Settings | re-fetched the new one and used it |
+| CERTIFIED, after you pressed the mode tab you were already on | the certificate had been wiped |
+| "fixed OD threshold" in the methods panel | a trained classifier made every call |
+| "at least 0.00 of that ring exceeded 0.00 OD" | no completeness cutoffs were sent at all |
+| the cutoff you set on the Spatial review | the cutoff baked in at the pre-flight |
+| this batch's images | plus the previous batch's, pooled into the table and the CSV |
+| a measured scale bar for this image | the previous cohort's typed exception for that filename |
+| Complete, 100% | the pipeline had failed |
+
+None of these would have been caught by the test suite, because none of them is a wrong
+number — each is a **true number attached to the wrong claim.** That is the failure mode a
+blind reader catches and a passing test does not.
+
+### 22.2 The one I introduced, and how it was caught
+
+Round two swept 86 hard-coded colours in the stylesheet through new semantic tokens. The
+find/replace also rewrote the two lines that *define* two of them, producing
+`--surface: var(--surface)`. A self-referential custom property is invalid at computed-value
+time, so every consumer resolves to `unset`: table headers lost their background, two
+gradients lost their entire `background` shorthand, and `.btn.primary:hover` and
+`.run-btn:hover` lost theirs — **the app's main Run button rendered white-on-white on
+hover.** It shipped in three commits before a blind visual audit read the `:root` block and
+found it.
+
+The lesson is mechanical, not moral: I had guarded the `#18181b` pass against exactly this
+by excluding `:root`, and then did not apply the same guard to the next two literals. Four
+tests now assert the token layer is internally consistent (no self-reference, every `var()`
+resolves, every status triad complete, cell-call colours kept out of the status tokens).
+
+### 22.3 Where the boundary between "status" and "data" is
+
+The sweep also repointed the overlay legend at `--bad`/`--ok`. On that canvas **red means
+"called positive"** — the inverse of `--bad` — and the hues are matched to the PNGs the
+pipeline exports. Same class: `spatialBandVerdictMeta` maps *segregation* to amber and
+*attraction* to green, and neither is an error state; they are two equally legitimate
+findings.
+
+So the rule, written down because a future sweep will want to break it:
+
+> Convert a colour when it answers **"how did the software's own check go?"** — QC pass/fail,
+> certification status, threshold abstention, pre-flight error.
+> Leave it when it answers **"what did the tissue do?"** or **"which thing is this?"** —
+> cell calls, verdicts, null-model selection, plot series, legend keys, annotation.
+
+`#dc2626` sits on both sides of that line in this file.
+
+### 22.4 What shipped
+
+Ten commits, `3519947`..`2619ae9`. Structural: the certification step takes the working
+area (stage, inspector, taskbar) instead of a 320 px window in a 760 px column; region
+drawing is permanently visible; the hand-off to manual landmarks is a button rather than a
+sentence, and the one code path that used to switch mode lived on a control only rendered
+in the mode it switched *to*, so it could never fire.
+
+Systemic: one palette (four status triads + on-dark + cell-call), one radius scale, one
+section-label rule, one word per idea across four tabs. Drag the cutoff on the histogram —
+the cutoff is a position on a distribution, and moving it used to be a slider somewhere
+else on the card.
+
+Honesty: a failed run says Failed and offers a way back; one pipeline runs at a time;
+withheld pairs are "not tested" rather than "n.s."; blank means bundled, as the label
+always said; the Classifier tab confirms before discarding an hour of labelling and before
+overwriting a saved model.
+
+Deliberately not done: a global inline-style sweep. 157 of ~400 inline styles carry colour
+and roughly a third of those are the data layer above — a blanket replace across JS template
+strings is precisely the edit that produced §22.2.
