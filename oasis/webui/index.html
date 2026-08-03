@@ -49,10 +49,23 @@
   --red:        var(--bad);
   --red-dim:    var(--bad-weak);
 
-  /* The recessed-panel grey. Seven rules already used var(--surface) for exactly this and four
+  /* The recessed-panel grey. Seven rules already used #fafafa for exactly this and four
      more used near-identical greys with no token at all. */
-  --surface:    var(--surface);
-  --ink-hover:  var(--ink-hover);
+  --surface:    #fafafa;
+  --ink-hover:  #2f2f33;
+
+  /* The four triads above are single-mode: dark text on a light surface. The activity logs
+     invert that, and a dark-on-light token placed on #111113 is unreadable rather than
+     merely off-palette. */
+  --ok-on-dark:   #4ade80;
+  --warn-on-dark: #fbbf24;
+  --bad-on-dark:  #f87171;
+
+  /* CELL CALLS, NOT STATUS. Red is a POSITIVE call here — the inverse of --bad — and these
+     hues are matched to the overlay PNGs the pipeline exports. Never route them through the
+     status triads. */
+  --cell-pos:   #b91c1c;
+  --cell-neg:   #15803d;
 
   --sidebar-w: 68px;
   --font:  -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
@@ -183,7 +196,7 @@ html, body {
    haematoxylin counterstain is the colour of every nucleus in the image — the overlay
    was competing with the tissue it was drawn on. Green sits nowhere in an H-DAB slide,
    so a green outline is unambiguously a decision this app made. */
-.qr-key i.pos { background:var(--bad); } .qr-key i.neg { background:var(--ok); }
+.qr-key i.pos { background:var(--cell-pos); } .qr-key i.neg { background:var(--cell-neg); }
 .qr-pan { position:relative; overflow:hidden; border-radius: var(--r-xs); background:var(--bg3);
           touch-action:none; cursor:grab; }
 .qr-pan.dragging { cursor:grabbing; }
@@ -412,9 +425,9 @@ td.muted { color: var(--text3); font-size: 11px; }
    white card, which on the #06b6d4 fill came to 1.04:1 and was invisible. Since that label
    is what tells the operator which of the two certification paths is recommended, it has to
    be readable. `--accent` was never defined, so the fallback was always what shipped. */
-.cert-mode-tab.active { background: #ecfeff; color: #0e7490; border-color: #06b6d4; }
+.cert-mode-tab.active { background: var(--info-weak); color: var(--info); border-color: var(--info-line); }
 .cert-mode-sub { color: var(--text3); font-weight: 400; }
-.cert-mode-tab.active .cert-mode-sub { color: #0e7490; opacity: .8; }
+.cert-mode-tab.active .cert-mode-sub { color: var(--info); opacity: .8; }
 .badge.cyan, .badge.gray {
   background: var(--bg3); color: var(--text2); border: 1px solid var(--border);
 }
@@ -733,9 +746,9 @@ td.muted { color: var(--text3); font-size: 11px; }
 .vlog .log-line { border-bottom-color: rgba(255,255,255,.08); }
 .vlog .log-time { color: #a1a1aa; }
 .vlog .log-normal, .vlog .log-info { color: #e4e4e7; }
-.vlog .log-ok { color: var(--ok-line); }
-.vlog .log-warn { color: #fbbf24; }
-.vlog .log-error { color: var(--bad); }
+.vlog .log-ok { color: var(--ok-on-dark); }
+.vlog .log-warn { color: var(--warn-on-dark); }
+.vlog .log-error { color: var(--bad-on-dark); }
 .vstatus {
   display: inline-flex; align-items: center; gap: 6px; height: 24px;
   padding: 0 9px; border-radius: 999px; font-size: 11px; font-weight: 700;
@@ -995,7 +1008,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
   border: 1px solid var(--border2); border-radius: var(--r-xs); background: #fff;
   color: var(--text2); font-size: 10px; font-weight: 650; white-space: nowrap;
 }
-.window-chip::before { content: ""; width: 6px; height: 6px; margin-right: 5px; border-radius: 2px; background: #0e7490; }
+.window-chip::before { content: ""; width: 6px; height: 6px; margin-right: 5px; border-radius: 2px; background: var(--info); }
 .science-chip.dense { color: #6d28d9; border-color: #c4b5fd; background: #f5f3ff; }
 .science-chip.fail { color: var(--bad); border-color: var(--bad-line); background: var(--bad-weak); }
 /* ── Spatial guided wizard ─────────────────────────────────────────────── */
@@ -1250,7 +1263,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
           <label class="q-opt" id="q-px-scalematch-opt" style="display:none">
             <input type="radio" name="q-px" value="scale_match" onchange="onQuantPxChange()">
             <span><span class="q-term">Per-image scale bar</span>
-              <span class="badge amber" style="margin-left:6px">recommended</span>
+              <span class="badge gray" style="margin-left:6px">recommended</span>
               <span class="q-plain">Each image is matched to its own 100 µm bar and calibrated
                 separately. Most accurate — the scale can differ between images taken at the
                 same nominal magnification.</span></span>
@@ -1734,7 +1747,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         </div>
         <div id="spatial-preview-card" style="display:none">
           <div class="card">
-            <div class="card-title" style="display:flex;align-items:center;gap:8px">Matched pairs <span id="spatial-preview-badge" class="badge amber"></span></div>
+            <div class="card-title" style="display:flex;align-items:center;gap:8px">Matched pairs <span id="spatial-preview-badge" class="badge gray"></span></div>
             <div class="table-card" style="margin-bottom:0;border-radius:var(--radius-sm)">
               <table>
                 <thead><tr><th>Filename A</th><th>Filename B</th><th>Pixel size source</th></tr></thead>
@@ -3814,6 +3827,15 @@ async function onQuantFolderPicked(folder) {
                      : 'No images found in this folder');
   quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
   quantNormState = { images: [], i: 0, skip: new Set() };
+  // See above: exceptions are per-file-name and beat a measured bar, so they must not
+  // survive into a different folder.
+  const droppedOverrides = Object.keys(quantOverrides).length;
+  if (droppedOverrides) {
+    quantOverrides = {};
+    renderQuantOverrides();
+    showToast(`${droppedOverrides} per-image pixel-size exception${droppedOverrides === 1 ? '' : 's'} `
+            + `cleared — they belonged to the previous folder`);
+  }
   renderQuantScaleMatches();
   // SCALE MATCHING IS THE DEFAULT WHEN IT IS POSSIBLE. Pixel size can differ between
   // images acquired at the same nominal magnification, so a per-image bar is strictly
@@ -3939,7 +3961,7 @@ function renderQuantOverrides() {
   el.innerHTML = entries.map(([f,px]) => `
     <div class="override-item">
       <span class="override-name">${esc(f)}</span>
-      <span class="badge amber">${px} µm/px</span>
+      <span class="badge gray">${px} µm/px</span>
       <button class="btn sm" onclick="removeQuantOverride('${esc(f)}')">Remove</button>
     </div>
   `).join('');
@@ -4004,6 +4026,21 @@ async function runQuantAnalysis() {
   } else {
     input = document.getElementById('q-input').value.trim();
     if (!input) { quantWizardGoTo(1); showToast('Please select an input folder first'); return; }
+    // Name the files this run is for, ALWAYS — see above.
+    //
+    // Scale-bar photographs must be filtered out HERE, because run_pipeline disables its
+    // own scale-image exclusion whenever a whitelist is present ("a deliberate choice of
+    // files is never second-guessed"). Same rule as the backend: the token "scale" in the
+    // stem (oasis/common/imaging.py).
+    try {
+      const listed = await window.pywebview.api.list_images(input);
+      const names = Array.isArray(listed) ? listed : ((listed && listed.images) || []);
+      const base = names.map(x => String((x && (x.filename || x.name)) || x))
+                        .map(x => x.split('/').pop())
+                        .filter(Boolean)
+                        .filter(n => !/scale/i.test(n.replace(/\.[^.]+$/, '')));
+      if (base.length) image_whitelist = base;
+    } catch (e) { /* leave null: the pre-existing behaviour, never worse than it was */ }
   }
 
   let matchedScaleOverrides = {};
@@ -5217,7 +5254,13 @@ function quantBuildReview() {
   const out = document.getElementById('q-output').value.trim() || window.OASIS_DEFAULT_OUTPUT;
   const pxMode = document.querySelector('input[name="q-px"]:checked')?.value || 'manual';
   const pxManual = parseFloat(document.getElementById('q-px-x').value);
-  const pxSuffix = mode === 'batch' ? ' (default; scale bars / overrides win)' : '';
+  // This suffix was appended to EVERY batch line, including the manual and cohort ones,
+  // where no scale bar is read at all — so the one screen whose job is to be checked said
+  // the opposite of what would happen.
+  const pxSuffix = (mode === 'batch' && pxMode === 'scale_match')
+    ? ' (per-image bars win; this is only the fallback)'
+    : (mode === 'batch' && Object.keys(quantOverrides).length
+        ? ' (per-image exceptions win)' : '');
   let pxTxt;
   if (pxMode === 'manual')      pxTxt = (pxManual > 0 ? `manual — ${pxManual} µm/px` : 'manual — not set (required)') + pxSuffix;
   else if (pxMode === 'scale')  pxTxt = quantScaleImage.px ? `scale bar — ${quantScaleImage.px} µm/px` : 'scale bar — not yet detected';
@@ -5229,7 +5272,10 @@ function quantBuildReview() {
     const fb = quantScaleFallbackItems().length;
     const one = parseFloat(document.getElementById('q-px-scalematch-default').value);
     pxTxt = `per-image scale bars — ${matched} measured`
-          + (fb ? `, ${fb} supplied (${one > 0 ? one + ' µm/px' : 'set individually'})` : '');
+          + (fb ? `, ${fb} supplied (${one > 0 ? one + ' µm/px' : 'set individually'})` : '')
+          // The run also carries ONE fallback number for any image that ends up with
+          // neither a bar nor its own value. It used to be sent and never shown.
+          + ` · fallback if neither applies: ${(one > 0 ? one : quantGlobalPx)} µm/px`;
   }
   else                          pxTxt = `cohort pixel size — ${quantGlobalPx} µm/px` + pxSuffix;
   const membrane = isOn('q-membrane-toggle');
@@ -8035,7 +8081,7 @@ async function spatialBandwidthCheck() {
   catch (e) { r = { status: 'error', error: String(e) }; }
   btn.disabled = false; btn.textContent = 'Check which model fits';
   if (!r || r.status !== 'ok') {
-    badge.textContent = 'ERROR'; badge.className = 'badge amber';
+    badge.textContent = 'ERROR'; badge.className = 'badge red';
     out.innerHTML = `<span style="color:#b91c1c">${esc((r && r.error) || 'Pre-flight failed')}</span>`
       + (r && r.log_tail ? `<pre style="font-size:10px;color:var(--text3);white-space:pre-wrap;margin-top:6px">${esc(r.log_tail)}</pre>` : '')
       + renderParameterDetails({
@@ -8443,7 +8489,7 @@ function spatialAssocShowResults(data) {
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">
             ${esc(p.sample_id)} <span class="muted" style="font-size:12px">${esc(p.stain_a || 'A')} ↔ ${esc(p.stain_b || 'B')}</span>
-            <span class="badge amber">not tested</span>
+            <span class="badge gray">not tested</span>
           </div>
           ${qcBanner}${certBanner}${bwBanner}
           <div style="margin:4px 0 10px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.55;
