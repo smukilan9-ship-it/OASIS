@@ -215,6 +215,11 @@ html, body {
 /* The section-label role, defined once. .section-label, .metric-label, .terminal-title,
    .vline b, .parameter-name and .cert-insp .sec > h4 all named the same thing in six
    different specs; they now inherit this and override only what genuinely differs. */
+/* Two furniture types that had no CSS home at all: every empty table and every inline
+   field error was written inline, in three and four different shapes respectively. */
+.empty-state { text-align: center; color: var(--text3); padding: 22px 16px; font-size: 12px; }
+.field-error { color: var(--bad); font-size: 11px; margin-top: 4px; }
+
 .card-title, .section-label, .metric-label, .terminal-title, .vline b,
 .parameter-name, .cert-insp .sec > h4, .validation-cat-head h2 {
   font-size: 10px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
@@ -642,7 +647,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
   margin-bottom: 12px;
 }
-.validation-panel-title h2 { font-size: 13px; font-weight: 650; letter-spacing: -.01em; }
+.validation-panel-title h2 { font-size: 13px; font-weight: 600; letter-spacing: -.01em; }
 .validation-help { font-size: 11px; color: var(--text3); line-height: 1.55; }
 .validation-path {
   display: inline-flex; align-items: center; max-width: 100%;
@@ -662,7 +667,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 }
 .vdataset-dot { width: 9px; height: 9px; border-radius: 50%; margin-top: 4px; flex: none; }
 .vdataset-main { min-width: 0; flex: 1; }
-.vdataset-title { font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
+.vdataset-title { font-size: 12px; font-weight: 600; overflow-wrap: anywhere; }
 .vdataset-meta { margin-top: 3px; color: var(--text3); font-size: 11px; line-height: 1.45; }
 .validation-cat { margin-top: 18px; }
 .validation-cat-head {
@@ -671,7 +676,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 }
 .validation-cat-head h2 { font-size: 12px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
 .validation-count {
-  font-size: 10px; font-weight: 650; color: var(--text3);
+  font-size: 10px; font-weight: 600; color: var(--text3);
   border: 1px solid var(--border); border-radius: 999px; padding: 2px 7px;
 }
 .validation-card-grid { display: grid; gap: 10px; }
@@ -699,7 +704,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   text-transform: uppercase; letter-spacing: .08em;
 }
 .vline span { color: var(--text2); font-size: 12px; line-height: 1.55; overflow-wrap: anywhere; }
-.vline.claim span { color: var(--text); font-weight: 520; }
+.vline.claim span { color: var(--text); font-weight: 500; }
 .vmeta {
   display: flex; gap: 7px; align-items: center; flex-wrap: wrap;
   margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
@@ -782,10 +787,10 @@ td.muted { color: var(--text3); font-size: 11px; }
 .progress-label { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .progress-label .plabel { font-size: 12px; color: var(--text2); }
 .progress-label .ppct   { font-size: 12px; font-weight: 600; color: var(--text); }
-.progress-label .ppct.amber { color: var(--text); }
+
 .progress-track { height: 5px; background: var(--bg3); border-radius: 3px; overflow: hidden; }
 .progress-fill { height: 100%; border-radius: 3px; width: 0%; transition: width .35s ease; background: var(--text); }
-.progress-fill.amber { background: var(--text); }
+
 
 /* ── Action row ────────────────────────────────────────── */
 .action-row { display: flex; gap: 8px; flex-wrap: wrap; padding-bottom: 20px; }
@@ -922,7 +927,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   font-weight: 700; flex: none; }
 .cert-taskbar .tstep.done { color: var(--text); }
 .cert-taskbar .tstep.done .n { background: var(--green); border-color: var(--green); color: #fff; }
-.cert-taskbar .tstep.on { color: var(--text); font-weight: 650; }
+.cert-taskbar .tstep.on { color: var(--text); font-weight: 600; }
 .cert-taskbar .tstep.on .n { background: var(--text); border-color: var(--text); color: #fff; }
 .cert-taskbar .tstep.on::after { content: ''; position: absolute; left: 8px; right: 8px;
   bottom: 0; height: 2.5px; background: var(--text); }
@@ -943,7 +948,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   text-transform: uppercase; color: var(--text3); margin: 0 0 11px; }
 .cert-insp .sec > p { font-size: 12px; line-height: 1.6; color: var(--text2); margin: 0; }
 .cert-insp .sec > p + p { margin-top: 8px; }
-.cert-insp .sec b { color: var(--text); font-weight: 620; }
+.cert-insp .sec b { color: var(--text); font-weight: 600; }
 
 /* One gate, one line: the mark, what it measures, the number against its threshold. */
 .gate { display: grid; grid-template-columns: 16px minmax(0,1fr) auto; gap: 9px;
@@ -951,7 +956,7 @@ td.muted { color: var(--text3); font-size: 11px; }
 .gate:first-of-type { border-top: 0; padding-top: 0; }
 .gate .m { font-weight: 700; font-size: 12px; }
 .gate .n { color: var(--text2); font-size: 12px; }
-.gate .v { font-family: var(--mono); font-size: 12px; font-weight: 650; white-space: nowrap; }
+.gate .v { font-family: var(--mono); font-size: 12px; font-weight: 600; white-space: nowrap; }
 .gate .s { grid-column: 2/-1; font-size: 12px; color: var(--text3); line-height: 1.45;
   margin-top: 2px; }
 .gate.pass .m, .gate.pass .v { color: var(--ok); }
@@ -961,7 +966,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   padding: 8px 0; border-top: 1px solid var(--border); }
 .cert-insp .kv:first-of-type { border-top: 0; padding-top: 0; }
 .cert-insp .kv .k { font-size: 12px; color: var(--text2); }
-.cert-insp .kv .v { font-family: var(--mono); font-size: 12px; font-weight: 650; text-align: right; }
+.cert-insp .kv .v { font-family: var(--mono); font-size: 12px; font-weight: 600; text-align: right; }
 .cert-insp .kv .s { grid-column: 1/-1; font-size: 12px; color: var(--text3); line-height: 1.45; }
 .cert-callout { border-radius: var(--r); padding: 11px 13px; font-size: 12px; line-height: 1.6;
   border: 1px solid; }
@@ -1006,7 +1011,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 .window-chip, .science-chip {
   display: inline-flex; align-items: center; min-height: 22px; padding: 3px 8px;
   border: 1px solid var(--border2); border-radius: var(--r-xs); background: #fff;
-  color: var(--text2); font-size: 10px; font-weight: 650; white-space: nowrap;
+  color: var(--text2); font-size: 10px; font-weight: 600; white-space: nowrap;
 }
 .window-chip::before { content: ""; width: 6px; height: 6px; margin-right: 5px; border-radius: 2px; background: var(--info); }
 .science-chip.dense { color: #6d28d9; border-color: #c4b5fd; background: #f5f3ff; }
@@ -1018,7 +1023,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 .wizard-stepper .wstep {
   display: inline-flex; align-items: center; gap: 7px; padding: 6px 12px;
   border-radius: var(--r-lg); border: 1px solid var(--border); background: transparent;
-  color: var(--text3); cursor: pointer; font-size: 11px; font-weight: 650;
+  color: var(--text3); cursor: pointer; font-size: 11px; font-weight: 600;
 }
 .wizard-stepper .wstep .wstep-n {
   display: inline-flex; align-items: center; justify-content: center;
@@ -1041,7 +1046,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 }
 .output-details summary {
   display: flex; align-items: center; gap: 7px; min-height: 34px; padding: 8px 2px;
-  color: var(--text2); font-size: 11px; font-weight: 650; cursor: pointer;
+  color: var(--text2); font-size: 11px; font-weight: 600; cursor: pointer;
   list-style: none; user-select: none;
 }
 .output-details summary::-webkit-details-marker { display: none; }
@@ -1050,7 +1055,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 /* Always-open variant (params/interpretation are shown inline, never hidden). */
 .output-details-title {
   display: flex; align-items: center; gap: 7px; min-height: 30px; padding: 8px 2px 4px;
-  color: var(--text2); font-size: 11px; font-weight: 650;
+  color: var(--text2); font-size: 11px; font-weight: 600;
 }
 .parameter-grid {
   display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -1605,7 +1610,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
             <th>Positivity</th><th>Cutoff</th><th>Pixel size</th><th></th>
           </tr></thead>
           <tbody id="quant-tbody">
-            <tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No results yet</td></tr>
+            <tr><td colspan="7" class="empty-state">No results yet</td></tr>
           </tbody>
         </table>
       </div>
@@ -5010,7 +5015,7 @@ function showQuantResults(r) {
   // completed, so the column said nothing on all but the flagged rows; the flag itself
   // now carries its own reason on hover.
   document.getElementById('quant-tbody').innerHTML = metrics.length === 0
-    ? '<tr><td colspan="7" style="text-align:center;color:var(--text3);padding:20px">No results</td></tr>'
+    ? '<tr><td colspan="7" class="empty-state">No results</td></tr>'
     : metrics.map(m => {
       const dens = (m.cells_per_mm2 != null) ? `${Math.round(m.cells_per_mm2).toLocaleString()} cells/mm²` : '';
       const cut = m.classifier_applied
@@ -5783,7 +5788,7 @@ async function spatialAssocPreview() {
   };
   document.getElementById('spatial-preview-tbody').innerHTML = spatialPairs.length
     ? spatialPairs.map(p => `<tr><td>${esc(p.filename_a)}</td><td>${esc(p.filename_b)}</td><td>${pxCell(p)}</td></tr>`).join('')
-    : '<tr><td colspan="3" style="text-align:center;color:var(--text3);padding:16px">No pairs found</td></tr>';
+    : '<tr><td colspan="3" class="empty-state">No pairs found</td></tr>';
 
   const warn = document.getElementById('spatial-preview-warn');
   if (unmatched.length) {
@@ -8218,9 +8223,9 @@ function spatialResultParameterSets(p, a, cert, sv) {
 // csr_only, none, not_resolvable}. NEVER the old single "engagement" label.
 function spatialBandVerdictMeta(v) {
   return ({
-    attraction:     ['#16a34a', '#f0fdf4', '#166534', 'attraction',
+    attraction:     ['var(--ok)', 'var(--ok-weak)', 'var(--ok)', 'attraction',
       'the two markers lie closer together than independence predicts'],
-    segregation:    ['#b45309', '#fffbeb', '#92400e', 'segregation',
+    segregation:    ['var(--warn)', 'var(--warn-weak)', 'var(--warn)', 'segregation',
       'the two markers avoid each other / occupy largely separate regions'],
     csr_only:       ['#2563eb', '#eff6ff', '#1e40af', 'shared-compartment only',
       'significant only against randomly scattered cells, not against the model built from this tissue — shared tissue preference, not interaction'],
@@ -8273,7 +8278,7 @@ function spatialInteractionBlock(inter, opts) {
       </div></div>`;
   };
   const upNote = opts.underpowered
-    ? `<div style="margin-top:6px;font-size:11px;color:#92400e;background:#fffbeb;border:1px solid #d97706;border-radius:6px;padding:7px 9px"><strong>⚠ UNDERPOWERED</strong> — a marker is sparse, so this pair ran on the marker-independent all-cell support null. Segregation/attraction is still reported, but sensitivity is reduced; a null result here is not strong evidence of no interaction.</div>`
+    ? `<div style="margin-top:6px;font-size:11px;color:var(--warn);background:var(--warn-weak);border:1px solid var(--warn);border-radius:6px;padding:7px 9px"><strong>⚠ UNDERPOWERED</strong> — a marker is sparse, so this pair ran on the marker-independent all-cell support null. Segregation/attraction is still reported, but sensitivity is reduced; a null result here is not strong evidence of no interaction.</div>`
     : '';
   return `<div style="margin:6px 0 12px;${dim}">
     <div class="muted" style="font-size:11px;margin:0 0 6px">Cross-type interaction — two distinct findings, each tested on the <strong>${esc(primaryLabel)}</strong>${floor != null ? ` (registration resolves distances ≥ ${(+floor).toFixed(0)} µm)` : ''}:</div>
@@ -8313,10 +8318,10 @@ function spatialResolvedParamsBlock(p) {
   const qcPill = (txt, color) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid ${color};color:${color}">${txt}</span>`;
   const sA = esc(p.stain_a || 'A'), sB = esc(p.stain_b || 'B');
   const thrTxt = (t) => t ? `${typeof t.value === 'number' ? t.value.toFixed(3) : (t.value ?? '\u2014')} <span class="muted">(${esc(t.method || '\u2014')})</span>` : '\u2014';
-  const qFlag = (sq, t) => (sq === 'low' || (t && /abstain/.test(t.method || ''))) ? ' ' + qcPill('low staining quality \u2014 verify', '#d97706') : '';
+  const qFlag = (sq, t) => (sq === 'low' || (t && /abstain/.test(t.method || ''))) ? ' ' + qcPill('low staining quality \u2014 verify', 'var(--warn)') : '';
   return `
     <div class="info-box${rp.pixel_size_is_fallback ? ' amber' : ''}" style="margin:6px 0 10px;font-size:12px;line-height:1.7">
-      <strong>Parameters used for this pair</strong>${rp.pixel_size_is_fallback ? ' &nbsp;' + qcPill('PIXEL SIZE FELL BACK TO DEFAULT \u2014 statistics likely mis-scaled', '#dc2626') : ''}
+      <strong>Parameters used for this pair</strong>${rp.pixel_size_is_fallback ? ' &nbsp;' + qcPill('PIXEL SIZE FELL BACK TO DEFAULT \u2014 statistics likely mis-scaled', 'var(--bad)') : ''}
       <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:5px">
         <span>Pixel size: <strong>${typeof rp.pixel_size_um === 'number' ? rp.pixel_size_um : '\u2014'} \u00b5m/px</strong> <span class="muted">(${esc(rp.pixel_size_source || '\u2014')})</span></span>
         <span>${sA}: DAB thr ${thrTxt(rp.threshold_a)} \u00b7 <strong>${esc(rp.compartment_a || '\u2014')}</strong>${qFlag(rp.staining_quality_a, rp.threshold_a)}</span>
@@ -8417,10 +8422,10 @@ function spatialAssocShowResults(data) {
         <span><strong>10–20 µm</strong> — proximity at the immediate-neighbourhood scale (down to the pair's registration floor; not single-cell contact across serial sections). Shown as <em>not resolvable</em> when registration is too coarse for this band.</span></div>
       <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start">${pill('#eff6ff','#1e40af','Co-infiltration')}
         <span><strong>20–50 µm</strong> — shared occupancy of the same tissue neighbourhood.</span></div>
-      <div style="margin-top:8px">Each band's <strong>direction</strong> is <span style="color:#166534;font-weight:600">attraction</span> (closer than independence), <span style="color:#92400e;font-weight:600">segregation</span> (avoidance), <span style="color:#1e40af;font-weight:600">shared-compartment only</span> (the two markers sit in the same parts of the tissue, but are no closer than that alone explains), or <span style="color:#374151;font-weight:600">no association</span>. This is a population-level serial-section statistic; it does not establish same-cell co-expression.</div>
+      <div style="margin-top:8px">Each band's <strong>direction</strong> is <span style="color:var(--ok);font-weight:600">attraction</span> (closer than independence), <span style="color:var(--warn);font-weight:600">segregation</span> (avoidance), <span style="color:#1e40af;font-weight:600">shared-compartment only</span> (the two markers sit in the same parts of the tissue, but are no closer than that alone explains), or <span style="color:#374151;font-weight:600">no association</span>. This is a population-level serial-section statistic; it does not establish same-cell co-expression.</div>
     </div>`;
   if (!results.length) {
-    cards.innerHTML = '<div class="card" style="text-align:center;color:var(--text3)">No results</div>';
+    cards.innerHTML = '<div class="card empty-state">No results</div>';
   } else {
     cards.innerHTML = twoQuestionLegend + results.map(p => {
       const sa = p.spatial_association || {};
@@ -8442,9 +8447,9 @@ function spatialAssocShowResults(data) {
       const statsDim = qInvalid ? 'opacity:.38;filter:grayscale(1)' : '';
       const qcBanner = (qInvalid || qWarn) ? `
         <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
-             border:1px solid ${qInvalid ? '#dc2626' : '#d97706'};
-             background:${qInvalid ? '#fef2f2' : '#fffbeb'};
-             color:${qInvalid ? '#991b1b' : '#92400e'}">
+             border:1px solid ${qInvalid ? 'var(--bad)' : 'var(--warn)'};
+             background:${qInvalid ? 'var(--bad-weak)' : 'var(--warn-weak)'};
+             color:${qInvalid ? 'var(--bad)' : 'var(--warn)'}">
           <strong>${qInvalid ? '⚠ Registration failed QC — spatial statistics are unreliable' : '⚠ Registration QC caution'}</strong><br>
           ${esc(qReason)}
         </div>` : '';
@@ -8453,12 +8458,12 @@ function spatialAssocShowResults(data) {
       const cert = p.certification || a.certification || {};
       const certBanner = (cert.is_certified === true) ? `
         <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
-             border:1px solid #16a34a;background:#f0fdf4;color:#166534">
+             border:1px solid var(--ok);background:var(--ok-weak);color:var(--ok)">
           <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><strong>✓ ${esc(cert.status || 'CERTIFIED')} ${esc(certProvenance(cert))}</strong>${renderWindowChip(cert)}</div>
           ${certNumbers(cert)}
         </div>` : `
         <div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
-             border:1px solid #d97706;background:#fffbeb;color:#92400e">
+             border:1px solid var(--warn);background:var(--warn-weak);color:var(--warn)">
           <strong>⚠ Not landmark-certified (registration QC only).</strong> This pair used the automated
           registration QC, which is <em>not</em> the §18–20 landmark certification and is known-unreliable
           on field-of-view serial sections. "Valid" here means only that the automatic check passed —
@@ -8474,16 +8479,16 @@ function spatialAssocShowResults(data) {
         const sparse = st === 'underpowered_sparse_marker';
         const absent = st === 'marker_absent';
         const notEstimable = st === 'architecture_not_estimable';
-        const col = ok ? (st === 'caution' ? '#d97706' : '#16a34a')
+        const col = ok ? (st === 'caution' ? 'var(--warn)' : 'var(--ok)')
           : denseSel ? '#7c3aed'
           : absent ? '#6d28d9'
-          : (sparse || notEstimable) ? '#b45309'
-          : '#dc2626';
-        const bg  = ok ? (st === 'caution' ? '#fffbeb' : '#f0fdf4')
+          : (sparse || notEstimable) ? 'var(--warn)'
+          : 'var(--bad)';
+        const bg  = ok ? (st === 'caution' ? 'var(--warn-weak)' : 'var(--ok-weak)')
           : denseSel ? '#f5f3ff'
           : absent ? '#f5f3ff'
-          : (sparse || notEstimable) ? '#fffbeb'
-          : '#fef2f2';
+          : (sparse || notEstimable) ? 'var(--warn-weak)'
+          : 'var(--bad-weak)';
         const chips = Object.entries(sv.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
         const denseLine = denseSel
           ? `<div style="margin-top:6px"><strong>${sparse ? 'All-cell support null used' : 'Dense null selected'}:</strong> marker-independent all-cell support + ${dense.jitter_um ?? 2} µm jitter; tested over ${(dense.dclf_band_um||[10,30]).join('–')} µm; ${(dense.gates||{}).n_support ?? '—'} support cells.</div>`
@@ -8510,7 +8515,7 @@ function spatialAssocShowResults(data) {
         </div>`;
       })() : '';
       const qcPill = (txt, color) => `<span style="display:inline-block;padding:1px 8px;border-radius:10px;font-size:10px;font-weight:600;border:1px solid ${color};color:${color}">${txt}</span>`;
-      const qcColor = qInvalid ? '#dc2626' : (qWarn ? '#d97706' : '#16a34a');
+      const qcColor = qInvalid ? 'var(--bad)' : (qWarn ? 'var(--warn)' : 'var(--ok)');
 
       // ── WITHHELD: the run failed closed, so there is no statistic at all. The
       //    pipeline writes association: null here, which left `a` empty and fell through
@@ -8545,7 +8550,7 @@ function spatialAssocShowResults(data) {
           </div>
           ${qcBanner}${certBanner}${bwBanner}
           <div style="margin:4px 0 10px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.55;
-               border:1px solid #d97706;background:#fffbeb;color:#92400e">
+               border:1px solid var(--warn);background:var(--warn-weak);color:var(--warn)">
             <strong>⚠ No statistic was produced for this pair.</strong> ${a.error === 'blocked_uncertified'
               ? `The registration between these two sections was never certified, so nothing was
                  computed. Certify it on step 3 and run again.`
@@ -8605,7 +8610,7 @@ function spatialAssocShowResults(data) {
         const nd = nullsObj[key] || {};
         const ng = nd.global || {};
         const nsig = !!ng.significant, ndir = ng.direction || 'none', np2 = ng.global_p_dclf;
-        const col = nsig ? (ndir === 'segregation' ? '#b45309' : '#16a34a') : '#6b7280';
+        const col = nsig ? (ndir === 'segregation' ? 'var(--warn)' : 'var(--ok)') : '#6b7280';
         let extra = '';
         if (key === 'reweighted' && typeof nd.bandwidth_um === 'number') {
           extra = `<div class="muted" style="font-size:10px">density smoothed over ${nd.bandwidth_um} µm (calibrated on this cohort)</div>`;
@@ -8691,8 +8696,8 @@ function spatialAssocShowResults(data) {
         ? spatialPairHeadline(inter, false)
         : (sig ? ['green', dir === 'segregation' ? 'segregated (p < 0.05)' : 'associated (p < 0.05)'] : ['gray', 'n.s.']);
       const titleBadge = qInvalid
-        ? qcPill('registration invalid', '#dc2626')
-        : `<span class="badge ${bv[0]}">${bv[1]}</span>${qWarn ? ' ' + qcPill('QC caution', '#d97706') : ''}`;
+        ? qcPill('registration invalid', 'var(--bad)')
+        : `<span class="badge ${bv[0]}">${bv[1]}</span>${qWarn ? ' ' + qcPill('QC caution', 'var(--warn)') : ''}`;
       const resolvedParamsBlock = spatialResolvedParamsBlock(p);
       return `
         <div class="card">
