@@ -2527,6 +2527,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 <script>
 // ── State ────────────────────────────────────────────────
 let quantOverrides = {};
+let quantMinAuc = 0.75;   // the applicability bar, refreshed from the backend on load
 let quantGlobalPx = 0.5;   // global default µm/px from Settings; used only if explicitly chosen
 let quantScaleImage = { path: '', px: null };
 let quantScaleMatches = { folder: '', pairs: [], unmatched_images: [], analysis_images: [] };
@@ -4199,6 +4200,8 @@ async function loadQuantClassifiers() {
   sel.innerHTML = first
     + quantClassifiers.map((c, i) => {
         const weak = c.auc == null || c.auc < minAuc;
+        // Remembered so clsUseInQuant() applies the same bar rather than assuming one.
+        quantMinAuc = minAuc;
         const spread = (c.fold_f1_min != null)
           ? `, worst slide F1 ${Number(c.fold_f1_min).toFixed(2)}` : '';
         return `<option value="${i}"${weak ? ' disabled' : ''}>${esc(c.name)} — held-out AUC `
@@ -4253,9 +4256,14 @@ async function clsUseInQuant() {
   await loadQuantClassifiers();
   const sel = document.getElementById('q-classifier');
   const i = quantClassifiers.findIndex(c => c.name === (cls.savedName || ''));
-  if (sel && i >= 0) { sel.value = String(i); quantClassifierChanged(); }
-  showToast(i >= 0 ? `${cls.savedName} selected — ${wantMembrane ? 'membranous' : 'nuclear'}`
-                   : 'Saved — pick it under Positivity rule');
+  const picked = i >= 0 ? quantClassifiers[i] : null;
+  const belowBar = picked && (picked.auc == null || picked.auc < (quantMinAuc || 0.75));
+  if (sel && i >= 0 && !belowBar) { sel.value = String(i); quantClassifierChanged(); }
+  showToast(belowBar
+    ? `${cls.savedName} is below the applicability bar — saved, but not selected. `
+      + `It is listed here, greyed out, with its held-out AUC.`
+    : (i >= 0 ? `${cls.savedName} selected — ${wantMembrane ? 'membranous' : 'nuclear'}`
+              : 'Saved — pick it under Positivity rule'));
 }
 
 function quantClassifierChanged() {
@@ -4315,7 +4323,7 @@ function qrThresholdFor(img) {
 // Histogram with the cutoff drawn on it. Log counts, because a rare-positive marker puts
 // 98 % of cells in the first two bins and a linear axis renders the positive tail as a
 // flat line — the exact part the operator is trying to judge.
-function qrHistogramSVG(h, thr, w, hgt) {
+function qrHistogramSVG(h, thr, w, hgt, setter) {
   if (!h || !h.counts || !h.counts.length) return '<div style="color:var(--text3);font-size:11px">no measurable cells</div>';
   const lo = h.edges[0], hi = h.edges[h.edges.length - 1];
   const max = Math.max(...h.counts, 1);
@@ -4338,19 +4346,57 @@ function qrHistogramSVG(h, thr, w, hgt) {
   const off = none ? '' : (thr > hi ? 'above' : (thr < lo ? 'below' : ''));
   const mx = off === 'above' ? w - 1 : (off === 'below' ? 1 : tx);
   const marker = none ? '' : `<line x1="${mx.toFixed(2)}" y1="0" x2="${mx.toFixed(2)}" y2="${hgt}"
-             stroke="#dc2626" stroke-width="${off ? 2.5 : 1.5}" ${off ? '' : 'stroke-dasharray="3,2"'}/>`;
+             stroke="#dc2626" stroke-width="${off ? 2.5 : 1.5}" ${off ? '' : 'stroke-dasharray="3,2"'}/>`
+    + (setter && !off ? `<g transform="translate(${mx.toFixed(2)},0)">`
+        + `<rect x="-5" y="0" width="10" height="9" rx="2" fill="#dc2626"/>`
+        + `<path d="M-2.2 3 L-2.2 6 M0 3 L0 6 M2.2 3 L2.2 6" stroke="#fff" stroke-width="1"/></g>` : '');
   const caption = off === 'above'
     ? `<b style="color:#b91c1c">cutoff ${thr.toFixed(2)} OD is above every cell measured here</b>`
     : off === 'below'
       ? `<b style="color:#b91c1c">cutoff ${thr.toFixed(2)} OD is below every cell measured here</b>`
-      : `counts on a log scale${h.overflow ? ` · ${h.overflow} above range` : ''}`;
-  return `<svg width="100%" viewBox="0 0 ${w} ${hgt}" preserveAspectRatio="none"
-            style="display:block">${bars}${marker}</svg>
+      : `${setter ? 'drag to set the cutoff · ' : ''}counts on a log scale`
+        + `${h.overflow ? ` · ${h.overflow} above range` : ''}`;
+  // `setter` names a global function taking one OD value. Present ⇒ the chart is draggable:
+  // the cutoff is a position ON this distribution, and until now the only way to move it was
+  // a slider elsewhere on the card, so judging the line and moving it were two motions in
+  // two places.
+  const drag = (setter && !none)
+    ? ` class="hist-drag" data-hist-setter="${esc(setter)}" data-hist-lo="${lo}" data-hist-hi="${hi}"` : '';
+  return `<svg width="100%" viewBox="0 0 ${w} ${hgt}" preserveAspectRatio="none"${drag}
+            style="display:block${setter ? ';cursor:ew-resize;touch-action:none' : ''}">${bars}${marker}</svg>
           <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text3)">
             <span>${lo.toFixed(2)} OD</span>
             <span>${caption}</span>
             <span>${hi.toFixed(2)} OD</span></div>`;
 }
+
+// ONE HANDLER FOR EVERY HISTOGRAM. Delegated on the window, because each pointermove
+// re-renders the chart it started on — a listener bound to the SVG would die on the first
+// move. Geometry is captured at pointerdown and reused for the whole gesture.
+(function () {
+  let live = null;
+  const apply = (clientX) => {
+    const f = Math.min(1, Math.max(0, (clientX - live.rect.left) / Math.max(live.rect.width, 1)));
+    const od = live.lo + f * (live.hi - live.lo);
+    const [name, arg] = String(live.setter).split(':');
+    const fn = window[name];
+    if (typeof fn === 'function') fn(Number(arg), Math.round(od * 1000) / 1000);
+  };
+  addEventListener('pointerdown', e => {
+    const svg = e.target && e.target.closest && e.target.closest('svg.hist-drag');
+    if (!svg) return;
+    const lo = parseFloat(svg.dataset.histLo), hi = parseFloat(svg.dataset.histHi);
+    if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return;
+    live = { setter: svg.dataset.histSetter, lo, hi, rect: svg.getBoundingClientRect() };
+    e.preventDefault();
+    document.body.style.cursor = 'ew-resize';
+    apply(e.clientX);
+  });
+  addEventListener('pointermove', e => { if (live) apply(e.clientX); });
+  const end = () => { if (live) { live = null; document.body.style.cursor = ''; } };
+  addEventListener('pointerup', end);
+  addEventListener('pointercancel', end);
+})();
 
 function qrShow(data) {
   qrState = { cohort: data.cohort_threshold, images: data.images || [], overrides: {} };
@@ -4393,7 +4439,7 @@ function qrRender() {
         <span id="qr-count-${i}" style="margin-left:auto;font-size:12px;color:var(--text2)">${countTxt}</span>
       </div>
       <div style="margin:8px 0" id="qr-hist-${i}">${qrHistogramSVG(img.histogram,
-            img.membrane ? -1 : thr, 480, 64)}</div>
+            img.membrane ? -1 : thr, 480, 64, img.membrane ? null : `qrHistDrag:${i}`)}</div>
       <div class="qr-views" id="qr-views-${i}">
         <div class="qr-view">
           <div class="qr-view-label">Slide
@@ -4421,7 +4467,7 @@ function qrRender() {
         : `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
              <label style="font-size:11px;color:var(--text3)">Override this image</label>
              <input type="number" step="0.01" min="0.01" max="1" value="${thr.toFixed(2)}"
-                    style="width:90px" oninput="qrOverride(${i}, this.value)">
+                    id="qr-ov-${i}" style="width:90px" oninput="qrOverride(${i}, this.value)">
              ${over ? `<span style="font-size:11px;color:#b45309">exception — cohort default
                         is ${qrState.cohort.toFixed(2)} OD</span>
                        <button class="btn sm" onclick="qrClearOverride(${i})">use cohort</button>`
@@ -4722,9 +4768,21 @@ function qrRefreshThreshold(i) {
   const lbl = document.getElementById('qr-thr-' + i);
   if (lbl) lbl.textContent = thr.toFixed(2);
   const hist = document.getElementById('qr-hist-' + i);
-  if (hist) hist.innerHTML = qrHistogramSVG(img.histogram, img.membrane ? -1 : thr, 480, 64);
+  if (hist) hist.innerHTML = qrHistogramSVG(img.histogram, img.membrane ? -1 : thr, 480, 64,
+                                             img.membrane ? null : `qrHistDrag:${i}`);
   qrPaintCalls(i);              // recolours from the cached image — no reload, no flash
 }
+// Dragging image i's histogram sets THAT image's cutoff — an override, which is exactly
+// what the "Calls at X OD" panel below the chart is showing. The cohort slider still moves
+// every image that has no override of its own.
+function qrHistDrag(i, od) {
+  const img = qrState.images[i];
+  if (!img || img.membrane) return;
+  const box = document.getElementById('qr-ov-' + i);
+  if (box) box.value = od.toFixed(2);
+  qrOverride(i, od);
+}
+
 function qrOverride(i, v) {
   const val = parseFloat(v);
   const name = qrState.images[i].name;
@@ -4952,12 +5010,19 @@ function quantMethodParagraph(metrics) {
     + (c.preprocess_normalize
         ? `, each white-balanced to its own background beforehand`
         : `, with no stain normalization applied`) + '.');
+  // A MEMBRANOUS RUN SENDS NO COMPLETENESS CUTOFFS (see the run config: both are null on
+  // purpose). Number(null) is 0, so this printed "at least 0.00 of that ring exceeded 0.00
+  // OD" — two numbers that were never used, in the paragraph written to be pasted into a
+  // methods section. What actually decides a membranous call is the trained classifier.
   if (membrane) {
     bits.push(`DAB was measured in a <b>cytoplasmic ring</b> grown outward from each nucleus and`
-      + ` clipped against its neighbours. A cell was called positive when at least`
-      + ` <b>${Number(c.membrane_frac_min).toFixed(2)}</b> of that ring exceeded`
-      + ` <b>${Number(c.membrane_pix_thr).toFixed(2)} OD</b>`
-      + (c.calibration_name ? ` (cutoffs loaded from ${esc(c.calibration_name)})` : '') + '.');
+      + ` clipped against its neighbours.`
+      + (c.classifier_name
+          ? ` Cells were called by the trained membrane classifier <b>${esc(c.classifier_name)}</b>,`
+            + ` which scores how much of the ring is stained rather than how brown it is on`
+            + ` average. Any image outside its training range was refused and fell back to a`
+            + ` nuclear cutoff of ${Number(c.dab_threshold).toFixed(2)} OD, flagged in the table.`
+          : ` No membrane classifier was supplied, so these images were measured in the nucleus.`));
   } else if (c.classifier_name) {
     bits.push(`Cells were called by the trained classifier <b>${esc(c.classifier_name)}</b> rather`
       + ` than a fixed cutoff. Any image outside its training range was refused and fell back`
@@ -4996,12 +5061,14 @@ function quantMethodParagraph(metrics) {
 // trained classifier reported the wrong method in the panel meant for a methods section.
 function quantRunClassifierLabel() {
   const c = lastQuantRunConfig || {};
-  if (c.use_cytoplasm_measurement) {
-    return c.calibration_name
-      ? `membrane-ring rule "${c.calibration_name}"`
-      : 'membrane-ring completeness rule';
+  // Name the thing that made the calls. Testing the compartment first hid the classifier's
+  // name on exactly the runs where a classifier is mandatory (membranous), which is the
+  // opposite of what this field is for.
+  if (c.classifier_name) {
+    return `trained ${c.use_cytoplasm_measurement ? 'membrane' : 'nuclear'} classifier `
+         + `"${c.classifier_name}"`;
   }
-  if (c.classifier_name) return `trained classifier "${c.classifier_name}"`;
+  if (c.use_cytoplasm_measurement) return 'membrane ring — no classifier supplied';
   return 'fixed optical-density cutoff';
 }
 
@@ -7773,7 +7840,7 @@ function spReviewRenderImages() {
       </div>
       <div style="font-size:11px;color:var(--text3);margin:2px 0 6px">median ${img.p50} ·
         p90 ${img.p90} · max ${img.max} OD</div>
-      <div id="sp-rev-hist-${i}">${qrHistogramSVG(img.hist, img.threshold, 480, 64)}</div>
+      <div id="sp-rev-hist-${i}">${qrHistogramSVG(img.hist, img.threshold, 480, 64, `spReviewThr:${i}`)}</div>
       <div class="field" style="margin-top:8px">
         <label>Cutoff — <b id="sp-rev-thr-${i}">${img.threshold.toFixed(2)}</b> OD</label>
         <input type="range" min="1" max="80" value="${Math.round(img.threshold * 100)}"
@@ -7794,7 +7861,7 @@ function spReviewThr(i, v) {
   img.threshold = Number(v);
   document.getElementById('sp-rev-thr-' + i).textContent = img.threshold.toFixed(2);
   document.getElementById('sp-rev-hist-' + i).innerHTML =
-    qrHistogramSVG(img.hist, img.threshold, 480, 64);
+    qrHistogramSVG(img.hist, img.threshold, 480, 64, `spReviewThr:${i}`);
   clearTimeout(spReviewThrTimer);
   spReviewThrTimer = setTimeout(async () => {
     try {
