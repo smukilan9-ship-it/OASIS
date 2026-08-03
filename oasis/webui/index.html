@@ -1302,7 +1302,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
           <label class="q-opt">
             <input type="radio" name="q-px" value="global" onchange="onQuantPxChange()">
-            <span><span class="q-term">Cohort value — <span id="q-px-global-val">…</span> µm/px</span>
+            <span><span class="q-term">Cohort pixel size — <span id="q-px-global-val">…</span> µm/px</span>
               <span class="q-plain">Set once in Settings for a cohort acquired on one
                 microscope at one magnification.</span></span>
           </label>
@@ -1414,7 +1414,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
               nearly as well on good tissue and costs no labelling. A classifier also does
               this per image: a slide outside its training range is handed back to the
               cutoff and named in the results.
-              <span style="color:var(--text3)">Evidence: research/ihc.md § 11.7.</span></div>
+              <span style="color:var(--text3)">Measured on this cohort against labelled cells.</span></div>
           </div>
         </div>
 
@@ -1801,7 +1801,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card" id="spatial-px-pair-card">
         <div class="q-step-head">
           <h2>This pair</h2>
-          <p>Leave a row blank to use the run default above. A row with its own scale image
+          <p>Leave a row blank to use this run's pixel size above. A row with its own scale image
              is measured from that image's bar instead.</p>
         </div>
         <div class="q-group">
@@ -1846,11 +1846,11 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <div class="q-step-head">
           <h2>Batch calibration</h2>
           <p>Each image can carry its own scale-bar sibling. Matched images are calibrated
-             from their own bar; the rest fall back to the run default above.</p>
+             from their own bar; the rest fall back to this run's pixel size above.</p>
         </div>
         <div class="q-group">
           <div class="toggle-row" style="margin-top:10px">
-                      <span>Match scale images in these folders <span style="color:var(--text3);font-size:11px">— calibrate each image from its own <b>_scale</b> sibling's bar (falls back to the session pixel size)</span></span>
+                      <span>Match scale images in these folders <span style="color:var(--text3);font-size:11px">— calibrate each image from its own <b>_scale</b> sibling's bar (anything unmatched falls back to this run's pixel size)</span></span>
                       <div class="toggle" id="spatial-scale-match-toggle" onclick="spatialScaleMatchToggle()"></div>
                     </div>
         </div>
@@ -2108,7 +2108,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
                     <div class="info-box amber" style="margin-bottom:8px;font-size:11px">Measures DAB in the
                       cytoplasmic ring instead of the nucleus, called by a <b>trained membrane classifier</b>
                       for that marker — the same rule Quant uses, and the only one measured to beat a nuclear
-                      cutoff on a membranous marker (research/ihc.md § 11.7b). Each image needs its own
+                      cutoff on a membranous marker. Each image needs its own
                       classifier because the two markers differ. Without one, that image is measured in the
                       <b>nucleus</b>; OASIS will not fall back to a ring rule it cannot stand behind.</div>
                     <div class="row2">
@@ -2154,14 +2154,14 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
       <div class="card" id="spatial-bandwidth-card">
               <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
-                <span>Bandwidth (<span class="unit">75 µm</span>) validity — within certified analysis window</span>
+                <span>Which comparison model fits this tissue <span class="unit">— checked inside the certified window</span></span>
                 <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
               </div>
               <div class="science-summary" style="margin-bottom:12px">
                 <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Measures tissue architecture — from all cells, independent of either marker — only inside the certified window, and names the null OASIS will use: <b>75 µm reweighted</b> (coarse tissue), the <b>dense/all-cell support null</b> (fine tissue, or when one marker is sparse → reported UNDERPOWERED), or an <b>abundance/absence finding</b> when a marker is (near-)absent. Otherwise it fails closed. Registration certification is unaffected by this check.</div>
                 <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. Architecture is estimated from all cells, so segregation can be reported even when one marker has few positives. This check does not change registration certification.">Window-specific check</span>
               </div>
-              <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Validate 75 µm bandwidth</button>
+              <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Check which model fits</button>
               <div id="spatial-bw-result" style="font-size:12px;line-height:1.6;margin-top:10px"></div>
             </div>
       </div><!-- /sp-step-6 -->
@@ -2175,10 +2175,15 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
     </div>
     <div class="run-area">
+      <!-- "Run Certified Spatial Analysis" stated a claim rather than an action, and the
+           reason it was disabled lived in a tooltip — which most webviews never show on a
+           disabled control, so the button simply looked broken. -->
       <button class="run-btn amber" id="spatial-run-btn" onclick="spatialAssocRun()" disabled>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
-        Run Certified Spatial Analysis
+        Run on the certified window
       </button>
+      <div id="spatial-run-blocked" style="display:none;text-align:center;font-size:11.5px;
+           color:var(--warn);margin-top:6px"></div>
     </div>
   </div>
 
@@ -3012,7 +3017,9 @@ function validationCard(v) {
   const deps = (v.external_deps||[]).length
     ? `<span style="color:var(--text3);font-size:11px">needs: ${v.external_deps.join(', ')}</span>` : '';
   const metrics = (v.last && v.last.metrics && Object.keys(v.last.metrics).length)
-    ? `<div class="vmetrics">Last metrics: ${esc(JSON.stringify(v.last.metrics))}</div>` : '';
+    ? `<div class="vmetrics">${Object.entries(v.last.metrics || {})
+          .map(([k, val]) => `${esc(parameterLabel(k))}: <b>${esc(parameterValue(val))}</b>`)
+          .join(' &nbsp;·&nbsp; ') || 'no metrics recorded'}</div>` : '';
   const runBtn = blocked
     ? `<button class="btn sm" onclick="runValidation('${v.id}', true)" title="${esc(pf.reason||'')}">Run anyway</button>`
     : `<button class="btn sm primary" onclick="runValidation('${v.id}')">Run validation</button>`;
@@ -3267,7 +3274,7 @@ function clsKindNote() {
     + 'membranous cells; your own held-out report is the evidence.'
     : 'Reads six measurements inside the nucleus, including its DAB against the median of '
     + 'its neighbours — which is what lets one rule survive a staining gradient across a '
-    + 'section. Validated against immunofluorescence-derived labels (research/ihc.md § 11.6).';
+    + 'section. Validated against labels derived from immunofluorescence on the same tissue.';
 }
 
 async function clsAddImage() {
@@ -5224,7 +5231,7 @@ function quantBuildReview() {
     pxTxt = `per-image scale bars — ${matched} measured`
           + (fb ? `, ${fb} supplied (${one > 0 ? one + ' µm/px' : 'set individually'})` : '');
   }
-  else                          pxTxt = `global default — ${quantGlobalPx} µm/px` + pxSuffix;
+  else                          pxTxt = `cohort pixel size — ${quantGlobalPx} µm/px` + pxSuffix;
   const membrane = isOn('q-membrane-toggle');
   const stainChoice = document.getElementById('q-stain').value;
   const stainName = stainChoice === 'Other'
@@ -5725,9 +5732,13 @@ function spatialAssocUpdateRunBtn() {
   btn.disabled = !required || certified < required;
   // "landmark certification" named the manual path only, while the default path is LoFTR —
   // so the reason the run was blocked pointed at a workflow the operator was not using.
-  btn.title = btn.disabled
-    ? `Certify every pair on step 3 first — ${certified} of ${required} done`
-    : '';
+  const why = !required
+    ? (spatialMode === 'single' ? 'Select both images on step 1.' : 'Preview the pairs on step 1.')
+    : `Certify every pair on step 3 first — ${certified} of ${required} done.`;
+  btn.title = btn.disabled ? why : '';
+  // On screen, not in a tooltip.
+  const note = document.getElementById('spatial-run-blocked');
+  if (note) { note.style.display = btn.disabled ? 'block' : 'none'; note.textContent = why; }
 }
 
 function spatialCertCurrentPair() {
@@ -7772,7 +7783,7 @@ function spReviewRenderBand() {
   const pretty = { dense_morphology: 'Dense morphology-conditioned cross-K (all-cell support + 2 µm jitter)',
                    reweighted_75um: '75 µm intensity-reweighted inhomogeneous cross-K',
                    reweighted: '75 µm intensity-reweighted inhomogeneous cross-K',
-                   homogeneous: 'Homogeneous CSR' }[nul] || nul;
+                   homogeneous: 'Cells scattered at random (the weak baseline)' }[nul] || nul;
   const tone = !ok ? 'red' : (b.underpowered ? 'amber' : 'cyan');
   // The plan's OWN reason says why this null and not another; the pre-check's reason
   // describes the architecture scale. They are different statements and both are shown,
@@ -7796,7 +7807,7 @@ function spReviewRenderBand() {
   el.innerHTML = `<div class="card">
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
       <b style="font-size:13px">Null model</b>
-      <span class="badge ${tone}">${ok ? esc(String(nul)) : 'fail-closed'}</span>
+      <span class="badge ${tone}">${ok ? esc(String(pretty)) : 'not tested'}</span>
       ${b.primary_null_label ? `<span style="font-size:11px;color:var(--text3)">${esc(String(b.primary_null_label))}</span>` : ''}
     </div>
     <div style="font-size:12px;margin-top:6px">${head}</div>
@@ -7903,7 +7914,9 @@ function spatialBwChip(marker, e) {
                 dense_tissue:['#7c3aed','dense tissue'],
                 unreliable:['#7c3aed','dense tissue'], unknown:['#94a3b8','unknown'] };
   let [col, lbl] = map[e && e.status] || ['#94a3b8', e && e.status || '—'];
-  const ell = (e && e.scale_um != null) ? `ℓ̂ ${e.scale_um} µm` : 'ℓ̂ —';
+  // Was "ℓ̂ 42 µm". The hat notation says "estimate of" to a statistician and nothing to
+  // anyone else; the chip has room for the words.
+  const ell = (e && e.scale_um != null) ? `structures ~${e.scale_um} µm across` : 'structure size unknown';
   const why = (e && (e.reason || e.status_reason)) || '';
   if (e && e.status === 'unknown') lbl = `unknown: ${why || 'reason not reported by analysis'}`;
   return `<span style="display:inline-block;margin:3px 6px 3px 0;padding:3px 9px;border-radius:5px;background:${col}14;border:1px solid ${col};color:${col};font-weight:600" title="Architecture scale measured inside the current certified analysis window. Positive cells: ${(e&&e.n)||0}. Required reweight bandwidth: 75 µm.${why ? ` Reason: ${esc(why)}` : ''}">${esc(marker)}: ${esc(lbl)} · ${ell}</span>`;
@@ -8020,7 +8033,7 @@ async function spatialBandwidthCheck() {
   let r;
   try { r = await window.pywebview.api.precheck_bandwidth_for_pair(config); }
   catch (e) { r = { status: 'error', error: String(e) }; }
-  btn.disabled = false; btn.textContent = 'Validate 75 µm bandwidth';
+  btn.disabled = false; btn.textContent = 'Check which model fits';
   if (!r || r.status !== 'ok') {
     badge.textContent = 'ERROR'; badge.className = 'badge amber';
     out.innerHTML = `<span style="color:#b91c1c">${esc((r && r.error) || 'Pre-flight failed')}</span>`
@@ -8112,7 +8125,7 @@ function spatialBandVerdictMeta(v) {
     segregation:    ['#b45309', '#fffbeb', '#92400e', 'segregation',
       'the two markers avoid each other / occupy largely separate regions'],
     csr_only:       ['#2563eb', '#eff6ff', '#1e40af', 'shared-compartment only',
-      'significant only under the homogeneous-CSR baseline, not the calibrated primary — shared tissue preference, not interaction'],
+      'significant only against randomly scattered cells, not against the model built from this tissue — shared tissue preference, not interaction'],
     none:           ['#6b7280', '#f9fafb', '#374151', 'no association',
       'the L−r curve stays within the calibrated null envelope in this band'],
     not_resolvable: ['#64748b', '#f1f5f9', '#475569', 'not resolvable here',
@@ -8306,7 +8319,7 @@ function spatialAssocShowResults(data) {
         <span><strong>10–20 µm</strong> — proximity at the immediate-neighbourhood scale (down to the pair's registration floor; not single-cell contact across serial sections). Shown as <em>not resolvable</em> when registration is too coarse for this band.</span></div>
       <div style="margin-top:6px;display:flex;gap:8px;align-items:flex-start">${pill('#eff6ff','#1e40af','Co-infiltration')}
         <span><strong>20–50 µm</strong> — shared occupancy of the same tissue neighbourhood.</span></div>
-      <div style="margin-top:8px">Each band's <strong>direction</strong> is <span style="color:#166534;font-weight:600">attraction</span> (closer than independence), <span style="color:#92400e;font-weight:600">segregation</span> (avoidance), <span style="color:#1e40af;font-weight:600">shared-compartment only</span> (significant under the weak CSR baseline but not the calibrated primary — shared tissue preference, not interaction), or <span style="color:#374151;font-weight:600">no association</span>. This is a population-level serial-section statistic; it does not establish same-cell co-expression.</div>
+      <div style="margin-top:8px">Each band's <strong>direction</strong> is <span style="color:#166534;font-weight:600">attraction</span> (closer than independence), <span style="color:#92400e;font-weight:600">segregation</span> (avoidance), <span style="color:#1e40af;font-weight:600">shared-compartment only</span> (the two markers sit in the same parts of the tissue, but are no closer than that alone explains), or <span style="color:#374151;font-weight:600">no association</span>. This is a population-level serial-section statistic; it does not establish same-cell co-expression.</div>
     </div>`;
   if (!results.length) {
     cards.innerHTML = '<div class="card" style="text-align:center;color:var(--text3)">No results</div>';
@@ -8350,7 +8363,7 @@ function spatialAssocShowResults(data) {
              border:1px solid #d97706;background:#fffbeb;color:#92400e">
           <strong>⚠ Not landmark-certified (registration QC only).</strong> This pair used the automated
           registration QC, which is <em>not</em> the §18–20 landmark certification and is known-unreliable
-          on field-of-view serial sections (research/ihc.md §18.4). "Valid" here means the legacy QC gate passed —
+          on field-of-view serial sections. "Valid" here means only that the automatic check passed —
           a weaker claim than CERTIFIED. Do not report a biological finding from an uncertified pair.
         </div>`;
       // ── 75 µm bandwidth spatial-validity (SEPARATE from registration cert) ──────
@@ -8375,7 +8388,7 @@ function spatialAssocShowResults(data) {
           : '#fef2f2';
         const chips = Object.entries(sv.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
         const denseLine = denseSel
-          ? `<div style="margin-top:6px"><strong>${sparse ? 'All-cell support null used' : 'Dense null selected'}:</strong> marker-independent all-cell support + ${dense.jitter_um ?? 2} µm jitter; DCLF band ${(dense.dclf_band_um||[10,30]).join('–')} µm; support n=${(dense.gates||{}).n_support ?? '—'}.</div>`
+          ? `<div style="margin-top:6px"><strong>${sparse ? 'All-cell support null used' : 'Dense null selected'}:</strong> marker-independent all-cell support + ${dense.jitter_um ?? 2} µm jitter; tested over ${(dense.dclf_band_um||[10,30]).join('–')} µm; ${(dense.gates||{}).n_support ?? '—'} support cells.</div>`
           : (!ok && !absent && dense && dense.reason ? `<div style="margin-top:6px"><strong>Support/dense fallback unavailable:</strong> ${esc(dense.reason)}</div>` : '');
         const invalidMsg = denseSel
           ? (sparse
@@ -8391,7 +8404,7 @@ function spatialAssocShowResults(data) {
         const icon = (ok || denseSel) ? '✓' : (absent || sparse ? 'ⓘ' : '⚠');
         return `<div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid ${col};background:${bg};color:${col}">
-          <strong>${icon} ${esc(spatialBandwidthStatusLabel(st))} within analysis window (${esc(st)})</strong>
+          <strong>${icon} ${esc(spatialBandwidthStatusLabel(st))} — inside the certified window</strong>
           ${ok ? '' : invalidMsg}
           <div style="margin-top:6px">${chips}</div>
           <div style="margin-top:4px">${esc(sv.reason || '')}</div>
@@ -8410,10 +8423,18 @@ function spatialAssocShowResults(data) {
         // The result JSON nests the gate booleans under dense.gates and does not carry a
         // failed_gates list (that key only exists in the pre-flight plan), so derive it.
         const gj = (a.dense || {}).gates || {};
-        const failed = Object.keys(gj).filter(k => gj[k] === false);
+        // These are backend field names (n_positive_a, min_support …). Say what they mean.
+        const GATE_NAMES = {
+          landmark_certified: 'the pair is certified', analysis_window: 'an analysis window exists',
+          support_csv: 'all-cell positions are available',
+          min_positive_a: 'enough positive cells of marker A',
+          min_positive_b: 'enough positive cells of marker B',
+          min_support: 'enough cells in the window to build the comparison model',
+        };
+        const failed = Object.keys(gj).filter(k => gj[k] === false).map(k => GATE_NAMES[k] || k);
         const gates = failed.length
           ? `<div style="margin-top:6px">Support-null gates that failed:
-              <b>${esc(failed.join(', '))}</b> — positives A ${gj.n_positive_a}, B ${gj.n_positive_b}
+              <b>${esc(failed.join('; '))}</b> — positive cells: A ${gj.n_positive_a}, B ${gj.n_positive_b}
               (need ${gj.min_positive_required}); support cells ${gj.n_support}
               (need ${gj.min_support_required}).</div>` : '';
         const why = (a.dense || {}).reason || a.reason
@@ -8486,9 +8507,9 @@ function spatialAssocShowResults(data) {
         const col = nsig ? (ndir === 'segregation' ? '#b45309' : '#16a34a') : '#6b7280';
         let extra = '';
         if (key === 'reweighted' && typeof nd.bandwidth_um === 'number') {
-          extra = `<div class="muted" style="font-size:10px">intensity bandwidth ${nd.bandwidth_um} µm (calibrated, research/ihc.md §15)</div>`;
+          extra = `<div class="muted" style="font-size:10px">density smoothed over ${nd.bandwidth_um} µm (calibrated on this cohort)</div>`;
         } else if (key === 'dense_morphology') {
-          extra = `<div class="muted" style="font-size:10px">all-cell support + ${nd.jitter_um ?? 2} µm jitter; DCLF ${(nd.dclf_band_um||[10,30]).join('–')} µm; support n=${nd.support_n ?? '—'}</div>`;
+          extra = `<div class="muted" style="font-size:10px">all-cell positions + ${nd.jitter_um ?? 2} µm jitter; tested over ${(nd.dclf_band_um||[10,30]).join('–')} µm; ${nd.support_n ?? '—'} support cells</div>`;
         }
         return `<tr style="border-top:1px solid var(--border)">
           <td style="padding:5px 8px"><strong>${label}</strong>${extra}</td>
@@ -8502,16 +8523,17 @@ function spatialAssocShowResults(data) {
       const primaryKey = densePrimary ? 'dense_morphology' : 'reweighted';
       const nullTable = (nullsObj && Object.keys(nullsObj).length) ? `
         <div style="margin-top:12px;${statsDim}">
-          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = ${densePrimary ? 'dense morphology-conditioned cross-K for fine/dense tissue (10–30 µm, all-cell support + 2 µm jitter)' : 'the calibrated reweighted inhomogeneous cross-K (10–50 µm, 75 µm architecture bandwidth)'}. Homogeneous CSR is the shared-compartment baseline: significant under CSR but not the primary ⇒ shared tissue preference, not a cross-type interaction. The two-band verdict above is the finding; this table is the underlying per-null evidence.</div>`}
+          ${`<div class="muted" style="font-size:11px;margin:0 0 4px">Primary = ${densePrimary ? 'dense morphology-conditioned cross-K for fine/dense tissue (10–30 µm, all-cell support + 2 µm jitter)' : 'the calibrated reweighted inhomogeneous cross-K (10–50 µm, 75 µm architecture bandwidth)'}. The second row scatters cells at random and ignores tissue structure entirely; a result significant against it but not against the primary means the two markers share tissue compartments, nothing more. The two-band verdict above is the finding; this table is the underlying per-null evidence.</div>`}
           <table style="width:100%;border-collapse:collapse;font-size:12px;border:1px solid var(--border);border-radius:6px;overflow:hidden">
             <thead><tr style="background:var(--bg3)">
               <th style="text-align:left;padding:5px 8px">Null model</th>
               <th style="text-align:left;padding:5px 8px">Direction</th>
-              <th style="text-align:left;padding:5px 8px">Global DCLF p</th>
+              <th style="text-align:left;padding:5px 8px"
+                  title="Diggle–Cressie–Loosmore–Ford global envelope test">Whole-curve p</th>
             </tr></thead>
             <tbody>
               ${nullRow(primaryKey, primaryLabel)}
-              ${nullRow('homogeneous', 'Homogeneous CSR (baseline only)')}
+              ${nullRow('homogeneous', 'Cells scattered at random — baseline only')}
             </tbody>
           </table>
         </div>` : '';
@@ -8540,12 +8562,12 @@ function spatialAssocShowResults(data) {
         ? `Statistics not interpretable — registration did not pass QC (${esc(qMethod)}). The values below are shown for transparency only and must NOT be reported as a finding.`
         : !inter
         ? (sig
-          ? `Significant spatial ${dir === 'segregation' ? 'segregation' : 'association'} (global DCLF p ${gpTxt} across r = ${band}); strongest deviation near ${fmtR(peakR)}.`
-          : `No significant spatial association (global DCLF p ${gpTxt}; whole L−r curve within the null envelope across r = ${band}).`)
+          ? `Significant spatial ${dir === 'segregation' ? 'segregation' : 'association'} (whole-curve p ${gpTxt} across distances of ${band}); strongest deviation near ${fmtR(peakR)}.`
+          : `No significant spatial association (whole-curve p ${gpTxt}; the measured curve stays inside the comparison model's expected range across ${band}).`)
         : (strongB(cB.verdict) || strongB(kB.verdict))
         ? `Under the ${primaryName}: short-range colocalization (10–20 µm) is ${esc(cB.verdict || '—')}${cB.verdict === 'not_resolvable' ? ' (registration too coarse to resolve this band)' : ''}, and co-infiltration (20–50 µm) is ${esc(kB.verdict || '—')}.${svSparse ? ' UNDERPOWERED — a marker is sparse, so this ran on the marker-independent all-cell support null.' : ''} This is a population-level serial-section result; it does not establish same-cell co-expression.`
         : (cB.verdict === 'csr_only' || kB.verdict === 'csr_only')
-        ? `Shared-compartment only: significant under the weak homogeneous-CSR baseline but not the ${primaryName}. The two populations share (or avoid) tissue compartments, but show no extra proximity once tissue structure is accounted for — a distinct, weaker finding, not cell-neighbourhood interaction.`
+        ? `Shared-compartment only: significant against randomly scattered cells, but not against the ${primaryName}. The two populations share (or avoid) tissue compartments, but show no extra proximity once tissue structure is accounted for — a distinct, weaker finding, not cell-neighbourhood interaction.`
         : `No significant cross-type interaction in either band (short-range colocalization or co-infiltration) under the ${primaryName} (r = ${band}).`;
       const sA = esc(p.stain_a || 'A'), sB = esc(p.stain_b || 'B');
       const img = (path, alt) => path
@@ -8590,7 +8612,7 @@ function spatialAssocShowResults(data) {
             <div class="metric"><div class="metric-label">${sA}+ cells</div><div class="metric-value">${(typeof na==='number'?na:0).toLocaleString()}</div><div class="metric-sub">positive</div></div>
             <div class="metric"><div class="metric-label">${sB}+ cells</div><div class="metric-value">${(typeof nb==='number'?nb:0).toLocaleString()}</div><div class="metric-sub">registered</div></div>
             <div class="metric" style="${statsDim}"><div class="metric-label">Peak r</div><div class="metric-value">${fmtR(peakR)}</div><div class="metric-sub">where L−r deviates most</div></div>
-            <div class="metric" style="${statsDim}"><div class="metric-label">Global p</div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub">DCLF, whole curve</div></div>
+            <div class="metric" style="${statsDim}"><div class="metric-label">Whole-curve p</div><div class="metric-value">${fmtP(gp)}</div><div class="metric-sub" title="Diggle–Cressie–Loosmore–Ford global envelope test">across every distance tested, not one</div></div>
           </div>
           <div style="font-size:12px;color:var(--text2);display:flex;gap:14px;flex-wrap:wrap;align-items:center">
             <span>Window: <strong>${fmtArea(area)}</strong>${mask ? ` <span class="badge gray">${esc(mask)}</span>` : ''}</span>
