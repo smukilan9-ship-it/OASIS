@@ -2496,20 +2496,35 @@ class API:
                     entry["msg"] = str(e)
             images.append(entry)
 
-        # The null the run WOULD use, dug out of whatever shape the pre-flight returned, so the
-        # screen can name it instead of leaving the operator to infer it from a verdict later.
-        def _dig(o, k):
-            if isinstance(o, dict):
-                if k in o:
-                    return o[k]
-                for v in o.values():
-                    r = _dig(v, k)
-                    if r is not None:
-                        return r
-            return None
-        band = {"primary_null": _dig(pre, "primary_null"),
-                "worst_status": _dig(pre, "worst_status"),
-                "reason": _dig(pre, "reason") or _dig(pre, "error")}
+        # The null the run WOULD use, read from the pre-flight's OWN structure.
+        #
+        # This was a blind recursive search for the first "primary_null"/"reason" anywhere in
+        # the payload, and it mixed two different documents: `primary_null` came from the null
+        # plan while `reason` came from the bandwidth pre-check, which is a description of the
+        # architecture scale, not of the null decision. On a pair whose dense-fallback gates
+        # failed, the screen therefore paired a fail-closed plan with the sparse-marker
+        # pre-check text — reading as "the test still runs, just underpowered" when in fact
+        # nothing would be produced. The two documents are now kept apart and both reported.
+        pairs = list((pre.get("precheck_by_pair") or {}).values())
+        d = pairs[0] if pairs else {}
+        plan = d.get("null_plan") or {}
+        pc = d.get("precheck") or {}
+        primary = plan.get("primary_null")
+        band = {
+            # "none" is a SENTINEL the planner writes for every fail-closed outcome, not a
+            # model name. Normalise it away here so no caller can print it as one.
+            "primary_null": (None if primary in (None, "none") else primary),
+            "primary_null_label": plan.get("primary_null_label"),
+            "plan_reason": plan.get("reason"),
+            "fail_closed": bool(plan.get("fail_closed")),
+            "underpowered": bool(plan.get("underpowered")),
+            "absence": bool(plan.get("absence")),
+            "dense": plan.get("dense") or {},
+            "worst_status": pc.get("worst_status"),
+            "bandwidth_valid": pc.get("valid"),
+            "architecture_reason": pc.get("reason"),
+            "error": pre.get("error"),
+        }
         return {"ok": True, "images": images, "band": band, "precheck": pre}
 
     def spatial_apply_review(self, config: dict) -> dict:

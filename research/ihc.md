@@ -2914,3 +2914,100 @@ there is doing real work.
 
 To train these for real, the labelling harness is the prerequisite — that is the operator's
 call and their labels, not something to be manufactured overnight.
+
+---
+
+## 21. Session 2026-08-03b — Certify rebuilt to the operator's design, and two honesty bugs
+
+The operator supplied a design (`~/Desktop/oasis-ui-designs/03-atlas.html`, screen 4) and one
+sentence of specification: **"manual and loftr are completely separate and make sure it works
+perfectly."** Everything below follows from taking that literally.
+
+### 21.1 What "separate" turned out to mean
+
+The previous rebuild had already cut the screen from ~26 controls to one action row, but it had
+kept the two registration paths *interleaved*:
+
+| before | after |
+|---|---|
+| both modes' buttons in one row, `.cert-only-*` spans hiding half of it | two self-contained panels — own prose, own actions, own options, own clear |
+| one `<details>` holding both modes' drawing tools | each panel owns its own disclosure |
+| a click placed a landmark **in either mode** | a plain click places a landmark **only in Manual**; in Automatic it explains why nothing happened |
+| a tool armed in one mode stayed armed after switching | leaving a mode disarms its tool and drops a half-placed pair |
+| landmark dots and LoFTR regions drawn on the tissue in both modes | each mode draws only its own work (state is kept, so switching back restores it) |
+| region list said "No regions drawn yet" in Manual | region list is hidden in Manual |
+
+`certModeIsManual()` / `certModeIsAuto()` are now the only mode predicates; everything reads
+them instead of re-deriving the mode.
+
+The layout follows the Atlas design: a header strip carrying the pair crumb and the verdict
+chip, the two sections full-bleed with their labels floating on the tissue, and one floating
+control bar at the bottom of the stage. The pane labels are live — in Manual the reference
+reads "· click first" until a fixed point is down, then the moving one reads "· click the
+matching point".
+
+One CSS note worth keeping: the floating bar wrapped onto two rows and covered the tissue
+because an absolutely-positioned box with `left:50%` shrinks to fit the space *right of* that
+50%. `width: max-content` is load-bearing there.
+
+### 21.2 LoFTR, named where it earns it
+
+The Automatic panel now says which method it is and where it is accurate — structure to lock
+onto (vessel walls, gland and duct outlines, fold and section edges, necrotic borders, the
+capsule) — and where it is not (uniform lymphoid sheets, plain stroma, mostly-background
+fields), with the explicit hand-off: where it cannot find structure it refuses the pair rather
+than certifying a guess, and that is the case for Manual landmarks. Driving the app produced
+both outcomes on real pairs — `LL479_Tumor_10X_1` NOT CERTIFIED on a flat field,
+`LL477_Liver_20X_2` CERTIFIED at 5.6 µm from 60 matches — so the copy describes measured
+behaviour, not a claim.
+
+The Manual panel states the thing the old UI never did: **the analysis window is derived from
+the landmarks automatically** (whole field if they certify it, otherwise the largest region
+they support, re-measured against the same gates). Drawing one is optional and only narrows
+where OASIS looks. That was already the backend's behaviour — `landmark_register_and_verify`
+returns the hull as `roi_polygon`, and `suggest_local_certification_roi` is the recovery path —
+but the screen presented "Certification ROI · ✎ On reference · ✎ On moving · Clear ROI" as if
+it were a required step.
+
+### 21.3 Two honesty bugs, both found only by driving the app
+
+Both concern the same failure mode: **presenting an absent test as a negative result.**
+
+**(1) The runtime review screen printed the fail-closed sentinel as a model name.**
+`_build_precheck_null_plan` writes `primary_null: "none"` for every fail-closed outcome. The
+review screen did `const ok = !!nul` — and `"none"` is a non-empty string, so it rendered
+*"This run will be tested against the **none**."* Worse, the screen's `reason` came from a
+blind recursive search that found the **bandwidth pre-check's** reason first — a description of
+the architecture scale — while `primary_null` came from the **null plan**. On
+`LL477_Liver_20X_2` that paired a fail-closed plan with the sparse-marker pre-check text, which
+ends *"segregation/association is still reported"*. The screen therefore said the test would
+run, in a case where nothing would be computed.
+
+Fixed on both sides: the API reads the pre-flight's own structure instead of guessing
+(`null_plan` and `precheck` kept apart, both reported, `"none"` normalised to `null`), and the
+screen keys on `fail_closed`, names the null from `primary_null_label`, prints the failing
+gates with their numbers, and relabels its own button *"Continue — record the fail-closed
+result"*.
+
+**(2) The results screen badged a withheld pair "n.s."** Same pair. The run failed closed —
+`error: "no_valid_primary_null"`, `interaction` and `global` both null — which matched no
+branch in the card renderer, so it fell through to the ordinary card where `sig` is false and
+the badge reads `n.s.`: *not significant*, for a test that never ran. The summary was worse:
+the pair matched none of the tally branches either, so the headline read **1 pair, 0
+colocalization, 0 co-infiltration, 0 not tested** — the one reading that is definitely false.
+
+`spatialPairWithheld()` is now the single predicate for both the tally and the card, so they
+cannot disagree. A withheld pair gets an amber **not tested** card that says *"No statistic was
+produced for this pair… This is not 'no association' — it is the absence of a test"*, names the
+failing gate with its numbers (`min_support` — 474 support cells, needs 500), shows the cell
+counts, and counts under **Not tested**.
+
+The measured example, end to end: certified at 5.59 µm inside a 316,887 µm² window, 6 CD8+ and
+5 TIM-3+ cells in that window, 474 support cells — under the 500 the support null needs. The
+pair is certifiable, segmentable, and untestable, and all three are now visible.
+
+### 21.4 Still open
+
+The 6-step wizard, the runtime review and the results screen are verified by driving the app on
+real pairs. Not yet done: re-running the 75-pair cohort under the corrected flow, and §18.6
+items 1–2 (whether `Kinhom` ever decides a verdict; window size under the holed A∩B window).
