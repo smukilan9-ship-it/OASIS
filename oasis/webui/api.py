@@ -2352,6 +2352,90 @@ class API:
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
+    def spatial_measure_pair(self, config: dict) -> dict:
+        """ONE measurement pass that backs the Quantify, Histogram and Band-check steps.
+
+        The wizard was reordered so the operator segments, then SEES what was measured, then
+        chooses a cutoff against that distribution, then confirms the null fits the tissue —
+        instead of typing two DAB numbers blind and finding out afterwards. All three of those
+        steps need the same thing: both sections segmented and measured inside the certified
+        window. Doing it three times would be three InstanSeg passes, so it is done once here.
+
+        `precheck_bandwidth_only` already segments both images, writes reusable GeoJSONs to the
+        run's own output directory, builds the certified window and returns the architecture-
+        scale verdict WITHOUT the Monte-Carlo statistic. That is exactly the payload, so this
+        wraps it and adds the per-image GeoJSON paths and cell counts the histogram needs.
+        A later full run with `reuse_existing_geojson` skips re-segmentation.
+        """
+        import glob as _glob
+        try:
+            res = self.run_spatial_association(config, precheck_only=True) or {}
+        except Exception as e:
+            return {"status": "error", "error": f"{type(e).__name__}: {e}"}
+
+        out_dir = os.path.expanduser(config.get("output_dir") or "")
+        images = []
+        for key, marker_key in (("image_a", "stain_a"), ("image_b", "stain_b")):
+            p = config.get(key) or (config.get("pairs") or [{}])[0].get(key)
+            if not p:
+                continue
+            stem = Path(os.path.expanduser(p)).stem
+            hits = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
+                                     recursive=True))
+            n = None
+            if hits:
+                try:
+                    from oasis.quant import reclassify as RC
+                    import numpy as _np
+                    v = RC.read_dab_values(hits[0])
+                    n = int(_np.isfinite(v).sum())
+                except Exception:
+                    n = None
+            images.append({"role": "A" if key == "image_a" else "B",
+                           "marker": config.get(marker_key),
+                           "path": p, "name": os.path.basename(p),
+                           "geojson": hits[0] if hits else None,
+                           "n_cells": n})
+        return {"status": "ok", "precheck": res, "images": images}
+
+    def spatial_histogram(self, payload: dict) -> dict:
+        """Binned per-cell DAB distributions, plus what a candidate cutoff would call.
+
+        The histogram is the whole point of the step: a DAB cutoff typed without seeing the
+        distribution it cuts is a guess, and on this cohort the difference between 0.10 and
+        0.20 is the difference between ~99 % positive and something callable
+        (research/ihc.md, TIM-3 phase-1). Read straight from the GeoJSONs the measurement pass
+        wrote, so no image is touched again.
+        """
+        import numpy as np
+        from oasis.quant import reclassify as RC
+        out = []
+        for img in (payload.get("images") or []):
+            gj, thr = img.get("geojson"), img.get("threshold")
+            if not gj or not os.path.exists(gj):
+                out.append({**img, "ok": False, "msg": "no measured cells for this image yet"})
+                continue
+            try:
+                vals = RC.read_dab_values(gj)
+            except (OSError, ValueError) as e:
+                out.append({**img, "ok": False, "msg": str(e)})
+                continue
+            finite = vals[np.isfinite(vals)]
+            h = RC.histogram(vals, bins=int(payload.get("bins", 48)))
+            entry = {**img, "ok": True, "n_cells": int(finite.size),
+                     "hist": h,
+                     "p50": round(float(np.median(finite)), 4) if finite.size else None,
+                     "p90": round(float(np.percentile(finite, 90)), 4) if finite.size else None,
+                     "max": round(float(finite.max()), 4) if finite.size else None}
+            if thr is not None:
+                frac = RC.positive_fraction(vals, float(thr))
+                entry["at_threshold"] = {
+                    "threshold": float(thr),
+                    "positive_frac": round(float(frac), 5),
+                    "positive_cells": int(round(frac * finite.size))}
+            out.append(entry)
+        return {"status": "ok", "images": out}
+
     def get_spatial_association_results(self, output_dir: str) -> dict:
         """Load spatial-association results (incl. null stats + QC overlay paths)."""
         output_dir = os.path.expanduser(output_dir)
