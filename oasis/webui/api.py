@@ -2375,7 +2375,10 @@ class API:
 
         out_dir = os.path.expanduser(config.get("output_dir") or "")
         images = []
-        for key, marker_key in (("image_a", "stain_a"), ("image_b", "stain_b")):
+        # `label_a`/`label_b` are what spatialBuildConfig actually sends; `stain_a`/`stain_b`
+        # is the pipeline's own naming, so accept either rather than rendering a bare "A ·".
+        for key, marker_keys in (("image_a", ("label_a", "stain_a")),
+                                 ("image_b", ("label_b", "stain_b"))):
             p = config.get(key) or (config.get("pairs") or [{}])[0].get(key)
             if not p:
                 continue
@@ -2392,7 +2395,8 @@ class API:
                 except Exception:
                     n = None
             images.append({"role": "A" if key == "image_a" else "B",
-                           "marker": config.get(marker_key),
+                           "marker": next((config.get(k) for k in marker_keys
+                                           if config.get(k)), None),
                            "path": p, "name": os.path.basename(p),
                            "geojson": hits[0] if hits else None,
                            "n_cells": n})

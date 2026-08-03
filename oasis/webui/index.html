@@ -7135,24 +7135,34 @@ function spatialRenderBandCheck(pre) {
     for (const v of Object.values(o)) { const r = dig(v, k); if (r != null) return r; }
     return null;
   };
-  const nul   = dig(pre, 'primary_null');
-  const worst = dig(pre, 'worst_status');
-  const valid = dig(pre, 'valid');
+  const nul    = dig(pre, 'primary_null');
+  const worst  = dig(pre, 'worst_status');
   const reason = dig(pre, 'reason') || dig(pre, 'error');
-  if (nul == null && worst == null && valid == null) {
+  if (nul == null && worst == null) {
     return `<div class="info-box amber">The pre-flight returned no verdict for this pair —
       usually it is not certified (step 3), since the 75 µm check is only meaningful inside a
       certified window.${reason ? ' <br>Reported: ' + esc(String(reason)) : ''}</div>`;
   }
-  const ok = (valid === true);
+  // THE HEADLINE KEYS ON WHETHER A PRIMARY NULL EXISTS — not on the 75 µm reweighted null's
+  // own validity. Those are different questions, and conflating them printed "Fails closed —
+  // no valid primary null" directly above a row naming dense_morphology as the null the run
+  // would use. `dense_tissue_bandwidth_invalid` is the EXPECTED result on IHC: it means the
+  // 75 µm reweighted null was correctly rejected because the tissue's architecture sits
+  // inside the interaction band, and the dense morphology-conditioned null takes over. On
+  // this cohort that happened on every pair that produced a statistic (§ 18.2).
+  const ok = !!nul;
+  const rejected75 = String(worst || '').indexOf('dense_tissue') === 0;
   return `<div class="info-box ${ok ? '' : 'amber'}">
-    <div><b>${ok ? 'Null model fits this tissue' : 'Fails closed — no valid primary null'}</b></div>
+    <div><b>${ok ? 'Null model selected — this pair can be analysed'
+                 : 'Fails closed — no valid primary null for this pair'}</b></div>
     <table style="font-size:12px;margin-top:6px;border-collapse:collapse">
-      <tr><td style="padding:2px 12px 2px 0;color:var(--text2)">primary null a run would use</td>
+      <tr><td style="padding:2px 12px 2px 0;color:var(--text2);vertical-align:top">primary null a run would use</td>
           <td><b>${esc(String(nul ?? '—'))}</b></td></tr>
-      <tr><td style="padding:2px 12px 2px 0;color:var(--text2)">architecture scale</td>
-          <td>${esc(String(worst ?? '—'))}</td></tr>
-      ${reason ? `<tr><td style="padding:2px 12px 2px 0;color:var(--text2)">reason</td>
+      <tr><td style="padding:2px 12px 2px 0;color:var(--text2);vertical-align:top">architecture scale</td>
+          <td>${esc(String(worst ?? '—'))}${rejected75 ? ` <span style="color:var(--text3)">— expected on
+          dense tissue: the 75 µm reweighted null is rejected and the dense
+          morphology-conditioned null is used instead. This is not a failure of the pair.</span>` : ''}</td></tr>
+      ${reason ? `<tr><td style="padding:2px 12px 2px 0;color:var(--text2);vertical-align:top">reason</td>
           <td>${esc(String(reason))}</td></tr>` : ''}
     </table></div>`;
 }
