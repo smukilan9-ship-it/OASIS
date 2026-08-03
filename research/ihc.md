@@ -3123,3 +3123,33 @@ overwriting a saved model.
 Deliberately not done: a global inline-style sweep. 157 of ~400 inline styles carry colour
 and roughly a third of those are the data layer above — a blanket replace across JS template
 strings is precisely the edit that produced §22.2.
+
+### 22.5 The verification round, and what it caught me on
+
+A tenth audit read the nine rounds of fixes *adversarially* — every claim assumed wrong
+until the implementing code had been read. It confirmed most, and found **three things the
+fixes themselves had broken**:
+
+1. **Every classifier save threw.** The overwrite confirmation read `existing.classifiers`
+   from an API returning `{"saved": [...]}`, so `||` fell through to the response *object*
+   and `.some` is not a function — outside the `try`, in an async `onclick`. Nothing saved.
+2. **Both failure panels were invisible**, inserted as children of the collapsed
+   technical-log container — i.e. the fix for "the reason is folded inside a collapsed log"
+   put the reason inside the collapsed log.
+3. **A failed start latched the run lock forever**, because the two pre-flight early-returns
+   never released it and Stop is hidden outside the running view.
+
+Plus six smaller ones, including that the Spatial review screen still printed
+`min_support` and `dense_tissue_bandwidth_invalid` — it was written in round six and the
+vocabulary sweep was round four.
+
+**The pattern worth keeping.** Rounds 1–9 each ended with "tests pass, driven end to end,
+looks right." All three of the above satisfied that: the tests do not exercise a JS onclick,
+driving the app does not press *every* button, and a panel that renders correctly inside a
+hidden parent looks identical to one that does not render at all. What caught them was a
+reader with no stake in the fixes being right, told to disbelieve each one and go find the
+code.
+
+Two audits caught two of my own regressions in this session (§22.2 and this one). Both were
+in changes I had verified by driving the app. The verification round is not optional
+overhead — on this evidence it is the highest-yield audit of the ten.
