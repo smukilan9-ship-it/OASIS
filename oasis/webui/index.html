@@ -4149,7 +4149,10 @@ function qrRender() {
     const countTxt = img.membrane
       ? `${(img.scored_positive || 0).toLocaleString()} / ${n.toLocaleString()} positive `
         + `(${Number(img.scored_pct || 0).toFixed(1)}%) by ring completeness`
-      : `${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
+      // "~" because this is interpolated inside the threshold's bin so the slider tracks
+      // smoothly; the authoritative count is recomputed server-side when the cutoff is
+      // applied, and the two can differ by a cell (previewed 120/4,521, wrote 119).
+      : `~${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
     return `<div class="card" style="margin-bottom:10px">
       <div style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
         <b style="font-size:13px">${esc(img.name)}</b>
@@ -4465,7 +4468,7 @@ function qrRefreshThreshold(i) {
   const cnt = document.getElementById('qr-count-' + i);
   if (cnt && !img.membrane) {
     const pos = Math.round(frac * n);
-    cnt.textContent = `${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
+    cnt.textContent = `~${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
   }
   const lbl = document.getElementById('qr-thr-' + i);
   if (lbl) lbl.textContent = thr.toFixed(2);

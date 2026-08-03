@@ -998,7 +998,8 @@ class API:
         frac = RC.positive_fraction(values, threshold)
         n = int(np.isfinite(values).sum())
         return {"ok": True, "positive_frac": round(frac, 5),
-                "positive_cells": int(round(frac * n)), "total_cells": n}
+                # COUNTED, not round(frac * n) — see reclassify.positive_count.
+                "positive_cells": RC.positive_count(values, threshold), "total_cells": n}
 
     def apply_review(self, payload):
         """Commit the reviewed cutoffs, then generate the outputs.
@@ -2436,7 +2437,7 @@ class API:
                 entry["at_threshold"] = {
                     "threshold": float(thr),
                     "positive_frac": round(float(frac), 5),
-                    "positive_cells": int(round(frac * finite.size))}
+                    "positive_cells": RC.positive_count(vals, float(thr))}
             out.append(entry)
         return {"status": "ok", "images": out}
 

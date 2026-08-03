@@ -87,6 +87,20 @@ def positive_fraction(values, threshold):
     return float(np.mean(v > float(threshold)))
 
 
+def positive_count(values, threshold):
+    """How many measurable cells a cutoff calls positive — COUNTED, not derived.
+
+    The review screen used to show `round(positive_fraction * n)`, which disagreed with the
+    number the run actually wrote: a CD8 image previewed as 120/4,521 positive and came out
+    119. One cell is not a scientific problem, but the number an operator is shown while
+    CHOOSING a cutoff has to be the number that cutoff produces, or the screen is not a
+    preview of anything.
+    """
+    v = np.asarray(values, dtype=float)
+    v = v[np.isfinite(v)]
+    return int((v > float(threshold)).sum())
+
+
 def _write_csv_classification(output_dir, img_stem, features):
     """Keep the detections CSV's Classification column in step with the GeoJSON.
 
