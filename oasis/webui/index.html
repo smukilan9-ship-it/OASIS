@@ -6995,16 +6995,21 @@ const HELP = {
       { h: 'Set the cutoffs and check the null',
         p: 'Each section carries a different marker, so each gets its own cutoff, judged '
          + 'against its own histogram. On the same screen OASIS names the comparison model '
-         + 'this tissue supports — and says so plainly if none of them fits, which is what '
-         + 'the picture shows: nothing is written until you continue.' },
+         + 'this tissue supports, and says so plainly if none of them fits. In a batch every '
+         + 'pair gets its own section here. Nothing is written until you continue.',
+        img: 'spatial-5-review.png',
+        cap: 'Three serial CD8/CD45 pairs, each with its own two histograms and its own null. '
+           + 'This tissue measures just above the 75 µm bandwidth, so the run switches to the '
+           + 'dense null rather than trusting the reweighted one.' },
       { h: 'Read the association',
         p: 'A cross-type Ripley\'s K curve against the chosen null, with the certified window '
          + 'and its measured error beside it. When the tissue supports no null OASIS reports '
          + 'that instead, and says so in as many words — an absent test is not a negative '
          + 'result, and the two are never shown as the same thing.',
         img: 'spatial-6-results.png',
-        cap: 'A real run on serial CD8/CD45: certified at 8.32 µm, and all three pairs '
-           + 'withheld because the dense fallback gates did not pass.' },
+        cap: 'The same three pairs, certified at 8.32 µm and tested against the dense null. '
+           + 'CD8 sits apart from CD45 rather than with it: at the short range in one pair, '
+           + 'at the wider scale in two. Two of the three survive the cohort FDR correction.' },
     ],
     foot: 'No certification, no finding — an uncertified pair is flagged, never reported.'
   },

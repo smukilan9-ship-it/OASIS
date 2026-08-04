@@ -334,7 +334,26 @@ def do_spatial(stop_after_certify=False):
     print("  spatial")
     js("showPage('spatial')")
     time.sleep(0.8)
-    click("spatial-mode-batch-btn")
+
+    # Batch mode has to SURVIVE A TICK before anything else happens, for the same reason
+    # quantSetMode does. Init is `pywebviewready → await loadSetup() → spatialAssocSetMode
+    # ('single')`, so the reset lands whenever that await resolves — after this script has
+    # clicked Batch and, at 0.8 s in, usually after it has previewed the folders too. The
+    # call is a no-op for a person (the mode is already 'single' when init runs and the
+    # function returns early), but here it flips the mode back AND clears
+    # `spatialCertifications`, so the certify loop then finds no pairs and every wait after
+    # it sits out its timeout. Observed exactly that: 3 pairs previewed, mode 'single',
+    # zero pairs at the gate.
+    mode = ""
+    for _ in range(10):
+        click("spatial-mode-batch-btn")
+        time.sleep(1.0)
+        mode = js("typeof spatialMode !== 'undefined' ? String(spatialMode) : 'undefined'")
+        if mode == "batch":
+            break
+    if mode != "batch":
+        _failures.append(f"spatial: batch mode did not stick (spatialMode={mode!r})")
+        return
     click("spatial-fmode-two-btn")
     set_field("spatial-folder-a", str(SPATIAL_A))
     set_field("spatial-folder-b", str(SPATIAL_B))
@@ -393,10 +412,43 @@ def do_spatial(stop_after_certify=False):
 
     js("spatialWizardGoTo(6)")
     time.sleep(0.8)
+
+    # SAY WHAT THE GATE SEES BEFORE OPENING IT. spatialBandwidthCheck() returns early on
+    # "no pairs" with a toast and NOTHING written to #spatial-bw-result, so the wait below
+    # has nothing to fail on and sits out its full forty minutes in silence. Observed: the
+    # certify phase finished, the pair list was empty by the time step 6 ran, and the run
+    # stalled with no worker, no output and no message.
+    gate = js("""(function(){
+        const u = (typeof spatialUncertifiedPairs === 'function') ? spatialUncertifiedPairs() : null;
+        return { mode: String(typeof spatialMode !== 'undefined' ? spatialMode : '?'),
+                 previewed: (typeof spatialPairs !== 'undefined' && spatialPairs) ? spatialPairs.length : -1,
+                 gate_pairs: u ? u.pairs.length : -1,
+                 uncertified: u ? u.uncertified.length : -1 };
+    })()""") or {}
+    print(f"      null-check gate: {gate}", flush=True)
+    if not gate.get("gate_pairs"):
+        _failures.append(f"spatial: the null check has no pairs to run on ({gate}) — "
+                         f"the pair list was lost between certification and step 6")
+        return
+    if gate.get("uncertified"):
+        _failures.append(f"spatial: {gate['uncertified']} pair(s) uncertified at step 6")
+        return
+
     js("spatialBandwidthCheck()")
-    wait_for("document.getElementById('spatial-bw-result') && "
-             "document.getElementById('spatial-bw-result').innerHTML.length > 200",
-             timeout=2400, what="the null-model check")
+    # Fail on the badge too. It reaches ERROR / CERT REQUIRED in seconds, and waiting for
+    # prose that will never be written turns a clear failure into a silent forty minutes.
+    if not wait_for("(document.getElementById('spatial-bw-result') && "
+                    " document.getElementById('spatial-bw-result').innerHTML.length > 200) || "
+                    "['ERROR','CERT REQUIRED'].includes("
+                    " (document.getElementById('spatial-bw-badge')||{}).textContent)",
+                    timeout=2400, what="the null-model check"):
+        _failures.append("spatial: the null check never reported")
+        return
+    badge = js("(document.getElementById('spatial-bw-badge')||{}).textContent")
+    if badge in ("ERROR", "CERT REQUIRED"):
+        _failures.append(f"spatial: the null check came back {badge}")
+        return
+    print(f"      null check: {badge}", flush=True)
     time.sleep(1.5)
 
     js("spatialAssocRun()")
@@ -407,11 +459,17 @@ def do_spatial(stop_after_certify=False):
         shot("spatial-5-review.png")
         js("spReviewApply()")
 
-    if wait_for("document.getElementById('spatial-results').classList.contains('active')",
-                timeout=2400, what="the Spatial results screen"):
-        time.sleep(3.0)
+    # Wait for the CARDS, not for the view. The results view is switched on first and filled
+    # afterwards from the results JSON, so anchoring on `.active` shot an empty window: the
+    # picture that shipped was 12 KB of background with a title bar.
+    if wait_for("document.getElementById('spatial-results').classList.contains('active') && "
+                "document.getElementById('spatial-results-cards').innerHTML.length > 500",
+                timeout=2400, what="the Spatial results to render"):
+        time.sleep(2.0)
         scroll_to(top=0)
         shot("spatial-6-results.png")
+    else:
+        _failures.append("spatial: the results screen never rendered any cards")
 
 
 def do_classifier():
@@ -517,9 +575,45 @@ def do_spatial_certify():
     do_spatial(stop_after_certify=True)
 
 
+def do_spatial_results():
+    """Step 6 alone, from a run that has already finished.
+
+    The results screen is filled from the results JSON on disk, so re-shooting it does not
+    need another certification and another Monte-Carlo run — the previous half hour already
+    produced the numbers. Same code path the run itself uses: the completion event hands
+    `spatialAssocShowResults` exactly what `get_spatial_association_results` returns.
+    """
+    print("  spatial results")
+    js("showPage('spatial')")
+    time.sleep(0.8)
+    ok = js(f"""(async function(){{
+        const r = await window.pywebview.api.get_spatial_association_results(
+            {json.dumps(str(OUT / 'spatial'))});
+        if (!r || !(r.results || []).length) return false;
+        // Adopt the markers off the results themselves. In a real run the folder preview
+        // does this; loading from disk skips the preview, so the page subtitle keeps its
+        // MARKER_A/TIM-3 default and the picture then names markers this cohort never had.
+        const p0 = r.results[0] || {{}};
+        const set = (id, v) => {{ const e = document.getElementById(id); if (e && v) e.value = v; }};
+        set('spatial-label-a', p0.stain_a); set('spatial-label-b', p0.stain_b);
+        if (typeof spatialSyncPageSubtitle === 'function') spatialSyncPageSubtitle();
+        spatialAssocShowResults(r);
+        return (r.results || []).length;
+    }})()""")
+    if not wait_for("document.getElementById('spatial-results').classList.contains('active') && "
+                    "document.getElementById('spatial-results-cards').innerHTML.length > 500",
+                    timeout=120, what="the stored results to render"):
+        _failures.append(f"spatial results: nothing rendered from {OUT / 'spatial'} "
+                         f"(loader returned {ok!r}) — run the `spatial` group first")
+        return
+    time.sleep(2.0)
+    scroll_to(top=0)
+    shot("spatial-6-results.png")
+
+
 GROUPS = {"settings": do_settings, "quant": do_quant,
           "spatial": do_spatial, "certify": do_spatial_certify,
-          "classifier": do_classifier}
+          "results": do_spatial_results, "classifier": do_classifier}
 
 
 def drive():
