@@ -2531,20 +2531,36 @@ class API:
             return {"ok": False, "msg": f"{type(e).__name__}: {e}"}
 
         out_dir = os.path.expanduser(config.get("output_dir") or "")
-        images = []
-        for key, label_keys, thr_key, role in (
-                ("image_a", ("label_a", "stain_a"), "dab_threshold_a", "A"),
-                ("image_b", ("label_b", "stain_b"), "dab_threshold_b", "B")):
-            path = config.get(key)
+
+        # WHICH PAIRS THIS RUN WILL ANALYSE. A batch used to skip this screen entirely — the
+        # wizard promised a cutoff review on step 5 and a folder of pairs went straight to the
+        # statistic at whatever cutoff the pre-flight happened to use. The pre-check already
+        # runs per pair (`precheck_by_pair` is keyed by sample_id), so the work exists; only
+        # the reporting collapsed it to `pairs[0]`.
+        if str(config.get("analysis_mode") or "single") == "single":
+            a, b = config.get("image_a"), config.get("image_b")
+            sid = Path(os.path.expanduser(a or "")).stem or "pair"
+            run_pairs = [{"sample_id": sid, "path_a": a, "path_b": b,
+                          "stain_a": config.get("label_a") or config.get("stain_a") or "A",
+                          "stain_b": config.get("label_b") or config.get("stain_b") or "B"}]
+        else:
+            prev = self.preview_batch_pairs(config.get("folder_a"), config.get("folder_b"),
+                                            config.get("folder_mode", "two_folder"))
+            if prev.get("status") != "ok":
+                return {"ok": False, "msg": prev.get("error", "could not match the folders")}
+            run_pairs = prev.get("pairs", [])
+            if not run_pairs:
+                return {"ok": False, "msg": "No pairs matched in those folders."}
+
+        def _measure(path, role, marker, thr):
+            entry = {"role": role, "name": os.path.basename(path or ""),
+                     "marker": marker or role, "geojson": None, "threshold": float(thr or 0.2)}
             if not path:
-                continue
+                return entry
             stem = Path(os.path.expanduser(path)).stem
             hits = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
                                      recursive=True))
-            entry = {"role": role, "name": os.path.basename(path),
-                     "marker": next((config.get(k) for k in label_keys if config.get(k)), role),
-                     "geojson": hits[0] if hits else None,
-                     "threshold": float(config.get(thr_key) or 0.2)}
+            entry["geojson"] = hits[0] if hits else None
             if hits:
                 try:
                     vals = RC.read_dab_values(hits[0])
@@ -2559,7 +2575,27 @@ class API:
                     })
                 except (OSError, ValueError) as e:
                     entry["msg"] = str(e)
-            images.append(entry)
+            return entry
+
+        by_pair = pre.get("precheck_by_pair") or {}
+        pairs_out = []
+        for rp in run_pairs:
+            sid = rp.get("sample_id")
+            pairs_out.append({
+                "sample_id": sid,
+                "path_a": rp.get("path_a"), "path_b": rp.get("path_b"),
+                "images": [
+                    _measure(rp.get("path_a"), "A", rp.get("stain_a"),
+                             config.get("dab_threshold_a")),
+                    _measure(rp.get("path_b"), "B", rp.get("stain_b"),
+                             config.get("dab_threshold_b")),
+                ],
+                "band": self._band_from_precheck(by_pair.get(sid) or {}, pre),
+            })
+
+        # Kept flat as well: the single-pair screen has always addressed images by one index,
+        # and the histogram drag handler passes a single number.
+        images = [im for p in pairs_out for im in p["images"]]
 
         # The null the run WOULD use, read from the pre-flight's OWN structure.
         #
@@ -2570,12 +2606,25 @@ class API:
         # failed, the screen therefore paired a fail-closed plan with the sparse-marker
         # pre-check text — reading as "the test still runs, just underpowered" when in fact
         # nothing would be produced. The two documents are now kept apart and both reported.
-        pairs = list((pre.get("precheck_by_pair") or {}).values())
-        d = pairs[0] if pairs else {}
+        return {"ok": True, "pairs": pairs_out, "images": images,
+                "band": (pairs_out[0]["band"] if pairs_out else {}), "precheck": pre}
+
+    @staticmethod
+    def _band_from_precheck(d: dict, pre: dict) -> dict:
+        """One pair's null decision, read from the pre-flight's OWN structure.
+
+        This was a blind recursive search for the first "primary_null"/"reason" anywhere in
+        the payload, and it mixed two different documents: `primary_null` came from the null
+        plan while `reason` came from the bandwidth pre-check, which is a description of the
+        architecture scale, not of the null decision. On a pair whose dense-fallback gates
+        failed, the screen therefore paired a fail-closed plan with the sparse-marker
+        pre-check text — reading as "the test still runs, just underpowered" when in fact
+        nothing would be produced. The two documents are kept apart and both reported.
+        """
         plan = d.get("null_plan") or {}
         pc = d.get("precheck") or {}
         primary = plan.get("primary_null")
-        band = {
+        return {
             # "none" is a SENTINEL the planner writes for every fail-closed outcome, not a
             # model name. Normalise it away here so no caller can print it as one.
             "primary_null": (None if primary in (None, "none") else primary),
@@ -2590,7 +2639,6 @@ class API:
             "architecture_reason": pc.get("reason"),
             "error": pre.get("error"),
         }
-        return {"ok": True, "images": images, "band": band, "precheck": pre}
 
     def spatial_apply_review(self, config: dict) -> dict:
         """Run the statistic with the reviewed cutoffs, reusing the segmentation just made.
@@ -2616,11 +2664,23 @@ class API:
 
         out_dir = os.path.expanduser(cfg.get("output_dir") or "")
         applied = []
-        for key, thr_key in (("image_a", "dab_threshold_a"), ("image_b", "dab_threshold_b")):
-            path = cfg.get(key)
+
+        # A batch reviews every pair, so the cutoffs arrive per pair rather than as the
+        # config's single A/B. Rewriting the cells is what carries them into the run either
+        # way — the statistic reads the baked classification, not a threshold — so a batch
+        # needs no per-image threshold support anywhere downstream.
+        targets = []
+        for rp in (cfg.get("reviewed_pairs") or []):
+            targets.append((rp.get("path_a"), rp.get("threshold_a")))
+            targets.append((rp.get("path_b"), rp.get("threshold_b")))
+        if not targets:
+            targets = [(cfg.get("image_a"), cfg.get("dab_threshold_a")),
+                       (cfg.get("image_b"), cfg.get("dab_threshold_b"))]
+        cfg.pop("reviewed_pairs", None)
+
+        for path, thr in targets:
             if not path:
                 continue
-            thr = cfg.get(thr_key)
             if thr is None:
                 continue
             stem = Path(os.path.expanduser(path)).stem

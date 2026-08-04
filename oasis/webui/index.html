@@ -846,7 +846,9 @@ td.muted { color: var(--text3); font-size: 11px; }
 .lm-world svg { position: absolute; top: 0; left: 0; pointer-events: none; }
 #spatial-cert-work.lm-fullscreen { position: fixed; inset: 0; z-index: 2000; margin: 0;
   padding: 14px 18px; background: var(--bg); overflow: auto; }
-#spatial-cert-work.lm-fullscreen .lm-stage { height: calc(100vh - 190px); }
+/* Two control rows now sit above and below the pair instead of floating over it, so the
+   images get the window minus those rows rather than minus nothing. */
+#spatial-cert-work.lm-fullscreen .lm-stage { height: calc(100vh - 272px); }
 /* Fullscreen exists to put the two sections side by side at a usable size, so the pair grid
    takes the whole width and everything that is not the images gets out of the way. */
 #spatial-cert-work.lm-fullscreen .lm-pair { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -888,35 +890,29 @@ td.muted { color: var(--text3); font-size: 11px; }
 .cert-panel-act { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
   margin-top: 10px; }
 
-.cert-stage { position: relative; margin: 0 -2px; }
-/* The moving pane's tag sits top-RIGHT: the display bar floats centred on the seam, and
-   at the top-left of the moving pane the two overlapped and the tag lost. */
-#lm-stage-mov .pane-tag { left: auto; right: 10px; }
-.pane-tag { position: absolute; top: 10px; left: 10px; z-index: 6; pointer-events: none;
-  display: inline-flex; align-items: center; gap: 7px; height: 25px; padding: 0 10px;
-  border-radius: var(--r-xs); font-size: 12px; font-weight: 600; color: var(--text);
-  background: rgba(255,255,255,.93); border: 1px solid var(--border2);
-  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
-.pane-tag .sub { font-weight: 400; color: var(--text2); }
-/* width:max-content is load-bearing. An absolutely-positioned box with left:50% shrinks to
-   fit the space RIGHT of that 50%, so the bar wrapped onto two rows at half the stage width
-   and covered the tissue it floats over. max-content sizes it to its buttons; max-width
-   still clamps it on a narrow window. */
-.cert-hud { position: absolute; z-index: 12; left: 50%; bottom: 12px;
-  transform: translateX(-50%); display: flex; align-items: center; gap: 4px;
-  flex-wrap: wrap; justify-content: center;
-  width: max-content; max-width: calc(100% - 24px);
-  padding: 5px 6px; border-radius: var(--r-lg); background: rgba(255,255,255,.94);
-  border: 1px solid var(--border2); box-shadow: 0 6px 22px rgba(0,0,0,.16);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.cert-hud .sep { width: 1px; height: 18px; background: var(--border2); margin: 0 3px; }
-.cert-hud .val { font-family: var(--mono); font-size: 12px; color: var(--text2);
+/* Three rows: controls, tissue, controls. The bars were absolutely positioned over the
+   sections with a blur behind them, which is a good pattern on a photo viewer and the wrong
+   one here — the operator is being asked to decide whether two pieces of tissue align, and
+   the controls sat on the evidence. Rows cost ~44 px each and cover nothing. */
+.cert-stage { position: relative; margin: 0 -2px; display: flex; flex-direction: column; }
+.cert-bar { flex: none; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;
+  padding: 6px 10px; background: var(--surface); border: 1px solid var(--border); }
+.cert-bar-top { border-bottom: 0; border-radius: var(--r-sm) var(--r-sm) 0 0; }
+.cert-bar-bottom { border-top: 0; border-radius: 0 0 var(--r-sm) var(--r-sm);
+  justify-content: center; }
+/* The display controls sit between the two pane labels, each label over the pane it names. */
+.cert-bar-mid { flex: 1; display: flex; align-items: center; justify-content: center;
+  gap: 4px; flex-wrap: wrap; min-width: 0; }
+.cert-bar .sep { width: 1px; height: 18px; background: var(--border2); margin: 0 3px; }
+.cert-bar .val { font-family: var(--mono); font-size: 12px; color: var(--text2);
   min-width: 44px; text-align: center; }
-.cert-hud .btn.pri { background: var(--text); color: #fff; border-color: var(--text); }
-.cert-hud .btn.armed { background: var(--warn); color: #fff; border-color: var(--warn); }
-.cert-hud-top { top: 12px; bottom: auto; }
-.cert-hud-bottom { bottom: 12px; top: auto; }
-.cert-hud.cert-hidden { display: none; }
+.cert-bar .btn.pri { background: var(--text); color: #fff; border-color: var(--text); }
+.cert-bar .btn.armed { background: var(--warn); color: #fff; border-color: var(--warn); }
+.cert-bar.cert-hidden { display: none; }
+/* Now a label in a bar, not a chip on the glass. */
+.pane-tag { flex: none; display: inline-flex; align-items: center; gap: 7px;
+  padding: 0 4px; font-size: 12px; font-weight: 600; color: var(--text); }
+.pane-tag .sub { font-weight: 400; color: var(--text2); }
 
 /* ── Certify registration: the wide layout ────────────────────
    The step that decides whether anything downstream may be believed does not belong in a
@@ -950,10 +946,10 @@ td.muted { color: var(--text3); font-size: 11px; }
   border-bottom: 1px solid var(--border); flex: none; }
 #spatial-cert-card.cert-wide .cert-body { flex: 1; min-height: 0; display: flex;
   flex-direction: column; overflow: hidden; }
-#spatial-cert-card.cert-wide .cert-stage { flex: 1; min-height: 0; margin: 0;
-  background: var(--border); display: flex; }
+#spatial-cert-card.cert-wide .cert-stage { flex: 1; min-height: 0; margin: 0; }
+#spatial-cert-card.cert-wide .cert-bar { border-left: 0; border-right: 0; border-radius: 0; }
 #spatial-cert-card.cert-wide .lm-pair { flex: 1; min-height: 0; display: grid;
-  grid-template-columns: 1fr 1fr; gap: 1px; }
+  grid-template-columns: 1fr 1fr; gap: 1px; background: var(--border); }
 #spatial-cert-card.cert-wide .lm-stage { height: auto; border: 0; border-radius: 0; }
 /* Everything that only made sense in the narrow card. */
 #spatial-cert-card.cert-wide .cert-narrow-only { display: none !important; }
@@ -967,6 +963,13 @@ td.muted { color: var(--text3); font-size: 11px; }
 .cert-insp-head { min-height: 56px; display: flex; align-items: center; gap: 10px;
   padding: 0 16px; border-bottom: 1px solid var(--border); flex: none; }
 .cert-insp-head .t { font-size: 13px; font-weight: 700; }
+/* The one-word answer, at the top of the rail. As a default .badge it was 10 px grey text in
+   a corner and read as decoration; it is the thing the operator came to this step for. */
+.cert-insp-head .badge { font-size: 11.5px; font-weight: 700; letter-spacing: .05em;
+  padding: 5px 11px; }
+/* And again, in full, at the top of the reasoning. */
+.cert-callout .verdict-word { display: block; font-size: 15px; font-weight: 700;
+  letter-spacing: -.01em; margin-bottom: 5px; }
 .cert-insp-body { flex: 1; overflow-y: auto; padding-bottom: 18px; }
 .cert-insp-foot { flex: none; padding: 12px 16px; border-top: 1px solid var(--border);
   display: flex; gap: 8px; align-items: center; }
@@ -1125,7 +1128,7 @@ td.muted { color: var(--text3); font-size: 11px; }
   .run-area { padding: 0 12px 14px; }
   .lm-stage { height: 260px; }
   #spatial-cert-work.lm-fullscreen { padding: 10px; }
-  #spatial-cert-work.lm-fullscreen .lm-stage { height: 38vh; }
+  #spatial-cert-work.lm-fullscreen .lm-stage { height: 34vh; }
 }
 @media (max-width: 460px) {
   .metrics-row.c2, .metrics-row.c3, .metrics-row.c4 { grid-template-columns: 1fr; }
@@ -1977,22 +1980,18 @@ td.muted { color: var(--text3); font-size: 11px; }
                           background:rgba(217,119,6,.10);border:1px solid rgba(217,119,6,.45);
                           color:#b45309;flex:none"></div>
 
-              <!-- THE STAGE. Labels float on the tissue; the display controls float at the
-                   top; the actions float at the bottom. Nothing between them and the glass. -->
+              <!-- THE STAGE. NOTHING SITS ON THE TISSUE.
+                   The controls used to float over the sections: a centred display bar at the
+                   top, a centred action bar at the bottom, and a label pinned in each pane's
+                   corner. On a screen whose entire job is judging whether two pieces of
+                   tissue line up, every one of those covered the thing being judged — and
+                   the corner labels and the centred bar collided as soon as the window
+                   narrowed. They are now fixed rows ABOVE and BELOW the pair. The pane
+                   labels moved into the top row, one at each end, over the pane each names. -->
               <div class="cert-stage">
-                <div class="row2 lm-pair">
-                  <div class="lm-stage" id="lm-stage-ref">
-                    <!-- "Reference — fixed" said one idea twice and, at that length, ran
-                         under the centred zoom bar. Its partner has always been one word. -->
-                    <span class="pane-tag">Fixed<span class="sub" id="pane-tag-ref-sub"></span></span>
-                    <div class="lm-world" id="lm-world-ref"><img id="spatial-cert-ref"><svg id="spatial-cert-ref-ov"></svg></div></div>
-                  <div class="lm-stage" id="lm-stage-mov">
-                    <span class="pane-tag">Moving<span class="sub" id="pane-tag-mov-sub"></span></span>
-                    <div class="lm-world" id="lm-world-mov"><img id="spatial-cert-mov"><svg id="spatial-cert-mov-ov"></svg></div></div>
-                </div>
-
-                <!-- Display: what you SEE, never what is measured. -->
-                <div class="cert-hud cert-hud-top">
+                <div class="cert-bar cert-bar-top">
+                  <span class="pane-tag">Fixed<span class="sub" id="pane-tag-ref-sub"></span></span>
+                  <span class="cert-bar-mid">
                   <button class="btn sm" onclick="lmZoomBy(1/1.4)" title="Zoom out">−</button>
                   <span class="val" id="spatial-cert-zoom-label">100%</span>
                   <button class="btn sm" onclick="lmZoomBy(1.4)" title="Zoom in">+</button>
@@ -2008,13 +2007,21 @@ td.muted { color: var(--text3); font-size: 11px; }
                           title="Both sections move together, matched through the registration transform so they show the SAME TISSUE rather than the same pixel offset.">Unsync panes</button>
                   <span class="sep"></span>
                   <span class="val" id="spatial-cert-cursor" style="min-width:104px"></span>
+                  </span>
+                  <span class="pane-tag">Moving<span class="sub" id="pane-tag-mov-sub"></span></span>
                 </div>
 
-                <!-- Actions. One bar per mode; the modes never share a button.
-                     "Draw region" is here rather than behind a disclosure because the
-                     operator asked for it to be permanently visible: constraining where
-                     LoFTR looks is a normal thing to want, not an advanced escape hatch. -->
-                <div class="cert-hud cert-hud-bottom cert-only-loftr">
+                <div class="row2 lm-pair">
+                  <div class="lm-stage" id="lm-stage-ref">
+                    <div class="lm-world" id="lm-world-ref"><img id="spatial-cert-ref"><svg id="spatial-cert-ref-ov"></svg></div></div>
+                  <div class="lm-stage" id="lm-stage-mov">
+                    <div class="lm-world" id="lm-world-mov"><img id="spatial-cert-mov"><svg id="spatial-cert-mov-ov"></svg></div></div>
+                </div>
+
+                <!-- Actions. One bar per mode; the modes never share a button. Everything
+                     here acts on the tissue above it; where you go NEXT is the inspector's
+                     footer, and neither repeats the other. -->
+                <div class="cert-bar cert-bar-bottom cert-only-loftr">
                   <button class="btn sm pri" id="spatial-loftr-auto" onclick="loftrAutoFind()">Certify the alignment</button>
                   <span class="val" id="spatial-loftr-count" style="min-width:64px">0 regions</span>
                   <span class="sep"></span>
@@ -2029,7 +2036,7 @@ td.muted { color: var(--text3); font-size: 11px; }
                   <button class="btn sm" onclick="loftrRoiClearAll()" title="Remove all regions">Clear</button>
                 </div>
 
-                <div class="cert-hud cert-hud-bottom cert-only-landmark">
+                <div class="cert-bar cert-bar-bottom cert-only-landmark">
                   <button class="btn sm" id="spatial-cert-lm-btn" onclick="certPlaceLandmarks()"
                           title="Click the fixed section, then the same structure on the moving section.">📍 Place landmarks</button>
                   <span class="val" id="spatial-cert-count" style="min-width:78px">0 landmarks</span>
@@ -2121,15 +2128,11 @@ td.muted { color: var(--text3); font-size: 11px; }
             <div id="spatial-norm-preview"></div>
           </div>
         </div>
-        <div class="q-group">
-          <div style="margin-top:8px">
-                    <div class="toggle-row"><span>Enable image registration</span>
-                      <div class="toggle on" id="spatial-reg-toggle" onclick="toggleEl('spatial-reg-toggle'); spatialRegistrationChanged()"></div></div>
-                    <div id="spatial-reg-warn" class="info-box" style="display:none;margin-top:8px;
-                         border-color:var(--warn-line);background:var(--warn-weak);color:var(--warn)"></div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:2px">Maps moving-section cell coordinates into the fixed-section frame. Certification on step 3 is still the required quality gate for serial-section claims, by either path.</div>
-                  </div>
-        </div>
+        <!-- "Enable image registration" was a switch here. The run cannot start without a
+             certificate, and the certified transform is taken by the branch ABOVE the one
+             this flag guards (run_pipeline.py) — so on every run the app can launch, the
+             switch changed nothing. It survived only for command-line runs that have no
+             certificate, which is where the config key still lives. -->
         <div class="q-group">
           <div class="q-note">Segmentation is cached and shared: the same cells feed the
             certified analysis window, the null-model check on step 6, and the association
@@ -6891,15 +6894,16 @@ function spatialCertRenderInspector() {
   if (pair && pair.is_certified) {
     const c = pair;
     verdict = `<div class="sec">
-      <div class="cert-callout ok"><b>${esc(c.status || c.verdict || 'CERTIFIED')}</b> —
-        defensibly aligned${certed.length ? ` inside ${certed.length} region${certed.length===1?'':'s'}` : ''}.
+      <div class="cert-callout ok"><span class="verdict-word">${esc(c.status || c.verdict || 'CERTIFIED')}</span>
+        Defensibly aligned${certed.length ? ` inside ${certed.length} region${certed.length===1?'':'s'}` : ''}${
+          c.cell_error_um != null ? `, cell error ${Number(c.cell_error_um).toFixed(2)} µm` : ''}.
         The certified window becomes the analysis window: everything outside it is excluded from
         the statistic, not silently included.</div></div>
       <div class="sec"><h4>Gates</h4>${certGateRows(c)}</div>`;
   } else if (pair) {
     verdict = `<div class="sec">
-      <div class="cert-callout bad"><b>${esc(pair.status || pair.verdict || 'NOT CERTIFIED')}</b> —
-        no defensible transform for this pair. ${esc(pair.reason || '')}</div>
+      <div class="cert-callout bad"><span class="verdict-word">${esc(pair.status || pair.verdict || 'NOT CERTIFIED')}</span>
+        No defensible transform for this pair. ${esc(pair.reason || '')}</div>
       <p style="font-size:12.5px;color:var(--text2);margin-top:10px">OASIS fails closed: without a
         measured registration error you cannot tell a real 10 µm association from a 10 µm
         misalignment, so the pair is refused rather than reported.</p></div>
@@ -6909,33 +6913,44 @@ function spatialCertRenderInspector() {
   }
 
   if (ttl) ttl.textContent = pair ? 'Certification' : 'What certification tests';
-  body.innerHTML = `<div class="sec">${why}</div>` + verdict + regionRows + frame
+  // THE VERDICT FIRST. It used to sit below three paragraphs explaining what LoFTR is, so
+  // the answer the whole step exists to produce was under the fold — you had to scroll past
+  // an essay to find out whether the pair passed. Explanation is what you read BEFORE you
+  // have an answer; once there is one, it belongs at the bottom.
+  const whyBlock = `<div class="sec">${why}</div>`
     + `<div class="sec"><p><b>Why this gate exists.</b> Without a measured registration error you
         cannot tell a real 10 µm association from a 10 µm misalignment. No certification, no
         finding.</p></div>`;
+  body.innerHTML = pair
+    ? verdict + regionRows + frame + whyBlock
+    : whyBlock + verdict + regionRows + frame;
 
-  // The footer carries the one action that moves the operator forward from where they are.
+  // THE FOOTER IS WHERE YOU GO NEXT — nothing more.
+  //
+  // It used to carry "Certify the alignment", "Fit transform & certify" and "Re-certify"
+  // as well, every one of which is already a button in the bar under the tissue. Two copies
+  // of the same action, four inches apart, is how a screen ends up feeling crowded while
+  // each individual control looks reasonable. The split now: the bar acts on the tissue,
+  // the footer moves you off this step.
   if (foot) {
+    let html = '';
     if (pair && pair.is_certified) {
-      foot.innerHTML = `<button class="btn sm" onclick="${manual ? 'spatialCertRun()' : 'loftrAutoFind()'}">Re-certify</button>`
-        + `<button class="btn amber" style="flex:1;justify-content:center" onclick="spatialWizardGoTo(4)">Segmentation →</button>`;
+      html = `<button class="btn amber" style="flex:1;justify-content:center" onclick="spatialWizardGoTo(4)">Segmentation →</button>`;
     } else if (pair && !manual) {
       // THE HAND-OFF, AS A CONTROL. Automatic failing is the single most common reason to
       // need the manual path, and until now the screen only said so in prose — the one code
       // path that switched mode lived on a button that is only rendered in manual mode, so
       // it could never fire. This is the redirect, and it is a button.
-      foot.innerHTML = `<button class="btn amber" style="flex:1;justify-content:center"`
+      html = `<button class="btn amber" style="flex:1;justify-content:center"`
         + ` onclick="spatialCertSetMode('landmark')">Try manual landmarks →</button>`;
     } else if (pair) {
-      foot.innerHTML = `<button class="btn sm" onclick="spatialCertSetMode('loftr')">← Automatic</button>`
-        + `<button class="btn amber" style="flex:1;justify-content:center" onclick="spatialCertRun()">Fit transform &amp; certify</button>`;
-    } else if (w.ref) {
-      foot.innerHTML = manual
-        ? `<button class="btn amber" style="flex:1;justify-content:center" onclick="spatialCertRun()">Fit transform &amp; certify</button>`
-        : `<button class="btn amber" style="flex:1;justify-content:center" onclick="loftrAutoFind()">Certify the alignment</button>`;
-    } else {
-      foot.innerHTML = `<span style="font-size:11.5px;color:var(--text3)">Load the pair to begin.</span>`;
+      html = `<button class="btn sm" style="flex:1;justify-content:center" onclick="spatialCertSetMode('loftr')">← Try automatic</button>`;
+    } else if (!w.ref) {
+      html = `<span style="font-size:11.5px;color:var(--text3)">Load the pair to begin.</span>`;
     }
+    foot.innerHTML = html;
+    // An empty footer is a 45 px band of nothing under the reasoning; hide it instead.
+    foot.style.display = html ? 'flex' : 'none';
   }
 }
 
@@ -7857,21 +7872,6 @@ function spatialAssocBuildOverride(side) {
 // Build the spatial-association config from the current UI. Returns null (after a
 // toast) on a validation error. Shared by the full run and the bandwidth pre-flight so
 // they segment/measure identically. `force` overrides mode (the pre-flight is per-pair).
-// A certificate is a statement ABOUT the registration. Switching it off afterwards leaves
-// step 3 reading CERTIFIED and the Run button saying "Run on the certified window" for a
-// run that will not use the mapping the certificate certifies.
-function spatialRegistrationChanged() {
-  const warn = document.getElementById('spatial-reg-warn');
-  if (!warn) return;
-  const off = !isOn('spatial-reg-toggle');
-  const certified = Object.values(spatialCertifications).some(c => c && c.is_certified);
-  warn.style.display = (off && certified) ? 'block' : 'none';
-  if (off && certified) {
-    warn.innerHTML = '<b>This pair is certified, and certification is a statement about the '
-      + 'registration you have just switched off.</b> Turn it back on, or re-certify, before '
-      + 'reporting anything from this run.';
-  }
-}
 
 function spatialBuildConfig(forceMode) {
   const mode = forceMode || spatialMode;
@@ -7895,7 +7895,9 @@ function spatialBuildConfig(forceMode) {
     adaptive_threshold:    false,
     preprocess_normalize:  isOn('spatial-normalize-toggle'),
     match_scale_images:    mode === 'batch' && isOn('spatial-scale-match-toggle'),
-    enable_registration:   isOn('spatial-reg-toggle'),
+    // Always on from the app: a run needs a certificate, and the certified transform is
+    // what gets used. The key stays in the config because the CLI honours it.
+    enable_registration:   true,
     // Membranous (cytoplasmic-ring) quantification with per-marker calibrated cutoffs.
     use_cytoplasm_a:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-a-toggle'),
     use_cytoplasm_b:       isOn('spatial-membrane-toggle') && isOn('spatial-cyto-b-toggle'),
@@ -7964,7 +7966,7 @@ async function spatialAssocRun() {
   const spOpts = [];
   if (config.preprocess_normalize) spOpts.push('stain-normalized');
   if (config.match_scale_images)   spOpts.push('per-image scale calibration');
-  appendLog('spatial-log', `Registration: ${config.enable_registration ? 'enabled' : 'disabled'}${spOpts.length ? ' · ' + spOpts.join(' · ') : ''}`, 'normal');
+  if (spOpts.length) appendLog('spatial-log', spOpts.join(' · '), 'normal');
   // Pixel size is the metric for EVERY spatial statistic — surface it, and warn loudly
   // if it is the untouched 0.5 default (silently mis-scales Ripley's K otherwise).
   const spPx = config.session_pixel_size;
@@ -7984,13 +7986,14 @@ async function spatialAssocRun() {
   // Both come out of the same work (segment both sections, build the certified window), so
   // they belong on one screen — which is why they are NOT wizard steps.
   //
-  // Single-pair only. A batch has no single histogram to review, so it runs straight through
-  // exactly as before.
-  if (spatialMode !== 'single') {
-    await window.pywebview.api.run_spatial_association(config);
-    return;
-  }
-  setProgress('spatial', 20, 'Segmenting both sections and checking the null…');
+  // BATCH REVIEWS TOO. It used to run straight through on the grounds that a batch has no
+  // single histogram to review — but step 5 promises the review either way, and every pair
+  // has its own two histograms and its own null decision. The pre-check already computes
+  // both per pair; only the screen was missing.
+  const nPairs = spatialMode === 'single' ? 1 : (spatialPairs || []).length;
+  setProgress('spatial', 20, nPairs > 1
+    ? `Segmenting ${nPairs} pairs and checking each null…`
+    : 'Segmenting both sections and checking the null…');
   appendLog('spatial-log', 'Segmenting, building the certified window, and deciding the null model…', 'info');
   let rev;
   try { rev = await window.pywebview.api.spatial_review_data(config); }
@@ -8006,7 +8009,13 @@ async function spatialAssocRun() {
 let spReviewState = { images: [], band: null, config: null };
 
 function spReviewShow(data, config) {
-  spReviewState = { images: data.images || [], band: data.band || null, config: config };
+  // Images stay FLAT and keep their single index: the histogram drag handler passes one
+  // number, and every per-image control is addressed by it. `pairs` only groups them.
+  const pairs = data.pairs || [];
+  const flat = [];
+  pairs.forEach((p, pi) => (p.images || []).forEach(im => { im.pairIndex = pi; flat.push(im); }));
+  spReviewState = { images: flat.length ? flat : (data.images || []),
+                    pairs: pairs, band: data.band || null, config: config };
   spReviewRenderBand();
   spReviewRenderImages();
   showView('spatial', 'review');
@@ -8015,9 +8024,26 @@ function spReviewShow(data, config) {
 // Named explicitly, because "which null" decides what the result MEANS and the operator
 // should not have to infer it from a verdict after the fact.
 function spReviewRenderBand() {
-  const b = spReviewState.band || {};
   const el = document.getElementById('sp-review-band');
   if (!el) return;
+  // One pair keeps the screen it always had: the null card, then the histograms. A batch
+  // groups per pair instead, so the band moves inside each group and this stays empty.
+  const many = (spReviewState.pairs || []).length > 1;
+  el.innerHTML = many ? '' : spReviewBandCardHTML(spReviewState.band || {});
+  const anyOk = many
+    ? (spReviewState.pairs || []).some(p => p.band && p.band.primary_null && !p.band.fail_closed)
+    : !!((spReviewState.band || {}).primary_null) && !(spReviewState.band || {}).fail_closed;
+  // Do not offer "run the statistic" as though it will produce one.
+  const btn = document.getElementById('sp-review-apply');
+  if (btn) {
+    btn.textContent = anyOk ? 'Continue — run the statistic'
+                            : 'Continue — record the fail-closed result';
+    btn.classList.toggle('amber', anyOk);
+  }
+}
+
+function spReviewBandCardHTML(b) {
+  b = b || {};
   // `primary_null` is null unless a real model was planned — the backend strips the "none"
   // sentinel, which used to be printed verbatim ("tested against the none") because a
   // non-empty string is truthy.
@@ -8061,7 +8087,7 @@ function spReviewRenderBand() {
         positive cells: ${g.n_positive_a} and ${g.n_positive_b} (need
         ${g.min_positive_required}); cells available to build the model: ${g.n_support}
         (need ${g.min_support_required}).</div>` : '';
-  el.innerHTML = `<div class="card">
+  return `<div class="card">
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
       <b style="font-size:13px">Null model</b>
       <span class="badge ${tone}">${ok ? esc(String(pretty)) : 'not tested'}</span>
@@ -8077,19 +8103,45 @@ function spReviewRenderBand() {
       ${b.architecture_reason ? '<br>' + esc(String(b.architecture_reason)) : ''}</div>` : ''}
     ${b.error ? `<div style="font-size:11px;color:#b91c1c;margin-top:4px">${esc(String(b.error))}</div>` : ''}
   </div>`;
-  // Do not offer "run the statistic" as though it will produce one.
-  const btn = document.getElementById('sp-review-apply');
-  if (btn) {
-    btn.textContent = ok ? 'Continue — run the statistic'
-                         : 'Continue — record the fail-closed result';
-    btn.classList.toggle('amber', ok);
-  }
 }
 
 function spReviewRenderImages() {
   const host = document.getElementById('sp-review-images');
   if (!host) return;
-  host.innerHTML = (spReviewState.images || []).map((img, i) => {
+  const cards = (spReviewState.images || []).map((img, i) => spReviewImageCardHTML(img, i));
+  const pairs = spReviewState.pairs || [];
+  if (pairs.length > 1) {
+    // A batch: one section per pair, each carrying its own null decision and its own two
+    // histograms. Nothing is pooled — the pairs are separate tissue and separate verdicts.
+    let k = 0;
+    host.innerHTML = pairs.map((p, pi) => {
+      const n = (p.images || []).length;
+      const mine = cards.slice(k, k + n); k += n;
+      return `<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">
+        <div style="display:flex;align-items:baseline;gap:10px;padding:12px 16px;
+                    border-bottom:1px solid var(--border);background:var(--surface)">
+          <b style="font-size:13px">Pair ${pi + 1}</b>
+          <span style="font-size:11px;color:var(--text3)">${esc(p.sample_id || '')}</span>
+        </div>
+        <div style="padding:14px 16px">${spReviewBandCardHTML(p.band)}${mine.join('')}</div>
+      </div>`;
+    }).join('');
+  } else {
+    host.innerHTML = cards.join('') || '<div class="info-box">No measured images.</div>';
+  }
+  const s = document.getElementById('sp-review-summary');
+  if (s) s.textContent = spReviewSummaryText();
+}
+
+function spReviewSummaryText() {
+  const n = (spReviewState.pairs || []).length;
+  const ims = spReviewState.images || [];
+  if (n > 1) return `${n} pairs · ${ims.length} sections`;
+  return ims.map(im => `${im.marker} ${Number(im.threshold).toFixed(2)}`).join('  ·  ');
+}
+
+function spReviewImageCardHTML(img, i) {
+  return (function (img, i) {
     if (!img.hist) return `<div class="card" style="margin-bottom:10px"><b>${esc(img.marker)}</b>
       — <span style="color:var(--text3)">${esc(img.msg || 'no measured cells')}</span></div>`;
     const pct = img.n_cells ? (img.positive_cells / img.n_cells * 100) : 0;
@@ -8115,10 +8167,7 @@ function spReviewRenderImages() {
         <input type="range" min="1" max="80" value="${Math.round(img.threshold * 100)}"
                oninput="spReviewThr(${i}, this.value/100)">
       </div>${warn}</div>`;
-  }).join('') || '<div class="info-box">No measured images.</div>';
-  const s = document.getElementById('sp-review-summary');
-  if (s) s.textContent = (spReviewState.images || []).map(
-    im => `${im.marker} ${Number(im.threshold).toFixed(2)}`).join('  ·  ');
+  })(img, i);
 }
 
 // Re-count from the server so the number shown is the number the run will write — the
@@ -8144,15 +8193,25 @@ function spReviewThr(i, v) {
           `${img.positive_cells.toLocaleString()} / ${img.n_cells.toLocaleString()} positive (${pct.toFixed(1)}%)`;
       }
     } catch (_) {}
-    spReviewRenderImages.summaryOnly = true;
     const s = document.getElementById('sp-review-summary');
-    if (s) s.textContent = spReviewState.images.map(
-      im => `${im.marker} ${Number(im.threshold).toFixed(2)}`).join('  ·  ');
+    if (s) s.textContent = spReviewSummaryText();
   }, 250);
 }
 
 async function spReviewApply() {
   const cfg = { ...(spReviewState.config || {}) };
+  const pairs = spReviewState.pairs || [];
+  // EVERY pair's cutoffs, not just the first. spatial_apply_review writes each one into that
+  // pair's cells before the run — which is the only thing that carries a reviewed cutoff into
+  // the statistic, because the statistic reads the baked classification rather than a number.
+  const reviewed = pairs.map(p => {
+    const ims = p.images || [];
+    const a = ims.find(x => x.role === 'A'), b = ims.find(x => x.role === 'B');
+    return { sample_id: p.sample_id, path_a: p.path_a, path_b: p.path_b,
+             threshold_a: a ? a.threshold : null, threshold_b: b ? b.threshold : null };
+  }).filter(r => r.path_a || r.path_b);
+  if (reviewed.length) cfg.reviewed_pairs = reviewed;
+  // The config's own A/B stay set for the single-pair case and for the run record.
   const a = spReviewState.images.find(x => x.role === 'A');
   const b = spReviewState.images.find(x => x.role === 'B');
   if (a) cfg.dab_threshold_a = a.threshold;
@@ -8160,9 +8219,11 @@ async function spReviewApply() {
   lastSpatialRunConfig = { ...cfg };
   showView('spatial', 'running');
   setProgress('spatial', 60, 'Running the association statistic…');
-  appendLog('spatial-log',
-    `Cutoffs applied — ${a ? a.marker + ' ' + a.threshold.toFixed(2) : ''}`
-    + `${b ? ' / ' + b.marker + ' ' + b.threshold.toFixed(2) : ''} OD`, 'info');
+  appendLog('spatial-log', reviewed.length > 1
+    ? `Cutoffs applied to ${reviewed.length} pairs — `
+      + reviewed.map(r => `${r.sample_id}: ${Number(r.threshold_a).toFixed(2)}/${Number(r.threshold_b).toFixed(2)}`).join(' · ')
+    : `Cutoffs applied — ${a ? a.marker + ' ' + a.threshold.toFixed(2) : ''}`
+      + `${b ? ' / ' + b.marker + ' ' + b.threshold.toFixed(2) : ''} OD`, 'info');
   const applied = await window.pywebview.api.spatial_apply_review(cfg);
   // It returns {status:'error'} instead of launching when the reviewed cutoff cannot be
   // written into the cells. Discarding that left the progress bar spinning with no 'done'
