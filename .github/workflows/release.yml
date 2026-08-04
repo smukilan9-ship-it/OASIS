@@ -70,7 +70,11 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
             gir1.2-gtk-3.0 gir1.2-webkit2-4.1
-          pip install pycairo PyGObject
+          # Pinned below 3.52: that release moved to girepository-2.0, which Ubuntu does not
+          # ship a -dev package for here, so the build fails at
+          # "Dependency 'girepository-2.0' is required but not found". 3.50.x builds against
+          # libgirepository1.0-dev, installed above.
+          pip install pycairo "PyGObject<3.52"
           python -c "import gi; gi.require_version('Gtk', '3.0'); print('gi OK', gi.__file__)"
 
       - name: Install CPU-only torch (Linux)

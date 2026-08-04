@@ -14,6 +14,7 @@ POSIX was never correct either, only lucky: a POSIX path already starts with "/"
 slashes plus that one happen to make three. Spaces were broken everywhere, on every
 platform, since neither form escapes them.
 """
+import os
 import re
 from pathlib import Path, PureWindowsPath
 
@@ -69,9 +70,16 @@ def test_as_uri_is_correct_where_concatenation_is_not():
 
 def test_a_space_in_the_path_is_escaped():
     """OASIS is checked out here under a directory with a space in it, and a bundle lands
-    in one on macOS too. Neither concatenated form escapes it."""
-    assert " " not in Path("/tmp/My Slides/index.html").as_uri()
-    assert "%20" in Path("/tmp/My Slides/index.html").as_uri()
+    in one on macOS too. Neither concatenated form escapes it.
+
+    The root has to come from the host: as_uri() rejects a relative path, and on Windows
+    "/tmp/x" has no drive letter, so it is relative and raises. Anchoring on a drive rather
+    than resolving keeps the assertion independent of the working directory.
+    """
+    root = Path("C:/") if os.name == "nt" else Path("/")
+    p = root / "My Slides" / "index.html"
+    assert " " not in p.as_uri()
+    assert "%20" in p.as_uri()
 
 
 def test_the_app_can_check_its_ui_without_opening_a_window():
