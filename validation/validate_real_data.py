@@ -296,6 +296,6 @@ if __name__ == "__main__":
     log(f"\n  Statistic reproduces known biology: "
         f"{'YES' if (ok1 and ok3) else 'PARTIAL — see per-test numbers above'}")
 
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(_log_lines) + "\n")
     log(f"\n  (full output saved to {os.path.relpath(OUT)})")

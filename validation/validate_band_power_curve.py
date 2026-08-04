@@ -138,7 +138,7 @@ def main():
                "curve": {f"{a}|{b}|{c}": v for (a, b, c), v in res.items()},
                "enrichment_for_target_power": {f"{a}|{b}": v
                                                for (a, b), v in thresholds.items()}},
-              open(OUT_JSON, "w"), indent=2)
+              open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0
 

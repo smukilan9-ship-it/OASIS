@@ -73,7 +73,7 @@ def _label_is_positive(name):
 def load_geojson_cells(path):
     """Return (centroids Nx2 float, labels list[bool positive]) from a QuPath
     GeoJSON of detections/annotations (Point or Polygon)."""
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         gj = json.load(f)
     cents, labs = [], []
     for feat in gj.get("features", []):
@@ -102,7 +102,7 @@ def load_geojson_cells(path):
 def load_csv_cells(path):
     """Return (centroids, labels) from a CSV with columns x,y,label."""
     cents, labs = [], []
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for row in csv.DictReader(f):
             cents.append([float(row["x"]), float(row["y"])])
             labs.append(_label_is_positive(row.get("label", "")))
@@ -197,7 +197,7 @@ def cytoplasm_vs_qupath(pipeline_geojson, qupath_cells_csv, tol_px,
     """Bland-Altman: pipeline cytoplasm/cell OD vs QuPath detectionsToCells OD,
     matched by centroid within tol_px."""
     from scipy.spatial import cKDTree
-    with open(pipeline_geojson) as f:
+    with open(pipeline_geojson, encoding="utf-8") as f:
         gj = json.load(f)
     pc, pv = [], []
     for feat in gj.get("features", []):
@@ -216,7 +216,7 @@ def cytoplasm_vs_qupath(pipeline_geojson, qupath_cells_csv, tol_px,
             xy = ring.mean(axis=0)
         pc.append([float(xy[0]), float(xy[1])]); pv.append(float(val))
     qc, qv = [], []
-    with open(qupath_cells_csv) as f:
+    with open(qupath_cells_csv, encoding="utf-8") as f:
         for row in csv.DictReader(f):
             qc.append([float(row["x"]), float(row["y"])]); qv.append(float(row["cell_dab"]))
     if not pc or not qc:
@@ -349,7 +349,7 @@ def main():
     report = format_report(res, ba, args.pixel_size, args.tolerance_um)
     print(report)
     if args.out:
-        with open(args.out, "w") as f:
+        with open(args.out, "w", encoding="utf-8") as f:
             f.write(report + "\n")
         print(f"\n  report saved to {args.out}")
 

@@ -47,7 +47,7 @@ def main() -> int:
         print("Set OASIS_KEREN_TNBC_VALIDATION_DIR to the pilot folder if it lives elsewhere.")
         return 1
 
-    rows = json.loads(path.read_text())
+    rows = json.loads(path.read_text(encoding="utf-8"))
     by_sample = {str(r.get("sample_id")): r for r in rows}
     required = {"p13", "p16", "p32"}
     missing = required - set(by_sample)

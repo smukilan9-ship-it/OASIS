@@ -100,9 +100,9 @@ def main():
     table = "\n".join(md)
     print(f"\n{'='*72}\nGATE-A TABLE\n{'='*72}\n{table}")
 
-    with open(os.path.join(OUT, "gate_a_table.md"), "w") as f:
+    with open(os.path.join(OUT, "gate_a_table.md"), "w", encoding="utf-8") as f:
         f.write(table + "\n")
-    with open(os.path.join(OUT, "gate_a_results.json"), "w") as f:
+    with open(os.path.join(OUT, "gate_a_results.json"), "w", encoding="utf-8") as f:
         json.dump([{k: v for k, v in r.items()
                     if k not in ("ref_matched", "mapped_matched")} for r in rows],
                   f, indent=2)

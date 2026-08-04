@@ -31,7 +31,7 @@ MIN_N, TARGET_N, LOO_MAX, FIT_MAX, DEFORMED_LOO, SCALE_TOL = 6, 12, 5.0, 5.0, 15
 def _load(path):
     if not os.path.exists(path):
         return {}
-    t = open(path).read().strip()
+    t = open(path, encoding="utf-8").read().strip()
     if t.startswith("LANDMARKS"):
         t = t[len("LANDMARKS"):].strip()
     return json.loads(t) if t else {}
@@ -39,7 +39,7 @@ def _load(path):
 
 def main():
     lm_path = sys.argv[1] if len(sys.argv) > 1 else os.path.join(OUT, "landmarks.json")
-    reg = json.load(open(os.path.join(OUT, "registration.json")))
+    reg = json.load(open(os.path.join(OUT, "registration.json"), encoding="utf-8"))
     lm = _load(lm_path)
     val = _load(os.path.join(OUT, "landmarks_val.json"))   # optional 2nd annotator
 
@@ -88,9 +88,9 @@ def main():
     for x in rows:
         print(f"  {x['sample_id']} [{x['verdict']}] {x.get('validation','')}: {x['reason']}")
 
-    open(os.path.join(OUT, "gate_a_table.md"), "w").write(table + "\n")
-    json.dump(rows, open(os.path.join(OUT, "gate_a_final.json"), "w"), indent=2)
-    json.dump(certified, open(os.path.join(OUT, "certified_transforms.json"), "w"), indent=2)
+    open(os.path.join(OUT, "gate_a_table.md"), "w", encoding="utf-8").write(table + "\n")
+    json.dump(rows, open(os.path.join(OUT, "gate_a_final.json"), "w", encoding="utf-8"), indent=2)
+    json.dump(certified, open(os.path.join(OUT, "certified_transforms.json"), "w", encoding="utf-8"), indent=2)
     cert = list(certified)
     print(f"\nCERTIFIED / LOCALLY_CERTIFIED (eligible for Phase B): {cert if cert else 'none'}")
     print("Wrote gate_a_table.md, gate_a_final.json, certified_transforms.json")

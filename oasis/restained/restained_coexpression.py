@@ -152,7 +152,7 @@ def validate_bundle_dimensions(bundle):
 
 
 def _load_geojson(path):
-    with open(path) as handle:
+    with open(path, encoding="utf-8") as handle:
         data = json.load(handle)
     if not isinstance(data, dict) or not isinstance(data.get("features"), list):
         raise ValueError(f"Invalid detection GeoJSON: {path}")
@@ -392,9 +392,9 @@ def _write_cell_outputs(geojson, output_dir, sample_id, label_a, label_b,
     output_dir = Path(output_dir)
     geojson_path = output_dir / f"{sample_id}_restained_detections.geojson"
     csv_path = output_dir / f"{sample_id}_restained_cells.csv"
-    with open(geojson_path, "w") as handle:
+    with open(geojson_path, "w", encoding="utf-8") as handle:
         json.dump(geojson, handle)
-    with open(csv_path, "w", newline="") as handle:
+    with open(csv_path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=list(rows[0].keys()) if rows else ["cell_id"])
         writer.writeheader()
         writer.writerows(rows)
@@ -514,7 +514,7 @@ def run_bundle(bundle, config, output_dir, progress=None):
             "dimensions": dimensions, "inputs": bundle, "coexpression": None,
         }
         result_path = sample_dir / f"{sample_id}_restained_result.json"
-        with open(result_path, "w") as handle:
+        with open(result_path, "w", encoding="utf-8") as handle:
             json.dump(blocked, handle, indent=2)
         blocked["artifacts"] = {"result_json": str(result_path), "output_dir": str(sample_dir)}
         return blocked
@@ -624,7 +624,7 @@ def run_bundle(bundle, config, output_dir, progress=None):
                       "overlay": overlay_path, "output_dir": str(sample_dir)},
     }
     result_path = sample_dir / f"{sample_id}_restained_result.json"
-    with open(result_path, "w") as handle:
+    with open(result_path, "w", encoding="utf-8") as handle:
         json.dump(result, handle, indent=2)
     result["artifacts"]["result_json"] = str(result_path)
     progress(100, f"{sample_id}: complete")
@@ -693,7 +693,7 @@ def run_config(config, progress=None):
     for result, q_value in zip(scored, q_values):
         result["coexpression"]["fisher_q_value_bh"] = q_value
     for result in results:
-        with open(result["artifacts"]["result_json"], "w") as handle:
+        with open(result["artifacts"]["result_json"], "w", encoding="utf-8") as handle:
             json.dump(result, handle, indent=2)
 
     aggregate_a = sum(r["coexpression"]["marker_a_only"] for r in scored)
@@ -717,7 +717,7 @@ def run_config(config, progress=None):
         "results": results,
     }
     combined_path = run_output / "restained_coexpression_results.json"
-    with open(combined_path, "w") as handle:
+    with open(combined_path, "w", encoding="utf-8") as handle:
         json.dump(combined, handle, indent=2)
     combined["result_json"] = str(combined_path)
     progress(100, "Restained co-expression run complete")
@@ -728,7 +728,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description="Same-section restained co-expression")
     parser.add_argument("--config", required=True)
     args = parser.parse_args(argv)
-    with open(args.config) as handle:
+    with open(args.config, encoding="utf-8") as handle:
         config = yaml.safe_load(handle) or {}
     result = run_config(config)
     print("RESTAINED_RESULT=" + result["result_json"])

@@ -149,7 +149,7 @@ INJECT = {"translation": _translate, "rotation": _rotate, "smooth": _smooth}
 def load_spots(path):
     """{spot: {"xy": Nx2 px, "types": np.array[str], "bounds": (x0,y0,x1,y1)}}."""
     by = collections.defaultdict(lambda: {"x": [], "y": [], "t": []})
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         for r in csv.DictReader(f):
             d = by[r["spots"]]
             d["x"].append(float(r["X:X"]))
@@ -328,7 +328,7 @@ def main():
 
     t0 = time.time()
     recs = []
-    with open(OUT_JSONL, "w") as fh, mp.Pool(a.workers) as pool:
+    with open(OUT_JSONL, "w", encoding="utf-8") as fh, mp.Pool(a.workers) as pool:
         for i, r in enumerate(pool.imap_unordered(one, jobs, chunksize=4), 1):
             if r is None:
                 continue
@@ -343,7 +343,7 @@ def main():
     res["elapsed_min"] = round((time.time() - t0) / 60, 2)
     res["n_perm"] = n_perm
     res["pairs"] = [list(p) for p in PAIRS]
-    with open(OUT_JSON, "w") as f:
+    with open(OUT_JSON, "w", encoding="utf-8") as f:
         json.dump(res, f, indent=2)
 
     print(f"\nwrote {OUT_JSON}  ({res['elapsed_min']} min, "

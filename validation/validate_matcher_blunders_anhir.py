@@ -72,7 +72,7 @@ OUT_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 
 def load_landmarks(path):
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         rows = list(csv.reader(fh))
     hdr, out = rows[0], []
     xi = hdr.index("X") if "X" in hdr else 1
@@ -170,7 +170,7 @@ def score(ref_pts, mov_pts, src_lm, dst_lm):
 
 
 def run(limit, seed=0):
-    rows = [r for r in csv.DictReader(open(os.path.join(ROOT, "dataset_medium.csv")))
+    rows = [r for r in csv.DictReader(open(os.path.join(ROOT, "dataset_medium.csv"), encoding="utf-8"))
             if r["status"] == "training"]
     np.random.default_rng(seed).shuffle(rows)
     out = []
@@ -274,6 +274,6 @@ if __name__ == "__main__":
     a = ap.parse_args()
     rows = run(a.limit)
     s = summarise(rows)
-    with open(a.out, "w") as f:
+    with open(a.out, "w", encoding="utf-8") as f:
         json.dump({"pairs": rows, "summary": s}, f, indent=2)
     print(f"\nWrote {a.out}")

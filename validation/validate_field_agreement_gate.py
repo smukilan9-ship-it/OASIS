@@ -186,7 +186,7 @@ def main():
                           "scale_max": lm.GLOBAL_AGREEMENT_MAX_SCALE},
                "n_certifying": tot_cert, "n_impossible": tot_bad,
                "n_refused_by_gate": tot_refused, "offenders": rows, "passed": bool(ok)},
-              open(OUT_JSON, "w"), indent=2)
+              open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0 if ok else 1
 

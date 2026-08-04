@@ -50,7 +50,7 @@ def test_no_tracked_file_hardcodes_a_local_path(needle, what):
         if rel == Path(__file__).relative_to(ROOT).as_posix():
             continue
         try:
-            text = path.read_text(errors="ignore")
+            text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
         for i, line in enumerate(text.splitlines(), 1):
@@ -81,7 +81,7 @@ def test_home_directory_is_not_hardcoded():
         if rel == Path(__file__).relative_to(ROOT).as_posix() or path.suffix not in code:
             continue
         try:
-            text = path.read_text(errors="ignore")
+            text = path.read_text(encoding="utf-8", errors="ignore")
         except OSError:
             continue
         for i, line in enumerate(text.splitlines(), 1):

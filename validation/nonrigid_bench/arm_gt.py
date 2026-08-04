@@ -156,7 +156,7 @@ def main():
         allrows += rows or []
         print(f"  [{i}/{len(pairs)}] {pw.pair_id[:40]} {n} reps ({time.time()-t0:.0f}s)",
               flush=True)
-        json.dump(allrows, open(os.path.join(OUT, "arm_gt.json"), "w"), indent=1)
+        json.dump(allrows, open(os.path.join(OUT, "arm_gt.json"), "w", encoding="utf-8"), indent=1)
     print(f"[gt] {len(allrows)} rows in {time.time()-t0:.0f}s")
 
 

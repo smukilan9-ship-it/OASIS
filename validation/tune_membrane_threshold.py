@@ -72,7 +72,7 @@ def _classification_name(props):
 
 def _load_labels(geojson_path, pos_label, neg_label):
     """Return a list aligned 1:1 with features: 1 (pos), 0 (neg), or None."""
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         gj = json.load(f)
     features = gj.get("features", [])
     pos_l, neg_l = pos_label.lower(), neg_label.lower()
@@ -274,11 +274,11 @@ def main():
 
     if args.out:
         if args.out.endswith((".yaml", ".yml")):
-            with open(args.out, "w") as f:
+            with open(args.out, "w", encoding="utf-8") as f:
                 for k, v in fitted.items():
                     f.write(f"{k}: {v}\n")
         else:
-            with open(args.out, "w") as f:
+            with open(args.out, "w", encoding="utf-8") as f:
                 json.dump(fitted, f, indent=2)
         print(f"\nWrote fitted cutoffs to {args.out}")
 

@@ -313,7 +313,7 @@ def main():
                       f"{len(rows)} reps ({time.time()-t0:.0f}s)", flush=True)
             else:
                 print(f"  arm{arm} [{i}/{len(pairs)}] {pw.pair_id} SKIP", flush=True)
-            json.dump(allrows, open(os.path.join(OUT, f"arm{arm}.json"), "w"), indent=1)
+            json.dump(allrows, open(os.path.join(OUT, f"arm{arm}.json"), "w", encoding="utf-8"), indent=1)
         print(f"[arms] arm {arm}: {len(allrows)} rows in {time.time()-t0:.0f}s", flush=True)
 
 

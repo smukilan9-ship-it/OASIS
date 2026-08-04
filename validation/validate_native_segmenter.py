@@ -75,7 +75,7 @@ def check_a_model_fidelity():
 
 
 def _qupath_features(geojson_path):
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         return json.load(f)["features"]
 
 
@@ -321,7 +321,7 @@ def main():
     print(f"\n##METRICS## {json.dumps(report, default=str)}")
     out = os.environ.get("OASIS_REPORT_DIR")
     if out:
-        with open(os.path.join(out, "native_segmenter_parity.json"), "w") as f:
+        with open(os.path.join(out, "native_segmenter_parity.json"), "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
     print(f"\n{'PASS' if ok else 'FAIL'} (A, B, D are assertive; C is reported)")
     return 0 if ok else 1

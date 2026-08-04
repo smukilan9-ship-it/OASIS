@@ -123,10 +123,10 @@ def run():
               f"gate={rec.get('gate',{}).get('verdict')} {rec['secs']}s")
 
         if i % 20 == 0:                              # checkpoint periodically
-            with open(os.path.join(C.OUT_DIR, "ours_results.json"), "w") as fjson:
+            with open(os.path.join(C.OUT_DIR, "ours_results.json"), "w", encoding="utf-8") as fjson:
                 json.dump({"method": "oasis", "n_pairs": len(results), "results": results}, fjson, indent=1)
 
-    with open(os.path.join(C.OUT_DIR, "ours_results.json"), "w") as fjson:
+    with open(os.path.join(C.OUT_DIR, "ours_results.json"), "w", encoding="utf-8") as fjson:
         json.dump({"method": "oasis", "n_pairs": len(results), "results": results}, fjson, indent=1)
     print(f"[ours] wrote ours_results.json ({len(results)} pairs)")
 

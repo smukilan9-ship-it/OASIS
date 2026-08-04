@@ -85,7 +85,7 @@ def _ann_roots():
 
 
 def load_xy(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         rows = list(csv.reader(f))
     hdr = [h.strip().lower() for h in rows[0]]
     xi = hdr.index("x") if "x" in hdr else -2

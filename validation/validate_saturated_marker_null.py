@@ -160,7 +160,7 @@ def main():
                "grid": {f"{a}|{b}": v for (a, b), v in res.items()},
                "worst_false_engagement": worst, "routes": sorted(routes),
                "dense_holds": bool(dense_ok)},
-              open(OUT_JSON, "w"), indent=2)
+              open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0
 

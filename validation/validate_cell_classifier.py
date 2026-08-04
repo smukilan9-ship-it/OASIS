@@ -235,7 +235,7 @@ def analyse(X, y, ids, dab, args):
 
     out = args.out or os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                    "cell_classifier_results.json")
-    with open(out, "w") as f:
+    with open(out, "w", encoding="utf-8") as f:
         json.dump({"n_cells": int(len(y)), "n_images": n_img,
                    "positive_rate": round(float(y.mean()), 4),
                    "fixed": {**base, "auc": round(base_auc, 4),

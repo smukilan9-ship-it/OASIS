@@ -215,7 +215,7 @@ def main():
               f"{rec['n_with_a_neighbour']:>5}"
               f"{fmt('overlap_disagree'):>13}{fmt('distant_disagree'):>13}", flush=True)
         Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.out).write_text(json.dumps(out, indent=1))
+        Path(args.out).write_text(json.dumps(out, indent=1), encoding="utf-8")
 
     tc = sum(r["n_certifying"] for r in out)
     tw = sum(r["n_windows"] for r in out)

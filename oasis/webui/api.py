@@ -161,7 +161,7 @@ class API:
     # ── Setup ──────────────────────────────────────────────────────────────
     def get_setup(self):
         if SETUP_FILE.exists():
-            with open(SETUP_FILE) as f:
+            with open(SETUP_FILE, encoding="utf-8") as f:
                 data = yaml.safe_load(f) or {}
             result = {**DEFAULT_SETUP, **data}
         else:
@@ -194,13 +194,13 @@ class API:
         """
         existing = {}
         if SETUP_FILE.exists():
-            with open(SETUP_FILE) as f:
+            with open(SETUP_FILE, encoding="utf-8") as f:
                 existing = yaml.safe_load(f) or {}
         merged = {**existing, **{k: v for k, v in (data or {}).items() if v is not None}}
         # Transient/derived fields are computed on read; never persist them.
         for transient in ("_home", "_research", "_edition"):
             merged.pop(transient, None)
-        with open(SETUP_FILE, "w") as f:
+        with open(SETUP_FILE, "w", encoding="utf-8") as f:
             yaml.dump(merged, f, default_flow_style=False)
         return {"ok": True}
 
@@ -458,12 +458,12 @@ class API:
     # ── Experiments ────────────────────────────────────────────────────────
     def get_experiments(self):
         if EXPERIMENTS_FILE.exists():
-            with open(EXPERIMENTS_FILE) as f:
+            with open(EXPERIMENTS_FILE, encoding="utf-8") as f:
                 return yaml.safe_load(f) or []
         return []
 
     def save_experiments(self, experiments):
-        with open(EXPERIMENTS_FILE, "w") as f:
+        with open(EXPERIMENTS_FILE, "w", encoding="utf-8") as f:
             yaml.dump(experiments, f, default_flow_style=False)
         return {"ok": True}
 
@@ -736,7 +736,7 @@ class API:
             cfg["_defer_summary_cleanup"] = True
 
         config_path = str(CONFIG_DIR / "pipeline_config.yaml")
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(cfg, f, default_flow_style=False)
 
         def run():
@@ -812,7 +812,7 @@ class API:
         whitelist = {str(x) for x in (cfg.get("image_whitelist") or [])}
         for jp in sorted(glob.glob(str(Path(output_dir) / "*_summary.json"))):
             try:
-                with open(jp) as f:
+                with open(jp, encoding="utf-8") as f:
                     d = json.load(f)
                 if whitelist:
                     source_name = str(d.get("image", "")).split(" - ")[0]
@@ -860,7 +860,7 @@ class API:
         summary_text = ""
         sp = Path(output_dir) / "analysis_summary.txt"
         if sp.exists():
-            summary_text = sp.read_text().strip()
+            summary_text = sp.read_text(encoding="utf-8").strip()
 
         # The HTML dashboard and the timestamped Excel workbook are gone; nothing has
         # written either since the reporting rework, so the two buttons offering to open
@@ -933,7 +933,7 @@ class API:
                 if not any(stem.startswith(w) for w in wl):
                     continue
             try:
-                summary = json.loads(summary_path.read_text()) or {}
+                summary = json.loads(summary_path.read_text(encoding="utf-8")) or {}
             except (OSError, ValueError):
                 continue
             name = summary.get("image") or summary_path.stem.replace("_summary", "")
@@ -1084,7 +1084,7 @@ class API:
         cfg["dab_threshold"] = cohort
         cfg["stop_after_segmentation"] = False
         config_path = str(CONFIG_DIR / "pipeline_config.yaml")
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(cfg, f, default_flow_style=False)
 
         def run():
@@ -1128,7 +1128,7 @@ class API:
         path = Path(output_dir) / "spatial_association_results.json"
         if path.exists():
             try:
-                with open(path) as f:
+                with open(path, encoding="utf-8") as f:
                     results = json.load(f)
                 # Attach output_dir for UI actions
                 for r in results:
@@ -2363,7 +2363,7 @@ class API:
                     f"'{stain_a}'/'{stain_b}'.")}
 
             def load_xy(path):
-                rows = list(__import__("csv").reader(open(path)))
+                rows = list(__import__("csv").reader(open(path, encoding="utf-8")))
                 pts = [[float(r[1]), float(r[2])] for r in rows[1:] if len(r) >= 3]
                 return np.asarray(pts, dtype=float)
 
@@ -3118,7 +3118,7 @@ class API:
         config_name = ("spatial_precheck_config.yaml" if precheck_only
                        else "spatial_config.yaml")
         config_path = str(CONFIG_DIR / config_name)
-        with open(config_path, "w") as f:
+        with open(config_path, "w", encoding="utf-8") as f:
             yaml.dump(cfg, f, default_flow_style=False)
 
         # ── Synchronous bandwidth pre-flight (UI "Validate 75 µm bandwidth") ──────

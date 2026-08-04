@@ -243,7 +243,7 @@ def main():
     print(f"\n##METRICS## {json.dumps(report, default=str)}")
     out = os.environ.get("OASIS_REPORT_DIR")
     if out:
-        with open(os.path.join(out, "native_segmenter_robustness.json"), "w") as f:
+        with open(os.path.join(out, "native_segmenter_robustness.json"), "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
     print(f"\n{'PASS' if ok else 'FAIL'}")
     print("NOTE: real pyramidal-slide reading and streaming are covered separately by "

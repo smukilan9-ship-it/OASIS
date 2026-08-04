@@ -52,7 +52,7 @@ def gt_load(stem):
 def instanseg_polys(stem):
     g = glob.glob(os.path.join(IS_DIR, stem + "*_detections.geojson"))
     if not g: return None
-    return json.load(open(g[0])).get("features", [])
+    return json.load(open(g[0], encoding="utf-8")).get("features", [])
 
 def instanseg_centroids(feats):
     out = []

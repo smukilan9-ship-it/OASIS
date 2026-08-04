@@ -48,7 +48,7 @@ def rejected(cell, null, crit="contact"):
         p, sig, dr = d.get("p_dclf"), d.get("significant"), d.get("direction")
     if p is None:
         return None
-    return bool(sig) and dr == "attraction"
+    return bool(sig) and dr == "association"
 
 
 def wilson(k, n, z=1.96):
@@ -73,7 +73,7 @@ def mcnemar(b, c):
 
 def load(arm):
     p = os.path.join(OUT, f"arm{arm}.json")
-    return json.load(open(p)) if os.path.exists(p) else []
+    return json.load(open(p, encoding="utf-8")) if os.path.exists(p) else []
 
 
 def table(rows, arm_no):
@@ -141,7 +141,7 @@ def signflips(rows, null="dense_morphology", crit="contact"):
     """ARM 1 is about a REAL attraction. Three ways to lose it, and they are not equal:
     losing significance is a power cost; being told SEGREGATION is a wrong answer."""
     print(f"\n  outcome of a TRUE attraction (null={null}, claim={crit}):")
-    print(f"    {'arm':10s} {'attraction':>11s} {'none':>7s} {'SEGREGATION':>12s} "
+    print(f"    {'arm':10s} {'association':>11s} {'none':>7s} {'SEGREGATION':>12s} "
           f"{'window destroyed':>17s}")
     for a in ARMS:
         if not any(a in r for r in rows):
@@ -158,7 +158,7 @@ def signflips(rows, null="dense_morphology", crit="contact"):
             if o is None:
                 continue
             cnt[o] += 1
-        print(f"    {a:10s} {cnt['attraction']:11d} {cnt['none']:7d} "
+        print(f"    {a:10s} {cnt['association']:11d} {cnt['none']:7d} "
               f"{cnt['segregation']:12d} {dead:17d}")
 
 
@@ -180,8 +180,8 @@ def dose_response(rows, null="dense_morphology", crit="contact"):
         if not chunk:
             continue
         rng = f"{chunk[0][0]:.0f}-{chunk[-1][0]:.0f} µm"
-        kr = sum(1 for _, r in chunk if outcome(r.get("rigid"), null, crit) == "attraction")
-        nr = sum(1 for _, r in chunk if outcome(r.get("nonrigid"), null, crit) == "attraction")
+        kr = sum(1 for _, r in chunk if outcome(r.get("rigid"), null, crit) == "association")
+        nr = sum(1 for _, r in chunk if outcome(r.get("nonrigid"), null, crit) == "association")
         dr = sum(1 for _, r in chunk
                  if isinstance(r.get("nonrigid"), dict) and r["nonrigid"].get("skipped"))
         print(f"    {lab:>11s} {rng:>10s} {len(chunk):4d} {kr:13d} "

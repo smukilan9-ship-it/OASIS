@@ -421,7 +421,7 @@ def main():
                "matrix": {f"{k[0]}|{k[1]}": v for k, v in res.items()},
                "scores": {f"{k[0]}|{k[1]}": v for k, v in scores.items()}, "decay_exponent": decay,
                "pcf_independent": pcf, "analytic": analytic, "recommendation": rec}
-    json.dump(payload, open(OUT_JSON, "w"), indent=2)
+    json.dump(payload, open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0
 

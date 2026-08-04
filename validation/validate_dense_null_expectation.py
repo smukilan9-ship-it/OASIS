@@ -163,7 +163,7 @@ def main():
                           "n_a": N_A, "n_b": N_B, "jitters_um": list(JITTERS),
                           "shipped_jitter_um": _DENSE_MORPHOLOGY_JITTER_UM},
                "grid": out, "verdicts": verdicts, "passed": bool(ok)},
-              open(OUT_JSON, "w"), indent=2)
+              open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t_start:.0f} s)")
     return 0 if ok else 1
 

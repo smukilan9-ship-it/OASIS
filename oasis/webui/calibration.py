@@ -47,7 +47,7 @@ def _views(image_path):
 
 
 def _cells(geojson_path):
-    gj = json.load(open(geojson_path))
+    gj = json.load(open(geojson_path, encoding="utf-8"))
     out = []
     for i, ft in enumerate(gj.get("features", [])):
         g = ft.get("geometry", {}) or {}
@@ -83,7 +83,7 @@ def segment(image_path, pixel_size, setup):
     }
     import yaml
     cfg_path = work / "cfg.yaml"
-    yaml.safe_dump(cfg, open(cfg_path, "w"))
+    yaml.safe_dump(cfg, open(cfg_path, "w", encoding="utf-8"))
     from oasis.common.worker import worker_cmd
     subprocess.run(worker_cmd("run_pipeline", "--config", str(cfg_path), "--mode", "quant"),
                    cwd=str(PROJECT_DIR), capture_output=True, timeout=1800)
@@ -173,7 +173,7 @@ def cells_for_classifier(image_path, geojson_path, pixel_size, pos_idx, neg_idx,
     if not wanted:
         return []
 
-    gj = json.load(open(geojson_path))
+    gj = json.load(open(geojson_path, encoding="utf-8"))
     feats = gj.get("features", [])
 
     ring = {}

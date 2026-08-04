@@ -687,10 +687,10 @@ def main(argv=None) -> int:
         "screen": rows,
         "architecture_gate": arch_rows,
     }
-    with open(OUT_JSON, "w") as f:
+    with open(OUT_JSON, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
     report = _make_report(args, rows, arch_rows)
-    with open(OUT_MD, "w") as f:
+    with open(OUT_MD, "w", encoding="utf-8") as f:
         f.write(report)
 
     print("\n" + "=" * 88)

@@ -59,7 +59,7 @@ def prepare(workdir):
     # Written as plain text rather than via yaml so this half runs even where PyYAML is not
     # importable for some reason; the frozen binary is what has to parse it.
     cfg = os.path.join(workdir, "config.yaml")
-    with open(cfg, "w") as f:
+    with open(cfg, "w", encoding="utf-8") as f:
         f.write(
             "segmenter: native\n"
             "device: cpu\n"            # the only device present on every runner
@@ -94,7 +94,7 @@ def check(workdir):
                 print("   found:", os.path.join(root, name))
         return 1
 
-    with open(summaries[0]) as f:
+    with open(summaries[0], encoding="utf-8") as f:
         summary = json.load(f)
     cells = summary.get("total_cells")
 

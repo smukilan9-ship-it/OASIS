@@ -236,7 +236,7 @@ def main():
     print(f"\n##METRICS## {json.dumps(report, default=str)}")
     out = os.environ.get("OASIS_REPORT_DIR")
     if out:
-        with open(os.path.join(out, "native_segmenter_wsi.json"), "w") as f:
+        with open(os.path.join(out, "native_segmenter_wsi.json"), "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
     print(f"\n{'PASS' if ok else 'FAIL'}")
     return 0 if ok else 1

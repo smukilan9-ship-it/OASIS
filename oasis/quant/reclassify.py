@@ -35,7 +35,7 @@ DAB_KEYS = ("DAB: Mean", "Nucleus: DAB OD mean")
 
 def read_dab_values(geojson_path):
     """Per-cell nuclear DAB OD, in GeoJSON feature order. NaN where a cell has none."""
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         gj = json.load(f)
     out = []
     for ft in gj.get("features", []):
@@ -111,7 +111,7 @@ def _write_csv_classification(output_dir, img_stem, features):
     if not matches:
         return
     try:
-        with open(matches[0], newline="") as f:
+        with open(matches[0], newline="", encoding="utf-8") as f:
             rows = list(csv.reader(f, delimiter="\t"))
         if not rows or len(rows) - 1 != len(features):
             return
@@ -119,7 +119,7 @@ def _write_csv_classification(output_dir, img_stem, features):
         for row, feat in zip(rows[1:], features):
             cls = ((feat.get("properties", {}) or {}).get("classification", {}) or {})
             row[ci] = cls.get("name", "")
-        with open(matches[0], "w", newline="") as f:
+        with open(matches[0], "w", newline="", encoding="utf-8") as f:
             csv.writer(f, delimiter="\t").writerows(rows)
     except (OSError, ValueError):
         return
@@ -137,7 +137,7 @@ def apply_threshold(geojson_path, summary_path, threshold, *, cohort_threshold=N
     image was not measured on the cohort's scale.
     """
     threshold = float(threshold)
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         gj = json.load(f)
     features = gj.get("features", [])
 
@@ -149,7 +149,7 @@ def apply_threshold(geojson_path, summary_path, threshold, *, cohort_threshold=N
         props["classification"] = {"name": "Positive" if is_pos else "Negative",
                                    "color": [255, 0, 0] if is_pos else [0, 200, 0]}
         pos += int(is_pos)
-    with open(geojson_path, "w") as f:
+    with open(geojson_path, "w", encoding="utf-8") as f:
         json.dump(gj, f)
 
     if output_dir and img_stem:
@@ -159,7 +159,7 @@ def apply_threshold(geojson_path, summary_path, threshold, *, cohort_threshold=N
     summary = {}
     if summary_path and os.path.exists(summary_path):
         try:
-            with open(summary_path) as f:
+            with open(summary_path, encoding="utf-8") as f:
                 summary = json.load(f) or {}
         except (OSError, ValueError):
             summary = {}
@@ -176,7 +176,7 @@ def apply_threshold(geojson_path, summary_path, threshold, *, cohort_threshold=N
         else:
             summary.pop("threshold_override", None)
     if summary_path:
-        with open(summary_path, "w") as f:
+        with open(summary_path, "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=4)
 
     return {"threshold": round(threshold, 5),
@@ -236,7 +236,7 @@ def apply_classifier(geojson_path, summary_path, model, cells, *, fixed_threshol
         return {**res, "applied": False, "reason": reason}
 
     labels, abstained = model.predict(X, abstain_band=abstain_band)
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         gj = json.load(f)
     features = gj.get("features", [])
     pos = 0
@@ -246,7 +246,7 @@ def apply_classifier(geojson_path, summary_path, model, cells, *, fixed_threshol
         props["classification"] = {"name": "Positive" if p else "Negative",
                                    "color": [255, 0, 0] if p else [0, 200, 0]}
         pos += int(p)
-    with open(geojson_path, "w") as f:
+    with open(geojson_path, "w", encoding="utf-8") as f:
         json.dump(gj, f)
     if output_dir and img_stem:
         _write_csv_classification(output_dir, img_stem, features)
@@ -275,7 +275,7 @@ def _stamp(summary_path, fields):
     summary = {}
     if os.path.exists(summary_path):
         try:
-            with open(summary_path) as f:
+            with open(summary_path, encoding="utf-8") as f:
                 summary = json.load(f) or {}
         except (OSError, ValueError):
             summary = {}
@@ -284,5 +284,5 @@ def _stamp(summary_path, fields):
             summary.pop(k, None)
         else:
             summary[k] = v
-    with open(summary_path, "w") as f:
+    with open(summary_path, "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=4)

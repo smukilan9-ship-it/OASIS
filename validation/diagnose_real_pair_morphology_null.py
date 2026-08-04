@@ -47,7 +47,7 @@ BANDS = [(5.0, 20.0), (10.0, 30.0), (10.0, 50.0)]
 
 
 def _read_json(path: Path) -> dict:
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -74,7 +74,7 @@ def _summary_pixel_size(pair_dir: Path, filename: str) -> float:
 
 def _load_detection_centroids_px(csv_path: Path, pixel_size_um: float) -> np.ndarray:
     points = []
-    with csv_path.open(newline="") as f:
+    with csv_path.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             try:
@@ -391,7 +391,7 @@ def write_report(outputs: dict, out_md: Path) -> None:
     lines.append("- Agreement across hematoxylin, all-cell-density, and combined fields would support a stable dense-tissue null. Disagreement means the morphology field definition is a scientific dependency that must be validated before shipping dense mode.")
     lines.append("- A significant morphology-conditioned result does not prove same-cell co-expression or direct contact; it remains a population-level serial-section association after conditioning on the chosen tissue architecture field.")
     lines.append("")
-    out_md.write_text("\n".join(lines) + "\n")
+    out_md.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -410,7 +410,7 @@ def main() -> None:
     out_dir = Path(args.result_dir).expanduser().resolve()
     out_json = out_dir / "real_pair_morphology_null_diagnostic.json"
     out_md = out_dir / "real_pair_morphology_null_diagnostic.md"
-    out_json.write_text(json.dumps(outputs, indent=2))
+    out_json.write_text(json.dumps(outputs, indent=2), encoding="utf-8")
     write_report(outputs, out_md)
     print(f"Wrote {out_json}")
     print(f"Wrote {out_md}")

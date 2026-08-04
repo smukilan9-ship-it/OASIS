@@ -354,7 +354,7 @@ def run(ref_path, mov_path, px, tols, out_json=OUT_JSON):
                                 "tre_pred_p90_um": base.get("tre_pred_p90_um")},
                "tol_sweep": sweep, "tol_sweep_reading": verdict_sweep,
                "spatial_structure": struct, "controls_failed": list(_FAILS)}
-    with open(out_json, "w") as f:
+    with open(out_json, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2, default=float)
     print(f"\nWrote {out_json}")
     return 1 if _FAILS else 0

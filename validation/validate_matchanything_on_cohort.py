@@ -320,7 +320,7 @@ def main():
                 line += f" | {R:.0f}µm {100 * d['frac']:3.0f}% bad"
         print(line)
 
-    with open(args.out, "w") as f:
+    with open(args.out, "w", encoding="utf-8") as f:
         json.dump({"config": {"model": HF_MODEL, "conf": CONF, "work_px": C.WORK,
                               "gross_um": C.GROSS_UM, "radii_um": list(WINDOW_RADII_UM),
                               "grid": GRID, "rot_max_deg": ROT_MAX_DEG,

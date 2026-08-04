@@ -176,7 +176,7 @@ def generate_overlay(
     img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     # Load GeoJSON
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         geojson = json.load(f)
 
     features = geojson.get("features", [])
@@ -347,7 +347,7 @@ def generate_segmentation_overlay(
         img = cv2.resize(img, (int(w0 / downsample), int(h0 / downsample)))
     img_bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         features = json.load(f).get("features", [])
 
     # Brighter, more saturated boundaries for the TIM-3 overlay (image A keeps

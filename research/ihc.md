@@ -3221,3 +3221,35 @@ which images are in the run — that drifted from the first. Neither is visible 
 screen: one shows a green plan and an empty result, the other shows an empty screen over a
 full response. The test that catches them is the one that runs the real seam, not the one
 that checks the branch it already believes in.
+
+### 23.3 The Windows job was red for weeks, and it was right
+
+`tests.yml` ran Windows and Linux with `continue-on-error: ${{ matrix.advisory }}`, so a
+failing Windows job still reported the run as successful. It had been failing since at
+least run 30368942278: **1 failed, 34 errors**, every one of them the same
+`UnicodeDecodeError: 'charmap' codec can't decode byte 0x90 in position 72418` from
+reading `oasis/webui/index.html`.
+
+`open()` and `Path.read_text()` fall back to `locale.getencoding()`. UTF-8 on macOS and
+Linux, **cp1252 on Windows**. `index.html` is UTF-8 and contains µ, → and ✓, so on
+Windows it cannot be read at all and every UI test errors at its fixture.
+
+**The build failure is the harmless half.** The same default is on
+`write_detections_csv` and `load_detection_centroids_csv`, and the detection table's
+header is `Centroid X µm`, matched as a literal string. Write the CSV on macOS as UTF-8,
+read it on Windows as cp1252, and the header arrives as `Centroid X Âµm`. Nothing raises.
+The column simply never matches, `load_detection_centroids_csv` returns zero points, the
+dense null's `min_support` gate fails, and the pair is withheld with a reason about the
+tissue. A cross-platform hand-off of the same data silently changes the scientific
+verdict, which is the failure mode §23.1 was about, arriving by a different road.
+
+250 call sites across 109 files now name their encoding. Two guards: an AST check that no
+text file is opened without one (it caught four the sweep missed, including two
+`Path.open()` and a `tempfile.NamedTemporaryFile` writing the page script for
+`node --check`), and an assertion that `index.html` genuinely cannot be decoded as cp1252,
+so the hazard is demonstrated rather than described. The suite passes under `LC_ALL=C
+PYTHONUTF8=0 -X utf8=0` as well as normally.
+
+Windows and Linux no longer carry `continue-on-error`. "Advisory" is only honest when
+someone reads the advice; here it meant a real, silent, cross-platform data bug sat behind
+a green tick for a month.

@@ -23,7 +23,7 @@ PD1_COL = "PD-1 - checkpoint:Cyc_12_ch_4"
 
 
 def _largest_spot(path):
-    rows = list(csv.DictReader(open(path)))
+    rows = list(csv.DictReader(open(path, encoding="utf-8")))
     import collections
     spot = collections.Counter(r["spots"] for r in rows).most_common(1)[0][0]
     return [r for r in rows if r["spots"] == spot]

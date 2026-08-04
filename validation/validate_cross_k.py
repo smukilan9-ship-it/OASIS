@@ -79,7 +79,7 @@ def check_A():
 
     # Save the exact coordinates so the test is reproducible
     csv_path = os.path.join(OUT_DIR, "fixed_pattern.csv")
-    with open(csv_path, "w", newline="") as f:
+    with open(csv_path, "w", newline="", encoding="utf-8") as f:
         w = csv.writer(f)
         w.writerow(["type", "x", "y"])
         for x, y in A:

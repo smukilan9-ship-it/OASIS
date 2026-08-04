@@ -148,7 +148,7 @@ def main():
                           "null": NULL, "statistic": _BAND_STATISTIC},
                "power": {f"{a}|{b}|{c}": v for (a, b, c), v in grid.items()},
                "min_detectable_enrichment": {f"{a}|{b}": v for (a, b), v in mde.items()}},
-              open(OUT_JSON, "w"), indent=2)
+              open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0
 

@@ -76,7 +76,7 @@ def load_positive_centroids(geojson_path: str):
         features:  list of original GeoJSON feature dicts (positive cells only)
     """
     try:
-        with open(geojson_path) as f:
+        with open(geojson_path, encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
         print(f"  Could not load GeoJSON {Path(geojson_path).name}: {e}")
@@ -757,7 +757,7 @@ def load_detection_centroids_csv(csv_path: str, pixel_size_um: float) -> np.ndar
     pts = []
     if not csv_path:
         return np.empty((0, 2), dtype=np.float64)
-    with open(csv_path, newline="") as f:
+    with open(csv_path, newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             try:

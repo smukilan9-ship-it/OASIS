@@ -49,7 +49,7 @@ def main() -> int:
         print("Set OASIS_KEREN_TNBC_VALIDATION_DIR to the pilot folder if it lives elsewhere.")
         return 1
 
-    rows = json.loads(path.read_text())
+    rows = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(rows, list) or not rows:
         print(f"FAIL: {path} does not contain a non-empty comparison list.")
         return 1

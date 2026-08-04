@@ -97,7 +97,7 @@ def score_dir(cond, out_name, adaptive=False):
             os.symlink(os.path.join(DATA, cond, out_name), target)
         try:
             dv.score(cond, adaptive=adaptive)          # prints, and writes f1/metrics.json
-            with open(os.path.join(DATA, cond, "f1", "metrics.json")) as f:
+            with open(os.path.join(DATA, cond, "f1", "metrics.json"), encoding="utf-8") as f:
                 m = json.load(f)
             m.pop("per_image", None)                   # 598 entries, not wanted in the report
             return m
@@ -162,7 +162,7 @@ def main():
     print(f"\n##METRICS## {json.dumps(report, default=str)}")
     out = os.environ.get("OASIS_REPORT_DIR")
     if out:
-        with open(os.path.join(out, "native_segmenter_deepliif.json"), "w") as f:
+        with open(os.path.join(out, "native_segmenter_deepliif.json"), "w", encoding="utf-8") as f:
             json.dump(report, f, indent=2)
     print(f"\n{'PASS' if ok else 'FAIL'} — "
           f"{'QuPath can be removed' if ok else 'QuPath must stay until this passes'}")

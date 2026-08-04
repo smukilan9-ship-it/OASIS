@@ -79,7 +79,7 @@ def available(require_real=False):
 
 
 def _read_centroids(path):
-    with open(path, newline="") as fh:
+    with open(path, newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh, delimiter="\t"))
     xy, cls = [], []
     for r in rows:

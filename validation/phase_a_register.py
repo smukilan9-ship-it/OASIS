@@ -67,7 +67,7 @@ def main():
               f"est_scale={reg['est_scale']} tx,ty="
               f"{reg['matrix'][0,2]:.1f},{reg['matrix'][1,2]:.1f}")
 
-    with open(os.path.join(OUT, "registration.json"), "w") as f:
+    with open(os.path.join(OUT, "registration.json"), "w", encoding="utf-8") as f:
         json.dump(reg_db, f, indent=2)
     print(f"\nWrote {OUT}/registration.json + overlays")
     return 0

@@ -197,7 +197,7 @@ def main():
         log("  ⚠ VERDICT: calibration problem AND the sanity control also misfired"
             " — investigate the harness before drawing conclusions.")
 
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(_log) + "\n")
     log(f"\n  (saved to {os.path.relpath(OUT)})")
     return 0 if (prim_ok and tor_ok) else 2

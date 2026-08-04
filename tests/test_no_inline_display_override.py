@@ -27,7 +27,7 @@ INDEX = Path(__file__).resolve().parent.parent / "oasis/webui/index.html"
 
 @pytest.fixture(scope="module")
 def html():
-    return INDEX.read_text()
+    return INDEX.read_text(encoding="utf-8")
 
 
 def _scroll_display_assignments(html):

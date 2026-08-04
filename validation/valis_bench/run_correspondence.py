@@ -73,7 +73,7 @@ def run(tol_um=10.0):
         else:
             print(f"  [{i}/{len(pairs)}] {p['pair_id'][-24:]} — no usable matches ({rec.get('msg','')})")
         if i % 15 == 0:                          # checkpoint
-            with open(os.path.join(C.OUT_DIR, "correspondence_results.json"), "w") as fck:
+            with open(os.path.join(C.OUT_DIR, "correspondence_results.json"), "w", encoding="utf-8") as fck:
                 json.dump({"summary": {"partial": True, "done": len(results)},
                            "results": results}, fck, indent=1)
 
@@ -84,7 +84,7 @@ def run(tol_um=10.0):
                "median_corr_err_um": float(np.median(med)) if med else None,
                "mean_inlier_rate": float(np.mean(inl)) if inl else None, "tol_um": tol_um}
     out = os.path.join(C.OUT_DIR, "correspondence_results.json")
-    with open(out, "w") as f:
+    with open(out, "w", encoding="utf-8") as f:
         json.dump({"summary": summary, "results": results}, f, indent=1)
     print(f"\n[corr] SUMMARY: {summary['n_with_matches']}/{summary['n_pairs']} pairs matched; "
           f"median correspondence error {summary['median_corr_err_um']}µm; "

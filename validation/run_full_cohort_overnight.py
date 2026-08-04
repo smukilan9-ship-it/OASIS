@@ -73,7 +73,7 @@ def certify_all(pairs, log):
     for i, p in enumerate(pairs, 1):
         cache = os.path.join(CERT_DIR, f"{p['sample_id']}__{p['mag']}.json")
         if os.path.exists(cache):                      # resumable
-            p["certification"] = json.load(open(cache))
+            p["certification"] = json.load(open(cache, encoding="utf-8"))
             done += 1
             continue
         t0 = time.time()
@@ -110,7 +110,7 @@ def certify_all(pairs, log):
             "reason": r.get("error") or r.get("reason"),
             "regions": regs, "seconds": round(time.time() - t0, 1),
         }
-        json.dump(cert, open(cache, "w"), indent=1)
+        json.dump(cert, open(cache, "w", encoding="utf-8"), indent=1)
         p["certification"] = cert
         done += 1
         log(f"[{i}/{len(pairs)}] {p['mag']:>3} {p['sample_id']:<26} "
@@ -126,7 +126,7 @@ def main():
     a = ap.parse_args()
 
     os.makedirs(OUT, exist_ok=True)
-    logf = open(os.path.join(OUT, "run.log"), "a", buffering=1)
+    logf = open(os.path.join(OUT, "run.log"), "a", buffering=1, encoding="utf-8")
 
     def log(m):
         print(m, flush=True)
@@ -146,7 +146,7 @@ def main():
     json.dump({"pairs": [{k: v for k, v in p.items() if k != 'certification'} |
                          {"certification": {kk: vv for kk, vv in p["certification"].items()
                                             if kk != "regions"}} for p in pairs]},
-              open(os.path.join(OUT, "certification_summary.json"), "w"), indent=1)
+              open(os.path.join(OUT, "certification_summary.json"), "w", encoding="utf-8"), indent=1)
     if a.certify_only:
         return 0
 
@@ -169,7 +169,7 @@ def main():
         } for p in pairs],
     }
     cpath = os.path.join(OUT, "cohort_config.yaml")
-    yaml.safe_dump(cfg, open(cpath, "w"), sort_keys=False)
+    yaml.safe_dump(cfg, open(cpath, "w", encoding="utf-8"), sort_keys=False)
     log(f"\nwrote {cpath}\nrunning the spatial pipeline…\n")
 
     import subprocess

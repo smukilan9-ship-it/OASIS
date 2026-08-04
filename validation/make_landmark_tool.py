@@ -51,7 +51,7 @@ def main():
     prior = {}
     lm_path = os.path.join(OUT, "landmarks.json")
     if os.path.exists(lm_path):
-        txt = open(lm_path).read().strip()
+        txt = open(lm_path, encoding="utf-8").read().strip()
         if txt.startswith("LANDMARKS"):
             txt = txt[len("LANDMARKS"):].strip()
         prior = json.loads(txt)
@@ -80,7 +80,7 @@ def main():
 
     html = _HTML.replace("__META__", json.dumps(meta))
     path = os.path.join(OUT, "landmark_tool.html")
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         f.write(html)
     print("Wrote", path)
     print("Open:  file://" + path)

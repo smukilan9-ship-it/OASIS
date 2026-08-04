@@ -188,6 +188,6 @@ if __name__ == "__main__":
     log("    the registration-QC-gated cross-sample swap) is the appropriate negative")
     log("    control — see VALIDATION_DATASETS.md.")
 
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(_log) + "\n")
     log(f"\n  (saved to {os.path.relpath(OUT)})")

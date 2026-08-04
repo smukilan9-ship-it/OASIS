@@ -35,7 +35,7 @@ def staged(tmp_path):
     out = tmp_path / "results"
     out.mkdir()
     for name, cells, pos in (("A.tif", 4521, 119), ("B.tif", 13073, 236)):
-        (out / f"{Path(name).stem}_summary.json").write_text(json.dumps(_summary(name, cells, pos)))
+        (out / f"{Path(name).stem}_summary.json").write_text(json.dumps(_summary(name, cells, pos)), encoding="utf-8")
     return out
 
 

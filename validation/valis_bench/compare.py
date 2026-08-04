@@ -22,7 +22,7 @@ def _load(name):
     p = os.path.join(HERE, name)
     if not os.path.exists(p):
         return None
-    with open(p) as f:
+    with open(p, encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -148,7 +148,7 @@ def main():
     P("")
 
     out = os.path.join(HERE, "REPORT.md")
-    with open(out, "w") as f:
+    with open(out, "w", encoding="utf-8") as f:
         f.write("\n".join(lines))
     print("wrote", out)
     print("\n".join(lines[:40]))

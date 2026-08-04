@@ -435,10 +435,10 @@ def main(argv=None):
           f"bands={args.bands}", flush=True)
     rows = run_screen(args)
     payload = {"config": vars(args), "screen": rows}
-    with open(OUT_JSON, "w") as f:
+    with open(OUT_JSON, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
     report = make_report(args, rows)
-    with open(OUT_MD, "w") as f:
+    with open(OUT_MD, "w", encoding="utf-8") as f:
         f.write(report + "\n")
     print("\nWROTE")
     print(f"  {OUT_JSON}")

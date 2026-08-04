@@ -442,7 +442,7 @@ def measure_cytoplasm_dab(
     px = float(pixel_size_um) if pixel_size_um and pixel_size_um > 0 else 0.5
     exp_px = expansion_um / px
 
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         gj = json.load(f)
     features = gj.get("features", [])
 

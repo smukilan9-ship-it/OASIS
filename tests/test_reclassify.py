@@ -19,12 +19,12 @@ def _write_case(tmp_path, values, stem="slide_a", compartment=None):
                                          if v is not None else {})}}
         for i, v in enumerate(values)]}
     geo = tmp_path / f"{stem}_detections.geojson"
-    geo.write_text(json.dumps(gj))
+    geo.write_text(json.dumps(gj), encoding="utf-8")
     summ = tmp_path / f"{stem}_summary.json"
     payload = {"total_cells": len(values)}
     if compartment:
         payload["measurement_compartment"] = compartment
-    summ.write_text(json.dumps(payload))
+    summ.write_text(json.dumps(payload), encoding="utf-8")
     return str(geo), str(summ)
 
 
@@ -57,9 +57,9 @@ def test_classification_and_summary_are_written_back(tmp_path):
     geo, summ = _write_case(tmp_path, [0.05, 0.30, 0.40])
     R.apply_threshold(geo, summ, 0.2)
     names = [f["properties"]["classification"]["name"]
-             for f in json.loads(open(geo).read())["features"]]
+             for f in json.loads(open(geo, encoding="utf-8").read())["features"]]
     assert names == ["Negative", "Positive", "Positive"]
-    s = json.loads(open(summ).read())
+    s = json.loads(open(summ, encoding="utf-8").read())
     assert (s["positive_cells"], s["negative_cells"], s["total_cells"]) == (2, 1, 3)
     assert s["positivity_pct"] == pytest.approx(66.67, abs=0.01)
     assert s["dab_threshold"] == pytest.approx(0.2)
@@ -79,7 +79,7 @@ def test_matching_the_cohort_default_records_no_override(tmp_path):
     geo, summ = _write_case(tmp_path, [0.05, 0.30])
     res = R.apply_threshold(geo, summ, 0.2, cohort_threshold=0.2)
     assert res["override"] is False
-    assert "threshold_override" not in json.loads(open(summ).read())
+    assert "threshold_override" not in json.loads(open(summ, encoding="utf-8").read())
 
 
 def test_departing_from_the_cohort_default_is_recorded(tmp_path):
@@ -88,7 +88,7 @@ def test_departing_from_the_cohort_default_is_recorded(tmp_path):
     geo, summ = _write_case(tmp_path, [0.05, 0.30])
     res = R.apply_threshold(geo, summ, 0.12, cohort_threshold=0.2)
     assert res["override"] is True
-    s = json.loads(open(summ).read())
+    s = json.loads(open(summ, encoding="utf-8").read())
     assert s["threshold_override"] == pytest.approx(0.12)
     assert s["cohort_threshold"] == pytest.approx(0.2)
 
@@ -99,14 +99,14 @@ def test_override_is_cleared_when_the_image_returns_to_the_cohort_value(tmp_path
     geo, summ = _write_case(tmp_path, [0.05, 0.30])
     R.apply_threshold(geo, summ, 0.12, cohort_threshold=0.2)
     R.apply_threshold(geo, summ, 0.2, cohort_threshold=0.2)
-    assert "threshold_override" not in json.loads(open(summ).read())
+    assert "threshold_override" not in json.loads(open(summ, encoding="utf-8").read())
 
 
 def test_membrane_results_are_detected(tmp_path):
     _, summ_m = _write_case(tmp_path, [0.1], stem="m", compartment="cytoplasm")
     _, summ_n = _write_case(tmp_path, [0.1], stem="n")
-    assert R.is_membrane_result(json.loads(open(summ_m).read())) is True
-    assert R.is_membrane_result(json.loads(open(summ_n).read())) is False
+    assert R.is_membrane_result(json.loads(open(summ_m, encoding="utf-8").read())) is True
+    assert R.is_membrane_result(json.loads(open(summ_n, encoding="utf-8").read())) is False
 
 
 def test_histogram_counts_every_measurable_cell():

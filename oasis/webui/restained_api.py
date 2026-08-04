@@ -46,7 +46,7 @@ def attach_restained_api(api_class):
         }
         config_dir.mkdir(exist_ok=True)
         config_path = config_dir / "restained_coexpression_config.yaml"
-        with open(config_path, "w") as handle:
+        with open(config_path, "w", encoding="utf-8") as handle:
             yaml.safe_dump(run_config, handle, default_flow_style=False)
 
         def emit(event, data):
@@ -99,7 +99,7 @@ def attach_restained_api(api_class):
                 if not result_path or not Path(result_path).exists():
                     emit("restained_failed", {"msg": "Run completed without a result file"})
                     return
-                with open(result_path) as handle:
+                with open(result_path, encoding="utf-8") as handle:
                     result = json.load(handle)
                 emit("restained_complete", result)
             except Exception as exc:

@@ -119,7 +119,7 @@ def main():
               f"{100*np.percentile(v,90):11.1f}% {100*(s<0).mean():10.1f}%")
     out = os.path.join(_HERE, "results", "distortion.json")
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    json.dump({"per_pair": rows, "pooled": summary}, open(out, "w"), indent=1)
+    json.dump({"per_pair": rows, "pooled": summary}, open(out, "w", encoding="utf-8"), indent=1)
     print(f"\nwrote {out}")
 
 

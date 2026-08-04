@@ -176,5 +176,5 @@ if __name__ == "__main__":
     PAIRS = [("CD8", "HE"), ("CD8", "CD45"), ("HE", "CD45")]
     rows = run(a.cases, PAIRS)
     s = summarise(rows)
-    json.dump({"pairs": rows, "summary": s}, open(a.out, "w"), indent=2)
+    json.dump({"pairs": rows, "summary": s}, open(a.out, "w", encoding="utf-8"), indent=2)
     print(f"\nWrote {a.out}")

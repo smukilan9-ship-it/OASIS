@@ -148,5 +148,5 @@ if __name__ == "__main__":
     a = ap.parse_args()
     rows = run(a.cases, [("CD8", "HE"), ("CD8", "CD45")])
     s = summarise(rows)
-    json.dump({"fields": rows, "summary": s}, open(a.out, "w"), indent=2)
+    json.dump({"fields": rows, "summary": s}, open(a.out, "w", encoding="utf-8"), indent=2)
     print(f"\nWrote {a.out}")

@@ -51,7 +51,7 @@ FIELD_WH = (1920, 1440)        # LL477's frame
 
 def load_landmarks_mm(path):
     out = []
-    for r in csv.reader(open(path)):
+    for r in csv.reader(open(path, encoding="utf-8")):
         if len(r) >= 2:
             try:
                 out.append((float(r[0]), float(r[1])))

@@ -38,7 +38,7 @@ from oasis.spatial.serial_registration import landmark_register_and_verify  # no
 
 
 def load_landmarks(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         rows = list(csv.reader(f))
     if not rows:
         return np.zeros((0, 2))

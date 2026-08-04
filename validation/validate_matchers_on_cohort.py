@@ -259,7 +259,7 @@ def main():
         print(f"  {t:<19} real matches {str(ns):<22} "
               f"{'USABLE' if ok else 'FAILS on at least one pair'}"
               + (f", worst gross {100*max(gs):.1f}%" if gs and ok else ""))
-    with open(a.out, "w") as f:
+    with open(a.out, "w", encoding="utf-8") as f:
         json.dump({"pairs": results, "summary": usable}, f, indent=2)
     print(f"\nWrote {a.out}")
 

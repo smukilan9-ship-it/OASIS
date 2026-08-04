@@ -33,7 +33,7 @@ INDEX = ROOT / "oasis/webui/index.html"
 
 @pytest.fixture(scope="module")
 def js():
-    return INDEX.read_text()
+    return INDEX.read_text(encoding="utf-8")
 
 
 def test_the_matcher_reports_the_token_the_ui_will_adopt():

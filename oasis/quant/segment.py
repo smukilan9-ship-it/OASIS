@@ -67,7 +67,7 @@ def model_pixel_size(model_dir):
         return None
     try:
         import yaml
-        with open(rdf) as f:
+        with open(rdf, encoding="utf-8") as f:
             spec = yaml.safe_load(f)
         scales = []
         for tensor in spec.get("inputs", []):
@@ -727,7 +727,7 @@ def write_geojson(result, path, image_name=""):
                 "measurements": r["measurements"],
             },
         })
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump({"type": "FeatureCollection", "features": feats}, f)
     return path
 
@@ -736,7 +736,7 @@ def write_detections_csv(result, path, image_name=""):
     """Tab-delimited detection table. `spatial.py` reads 'Centroid X µm' / 'Centroid Y µm' and
     'Classification' from it."""
     import csv
-    with open(path, "w", newline="") as f:
+    with open(path, "w", newline="", encoding="utf-8") as f:
         wr = csv.writer(f, delimiter="\t", lineterminator="\n")
         wr.writerow(_CSV_COLUMNS)
         for r in result["records"]:
@@ -774,6 +774,6 @@ def write_summary(result, path, image_name="", extra=None):
     }
     if extra:
         summ.update(extra)
-    with open(path, "w") as f:
+    with open(path, "w", encoding="utf-8") as f:
         json.dump(summ, f, indent=4)
     return path

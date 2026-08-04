@@ -51,7 +51,7 @@ BANDS = [(10.0, 30.0), (5.0, 20.0)]
 
 
 def _read_json(path: Path) -> dict:
-    with path.open() as f:
+    with path.open(encoding="utf-8") as f:
         return json.load(f)
 
 
@@ -78,7 +78,7 @@ def _summary_pixel_size(pair_dir: Path, filename: str) -> float:
 
 def _load_detection_centroids_px(csv_path: Path, pixel_size_um: float) -> np.ndarray:
     pts = []
-    with csv_path.open(newline="") as f:
+    with csv_path.open(newline="", encoding="utf-8") as f:
         reader = csv.DictReader(f, delimiter="\t")
         for row in reader:
             try:
@@ -321,7 +321,7 @@ def write_report(result: dict, out_md: Path) -> None:
         "- Production dense mode remains gated: 75 µm must fail, landmark certification/window/support/sparsity gates must pass, and provenance must record the switch.",
         "",
     ]
-    out_md.write_text("\n".join(lines))
+    out_md.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
@@ -336,7 +336,7 @@ def main() -> None:
     args = parser.parse_args()
 
     result = run(args)
-    OUT_JSON.write_text(json.dumps(result, indent=2))
+    OUT_JSON.write_text(json.dumps(result, indent=2), encoding="utf-8")
     write_report(result, OUT_MD)
     print(f"Wrote {OUT_JSON}")
     print(f"Wrote {OUT_MD}")

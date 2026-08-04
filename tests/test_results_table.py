@@ -31,7 +31,7 @@ def _summary(tmp_path, **over):
     }
     d.update(over)
     p = tmp_path / "slideA_summary.json"
-    p.write_text(json.dumps(d))
+    p.write_text(json.dumps(d), encoding="utf-8")
     return str(p)
 
 

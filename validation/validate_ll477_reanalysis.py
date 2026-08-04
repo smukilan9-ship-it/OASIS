@@ -64,7 +64,7 @@ OUT_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),
 
 def load_positive(path, pixel_size_um):
     """Positive-cell centroids in that image's PIXEL frame (the matrix/ROI frame)."""
-    with open(path, newline="") as fh:
+    with open(path, newline="", encoding="utf-8") as fh:
         rows = list(csv.DictReader(fh, delimiter="\t"))
     xy = [(float(r["Centroid X µm"]) / pixel_size_um,
            float(r["Centroid Y µm"]) / pixel_size_um)
@@ -91,7 +91,7 @@ def in_polygon(pts, poly):
 
 
 def main():
-    rec = json.load(open(RESULTS))
+    rec = json.load(open(RESULTS, encoding="utf-8"))
     rec = rec[0] if isinstance(rec, list) else rec
     v = rec["spatial_association"]["association"]["CD8__TIM-3"]
     cert = v["certification"]
@@ -163,7 +163,7 @@ def main():
         print("\n  RECONSTRUCTION DOES NOT MATCH THE SHIPPED RUN — stopping. Any comparison")
         print("  from here would be between two different analyses, not before and after.")
         json.dump({"faithful": False, "n_a": len(A), "n_b": len(B)},
-                  open(OUT_JSON, "w"), indent=2)
+                  open(OUT_JSON, "w", encoding="utf-8"), indent=2)
         return 1
     print("  reconstruction matches the shipped run.\n")
 
@@ -216,7 +216,7 @@ def main():
                "shipped": {"coloc": v["interaction"]["colocalization"],
                            "coinfil": v["interaction"]["coinfiltration"]},
                "rerun": out, "verdict_statistic": _BAND_STATISTIC, "note": note},
-              open(OUT_JSON, "w"), indent=2)
+              open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}")
     return 0
 

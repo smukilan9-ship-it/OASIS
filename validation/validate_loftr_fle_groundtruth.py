@@ -656,7 +656,7 @@ def run(image_path, px, quick=False, work_dims=None, out_json=OUT_JSON):
         "summary": summary,
         "controls_failed": list(_FAILS),
     }
-    with open(out_json, "w") as f:
+    with open(out_json, "w", encoding="utf-8") as f:
         json.dump(payload, f, indent=2)
     print(f"\nWrote {out_json}")
     return 1 if _FAILS else 0

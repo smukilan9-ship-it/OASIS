@@ -70,7 +70,7 @@ def _json_safe(value):
 def _write_json(path, value):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    with open(path, "w") as handle:
+    with open(path, "w", encoding="utf-8") as handle:
         json.dump(_json_safe(value), handle, indent=2)
 
 
@@ -78,7 +78,7 @@ def _write_rows(path, rows):
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     fieldnames = sorted({key for row in rows for key in row})
-    with open(path, "w", newline="") as handle:
+    with open(path, "w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
@@ -268,7 +268,7 @@ def dapi_hematoxylin_structural_correlation(dapi_path, hematoxylin_path):
 
 def _read_predicted_cells(cells_csv):
     rows = []
-    with open(cells_csv) as handle:
+    with open(cells_csv, encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
             rows.append({
                 "x": float(row["x_px"]), "y": float(row["y_px"]),
@@ -412,7 +412,7 @@ def run_all(args):
             }
             result_json = pipeline_root / sample_id / f"{sample_id}_restained_result.json"
             if result_json.exists():
-                with open(result_json) as handle:
+                with open(result_json, encoding="utf-8") as handle:
                     result = json.load(handle)
                 result.setdefault("artifacts", {})["result_json"] = str(result_json)
             else:

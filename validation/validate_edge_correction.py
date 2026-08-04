@@ -123,7 +123,7 @@ def validate_translate_vs_spatstat():
     d = tempfile.mkdtemp(prefix="edge_")
     poly = np.array([[0.0, 0.0], [WIN, 0.0], [WIN, WIN], [0.0, WIN]])
     def w(fn, rows, header):
-        with open(os.path.join(d, fn), "w", newline="") as f:
+        with open(os.path.join(d, fn), "w", newline="", encoding="utf-8") as f:
             wr = csv.writer(f); wr.writerow(header); wr.writerows(rows)
     w("points.csv", [("A", f"{x:.6f}", f"{y:.6f}") for x, y in A]
                     + [("B", f"{x:.6f}", f"{y:.6f}") for x, y in B], ["type", "x", "y"])
@@ -136,7 +136,7 @@ def validate_translate_vs_spatstat():
     res = None
     p = os.path.join(d, "r_K_translate.csv")
     if proc.returncode == 0 and os.path.exists(p):
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             k_r = np.array([float(row["K"]) for row in csv.DictReader(f)])
         valid = (k_mine > 0) & (k_r > 0)
         rel = np.abs(k_mine[valid] - k_r[valid]) / np.abs(k_r[valid])
@@ -232,7 +232,7 @@ def main():
             log("  Correction changes calibration but is NOT better (or loses power).")
             log("  → UNCORRECTED is the better choice; report why.")
 
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(_log) + "\n")
     log(f"\n  (saved to {os.path.relpath(OUT)})")
     return 0

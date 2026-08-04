@@ -47,7 +47,7 @@ def load_config(config_path="config.yaml"):
         print(f"ERROR: Config file not found: {config_path}")
         sys.exit(1)
 
-    with open(config_path) as f:
+    with open(config_path, encoding="utf-8") as f:
         cfg = yaml.safe_load(f)
 
     path_keys = ["input_dir", "output_dir", "dashboard_dir", "instanseg_model"]
@@ -170,7 +170,7 @@ def parse_summary_json(json_path):
         print(f"  Missing results: {json_path}")
         return None
     try:
-        with open(json_path) as f:
+        with open(json_path, encoding="utf-8") as f:
             data = json.load(f)
         total = data["total_cells"]
         pos_pct = float(data["positivity_pct"])
@@ -226,7 +226,7 @@ def parse_summary_json(json_path):
 def save_metadata(metrics, metadata_dir):
     os.makedirs(metadata_dir, exist_ok=True)
     safe_name = "".join(c for c in metrics["Image_Name"] if c.isalnum() or c in "._- ")
-    with open(os.path.join(metadata_dir, f"{safe_name}_metadata.json"), "w") as f:
+    with open(os.path.join(metadata_dir, f"{safe_name}_metadata.json"), "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=4)
 
 
@@ -340,7 +340,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
     expansion  = float(cfg.get("cell_expansion_um", 2.0))
 
     try:
-        with open(json_path) as f:
+        with open(json_path, encoding="utf-8") as f:
             summ = json.load(f)
     except Exception:
         summ = {}
@@ -369,7 +369,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
         membrane_pix_thr=float(pix_thr) if use_completeness else None,
     )
 
-    with open(geojson) as f:
+    with open(geojson, encoding="utf-8") as f:
         gj = json.load(f)
     features = gj.get("features", [])
 
@@ -411,7 +411,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
         if res.get("cell_polygon"):
             props["cyto_polygon"] = res["cell_polygon"]
 
-    with open(geojson, "w") as f:
+    with open(geojson, "w", encoding="utf-8") as f:
         json.dump(gj, f)
 
     # Keep the tab-delimited detection export consistent with the GeoJSON
@@ -423,7 +423,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
         csv_matches = glob.glob(os.path.join(cfg["output_dir"], f"{stem}*_detections.csv"))
         if csv_matches:
             csv_path = csv_matches[0]
-            with open(csv_path, newline="") as f:
+            with open(csv_path, newline="", encoding="utf-8") as f:
                 rows = list(csv.reader(f, delimiter="\t"))
             if rows and len(rows) - 1 == len(features):
                 header = rows[0]
@@ -441,7 +441,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
                         while len(row) <= idx:
                             row.append("")
                         row[idx] = meas.get(name, "")
-                with open(csv_path, "w", newline="") as f:
+                with open(csv_path, "w", newline="", encoding="utf-8") as f:
                     csv.writer(f, delimiter="\t", lineterminator="\n").writerows(rows)
     except Exception as e:
         print(f"  WARNING: could not synchronize cytoplasm detection CSV: {e}")
@@ -490,7 +490,7 @@ def _apply_cytoplasm_measurement(img_path, json_path, cfg):
             print(f"  ⚠ Membrane quality: LOW — positive rate {pos_rate:.1%}, "
                   f"background margin {bg_margin:.3f}. Faint/low-contrast tissue; "
                   f"TIM-3 may not be reliably callable here.")
-    with open(json_path, "w") as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(summ, f, indent=4)
 
     print(f"  Cytoplasm measurement: {total} cells, {pos} positive "
@@ -532,7 +532,7 @@ def _apply_classifier(img_path, json_path, cfg):
     model = CL.CellClassifier.from_dict(spec)
     model.name = spec_name
 
-    n = len(json.load(open(geojson)).get("features", []))
+    n = len(json.load(open(geojson, encoding="utf-8")).get("features", []))
     cells = calibration.cells_for_classifier(
         img_path, geojson, cfg.get("_resolved_pixel_size", 0.5),
         pos_idx=range(n), neg_idx=[], kind=model.kind)
@@ -656,7 +656,7 @@ def _finish_single_image(img_path, img_filename, json_path, cfg,
     # the summary so the UI can flag a run whose pixel size is a silent fallback
     # or implausible (wrong pixel size → nonsensical cell density).
     try:
-        with open(json_path) as f:
+        with open(json_path, encoding="utf-8") as f:
             _summ = json.load(f)
         _summ["pixel_size_um"] = pixel_size
         _summ["pixel_size_source"] = pixel_size_source
@@ -673,7 +673,7 @@ def _finish_single_image(img_path, img_filename, json_path, cfg,
         _summ["pixel_size_warning"] = bool(
             pixel_size_source == "default_fallback"
             or (dens is not None and (dens < 100 or dens > 20000)))
-        with open(json_path, "w") as f:
+        with open(json_path, "w", encoding="utf-8") as f:
             json.dump(_summ, f, indent=4)
     except Exception as e:
         print(f"  WARNING: could not annotate pixel-size QC: {e}")
@@ -1744,7 +1744,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         # counts, Monte-Carlo null stats, and qc_overlay paths)
         summary = {k: v for k, v in result.items() if k not in ("metrics_a","metrics_b")}
         summary["spatial_association"] = _spatial_result_for_json(result.get("spatial_association"))
-        with open(os.path.join(pair_out, f"{sample_id}_spatial_association.json"), "w") as f:
+        with open(os.path.join(pair_out, f"{sample_id}_spatial_association.json"), "w", encoding="utf-8") as f:
             json.dump(summary, f, indent=2)
 
     # ── Save combined results ──────────────────────────────────────────
@@ -1756,7 +1756,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
         combined.append(sr)
 
     combined_path = os.path.join(cfg["output_dir"], "spatial_association_results.json")
-    with open(combined_path, "w") as f:
+    with open(combined_path, "w", encoding="utf-8") as f:
         json.dump(combined, f, indent=2)
 
     # A8: cohort-level multiple-comparison correction across per-pair DCLF p-values.
@@ -1778,7 +1778,7 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
                          "the per-pair p-values. Uncertified pairs "
                          "(certification.status='not_performed') must not contribute to "
                          "a cohort-level biological claim.")
-        with open(os.path.join(cfg["output_dir"], "spatial_cohort_fdr.json"), "w") as f:
+        with open(os.path.join(cfg["output_dir"], "spatial_cohort_fdr.json"), "w", encoding="utf-8") as f:
             json.dump(fdr, f, indent=2)
         print(f"  Cohort FDR (BH): {fdr.get('n_significant_adjusted')}/"
               f"{fdr.get('n_tested')} significant after correction "

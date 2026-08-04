@@ -17,7 +17,7 @@ from conftest import require_dataset, DATASETS
 def test_codex_table_schema():
     """codex_crc — used by the keystone degradation test. Needs coords + markers."""
     path = require_dataset("codex_crc")
-    hdr = next(csv.reader(open(path)))
+    hdr = next(csv.reader(open(path, encoding="utf-8")))
     for col in ("X:X", "Y:Y", "spots",
                 "CD8 - cytotoxic T cells:Cyc_3_ch_2", "PD-1 - checkpoint:Cyc_12_ch_4"):
         assert col in hdr, f"CODEX table missing column {col!r}"

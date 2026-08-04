@@ -35,7 +35,7 @@ def staged(tmp_path):
     out = tmp_path / "out"
     (out / "SAMPLE_CD8").mkdir(parents=True)
     gj = out / "SAMPLE_CD8" / "SAMPLE_CD8_detections.geojson"
-    gj.write_text(json.dumps(_detections([0.05, 0.15, 0.25, 0.35])))
+    gj.write_text(json.dumps(_detections([0.05, 0.15, 0.25, 0.35])), encoding="utf-8")
     return img, out, gj
 
 
@@ -51,7 +51,7 @@ def test_the_reviewed_cutoff_is_written_into_the_cells(staged, monkeypatch):
                               "output_dir": str(out)})
 
     calls = [f["properties"]["classification"]["name"]
-             for f in json.loads(gj.read_text())["features"]]
+             for f in json.loads(gj.read_text(encoding="utf-8"))["features"]]
     assert calls == ["Negative", "Negative", "Positive", "Positive"], (
         f"the 0.20 cutoff did not reach the cells: {calls}")
     assert seen["cfg"]["reuse_existing_geojson"] is True, (
@@ -67,7 +67,7 @@ def test_a_different_cutoff_gives_a_different_call(staged, monkeypatch):
     api.spatial_apply_review({"image_a": str(img), "dab_threshold_a": 0.30,
                               "output_dir": str(out)})
     calls = [f["properties"]["classification"]["name"]
-             for f in json.loads(gj.read_text())["features"]]
+             for f in json.loads(gj.read_text(encoding="utf-8"))["features"]]
     assert calls == ["Negative", "Negative", "Negative", "Positive"]
 
 
@@ -85,9 +85,9 @@ def _batch_staged(tmp_path):
     roi.mkdir(parents=True)
     ga = roi / "679_CD8_lm00_detections.geojson"
     gb = roi / "679_CD45_lm00_detections.geojson"
-    ga.write_text(json.dumps(_detections([0.05, 0.15, 0.25, 0.35])))
+    ga.write_text(json.dumps(_detections([0.05, 0.15, 0.25, 0.35])), encoding="utf-8")
     # no value sits ON a cutoff, so the counts below do not pin a boundary convention
-    gb.write_text(json.dumps(_detections([0.10, 0.25, 0.30])))
+    gb.write_text(json.dumps(_detections([0.10, 0.25, 0.30])), encoding="utf-8")
     return fa, fb, out, ga, gb
 
 
@@ -229,5 +229,5 @@ def test_the_reviewed_cutoff_is_written_into_the_reviewed_cells(tmp_path, monkey
 
     assert res.get("status") != "error", res.get("error")
     calls = [f["properties"]["classification"]["name"]
-             for f in json.loads(renamed.read_text())["features"]]
+             for f in json.loads(renamed.read_text(encoding="utf-8"))["features"]]
     assert calls == ["Negative", "Negative", "Positive", "Positive"]

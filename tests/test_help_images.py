@@ -27,7 +27,7 @@ SPEC = ROOT / "packaging/OASIS.spec"
 @pytest.fixture(scope="module")
 def referenced():
     """Every filename the HELP steps name, in order."""
-    html = INDEX.read_text()
+    html = INDEX.read_text(encoding="utf-8")
     start = html.index("const HELP")
     block = html[start:html.index("\nfunction ", start)]
     return re.findall(r"img:\s*'([^']+)'", block)
@@ -54,7 +54,7 @@ def test_no_referenced_image_is_a_stub(referenced):
 
 
 def test_the_held_out_report_step_has_no_picture():
-    html = INDEX.read_text()
+    html = INDEX.read_text(encoding="utf-8")
     assert "cls-4-report.png" not in html, (
         "the held-out report step has a picture again. Any screenshot of that screen made "
         "without hand labelling shows a perfect score, because the labels come from the same "
@@ -63,7 +63,7 @@ def test_the_held_out_report_step_has_no_picture():
 
 def test_the_help_folder_is_bundled():
     """The spec carries it explicitly; nothing imports these files, so nothing else would."""
-    spec = SPEC.read_text()
+    spec = SPEC.read_text(encoding="utf-8")
     assert re.search(r'"oasis",\s*"webui",\s*"help"', spec), (
         "packaging/OASIS.spec no longer bundles oasis/webui/help — the shipped app would "
         "show a broken frame on every help step while the source tree looks fine")

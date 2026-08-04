@@ -33,7 +33,7 @@ _LEGACY_PATHS_YAML = REPO / "validation" / "datasets" / "paths.yaml"
 
 @lru_cache(maxsize=1)
 def _registry() -> dict:
-    with open(_REGISTRY_FILE) as f:
+    with open(_REGISTRY_FILE, encoding="utf-8") as f:
         return yaml.safe_load(f) or {}
 
 
@@ -46,7 +46,7 @@ def _setup_value(key: str):
     if not _SETUP_FILE.exists():
         return None
     try:
-        data = yaml.safe_load(_SETUP_FILE.read_text()) or {}
+        data = yaml.safe_load(_SETUP_FILE.read_text(encoding="utf-8")) or {}
         return data.get(key)
     except Exception:
         return None
@@ -85,7 +85,7 @@ def _legacy_candidates(name: str):
     # 2. old paths.yaml
     if _LEGACY_PATHS_YAML.exists():
         try:
-            y = yaml.safe_load(_LEGACY_PATHS_YAML.read_text()) or {}
+            y = yaml.safe_load(_LEGACY_PATHS_YAML.read_text(encoding="utf-8")) or {}
             if y.get(name):
                 yield Path(str(y[name])).expanduser()
         except Exception:

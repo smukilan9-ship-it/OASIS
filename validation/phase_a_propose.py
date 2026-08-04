@@ -100,7 +100,7 @@ def spread_select(ref_pts, mov_pts, k=8):
 
 
 def main():
-    reg = json.load(open(os.path.join(OUT, "registration.json")))
+    reg = json.load(open(os.path.join(OUT, "registration.json"), encoding="utf-8"))
     proposals, summary = {}, []
     for sid, r in reg.items():
         ref_rgb, _ = _load_rgb_thumbnail(r["ref_path"], 1920)
@@ -162,7 +162,7 @@ def main():
         print(f"{sid}: proposed {len(pts)} correspondences "
               f"(lumens ref/mov={len(ref_lum)}/{len(mov_lum)})")
 
-    with open(os.path.join(OUT, "landmarks.json"), "w") as f:
+    with open(os.path.join(OUT, "landmarks.json"), "w", encoding="utf-8") as f:
         f.write("LANDMARKS " + json.dumps(proposals))
     print("\nWrote proposals → landmarks.json + propose_<pair>.png verification images")
     print("Summary:", summary)

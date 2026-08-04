@@ -33,7 +33,7 @@ PX_LESION = 0.174 / 0.50  # 50pc lung-lesion µm/px
 
 
 def load_xy(path):
-    rows = list(csv.reader(open(path)))
+    rows = list(csv.reader(open(path, encoding="utf-8")))
     hdr = [h.strip().lower() for h in rows[0]]
     xi = hdr.index("x") if "x" in hdr else -2
     yi = hdr.index("y") if "y" in hdr else -1

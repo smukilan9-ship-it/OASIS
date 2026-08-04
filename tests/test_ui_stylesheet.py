@@ -36,7 +36,7 @@ OPEN, CLOSE = "/" + "*", "*" + "/"   # spelled out so this file is not its own t
 
 @pytest.fixture(scope="module")
 def css():
-    html = INDEX.read_text()
+    html = INDEX.read_text(encoding="utf-8")
     blocks = re.findall(r"<style[^>]*>(.*?)</style>", html, re.S)
     assert blocks, "no <style> block found — the regex has drifted from the markup"
     return "\n".join(blocks)

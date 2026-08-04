@@ -250,7 +250,7 @@ def _plan_for(worst, tmp_path, *, n_support=800, dense_auto_null=True, n_pos=200
     csv = tmp_path / "support.tsv"          # QuPath's detection export is TAB delimited
     sup = rng.uniform(50, 950, (n_support, 2))
     csv.write_text("Centroid X µm\tCentroid Y µm\n"
-                   + "\n".join(f"{x}\t{y}" for x, y in sup))
+                   + "\n".join(f"{x}\t{y}" for x, y in sup), encoding="utf-8")
     return _build_precheck_null_plan(
         {"valid": worst == "ok", "worst_status": worst},
         {"CD8": pts(n_pos), "CD45": pts(n_pos)}, ["CD8", "CD45"], window, 1.0,

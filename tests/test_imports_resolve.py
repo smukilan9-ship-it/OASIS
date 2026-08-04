@@ -45,7 +45,7 @@ def _first_party_imports():
     found = {}
     for path in _sources():
         try:
-            tree = ast.parse(path.read_text())
+            tree = ast.parse(path.read_text(encoding="utf-8"))
         except (SyntaxError, UnicodeDecodeError):
             continue
         enclosing = {}

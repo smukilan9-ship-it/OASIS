@@ -456,7 +456,7 @@ def main():
                "calibration": summary, "verdict": verdict,
                "band_independence": {"radii": {str(k): v for k, v in indep.items()},
                                      "bands_independent": band_ok}}
-    json.dump(payload, open(OUT_JSON, "w"), indent=2)
+    json.dump(payload, open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0 if (ctrl_ok and band_ok) else 1
 

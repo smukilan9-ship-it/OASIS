@@ -88,12 +88,12 @@ def prep(n, preprocess_too=True):
             d.ellipse([x - 6, y - 6, x + 6, y + 6], outline=col, width=2)
         for cond in ("raw_instanseg", "preprocessed"):
             ov.save(os.path.join(BASE, cond, "expert_overlay", stem + ".png"))
-    json.dump(gt_all, open(os.path.join(BASE, "ground_truth.json"), "w"))
+    json.dump(gt_all, open(os.path.join(BASE, "ground_truth.json"), "w", encoding="utf-8"))
     print(f"prep: {len(files)} images -> {BASE}")
     print(f"  GT cells total: {sum(len(v) for v in gt_all.values())}")
 
 def score(cond, match_tol=15.0, adaptive=False):
-    gt_all = json.load(open(os.path.join(BASE, "ground_truth.json")))
+    gt_all = json.load(open(os.path.join(BASE, "ground_truth.json"), encoding="utf-8"))
     out_dir = os.path.join(BASE, cond, "_pipeline_out")
     agg = dict(tp=0, fp=0, fn=0, tn=0, gt_matched=0, gt_total=0, pred_total=0)
     per_image = {}
@@ -101,7 +101,7 @@ def score(cond, match_tol=15.0, adaptive=False):
         geo = glob.glob(os.path.join(out_dir, f"{stem}*.geojson"))
         if not geo:
             print(f"  MISSING geojson for {stem}"); continue
-        feats = json.load(open(geo[0])).get("features", [])
+        feats = json.load(open(geo[0], encoding="utf-8")).get("features", [])
         preds = []
         for ft in feats:
             c = _feat_centroid(ft)
@@ -180,7 +180,7 @@ def score(cond, match_tol=15.0, adaptive=False):
     summary = dict(condition=cond, adaptive=adaptive, images=len(per_image),
                    detection_recall=round(det_recall, 3), detection_precision=round(det_prec, 3),
                    classification_only=clsf, end_to_end=e2e, per_image=per_image)
-    json.dump(summary, open(os.path.join(BASE, cond, "f1", "metrics.json"), "w"), indent=2)
+    json.dump(summary, open(os.path.join(BASE, cond, "f1", "metrics.json"), "w", encoding="utf-8"), indent=2)
     print(f"\n=== {cond}{' (adaptive)' if adaptive else ''} ===")
     print(f"  images {len(per_image)}  segmentation: detection-recall {det_recall:.3f} "
           f"detection-precision {det_prec:.3f}")

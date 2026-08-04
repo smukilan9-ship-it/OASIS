@@ -167,7 +167,7 @@ def run_case(name, c):
     # export byte-identical inputs
     import csv
     def w(fn, rows, header):
-        with open(os.path.join(d, fn), "w", newline="") as f:
+        with open(os.path.join(d, fn), "w", newline="", encoding="utf-8") as f:
             wr = csv.writer(f); wr.writerow(header); wr.writerows(rows)
     w("points.csv", [("A", f"{x:.6f}", f"{y:.6f}") for x, y in A]
                     + [("B", f"{x:.6f}", f"{y:.6f}") for x, y in B], ["type", "x", "y"])
@@ -189,7 +189,7 @@ def run_case(name, c):
         p = os.path.join(d, fn)
         if not os.path.exists(p):
             return None
-        with open(p) as f:
+        with open(p, encoding="utf-8") as f:
             return np.array([float(row[col]) for row in _csv.DictReader(f)])
 
     r_lamA = rdcol("r_lambdaA.csv", "lambda")
@@ -303,7 +303,7 @@ def main():
             "edge/r-grid).\n  If a constant K ratio != 1.0, it is a normalization "
             "definition difference, not a\n  pairing bug. Only an unreconcilable "
             "estimator diff justifies switching to spatstat.")
-    with open(OUT, "w") as f:
+    with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(_log) + "\n")
     log(f"\n  (saved to {os.path.relpath(OUT)})")
     return 0 if (gate and results) else 2

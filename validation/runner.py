@@ -70,7 +70,7 @@ def _lib_versions() -> dict:
 def _setup() -> dict:
     if _SETUP_FILE.exists():
         try:
-            return yaml.safe_load(_SETUP_FILE.read_text()) or {}
+            return yaml.safe_load(_SETUP_FILE.read_text(encoding="utf-8")) or {}
         except Exception:
             return {}
     return {}
@@ -149,7 +149,7 @@ def run_validation(vid: str, on_line=None, force: bool = False) -> dict:
     if not pf["ok"] and not force:
         report["status"] = "SKIP"
         report["reason"] = pf["reason"]
-        log_path.write_text(f"SKIP — {pf['reason']}\n")
+        log_path.write_text(f"SKIP — {pf['reason']}\n", encoding="utf-8")
         if on_line:
             on_line(f"SKIP — {pf['reason']}", "warn")
         _write(outdir, report)
@@ -161,7 +161,7 @@ def run_validation(vid: str, on_line=None, force: bool = False) -> dict:
     t0 = time.time()
     # Let plotting validations write figures into the run dir if they honour this.
     env = {**os.environ, "OASIS_REPORT_DIR": str(outdir)}
-    with open(log_path, "w") as logf:
+    with open(log_path, "w", encoding="utf-8") as logf:
         proc = subprocess.Popen(cmd, cwd=str(REPO), env=env, text=True,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                 bufsize=1)
@@ -194,10 +194,10 @@ def run_validation(vid: str, on_line=None, force: bool = False) -> dict:
 
 
 def _write(outdir: Path, report: dict) -> None:
-    (outdir / "report.json").write_text(json.dumps(report, indent=2))
+    (outdir / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     # config snapshot = the full registry record (claim/why/assumptions/limits/…)
     rec = registry.by_id(report["id"])
-    (outdir / "config.yaml").write_text(yaml.safe_dump(rec, sort_keys=False, allow_unicode=True))
+    (outdir / "config.yaml").write_text(yaml.safe_dump(rec, sort_keys=False, allow_unicode=True), encoding="utf-8")
     _update_index(report, outdir)
 
 
@@ -206,7 +206,7 @@ def _update_index(report: dict, outdir: Path) -> None:
     data = {}
     if idx.exists():
         try:
-            data = json.loads(idx.read_text())
+            data = json.loads(idx.read_text(encoding="utf-8"))
         except Exception:
             data = {}
     data[report["id"]] = {
@@ -215,7 +215,7 @@ def _update_index(report: dict, outdir: Path) -> None:
         "dir": str(outdir.relative_to(REPO)),
     }
     REPORTS_ROOT.mkdir(parents=True, exist_ok=True)
-    idx.write_text(json.dumps(data, indent=2))
+    idx.write_text(json.dumps(data, indent=2), encoding="utf-8")
 
 
 def last_report(vid: str) -> dict | None:
@@ -227,4 +227,4 @@ def last_report(vid: str) -> dict | None:
     if not runs:
         return None
     rp = runs[-1] / "report.json"
-    return json.loads(rp.read_text()) if rp.exists() else None
+    return json.loads(rp.read_text(encoding="utf-8")) if rp.exists() else None

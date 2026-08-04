@@ -26,7 +26,7 @@ import os, sys, json, base64, argparse, mimetypes
 
 
 def build(image_path, geojson_path, out_path):
-    with open(geojson_path) as f:
+    with open(geojson_path, encoding="utf-8") as f:
         gj = json.load(f)
     feats = gj.get("features", [])
     from PIL import Image
@@ -70,7 +70,7 @@ def build(image_path, geojson_path, out_path):
                       "DAB signal": _b64(dab_img)}}
 
     html = _TEMPLATE.replace("/*__DATA__*/", json.dumps(data))
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         f.write(html)
     print(f"  {stem}: {len(feats)} labellable cells → {out_path}")
 

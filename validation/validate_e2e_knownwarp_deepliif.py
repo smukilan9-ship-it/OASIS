@@ -55,7 +55,7 @@ TRE_TOL_UM = 5.0
 def _setup():
     import yaml
     p = os.path.expanduser("~/.ihc_analyzer/setup.yaml")
-    s = yaml.safe_load(open(p)) if os.path.exists(p) else {}
+    s = yaml.safe_load(open(p, encoding="utf-8")) if os.path.exists(p) else {}
     return {
         "qupath": os.path.expanduser(s.get(
             "qupath_binary", "/Applications/QuPath-0.7.0-arm64.app/Contents/MacOS/QuPath-0.7.0-arm64")),
@@ -101,7 +101,7 @@ def _segment(img, workdir, setup):
            "default_pixel_size": PIXEL_SIZE_UM, "dab_threshold": 0.15,
            "export_geojson": True, "generate_overlays": False,
            "image_extensions": ["*.png"]}
-    cfgp = os.path.join(workdir, "cfg.yaml"); yaml.safe_dump(cfg, open(cfgp, "w"))
+    cfgp = os.path.join(workdir, "cfg.yaml"); yaml.safe_dump(cfg, open(cfgp, "w", encoding="utf-8"))
     subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.dirname(
         os.path.abspath(__file__))), "run_pipeline.py"), "--config", cfgp, "--mode", "quant"],
         capture_output=True, cwd=os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
@@ -109,7 +109,7 @@ def _segment(img, workdir, setup):
     geo = glob.glob(os.path.join(workdir, "*_detections.geojson"))
     pts = []
     if geo:
-        for ft in json.load(open(geo[0])).get("features", []):
+        for ft in json.load(open(geo[0], encoding="utf-8")).get("features", []):
             g = ft.get("geometry", {}) or {}; c = g.get("coordinates") or []
             ring = c[0] if g.get("type") == "Polygon" and c else None
             if ring:

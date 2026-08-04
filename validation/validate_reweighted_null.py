@@ -158,7 +158,7 @@ def main():
             "not yet have.")
 
     with open(os.path.join(os.path.dirname(__file__), "reweighted_null_output.txt"),
-              "w") as f:
+              "w", encoding="utf-8") as f:
         f.write("\n".join(_log) + "\n")
     log(f"\n  (saved to validation/reweighted_null_output.txt)")
     return 0 if ship else 2

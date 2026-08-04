@@ -37,7 +37,7 @@ BUILT_AT_RUNTIME = {"cls-use-btn"}
 
 @pytest.fixture(scope="module")
 def ui():
-    html = INDEX.read_text()
+    html = INDEX.read_text(encoding="utf-8")
     script = "\n".join(re.findall(r"<script[^>]*>(.*?)</script>", html, re.S))
     markup = re.sub(r"<script[^>]*>.*?</script>", "", html, flags=re.S)
     defined = set(re.findall(r"\bfunction\s+([A-Za-z_$][\w$]*)", script))
@@ -84,7 +84,7 @@ def test_every_element_id_read_by_js_exists_in_the_markup(ui):
 
 
 def test_every_backend_call_names_a_real_api_method(ui):
-    tree = ast.parse(API.read_text())
+    tree = ast.parse(API.read_text(encoding="utf-8"))
     methods = {f.name
                for node in ast.walk(tree) if isinstance(node, ast.ClassDef)
                for f in node.body if isinstance(f, (ast.FunctionDef, ast.AsyncFunctionDef))}
@@ -104,7 +104,11 @@ def test_the_page_script_parses(ui):
     node = shutil.which("node")
     if not node:
         pytest.skip("node not installed")
-    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False) as fh:
+    # node reads the file as UTF-8 whatever the platform, and the script holds µ, → and ✓.
+    # Without this the write raises under a non-UTF-8 locale, and on Windows it succeeds and
+    # hands node cp1252 bytes instead.
+    with tempfile.NamedTemporaryFile("w", suffix=".js", delete=False,
+                                     encoding="utf-8") as fh:
         fh.write(ui["script"])
         path = fh.name
     r = subprocess.run([node, "--check", path], capture_output=True, text=True)

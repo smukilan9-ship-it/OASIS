@@ -41,7 +41,7 @@ WORK_MAX = 1024          # long side LoFTR runs at; both arms identical
 
 
 def load_landmarks(path):
-    with open(path) as fh:
+    with open(path, encoding="utf-8") as fh:
         rows = list(csv.reader(fh))
     hdr, out = rows[0], []
     xi = hdr.index("X") if "X" in hdr else 1
@@ -69,7 +69,7 @@ def tre(M, src_lm, dst_lm):
 
 
 def run(limit, seed_shuffle=0):
-    rows = [r for r in csv.DictReader(open(os.path.join(ROOT, "dataset_medium.csv")))
+    rows = [r for r in csv.DictReader(open(os.path.join(ROOT, "dataset_medium.csv"), encoding="utf-8"))
             if r["status"] == "training"]
     rng = np.random.default_rng(seed_shuffle)
     rng.shuffle(rows)                     # avoid testing only COAD_*, which sorts first

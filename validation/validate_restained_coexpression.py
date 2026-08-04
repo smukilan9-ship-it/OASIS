@@ -63,7 +63,7 @@ def run_selftest():
             _polygon_feature(8, 8, 25, 25), _polygon_feature(36, 36, 53, 53),
         ]}
         detections_path = root / "detections.geojson"
-        detections_path.write_text(json.dumps(detections))
+        detections_path.write_text(json.dumps(detections), encoding="utf-8")
 
         bundle = {"sample_id": "sample", "hematoxylin": str(h_path),
                   "marker_a": str(a_path), "marker_b": str(b_path),

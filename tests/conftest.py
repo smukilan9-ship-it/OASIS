@@ -69,7 +69,7 @@ def _paths_yaml():
         return {}
     try:
         import yaml
-        return yaml.safe_load(p.read_text()) or {}
+        return yaml.safe_load(p.read_text(encoding="utf-8")) or {}
     except Exception:
         return {}
 

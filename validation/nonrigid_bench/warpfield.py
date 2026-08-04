@@ -27,7 +27,7 @@ class PairWarp:
 
     def __init__(self, npz_path):
         z = np.load(npz_path)
-        meta = json.load(open(npz_path + ".json"))
+        meta = json.load(open(npz_path + ".json", encoding="utf-8"))
         self.meta = meta
         self.pair_id = meta["pair_id"]
         self.set = meta["set"]
@@ -116,7 +116,7 @@ def load_all(warps_dir=WARPS, require_px_um=True):
     idx_path = os.path.join(warps_dir, "index.json")
     if not os.path.exists(idx_path):
         return out
-    for rec in json.load(open(idx_path)):
+    for rec in json.load(open(idx_path, encoding="utf-8")):
         if not rec.get("ok"):
             continue
         if require_px_um and not rec.get("px_um"):

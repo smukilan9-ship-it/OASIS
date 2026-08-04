@@ -103,14 +103,14 @@ def status(content: bool = False) -> list[dict]:
 
 def write_checksums(content: bool = False) -> int:
     """Persist freshly computed checksums into datasets.yaml. Returns count written."""
-    doc = yaml.safe_load(_REGISTRY_FILE.read_text()) or {}
+    doc = yaml.safe_load(_REGISTRY_FILE.read_text(encoding="utf-8")) or {}
     n = 0
     for name, rec in doc.get("datasets", {}).items():
         cs = compute_checksum(name, content=content)
         if cs is not None:
             rec["checksum"] = cs
             n += 1
-    _REGISTRY_FILE.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True))
+    _REGISTRY_FILE.write_text(yaml.safe_dump(doc, sort_keys=False, allow_unicode=True), encoding="utf-8")
     R._registry.cache_clear()
     return n
 

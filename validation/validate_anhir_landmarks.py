@@ -66,7 +66,7 @@ def px_for(tissue_dir):
 
 
 def load_xy(path):
-    with open(path) as f:
+    with open(path, encoding="utf-8") as f:
         rows = list(csv.reader(f))
     hdr = [h.strip().lower() for h in rows[0]]
     xi = hdr.index("x") if "x" in hdr else -2
@@ -169,7 +169,7 @@ def main():
     c = Counter(r["verdict"] for r in res)
     print("\n" + "=" * 100)
     print("SUMMARY verdict counts:", dict(c), f"  ({len(res)} pairs)")
-    json.dump(res, open(os.path.join(HERE, "anhir_certification_results.json"), "w"),
+    json.dump(res, open(os.path.join(HERE, "anhir_certification_results.json"), "w", encoding="utf-8"),
               indent=2)
     print("written -> validation/anhir_certification_results.json")
     return 0

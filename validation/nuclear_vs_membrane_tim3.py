@@ -47,7 +47,7 @@ POS_LABEL, NEG_LABEL = "membrane_pos", "membrane_neg"
 
 def read_labels(geojson_path):
     """(pos_idx, neg_idx) by feature order."""
-    gj = json.load(open(geojson_path))
+    gj = json.load(open(geojson_path, encoding="utf-8"))
     pos, neg = [], []
     for i, ft in enumerate(gj.get("features", [])):
         cl = (ft.get("properties", {}) or {}).get("classification") or {}
@@ -245,7 +245,7 @@ def main():
     out.write_text(json.dumps(
         {"n_cells": int(len(y)), "n_positive": int(y.sum()),
          "images": per_image, "pixel_size_um": args.pixel_size,
-         "arms": arms}, indent=2))
+         "arms": arms}, indent=2), encoding="utf-8")
     print(f"\n  Written: {out}")
 
 

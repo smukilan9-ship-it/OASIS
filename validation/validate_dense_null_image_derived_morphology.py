@@ -490,7 +490,7 @@ def write_report(result: dict, out_md: Path) -> None:
         "- Passing rendered CODEX is still not final production validation on real LL477 H-DAB serial sections; it is the required bridge before real-pair demonstration.",
         "",
     ]
-    out_md.write_text("\n".join(lines))
+    out_md.write_text("\n".join(lines), encoding="utf-8")
 
 
 def main() -> None:
@@ -522,7 +522,7 @@ def main() -> None:
     args = parser.parse_args()
 
     result = run(args)
-    OUT_JSON.write_text(json.dumps(result, indent=2))
+    OUT_JSON.write_text(json.dumps(result, indent=2), encoding="utf-8")
     write_report(result, OUT_MD)
     print(f"Wrote {OUT_JSON}")
     print(f"Wrote {OUT_MD}")

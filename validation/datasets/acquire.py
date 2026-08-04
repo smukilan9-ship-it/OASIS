@@ -142,8 +142,8 @@ def apply(only: str | None = None) -> dict:
     root = R.dataset_root()
     root.mkdir(parents=True, exist_ok=True)
     mpath = root / ".migration_manifest.json"
-    prev = json.loads(mpath.read_text()) if mpath.exists() else []
-    mpath.write_text(json.dumps(prev + manifest, indent=2))
+    prev = json.loads(mpath.read_text(encoding="utf-8")) if mpath.exists() else []
+    mpath.write_text(json.dumps(prev + manifest, indent=2), encoding="utf-8")
     generate_readmes()
     return {"moves": sum(1 for m in manifest if m.get("done")), "manifest": str(mpath)}
 
@@ -204,7 +204,7 @@ inputs/
 Raw inputs live under `inputs/`. Any generated outputs stripped during
 consolidation are under `_generated_outputs/`. Validation run outputs are written
 to the repo's `validation_reports/` — never here.
-""")
+""", encoding="utf-8")
     # master
     rows = "\n".join(
         f"| `{n}` | {r['title']} | {r.get('dir', n)} | "
@@ -245,7 +245,7 @@ python -m validation.datasets.acquire          # dry-run consolidation plan
 python -m validation.datasets.acquire --apply   # consolidate (move within volume)
 python -m validation.datasets.verify --write     # pin checksums after consolidation
 ```
-""")
+""", encoding="utf-8")
 
 
 def download(name: str) -> int:

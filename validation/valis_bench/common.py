@@ -45,7 +45,7 @@ def load_landmarks(csv_path: str, to_scale_factor: float) -> np.ndarray:
     scale, e.g. 50pc) into the image scale actually on disk (e.g. 5pc ⇒ factor 0.1).
     """
     pts = []
-    with open(csv_path) as f:
+    with open(csv_path, encoding="utf-8") as f:
         r = csv.reader(f)
         next(r, None)  # header ' ,X,Y'
         for row in r:
@@ -259,7 +259,7 @@ def enumerate_pairs_anhir(csv_path: str, root: str, status_filter=None):
     'training' restricts to the always-public training landmarks.
     """
     pairs = []
-    with open(csv_path) as f:
+    with open(csv_path, encoding="utf-8") as f:
         r = csv.DictReader(f)
         for row in r:
             status = (row.get("status") or "").strip()

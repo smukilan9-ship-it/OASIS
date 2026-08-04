@@ -1,10 +1,17 @@
 name: tests
 
-# macOS arm64 is the supported platform and the one every reported number was measured on,
-# so it is the required job. Linux and Windows are advisory: the command-line pipeline is
-# expected to work there and the README documents how, but they are not yet a supported
-# target, so a failure there must not mark the whole repository broken. They are here to
-# tell us the truth about those platforms rather than leaving it assumed.
+# All three platforms gate. macOS arm64 is where every reported number was measured, but
+# Windows and Linux ship prebuilt apps, so a test failure on either is a real failure.
+#
+# They were advisory, on the reasoning that an unsupported target should not mark the
+# repository broken. What that actually bought was a red Windows job nobody looked at for
+# weeks: 34 errors and one failure, every one of them the same UnicodeDecodeError from
+# reading a UTF-8 file with cp1252, while the run reported success. The same root cause
+# silently corrupts the "Centroid X µm" header on any file handed between platforms.
+#
+# "Advisory" is only honest when someone reads the advice. fail-fast stays off so one
+# platform's failure still lets the others finish: the point is three verdicts, not a stop
+# at the first.
 
 on:
   push:
@@ -17,20 +24,16 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
-    continue-on-error: ${{ matrix.advisory }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            name: macOS arm64 (supported)
-            advisory: false
+            name: macOS arm64
           - os: ubuntu-latest
-            name: Linux x86_64 (advisory)
-            advisory: true
+            name: Linux x86_64
           - os: windows-latest
-            name: Windows x64 (advisory)
-            advisory: true
+            name: Windows x64
 
     steps:
       - uses: actions/checkout@v4

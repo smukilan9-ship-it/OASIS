@@ -258,7 +258,7 @@ def main():
                           "shipped_analysability_factor": _ANALYSABILITY_FACTOR},
                "grid": {f"{a}|{b}|{c}|{d}": v for (a, b, c, d), v in res.items()},
                "calibration": cal}
-    json.dump(payload, open(OUT_JSON, "w"), indent=2)
+    json.dump(payload, open(OUT_JSON, "w", encoding="utf-8"), indent=2)
     print(f"\n  Wrote {OUT_JSON}   ({time.time() - t0:.0f} s)")
     return 0
 

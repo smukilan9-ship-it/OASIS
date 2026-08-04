@@ -113,7 +113,7 @@ def run():
             rec["secs"] = round(time.time() - t0, 1)
             results.append(rec)
             if i % 10 == 0:                       # checkpoint
-                with open(os.path.join(C.OUT_DIR, "valis_results.json"), "w") as fck:
+                with open(os.path.join(C.OUT_DIR, "valis_results.json"), "w", encoding="utf-8") as fck:
                     json.dump({"method": "valis", "n_pairs": len(results), "results": results},
                               fck, indent=1)
             rr = rec.get("valis_rigid"); nn = rec.get("valis_nonrigid")
@@ -131,7 +131,7 @@ def run():
             pass
 
     out_path = os.path.join(C.OUT_DIR, "valis_results.json")
-    with open(out_path, "w") as f:
+    with open(out_path, "w", encoding="utf-8") as f:
         json.dump({"method": "valis", "n_pairs": len(results), "results": results}, f, indent=1)
     print(f"[valis] wrote {out_path}")
 

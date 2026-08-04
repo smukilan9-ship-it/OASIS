@@ -71,7 +71,7 @@ def run():
             out_npz = os.path.join(OUT, f"{pid}.npz")
             if os.path.exists(out_npz):
                 print(f"  [{i}/{len(pairs)}] {pid} cached", flush=True)
-                index.append(json.load(open(out_npz + ".json")))
+                index.append(json.load(open(out_npz + ".json", encoding="utf-8")))
                 continue
 
             with Image.open(p["moving_img"]) as im:
@@ -132,9 +132,9 @@ def run():
 
             rec["secs"] = round(time.time() - t0, 1)
             if rec.get("ok"):
-                json.dump(rec, open(out_npz + ".json", "w"), indent=1)
+                json.dump(rec, open(out_npz + ".json", "w", encoding="utf-8"), indent=1)
             index.append(rec)
-            json.dump(index, open(os.path.join(OUT, "index.json"), "w"), indent=1)
+            json.dump(index, open(os.path.join(OUT, "index.json"), "w", encoding="utf-8"), indent=1)
     finally:
         shutil.rmtree(work, ignore_errors=True)
         try:
@@ -142,7 +142,7 @@ def run():
         except Exception:
             pass
 
-    json.dump(index, open(os.path.join(OUT, "index.json"), "w"), indent=1)
+    json.dump(index, open(os.path.join(OUT, "index.json"), "w", encoding="utf-8"), indent=1)
     ok = sum(1 for r in index if r.get("ok"))
     print(f"[export] {ok}/{len(index)} pairs exported -> {OUT}")
 
