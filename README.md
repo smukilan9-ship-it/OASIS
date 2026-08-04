@@ -22,6 +22,19 @@ and does not require committing image data, API keys, or per-machine paths.
   registration and population-level cross-type Ripley's K analysis (NOT
   single-cell co-expression, which serial sections cannot establish).
 
+## What it looks like
+
+Both workflows are wizards: one step per decision, and the run stops where a decision has
+to be made rather than after it has already been spent.
+
+| | |
+|---|---|
+| ![Quant review](oasis/webui/help/quant-5-review.png) | ![Spatial certification](oasis/webui/help/spatial-3-certify.png) |
+| **Quant** stops on each image's own DAB histogram. The cutoff is chosen against the distribution it applies to, and only then written. | **Spatial** will not report a finding until the two sections are aligned to a measured error. The certified region becomes the analysis window. |
+
+The same pictures are in the app: every tab has a **Need help** button that opens them
+beside the step they belong to.
+
 ## Architecture
 
 ```text
@@ -43,8 +56,15 @@ Raw images
 |---|---|---|
 | macOS, Apple Silicon (arm64) | ✅ | ✅ |
 | **macOS, Intel (x86_64)** | ❌ | ❌ |
-| Windows x64 | not yet | ✅ (see note) |
-| Linux x86_64 / aarch64 | not yet | ✅ (see note) |
+| Windows x64 | ✅ | ✅ (see note) |
+| Linux x86_64 | ✅ | ✅ (see note) |
+| Linux aarch64 | ❌ | ✅ (see note) |
+
+Each prebuilt bundle is built on its own runner — PyInstaller cannot cross-compile — and
+every one of them is smoke-tested frozen before release: the bundle segments the model's
+own reference image and the cell count is checked. A bundle that builds but cannot run
+does not reach a release. Linux aarch64 has no prebuilt asset because there is no runner
+for it; installing from source works.
 
 **Intel Macs are not supported, and this cannot be worked around.** PyTorch no longer
 publishes macOS x86_64 wheels — its macOS wheels are arm64 only. Without a PyTorch wheel

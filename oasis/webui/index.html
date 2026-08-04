@@ -5635,6 +5635,30 @@ function spatialSyncPageSubtitle() {
                             : 'Two markers across serial sections';
 }
 
+// Batch never asks for the two marker names — it asks for two FOLDERS — so the run used to
+// inherit whatever was left in the single-pair boxes, which start at CD8 and TIM-3. A folder
+// of CD8/CD45 sections was therefore labelled TIM-3 everywhere it mattered: the page
+// subtitle, both certification panes, the pixel-size rows, the activity log and the marker
+// names written into the results. Nothing was wrong with the numbers; every one of them was
+// attributed to a marker that was not in the run.
+//
+// The matcher has already parsed the real tokens out of the filenames to pair the folders at
+// all, so adopt them. Writing them into the same two inputs the rest of the tab reads means
+// every one of those readers is fixed at once, and the operator can still override by hand.
+// A folder whose files disagree keeps the generic name rather than picking a winner.
+function spatialAdoptMatchedMarkers(pairs) {
+  const distinct = key => [...new Set((pairs || [])
+    .map(p => String(p[key] || '').trim().toUpperCase())
+    .filter(s => s && !/^MARKER_[AB]$/.test(s)))];
+  [['stain_a', 'spatial-label-a'], ['stain_b', 'spatial-label-b']].forEach(([key, id]) => {
+    const found = distinct(key);
+    const el = document.getElementById(id);
+    if (el && found.length === 1) el.value = found[0];
+  });
+  spatialPxSyncLabels();
+  spatialSyncPageSubtitle();
+}
+
 function spatialPxSyncLabels() {
   [['a', 'spatial-label-a', 'spatial-image-a'],
    ['b', 'spatial-label-b', 'spatial-image-b']].forEach(([side, labelId, imgId]) => {
@@ -5954,6 +5978,7 @@ async function spatialAssocPreview() {
 
   if (res.status !== 'ok') { showToast('Error: ' + (res.error || 'match failed')); return; }
   spatialPairs = res.pairs || [];
+  spatialAdoptMatchedMarkers(spatialPairs);
   spatialCertifications = {};
   spatialBatchScale = { px: null, count: 0, map: {} };
   // Scale siblings in the folder mean the true pixel size is sitting right there, measured.
@@ -6966,7 +6991,7 @@ const HELP = {
         p: 'Use <b>◀ ▶</b> in the strip to move between pairs without leaving the step. The '
          + 'list marks the ones already certified, and the run stays blocked until all of them are.',
         img: 'spatial-4-pairnav.png',
-        cap: 'Pair 1 of 3, with certified pairs ticked in the list.' },
+        cap: 'The pair strip with all three certified — a tick marks each one that has passed.' },
       { h: 'Set the cutoffs and check the null',
         p: 'Each section carries a different marker, so each gets its own cutoff, judged '
          + 'against its own histogram. On the same screen OASIS names the comparison model '
@@ -8230,6 +8255,10 @@ function spatialBuildConfig(forceMode) {
       folder_b: spatialFolderMode === 'two_folder'
         ? document.getElementById('spatial-folder-b').value.trim() : null,
       folder_mode: spatialFolderMode,
+      // Carried explicitly, same as the single-pair branch. The preview adopts the matcher's
+      // own tokens into these inputs, so this is the detected marker rather than a leftover.
+      label_a: document.getElementById('spatial-label-a').value.trim() || 'MARKER_A',
+      label_b: document.getElementById('spatial-label-b').value.trim() || 'MARKER_B',
     });
   }
   return config;
@@ -8540,11 +8569,21 @@ async function spReviewApply() {
 }
 
 // Colour + label for a per-image bandwidth verdict chip.
-function spatialBwChip(marker, e) {
+function spatialBwChip(marker, e, denseSelected) {
   const map = { ok:['#16a34a','ok'], caution:['#f59e0b','caution'],
                 dense_tissue:['#7c3aed','dense tissue'],
                 unreliable:['#7c3aed','dense tissue'], unknown:['#94a3b8','unknown'] };
   let [col, lbl] = map[e && e.status] || ['#94a3b8', e && e.status || '—'];
+  // Once the run has switched to the dense null, "caution" is describing the decision that
+  // was already taken, not a doubt left hanging over the result. Read next to the line that
+  // says the dense null is in use, an amber "caution" invites the reader to discount a
+  // finding that is in fact being measured against the null this architecture calls for.
+  // Name the action instead, and colour it like the null it switched to.
+  if (denseSelected && e && (e.status === 'caution' || e.status === 'dense_tissue'
+                             || e.status === 'unreliable')) {
+    col = '#7c3aed';
+    lbl = 'switching';
+  }
   // Was "ℓ̂ 42 µm". The hat notation says "estimate of" to a statistician and nothing to
   // anyone else; the chip has room for the words.
   const ell = (e && e.scale_um != null) ? `structures ~${e.scale_um} µm across` : 'structure size unknown';
@@ -8616,7 +8655,11 @@ function spatialBandwidthParams(entry, config) {
   Object.entries(pc.per_image || {}).forEach(([marker, e]) => {
     params[`${marker} positive cells`] = e.n;
     params[`${marker} architecture scale µm`] = e.scale_um;
-    params[`${marker} architecture status`] = e.status === 'unreliable' ? 'dense tissue' : e.status;
+    // Same wording as the chip above it, or the expanded table contradicts the summary.
+    params[`${marker} architecture status`] =
+      e.status === 'unreliable' ? 'dense tissue'
+      : (plan.primary_null === 'dense_morphology' && e.status === 'caution') ? 'switching'
+      : e.status;
     if (e.reason || e.status_reason) params[`${marker} exact reason`] = e.reason || e.status_reason;
   });
   return params;
@@ -8626,7 +8669,9 @@ function spatialBandwidthParams(entry, config) {
 function spatialBwPairBlock(sid, entry, config) {
   const pc = (entry && entry.precheck) || {};
   const plan = (entry && entry.null_plan) || {};
-  const chips = Object.entries(pc.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
+  const denseSelected = plan.primary_null === 'dense_morphology';
+  const chips = Object.entries(pc.per_image || {})
+    .map(([m, e]) => spatialBwChip(m, e, denseSelected)).join('');
   const certLbl = entry && entry.certification_status ? ` · <span style="color:#64748b">${esc(entry.certification_status)}</span>` : '';
   return `<div style="padding:10px 0;border-top:1px solid var(--border)">
     <div style="font-weight:600;margin-bottom:4px">${esc(sid)}${certLbl}</div>
@@ -9035,7 +9080,8 @@ function spatialAssocShowResults(data) {
           : absent ? '#f5f3ff'
           : (sparse || notEstimable) ? 'var(--warn-weak)'
           : 'var(--bad-weak)';
-        const chips = Object.entries(sv.per_image || {}).map(([m, e]) => spatialBwChip(m, e)).join('');
+        const chips = Object.entries(sv.per_image || {})
+          .map(([m, e]) => spatialBwChip(m, e, denseSel)).join('');
         const denseLine = denseSel
           ? `<div style="margin-top:6px"><strong>${sparse ? 'All-cell support null used' : 'Dense null selected'}:</strong> marker-independent all-cell support + ${dense.jitter_um ?? 2} µm jitter; tested over ${(dense.dclf_band_um||[10,30]).join('–')} µm; ${(dense.gates||{}).n_support ?? '—'} support cells.</div>`
           : (!ok && !absent && dense && dense.reason ? `<div style="margin-top:6px"><strong>Support/dense fallback unavailable:</strong> ${esc(dense.reason)}</div>` : '');

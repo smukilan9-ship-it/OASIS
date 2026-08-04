@@ -25,9 +25,12 @@ jobs:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 90
-    # Only the macOS bundle is a supported deliverable today. Windows and Linux are being
-    # brought up (issue #4); a failure there must not fail the whole release.
-    continue-on-error: ${{ matrix.advisory }}
+    # All three are supported deliverables, so all three gate the release. They were
+    # advisory while Windows and Linux were being brought up; each has since built and
+    # passed the frozen smoke test on its own runner, and leaving them advisory now would
+    # mean publishing a release whose Windows asset is missing or broken without anything
+    # going red. fail-fast stays off so one platform's failure still lets the others finish
+    # and report — the point is to see all three verdicts, not to stop at the first.
     strategy:
       fail-fast: false
       matrix:
@@ -35,15 +38,12 @@ jobs:
           - os: macos-latest
             name: macOS arm64
             asset: OASIS-macos-arm64.zip
-            advisory: false
           - os: windows-latest
             name: Windows x64
             asset: OASIS-windows-x64.zip
-            advisory: true
           - os: ubuntu-latest
             name: Linux x86_64
             asset: OASIS-linux-x86_64.tar.gz
-            advisory: true
 
     steps:
       - uses: actions/checkout@v4
