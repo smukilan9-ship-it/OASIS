@@ -6,7 +6,7 @@ license: MIT
 repository-code: "https://github.com/smukilan9-ship-it/OASIS"
 # Bump these together with the release tag, and keep them equal to it. A CITATION.cff whose
 # version does not match the tag it ships in sends every citation to the wrong artefact.
-version: 0.1.0
+version: 0.1.1
 date-released: 2026-08-04
 abstract: >-
   OASIS quantifies DAB-positive cells in brightfield immunohistochemistry and
