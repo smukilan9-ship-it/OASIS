@@ -101,6 +101,19 @@ alignment, which is disqualifying for distance stats.) Operates on a **low-frequ
 structural hematoxylin channel** (σ≈12 µm) so non-corresponding nuclei blur away and
 shared architecture dominates.
 
+> **⚠ THE STATED REASON IS WRONG — MEASURED 2026-08-04, see § 23.** A smooth non-rigid warp
+> changes a contact-band inter-cell distance by **1.3 % median (0.2 µm)** and contracts as
+> often as it expands, because distance distortion follows the displacement field's
+> *gradient*, not its magnitude. It does not measurably fabricate distances at the scale
+> this pipeline claims at, it does not inflate the false-positive rate under either null in
+> production use, and against expert-landmark truth the non-rigid warp reproduces the
+> correct verdict **more** often (0.659 vs 0.371) because it is the more accurate transform.
+> The restriction stands, but on a different and narrower ground: **certifiability.**
+> `TRE_pred = σ·√(fᵀ(XᵀX)⁻¹f)` needs a parametric model with a design matrix, and a
+> free-form displacement field has none, so the § 3.5 cell-error budget cannot be computed
+> for it. Similarity-only is what makes the certificate possible, not what makes the
+> distances honest. See § 23.7 for the three routes that would keep both.
+
 - **Auto `register_similarity`** (diagnostic path): multi-init MI + gradient-magnitude
   (edge) candidates; **selects by Normalized Gradient Field** edge alignment (`_ngf_score`)
   + NGF translation refinement — MI selection aliases on quasi-periodic tissue. SITK has no
@@ -401,7 +414,12 @@ n=8 provisional, single-annotator.
 ## 6. Design decisions & rejected alternatives
 
 - MNN single-cell matching → **cross-type Ripley's K** (serial cells don't correspond).
-- Non-rigid warp → **similarity only** (warping destroys the measured distances).
+- Non-rigid warp → **similarity only**. ~~(warping destroys the measured distances)~~ —
+  **that reason is measured and wrong (§ 23.1: 1.3 % at contact scale).** The decision stands
+  on **certifiability** instead: the § 3.5 cell-error budget is undefined for a free-form
+  displacement field. § 23.5 shows the non-rigid warp is the *more accurate* transform and
+  gives the *correct* verdict more often, so this is a deliberate trade of accuracy for a
+  bound, not a claim that warping is inaccurate.
 - MI/NCC/phase-corr selection → **NGF selection** (dense metrics alias on periodic tissue).
 - Homogeneous CSR as the test → **reweighted primary** (CSR conflates co-occupancy with
   engagement).
@@ -708,7 +726,11 @@ stays a specialized serial-section CD8/TIM-3 tool with a fail-closed gate, not a
 registrar. **VALIS-rigid is worth adding as an invariant-safe option** — a drop-in *equivalent
 alternative to LoFTR for different/cross-modal stains where LoFTR fails* (it is faster than LoFTR,
 distance-preserving, and recovers the 44% of pairs LoFTR cannot). Its **non-rigid** warp remains
-forbidden before any cross-K test. Full writeup + reproduce steps: `validation/valis_bench/RESULTS.md`.
+forbidden before any cross-K test — but **for the reason given in § 23.6, not the one given here**:
+it cannot be certified, not that it distorts the statistic. § 23 measures the warp's actual effect
+and finds it improves the verdict. Also note VALIS is the most *deployed* registrar, not the most
+accurate: RegWSI/DeeperHistReg beats it (§ 16.4, § 23.8), and was chosen here as the widely-used
+baseline. Full writeup + reproduce steps: `validation/valis_bench/RESULTS.md`.
 
 ---
 
@@ -736,6 +758,12 @@ honest compartment-vs-engagement separation.
   truth fired the co-infiltration band at 0.98 and a regional-only truth was found in its own
   band at 0.06. Any two-band claim published from a run before that date is not supportable.
 - DAB not quantitative; membrane accuracy on DAB extrapolated from IF proxies.
+- **Similarity-only costs accuracy, and that is now measured (§ 23.5).** On ANHIR the non-rigid
+  warp halves registration error (23 vs 49 µm median TRE, better on 139/170) and reproduces the
+  perfect-registration verdict 0.659 vs 0.371. We forbid it because it cannot be certified, not
+  because it is worse — so any claim that similarity-only makes the *statistic* more trustworthy
+  is unsupported. What it makes possible is the *bound*. Note also the ceiling § 23.5 exposes:
+  even under the better transform 34 % of replicates returned the wrong verdict.
 
 **Paper framing**: a **methods/tools paper** (pipeline + honest null framework + fail-
 closed certification), validated by registration TRE, statistic operating characteristics
@@ -3183,19 +3211,209 @@ Two audits caught two of my own regressions in this session (§22.2 and this one
 in changes I had verified by driving the app. The verification round is not optional
 overhead — on this evidence it is the highest-yield audit of the ten.
 
-## 23. Session 2026-08-04b — the null the run never asked for, and the review that never looked
+## 23. Session 2026-08-04b — non-rigid registration, tested rather than assumed, and the rationale that did not survive
+
+`validation/nonrigid_bench/` (`export_warps.py`, `warpfield.py`, `check_warps.py`,
+`distortion.py`, `arms.py`, `arm_gt.py`, `report.py`, `RESULTS.md`).
+
+§ 3.4 and § 6 forbid a non-rigid warp on the grounds that it "fabricates the inter-cell
+distances K consumes", and § 6 adds the sharper conditional that an intensity-driven warp
+optimises on a signal correlated with cell density and so **could manufacture** association.
+Neither had ever been measured. Both have now been, and the load-bearing one is wrong.
+
+**Design.** 20 ANHIR training pairs (stratified, 3/tissue) → 17 usable at ≤ 2.5 µm/px over
+**7 tissue types**; lung-lobes (5.10) and mammary (9.18 µm/px) are excluded because they
+cannot resolve a 0–20 µm contact band at all. **VALIS 1.2.0 is run once per pair** and both
+transforms are taken from that single registration — `warp_xy_from_to(..., non_rigid=False)`
+and `(..., non_rigid=True)` — so the arms differ *only* in whether micro-registration is
+applied. Analysis in **800 µm windows**, the scale § 3.5 actually certifies at (R = 260–450 µm)
+and the only scale at which a few hundred cells put content in the 10–20 µm band. A and B are
+drawn from **each section's own tissue density**, independently, so the true cross-type
+association is nil by construction and every rejection is a false positive **without needing a
+ground-truth registration** — a deterministic map applied to B alone cannot know where A is.
+199 replicates/arm, paired (same A, same B, same window, same null seed), hence McNemar.
+
+Pre-flight (`check_warps.py`): rigid interpolation error **0.000 px** — the rigid stage is
+exactly affine, affine fit residual **0.0000 px**, which is also what makes Arm 1's closed-form
+inverse exact — and non-rigid interpolation error 0.19–0.48 px against a 33–134 µm effect,
+ratio **0.003–0.011**. Nothing below is an interpolation artefact.
+
+### 23.1 The distance-fabrication rationale is quantitatively negligible
+
+`distortion.py`, dense point pairs inside ROI-scale windows, pooled over 17 pairs:
+
+| band (µm) | median \|Δd\|/d | p90 | contracted |
+|---|---|---|---|
+| 0–10 | **1.3 %** | 8.6 % | 44.4 % |
+| **10–20** | **1.3 %** | 8.4 % | 46.0 % |
+| 20–50 | 1.2 % | 7.7 % | 46.8 % |
+| 50–100 | 1.1 % | 7.2 % | 47.1 % |
+
+Micro-registration changes a 15 µm inter-cell distance by a median of **0.2 µm**, and contracts
+as often as it expands — there is no systematic pull toward attraction. The reason is
+geometric and should have been obvious: distance distortion depends on the **gradient** of the
+displacement field, not its magnitude. VALIS displaces points by tens of microns but does so
+smoothly, so short distances ride along. **A smooth non-rigid warp is locally almost rigid.**
+
+### 23.2 It does not manufacture association
+
+Arm 2, 199 replicates, independent patterns:
+
+| null | claim | rigid | nonrigid | McNemar |
+|---|---|---|---|---|
+| reweighted (PRIMARY) | contact 10–20 µm | 0.052 | 0.057 | **p = 1** |
+| dense_morphology (§ 20.1: what every real pair selects) | contact | 0.010 | 0.010 | **p = 1** |
+| reweighted | global | 0.094 | 0.109 | p = 0.73 |
+| dense_morphology | global | 0.016 | 0.010 | p = 1 |
+| homogeneous (diagnostic only) | contact | 0.089 | 0.141 | p = 0.087 |
+| **homogeneous** | **global** | **0.152** | **0.245** | **p = 0.0051** |
+
+Under both nulls in production use there is **no effect at all**, and the primary null sits at
+**0.052** at contact scale — nominal, which is itself worth recording against § 15.1's 0.24.
+The single significant inflation is on the homogeneous CSR null, which is already 3× inflated
+under the *rigid* transform (0.152 vs α = 0.05) and which `spatial_stats.py` documents as a
+baseline that never gates a verdict. Non-rigid makes a bad null worse; it does not make a good
+null bad.
+
+### 23.3 The § 6 mechanism is real, and confined to that one cell
+
+Arm 3 adds a smooth **random** displacement matched to the real micro-registration RMS *at the
+same points* — same magnitude, tissue-blind:
+
+| null / claim | rigid | nonrigid | random |
+|---|---|---|---|
+| homogeneous / global | 0.152 | **0.245** (p = 0.0051) | 0.172 (p = 0.57) |
+| homogeneous / contact | 0.089 | 0.141 (p = 0.087) | 0.083 (p = 1) |
+| reweighted / contact | 0.052 | 0.057 (p = 1) | 0.047 (p = 1) |
+
+The inflation is **not** reproduced by an identically-sized displacement that does not know
+where the tissue is. So § 6's conjecture is **confirmed as a mechanism** — the warp aligns B's
+density with A's and a morphology-blind null reads co-densification as association. It simply
+has nothing to bite on once the null conditions on the observed morphology, which ours does.
+
+### 23.4 The harm scales with displacement, not with transform class
+
+Arm 1 imposes a true attraction and pulls it back through the rigid map, so rigid reproduces it
+by construction. That design is confounded — it assumes rigid is correct — and is superseded by
+§ 23.5. Its **dose-response** is the part that matters:
+
+| micro-registration displacement | n | rigid recovers | nonrigid recovers |
+|---|---|---|---|
+| 5–21 µm | 66 | 47 | **61** |
+| 21–55 µm | 66 | 60 | 11 |
+| 55–622 µm | 67 | 62 | **0** |
+
+Below ~21 µm of displacement non-rigid recovers the truth **more** often than rigid. Above
+55 µm it never does, and **27 / 195 replicates turned a true attraction into significant
+SEGREGATION** under `dense_morphology`. That is a sign error, not a power loss — but it is
+caused by displacement magnitude, and a similarity carrying the same error would do the same.
+
+### 23.5 Against expert-landmark truth, the non-rigid warp WINS
+
+`arm_gt.py`, 170 replicates. Truth is ANHIR's expert landmarks — which no registration ever
+sees — turned into a local displacement field by `common._predict_local_affine`, with windows
+centred on landmarks so the field is interpolated, not extrapolated. A known association is
+placed at `B_true`; the question is which transform reproduces the verdict a **perfect**
+registration would give.
+
+Non-rigid halves registration error: median TRE **23 µm vs 49 µm**, better on **139 / 170**.
+
+| null | rigid reproduces truth | nonrigid reproduces truth |
+|---|---|---|
+| dense_morphology | 0.371 | **0.659** |
+| reweighted | 0.253 | **0.388** |
+
+and it stratifies exactly as an accuracy-driven effect must:
+
+| subset | n | rigid | nonrigid |
+|---|---|---|---|
+| non-rigid more accurate | 139 | 0.317 | **0.691** |
+| rigid more accurate | 31 | **0.613** | 0.516 |
+
+**The statistic follows registration accuracy, not transform class.** Whichever transform puts
+cells closer to where they belong gives the right answer more often; distance-preservation does
+not enter. Note also the ceiling: even with the better transform **34 % of replicates were
+still wrong**.
+
+### 23.6 What this overturns, and what replaces it
+
+* **§ 3.4 "a warp fabricates the inter-cell distances K consumes" — WRONG at the scale that
+  matters** (1.3 %, § 23.1). **§ 6 "warping destroys the measured distances" rests on it and
+  falls with it.**
+* **§ 6's conditional is now measured** (§ 23.3): an intensity-driven warp *can* manufacture
+  association, but only against a null with no morphology term. Not ours.
+* **§ 7.1's ban on VALIS's non-rigid warp needs a different justification.** The one that
+  survives is **certifiability**: `TRE_pred = σ·√(fᵀ(XᵀX)⁻¹f)` is defined for a parametric model
+  with a design matrix. A free-form displacement field has none, so the § 3.5 budget cannot be
+  computed for it. That is a claim about what can be **bounded**, not about what distorts
+  distances — and it is the thesis of the certification paper.
+
+### 23.7 The gate is now MORE necessary, not less
+
+Nothing here argues for removing the gate; § 23.4 and § 23.5 argue the opposite. Non-rigid helps
+below ~21 µm of displacement and destroys above ~55 µm, and 34 % of replicates are wrong even at
+its best. A gate is precisely the instrument that says which regime a window is in. Adopting
+non-rigid *without* one trades the only property that distinguishes this tool — that it refuses
+— for the one thing every other registrar already has.
+
+Three ways to keep both, in increasing order of novelty:
+
+1. **Non-rigid to align, similarity to certify.** Warp globally; inside each ROI verify a
+   similarity still fits and certify *that*. Closest to what the ROI pipeline already does, and
+   it preserves the § 3.5 budget untouched.
+2. **Empirical held-out TRE.** Not FW: hold out correspondences and measure realized error at
+   them. Valid for any transform class, but it needs landmarks independent of the fit, which
+   this cohort does not have (§ 3.5a) — so it needs the second annotator.
+3. **Certify the deformation gradient.** § 23.1 *is* an empirical Jacobian bound — the warp
+   preserves contact-band distances to within 1.3 % median / 8.4 % p90. A gate of the form
+   "this displacement field preserves distances in the analysis band to within X %" is
+   computable directly from the field, needs no landmarks, and is a distance-preservation
+   certificate for a **non-rigid** transform. Nothing in the literature does this. It is the
+   constructive answer to § 23.6 and belongs in the paper.
+
+### 23.8 If non-rigid is adopted, VALIS is not the registrar to adopt it from
+
+§ 16.4 already recorded this and it still holds. **RegWSI** (Wodziński *et al.*, *Comput.
+Methods Programs Biomed.* 250:108187) won ACROBAT 2023 — average rTRE **0.2 %**, robustness
+**0.9898**, best on ACROBAT, cell-level accuracy on HyReCo re-stained, among the best on ANHIR —
+and ships as **DeeperHistReg** (arXiv 2404.14434), an open framework, pip + Docker, operating to
+200k × 200k, 88 % initial-alignment success and TRE 2.48 on external validation. VALIS is the
+most *deployed* registrar, not the most accurate one; § 7.1 chose it as the benchmark because it
+is the widely-used baseline, which is a different criterion.
+
+Also worth a prior-art check before any gate claim: **STAR** (Serial Tissue Alignment for Rigid
+registration) is an open multi-WSI framework with **built-in quality control**, evaluated on
+ANHIR 2019 and ACROBAT 2022. Quality control is not the same as a certified per-cell error
+bound, but it is the nearest thing in the literature and must be read before § 23.7 item 3 is
+claimed as novel.
+
+### 23.9 Limits of this experiment, stated before anyone builds on it
+
+* ANHIR at 25 pc is a **coarse regime** — median TRE 23–49 µm, far above the ~4.4 µm serial
+  floor (§ 16.3). Where both transforms are already cell-scale accurate the 1.3 % distortion
+  matters relatively more, though 1.3 % of 15 µm is 0.2 µm, so a reversal is unlikely.
+* ANHIR pairs are **cross-stain**, including H&E↔IHC. Our regime is same-stain serial sections.
+* The imposed association is synthetic (50 % of B within σ = 8 µm of an A cell).
+* **One registrar, and a smooth one.** VALIS's micro-registration has a gentle gradient, which
+  is exactly why § 23.1 is small. A coarser B-spline control grid or a weaker regulariser would
+  have a steeper gradient and could distort materially more. Repeating § 23.1 under elastix with
+  a coarse grid is the first thing a referee will ask for and the first thing to run.
+* Tissue density is read from a ≥ 4000 px thumbnail, so structure below ~2–13 µm depending on
+  the pair is not represented in the sampling.
+
+## 24. Session 2026-08-04b — the null the run never asked for, and the review that never looked
 
 Two defects, both reported by the operator as "why is it doing this", both silent, both
 found by reading the run's own JSON rather than the screen.
 
-### 23.1 `caution` planned a null the run would not build
+### 24.1 `caution` planned a null the run would not build
 
 Recorded above in §15.3.1: the routing decision from §15.3 reached the pre-flight and not
 the association loop, so every pair whose tissue architecture measured between 75 and 150 µm
 was withheld with `dense_null_status: not_evaluated`. Three of three HyReCo pairs. One
 eligibility list now feeds both callers and the plan fails closed outside it.
 
-### 23.2 The batch review read the Quant tab's config key
+### 24.2 The batch review read the Quant tab's config key
 
 `spatial_review_data` chose between the single-pair and batch paths on `analysis_mode`.
 That key belongs to Quant (`analysis_mode: quantMode`); `spatialBuildConfig` sends `mode`,
@@ -3222,7 +3440,7 @@ screen: one shows a green plan and an empty result, the other shows an empty scr
 full response. The test that catches them is the one that runs the real seam, not the one
 that checks the branch it already believes in.
 
-### 23.3 The Windows job was red for weeks, and it was right
+### 24.3 The Windows job was red for weeks, and it was right
 
 `tests.yml` ran Windows and Linux with `continue-on-error: ${{ matrix.advisory }}`, so a
 failing Windows job still reported the run as successful. It had been failing since at
@@ -3241,7 +3459,7 @@ read it on Windows as cp1252, and the header arrives as `Centroid X Âµm`. Noth
 The column simply never matches, `load_detection_centroids_csv` returns zero points, the
 dense null's `min_support` gate fails, and the pair is withheld with a reason about the
 tissue. A cross-platform hand-off of the same data silently changes the scientific
-verdict, which is the failure mode §23.1 was about, arriving by a different road.
+verdict, which is the failure mode §24.1 was about, arriving by a different road.
 
 250 call sites across 109 files now name their encoding. Two guards: an AST check that no
 text file is opened without one (it caught four the sweep missed, including two
@@ -3254,7 +3472,7 @@ Windows and Linux no longer carry `continue-on-error`. "Advisory" is only honest
 someone reads the advice; here it meant a real, silent, cross-platform data bug sat behind
 a green tick for a month.
 
-### 23.4 …and then Linux failed, on the network
+### 24.4 …and then Linux failed, on the network
 
 Removing `continue-on-error` immediately did its job twice. Windows went green on the
 encoding fix; Linux went red, and it had been quietly passing before only because nobody
@@ -3271,3 +3489,5 @@ is not defensible is a gating job whose result depends on a download, so they no
 session fixture that tries to load the matcher and skips with the reason if it cannot. The
 skip path is itself checked by raising the exact `URLError` the runner produced, because a
 skip that never fires is worth as much as no skip at all.
+
+---
