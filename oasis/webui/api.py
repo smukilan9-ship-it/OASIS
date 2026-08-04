@@ -2590,7 +2590,7 @@ class API:
                     _measure(rp.get("path_b"), "B", rp.get("stain_b"),
                              config.get("dab_threshold_b")),
                 ],
-                "band": self._band_from_precheck(by_pair.get(sid) or {}, pre),
+                "band": self._band_from_precheck(self._precheck_for(sid, by_pair), pre),
             })
 
         # Kept flat as well: the single-pair screen has always addressed images by one index,
@@ -2608,6 +2608,35 @@ class API:
         # nothing would be produced. The two documents are now kept apart and both reported.
         return {"ok": True, "pairs": pairs_out, "images": images,
                 "band": (pairs_out[0]["band"] if pairs_out else {}), "precheck": pre}
+
+    #: How a pair's id is rewritten when it is fanned out one entry per certified region.
+    #: Kept next to the lookup that has to undo it, because the two have already drifted once.
+    ROI_SUFFIX = "__roi"
+
+    @classmethod
+    def _precheck_for(cls, sample_id: str, by_pair: dict) -> dict:
+        """A pair's pre-flight verdict, whether or not it was fanned out into regions.
+
+        A pair with certified regions does not reach the worker under its own name: it is
+        expanded one entry per region and renamed "<sample_id>__roi0" (see the fan-out in
+        `run_spatial_association`). The verdicts come back keyed by those names, while the
+        preview list this screen iterates still holds the plain id, so a direct `.get(sid)`
+        returns None for every pair the moment anyone draws — or is given — a region.
+
+        The failure was silent and pointed the wrong way: an empty verdict reads as "no
+        valid primary null for this pair", so a run whose three pairs had all resolved to
+        the dense-tissue null was reported on screen as fail-closed, with the statistic
+        withheld. Match the plain id first, then any region belonging to it.
+        """
+        if not sample_id:
+            return {}
+        exact = by_pair.get(sample_id)
+        if exact:
+            return exact
+        for key in sorted(by_pair):
+            if str(key).split(cls.ROI_SUFFIX)[0] == sample_id:
+                return by_pair[key] or {}
+        return {}
 
     @staticmethod
     def _band_from_precheck(d: dict, pre: dict) -> dict:
