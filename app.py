@@ -65,10 +65,17 @@ def main():
     api = API()
     # resource_dir() rather than Path(__file__).parent: in a PyInstaller bundle the UI
     # files live under sys._MEIPASS, not beside this script.
-    html_path = str(Path(resource_dir()) / "oasis" / "webui" / "index.html")
+    # as_uri(), NOT "file://" + path. A Windows path is "C:\...", so the f-string produced
+    # `file://C:\Users\...\index.html`, where everything after the two slashes is parsed as
+    # the URL's HOST and the path is left empty. The window then has nothing to load and the
+    # app dies at startup with PyInstaller's "Failed to execute script" dialog. It worked on
+    # macOS and Linux only by accident: a POSIX path already starts with "/", so the two
+    # slashes plus that one happened to make the three a file URL needs.
+    # as_uri() gives file:///C:/Users/... and file:///Users/..., and escapes spaces.
+    html_path = Path(resource_dir()) / "oasis" / "webui" / "index.html"
     window = webview.create_window(
         title="OASIS",
-        url=f"file://{html_path}",
+        url=html_path.as_uri(),
         js_api=api,
         width=1280,
         height=820,
@@ -78,5 +85,45 @@ def main():
     api.set_window(window)
     webview.start(debug=False)
 
+
+def check_ui():
+    """Everything startup does except opening the window. Exits non-zero if it cannot.
+
+    THE FROZEN SMOKE TEST NEVER LAUNCHED THE UI. It ran `--oasis-worker run_pipeline`,
+    which segments an image headlessly and shares almost no code with startup, so a bundle
+    whose window could never open passed on all three platforms and shipped. That is
+    precisely the "green build, broken app" failure the smoke test exists to prevent, with
+    a hole exactly where the app is most platform-specific.
+
+    Measured, v0.1.0: `url=f"file://{path}"` is a valid URL on POSIX by luck and malformed
+    on Windows, where the path becomes the URL's host. Windows users got PyInstaller's
+    "Failed to execute script" dialog. Nothing in CI could have caught it.
+
+    So: resolve the UI file, build the URL the window is given, and import the GUI backend
+    for this platform. No window is created, so it runs headless on a CI runner.
+    """
+    html = Path(resource_dir()) / "oasis" / "webui" / "index.html"
+    if not html.is_file():
+        sys.stderr.write(f"UI CHECK FAILED: no index.html at {html}\n")
+        return 1
+    url = html.as_uri()
+    if not url.startswith("file:///"):
+        sys.stderr.write(f"UI CHECK FAILED: malformed file URL {url!r}\n")
+        return 1
+    try:
+        # import_module, not `import webview.guilib as g`. webview/guilib.py declares a
+        # module-level `guilib = None` that the package re-exports, so the attribute of the
+        # same name shadows the submodule and the plain import binds to None.
+        _guilib = importlib.import_module("webview.guilib")
+        _guilib.initialize()
+    except Exception as e:
+        sys.stderr.write(f"UI CHECK FAILED: no GUI backend ({type(e).__name__}: {e})\n")
+        return 1
+    sys.stdout.write(f"UI CHECK OK: {url}\n")
+    return 0
+
+
 if __name__ == "__main__":
+    if "--oasis-check-ui" in sys.argv:
+        sys.exit(check_ui())
     main()

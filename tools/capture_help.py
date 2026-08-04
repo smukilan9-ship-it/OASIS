@@ -638,7 +638,7 @@ def main():
     global _window
     api = API()
     html = str(Path(resource_dir()) / "oasis" / "webui" / "index.html")
-    _window = webview.create_window(title="OASIS", url=f"file://{html}", js_api=api,
+    _window = webview.create_window(title="OASIS", url=Path(html).as_uri(), js_api=api,
                                     width=1280, height=820, min_size=(1100, 700),
                                     background_color="#FFFFFF")
     api.set_window(_window)

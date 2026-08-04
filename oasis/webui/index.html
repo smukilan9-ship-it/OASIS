@@ -2820,6 +2820,23 @@ function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// A filesystem path as a URL an <img> can load, on every platform.
+//
+// "file://" + path is wrong on Windows and right on POSIX only by luck. A Windows path is
+// "C:\dir\x.png", so concatenating gives file://C:\dir\x.png, where everything after the
+// two slashes is parsed as the URL's HOST and the path is empty — the image never loads.
+// A POSIX path already starts with "/", so the same concatenation happens to produce the
+// three slashes a file URL needs. Backslashes are not path separators in a URL either.
+//
+// ? and # have to be escaped separately: encodeURI leaves both alone, and either one in a
+// filename would truncate the URL and silently drop the rest of the path.
+function fileUrl(p) {
+  let s = String(p ?? '').replace(/\\/g, '/');
+  if (!s.startsWith('/')) s = '/' + s;            // C:/dir/x.png -> /C:/dir/x.png
+  return 'file://' + encodeURI(s).replace(/[?#]/g,
+    c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+
 const parameterHelp = {
   pixel_size_um: 'Physical micrometres represented by one image pixel; all distances and areas depend on this calibration.',
   pixel_size_ref_um: 'Reference-section pixel calibration actually used to convert coordinates and residuals into micrometres.',
@@ -9297,7 +9314,7 @@ function spatialAssocShowResults(data) {
         : `No significant cross-type interaction in either band (short-range colocalization or co-infiltration) under the ${primaryName} (r = ${band}).`;
       const sA = esc(p.stain_a || 'A'), sB = esc(p.stain_b || 'B');
       const img = (path, alt) => path
-        ? `<img src="file://${esc(path)}?t=${Date.now()}" style="width:100%;border:1px solid var(--border);border-radius:var(--r-sm);cursor:zoom-in" alt="${alt}" title="Click to zoom" onclick="openLightbox(this.src, '${esc(alt)}')">`
+        ? `<img src="${esc(fileUrl(path))}?t=${Date.now()}" style="width:100%;border:1px solid var(--border);border-radius:var(--r-sm);cursor:zoom-in" alt="${alt}" title="Click to zoom" onclick="openLightbox(this.src, '${esc(alt)}')">`
         : '<div style="padding:24px;text-align:center;color:var(--text3);border:1px dashed var(--border);border-radius:var(--r-sm);font-size:12px">not generated</div>';
       const cap = (t) => `<div class="muted" style="font-size:11px;margin:0 0 4px">${t}</div>`;
       // 1+2: segmentation overlays side by side

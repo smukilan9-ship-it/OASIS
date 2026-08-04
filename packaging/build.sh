@@ -63,6 +63,9 @@ trap 'rm -rf "$SMOKE_WD"' EXIT
 "$PY" "$ROOT/packaging/smoke_test.py" prepare --dir "$SMOKE_WD"
 "$BIN" --oasis-worker run_pipeline --config "$SMOKE_WD/config.yaml"
 "$PY" "$ROOT/packaging/smoke_test.py" check --dir "$SMOKE_WD"
+# The UI too. The worker check above shares almost no code with startup, which is how a
+# bundle whose window could never open shipped as v0.1.0. No window is opened here.
+"$BIN" --oasis-check-ui
 "$PY" - "$APP" <<'PY'
 import os, sys
 app = sys.argv[1]

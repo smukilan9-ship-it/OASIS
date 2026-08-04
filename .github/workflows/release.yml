@@ -116,6 +116,13 @@ jobs:
           python packaging/smoke_test.py prepare --dir smoke
           "$BIN" --oasis-worker run_pipeline --config smoke/config.yaml
           python packaging/smoke_test.py check --dir smoke
+          # AND THE UI, which the line above does not touch. The worker path segments an
+          # image headlessly and shares almost no code with startup, so v0.1.0 shipped a
+          # Windows bundle whose window could never open — `file://` + a "C:\..." path is
+          # a URL whose host is the path — and every job here went green. This resolves the
+          # UI file, builds the URL the window is given, and imports the platform's GUI
+          # backend. No window is opened, so it runs on a headless runner.
+          "$BIN" --oasis-check-ui
 
       - name: Package (macOS)
         if: runner.os == 'macOS'
