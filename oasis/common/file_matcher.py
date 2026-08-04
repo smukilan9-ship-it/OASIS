@@ -24,7 +24,11 @@ from oasis.common.pixel_size_util import is_scaled_image
 DEFAULT_STAIN_TOKENS = sorted([
     "foxp3", "pdl1", "pd-l1", "pd_l1", "cd163", "cd68",
     "panck", "tim-3", "tim3",
-    "hdab", "cd8", "cd4", "cd3", "ck",
+    # cd45 (leukocyte common antigen) is one of the most-used IHC markers there is and was
+    # simply absent, so a CD8/CD45 serial-section folder matched ZERO pairs — the files were
+    # reported unmatched with no hint that the reason was a missing token. The longest-first
+    # sort is what keeps it from being eaten by "cd4".
+    "hdab", "cd45", "cd8", "cd4", "cd3", "ck",
     "ki67", "ki-67",
     # Lung IHC markers (CIMA/ANHIR serial sections)
     "prospc", "pro-spc", "cc10", "cd31",
