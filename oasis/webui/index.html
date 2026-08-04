@@ -3399,7 +3399,13 @@ function calibShow(which) {
   // Only two views remain on this canvas: the Classifier's own form (the page's .scroll)
   // and the labelling stage. The retired tab's config and results panels are gone.
   const form = document.querySelector('#page-classifier > .scroll');
-  if (form) form.style.display = which === 'label' ? 'none' : 'block';
+  // Clear the inline display rather than setting 'block'. `.scroll` is `display: grid` in
+  // the stylesheet, and that grid is what centres the column (`justify-items: center`) and
+  // what stops a card with `overflow: hidden` being squeezed to nothing
+  // (`grid-auto-rows: max-content`). An inline `block` outranks both: coming back from the
+  // labelling canvas left every card on this tab flush against the left edge with the rest
+  // of the width empty, and it looked like a design choice rather than a leaked override.
+  if (form) form.style.display = which === 'label' ? 'none' : '';
   document.getElementById('calib-label').style.display   = which==='label'   ? 'block':'none';
 }
 // ── Classifier tab ────────────────────────────────────────────────────────────
@@ -8672,10 +8678,25 @@ async function spatialBandwidthCheck() {
     return;
   }
   const byPair = r.precheck_by_pair || {};
-  // Order pairs to match the preview list when in batch mode.
-  const order = spatialMode === 'batch'
-    ? (spatialPairs || []).map(p => p.sample_id).filter(sid => byPair[sid])
-    : Object.keys(byPair);
+  // Order pairs to match the preview list when in batch mode. A pair with drawn
+  // regions is fanned out one-per-ROI before the worker runs, and each fan-out
+  // carries a DIFFERENT sample_id ("<pair>__roi0"), so a plain equality match
+  // against the preview list finds nothing the moment anyone draws a region.
+  // Match on the parent id and keep every ROI belonging to it, in pair order.
+  const parentOf = sid => String(sid).split('__roi')[0];
+  let order;
+  if (spatialMode === 'batch') {
+    const keys = Object.keys(byPair);
+    order = [];
+    (spatialPairs || []).forEach(p => {
+      keys.forEach(sid => { if (parentOf(sid) === p.sample_id) order.push(sid); });
+    });
+    // Anything the preview list does not account for still has a verdict, and a
+    // verdict that exists must be shown rather than dropped on the floor.
+    keys.forEach(sid => { if (!order.includes(sid)) order.push(sid); });
+  } else {
+    order = Object.keys(byPair);
+  }
   // Summarise which null each pair will use for the header badge.
   let nPrimary = 0, nDense = 0, nFail = 0;
   order.forEach(sid => {
@@ -8684,7 +8705,10 @@ async function spatialBandwidthCheck() {
     else if (k === 'dense_morphology') nDense++;
     else nFail++;
   });
-  if (nFail) { badge.textContent = `${nFail} FAIL-CLOSED`; badge.className = 'badge amber'; }
+  // Zero pairs is not an all-clear. Falling through to the "all primary" branch
+  // on an empty list reports a green verdict for work that was never counted.
+  if (!order.length) { badge.textContent = 'NO VERDICT'; badge.className = 'badge amber'; }
+  else if (nFail) { badge.textContent = `${nFail} FAIL-CLOSED`; badge.className = 'badge amber'; }
   else if (nDense) { badge.textContent = nPrimary ? 'MIXED NULLS' : 'DENSE NULL'; badge.className = 'badge cyan'; }
   else { badge.textContent = 'ALL PRIMARY (75 µm)'; badge.className = 'badge cyan'; }
 

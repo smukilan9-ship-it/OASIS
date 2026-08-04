@@ -46,6 +46,10 @@ datas = [
     # two must stay siblings inside the bundle.
     (os.path.join(ROOT, "oasis", "webui", "index.html"), "oasis/webui"),
     (os.path.join(ROOT, "oasis", "webui", "restained_coexpression.js"), "oasis/webui"),
+    # The "Need help" card loads these by relative path (help/<name>.png). They fail the
+    # way missing images always do — a broken frame, no error — so a bundle that omits
+    # them looks built and works everywhere except the one screen a new user opens first.
+    (os.path.join(ROOT, "oasis", "webui", "help"), "oasis/webui/help"),
     # InstanSeg weights (Apache-2.0, see models/NOTICE.md). Vendoring these is what makes
     # the bundle self-contained: no external segmenter install.
     (os.path.join(ROOT, "models", "brightfield_nuclei-0.1.1"),

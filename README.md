@@ -3,7 +3,7 @@
 Desktop and command-line tooling for automated immunohistochemistry (IHC)
 analysis of H-DAB/DAB-stained tissue images. The pipeline runs the InstanSeg
 `brightfield_nuclei` model in-process for nucleus detection, exports cell-level
-results, draws overlays, and generates dashboard and Excel summaries.
+results, draws overlays, and writes one CSV results table per run.
 
 The project is designed for research workflows where repeated manual cell
 counting is slow or inconsistent. It keeps microscope-specific settings local
@@ -15,7 +15,8 @@ and does not require committing image data, API keys, or per-machine paths.
 - In-process InstanSeg `brightfield_nuclei` segmentation (no external tooling).
 - Fixed DAB optical-density threshold with configurable pixel size.
 - GeoJSON cell-boundary export and OpenCV overlay rendering.
-- HTML dashboard and Excel workbook generation.
+- One CSV results table per run, one row per image, with the per-image quality
+  warnings attached to the row they belong to.
 - pywebview desktop UI for setup, experiment management, analysis, and results.
 - Spatial-association workflow for paired serial-section stains using image
   registration and population-level cross-type Ripley's K analysis (NOT
@@ -27,7 +28,7 @@ and does not require committing image data, API keys, or per-machine paths.
 Raw images
   -> in-process InstanSeg (TorchScript)
   -> CSV / GeoJSON / JSON exports
-  -> Python overlays, dashboard, Excel, spatial association
+  -> Python overlays, CSV results table, spatial association
   -> pywebview desktop UI
 ```
 
@@ -97,8 +98,8 @@ python run_pipeline.py --config config.yaml
 ```
 
 The pipeline scans `input_dir` for supported image files, segments them
-in-process with InstanSeg, and writes results to `output_dir` and
-`dashboard_dir`.
+in-process with InstanSeg, and writes the results table and per-image exports to
+`output_dir`. `dashboard_dir` holds the overlays and the run logs.
 
 ## Run Spatial Association
 
