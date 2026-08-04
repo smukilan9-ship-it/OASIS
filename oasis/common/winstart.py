@@ -183,5 +183,12 @@ def gui_failure_report():
         lines += ["", f".NET Framework 4 release {release} is installed; OASIS needs 4.7.2",
                   "or newer. Install .NET Framework 4.8 from Microsoft and try again."]
 
+    if not still_marked and release is not None and release >= 461808:
+        # Neither known cause fits, so name the remaining prerequisite rather than leaving
+        # the traceback below as the only thing on screen.
+        lines += ["", "OASIS draws its interface with the Microsoft Edge WebView2 Runtime,",
+                  "which is part of current versions of Windows. If this machine does not",
+                  "have it, install it from Microsoft and try again."]
+
     lines.append("")
     return "\n".join(lines)

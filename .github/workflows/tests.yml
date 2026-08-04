@@ -51,6 +51,13 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
+      - name: Install the Windows GUI backend
+        # Not in requirements.txt because it is Windows-only, but without it
+        # test_windows_gui_backend.py skips — and that test covers the one failure that has
+        # actually reached a user: a downloaded bundle whose .NET assembly Windows blocks.
+        if: runner.os == 'Windows'
+        run: pip install pythonnet
+
       - name: Show environment
         run: |
           python -VV

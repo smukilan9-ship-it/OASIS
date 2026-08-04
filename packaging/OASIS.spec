@@ -125,6 +125,26 @@ coll = COLLECT(
     name="OASIS",
 )
 
+if sys.platform == "win32":
+    # OASIS.exe.config, beside OASIS.exe — NOT under _internal, which is where anything
+    # listed in `datas` would land, and where the .NET Framework would never look for it.
+    # Hence writing it here, after COLLECT has built the directory, rather than declaring
+    # it as data.
+    #
+    # It grants loadFromRemoteSources, which is what lets .NET load an assembly carrying
+    # the Mark of the Web. A user's v0.1.3 download died at startup without it: Explorer
+    # marks every file it extracts from a downloaded zip, and .NET then refuses to load
+    # pythonnet's Python.Runtime.dll, so WebView2 never starts and no window opens.
+    #
+    # The app also takes the mark off those files itself at startup, which is the repair
+    # that runs in practice. This covers the case that cannot: an install directory the
+    # user has no permission to write to, where the mark can never be removed.
+    sys.path.insert(0, ROOT)
+    from oasis.common.winstart import HOST_CONFIG_XML
+
+    with open(os.path.join(coll.name, "OASIS.exe.config"), "w", encoding="utf-8") as fh:
+        fh.write(HOST_CONFIG_XML)
+
 # Only macOS wraps the collected tree in an application bundle. On Windows and Linux the
 # COLLECT directory *is* the deliverable (OASIS/OASIS.exe, OASIS/OASIS), and asking for a
 # BUNDLE there produces nothing useful.

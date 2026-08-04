@@ -138,6 +138,37 @@ jobs:
           # backend. No window is opened, so it runs on a headless runner.
           "$BIN" --oasis-check-ui
 
+      - name: Check the UI the way a user gets it — downloaded
+        # THE CHECK ABOVE RUNS A BUNDLE THAT WAS NEVER DOWNLOADED, and that is the whole
+        # difference between this job and a user's machine. A browser records where a file
+        # came from, Explorer copies that mark onto everything it extracts from the zip,
+        # and the .NET Framework refuses to load a marked assembly — so v0.1.3 opened here
+        # and died on a user's Windows with a RuntimeError naming Python.Runtime.dll, on
+        # the very line this job had just run green.
+        #
+        # So: mark the built bundle exactly as Explorer would, and require the UI check to
+        # pass anyway. Windows only, because the mark is an NTFS alternate data stream.
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          if (-not (Test-Path dist/OASIS/OASIS.exe.config)) {
+            throw "OASIS.exe.config is missing: an install we cannot write to has no fallback"
+          }
+          Get-ChildItem dist/OASIS -Recurse -File | ForEach-Object {
+            Set-Content -Path $_.FullName -Stream Zone.Identifier -Value "[ZoneTransfer]`r`nZoneId=3"
+          }
+          $marked = (Get-ChildItem dist/OASIS -Recurse -File |
+                     Where-Object { Get-Item -Path $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue }).Count
+          if ($marked -eq 0) { throw "could not mark the bundle, so this proves nothing" }
+          "marked $marked files as downloaded"
+          dist/OASIS/OASIS.exe --oasis-check-ui
+          if ($LASTEXITCODE -ne 0) { throw "the bundle cannot open its window once downloaded" }
+          # Zip files carry no alternate data streams, so the asset could not inherit these
+          # marks in any case. Cleared anyway: what gets packaged should be what was built.
+          Get-ChildItem dist/OASIS -Recurse -File | ForEach-Object {
+            Remove-Item -Path $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue
+          }
+
       - name: Package (macOS)
         if: runner.os == 'macOS'
         run: |
