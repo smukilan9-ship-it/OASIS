@@ -18,7 +18,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from oasis.spatial.serial_registration import detect_scale_bar_px, certify_pair  # noqa: E402
 
-DATA = "/Users/mukilan/Desktop/052526"
+from validation._local_data import local_dir   # noqa: E402
+# The serial-section cohort this script was written against. Not in the repository:
+# unpublished lab data, so it is named by variable rather than by path.
+DATA = local_dir("OASIS_SERIAL_DIR", "the folder of serial-section images to register")
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "phase_a_qc")
 LIVER_MANUAL_UM = 0.7519   # manual absolute reference (Q1); flagged as weaker link
 

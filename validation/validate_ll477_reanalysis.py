@@ -42,12 +42,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from oasis.spatial.spatial_stats import cross_k_all_nulls, _BAND_STATISTIC
 
-RESULTS = "/Users/mukilan/Desktop/ihc_spatial_results/spatial_association_results.json"
-DET_DIR = "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_3__roi0"
+# LL477 is unpublished lab data and is not in the repository. Both roots come from the
+# environment so this file names no one's disk and no patient-derived filename appears in a
+# public path constant.
+_RESULTS_ROOT = os.path.expanduser(
+    os.environ.get("OASIS_SPATIAL_RESULTS", "~/ihc_spatial_results"))
+_CD8_IN = os.path.expanduser(os.environ.get("OASIS_CD8_INPUT", "~/cd8_input"))
+_TIM3_IN = os.path.expanduser(os.environ.get("OASIS_TIM3_INPUT", "~/tim3_input"))
+
+RESULTS = os.path.join(_RESULTS_ROOT, "spatial_association_results.json")
+DET_DIR = os.path.join(_RESULTS_ROOT, "LL477_CD8_x10_3__roi0")
 DET_A = f"{DET_DIR}/LL477_CD8_x10_3.tif - LL477_CD8_x10_3.tif #1_detections.csv"
 DET_B = f"{DET_DIR}/LL477_Tim3_10X_3.tif - LL477_Tim3_10X_3.tif #1_detections.csv"
-IMG_A = "/Users/mukilan/Desktop/cd8_input/LL477_CD8_x10_3.tif"
-IMG_B = "/Users/mukilan/Desktop/tim3 input/LL477_Tim3_10X_3.tif"
+IMG_A = os.path.join(_CD8_IN, "LL477_CD8_x10_3.tif")
+IMG_B = os.path.join(_TIM3_IN, "LL477_Tim3_10X_3.tif")
 EXPECT_N_A, EXPECT_N_B = 38, 34
 EXPECT_AREA_UM2 = 243200.46
 OUT_JSON = os.path.join(os.path.dirname(os.path.abspath(__file__)),

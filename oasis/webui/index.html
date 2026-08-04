@@ -7028,11 +7028,18 @@ const HELP = {
          + 'from a slide the rule has never seen — which is why the slides are the folds.',
         img: 'cls-3-label.png',
         cap: 'Click positive and negative cells; the count per slide is tracked for you.' },
+      // No picture for this step on purpose. Every other help image is a real screen from a
+      // real run, and this one cannot be: the labels would have to come from somewhere, and
+      // seeding them from the same DAB measurement the classifier is fitted on makes the two
+      // classes separable by construction — the screen then reads F1 1.00, AUC 1.00, which is
+      // a property of how the picture was made and nothing else. A number that size sitting
+      // in the app's own help is read as a claim about the software. Better to describe the
+      // screen than to illustrate it with a result that cannot happen on real labels.
       { h: 'Read the held-out report before you trust it',
-        p: 'F1, AUC and the per-slide breakdown. If it does not beat the fixed cutoff on your '
-         + 'own slides, use the cutoff — it costs no labelling.',
-        img: 'cls-4-report.png',
-        cap: 'Held-out scores, per slide, with the fixed-cutoff baseline beside them.' },
+        p: 'F1, AUC and the per-slide breakdown, scored leave-one-image-out so every number '
+         + 'comes from a slide the rule never saw. Expect a spread across slides, and read '
+         + 'the spread rather than the mean on a small cohort. If it does not beat the fixed '
+         + 'cutoff on your own slides, use the cutoff — it costs no labelling.' },
     ],
     foot: 'A slide outside a classifier\'s training range is handed back to the cutoff and named in the results.'
   },

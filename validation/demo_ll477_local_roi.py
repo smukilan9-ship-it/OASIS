@@ -7,7 +7,14 @@ This is the demonstration ANHIR could not give (ANHIR tissue is too deformed to 
 anywhere). LL477 is low-deformation (it locally certified at 2.85 um over 67% of the field),
 so a drawn ROI should come back CERTIFIED / LOCALLY_CERTIFIED from the NEW LoFTR path.
 
-Run:  SSL_CERT_FILE=$(.venv/bin/python -m certifi) .venv/bin/python validation/demo_ll477_local_roi.py
+The pair is NOT in this repository and will not be: LL477 is unpublished lab data. Give it
+two files of your own — any low-deformation serial pair at a known pixel size will do:
+
+    SSL_CERT_FILE=$(.venv/bin/python -m certifi) \
+    .venv/bin/python validation/demo_ll477_local_roi.py REF.tif MOV.tif [px] [out.png]
+
+The paths used to be absolute constants pointing into one machine's Downloads folder, which
+made the script unrunnable for anyone else and named unpublished images in a public file.
 """
 import os
 import sys
@@ -19,10 +26,15 @@ sys.path.insert(0, os.path.dirname(HERE))
 from oasis.spatial import serial_registration as sr        # noqa: E402
 from oasis.spatial import loftr_matcher as lm              # noqa: E402
 
-REF = "/Users/mukilan/Downloads/052526/Tumor/LL477_CD8_x10_3.tif"
-MOV = "/Users/mukilan/Downloads/052526/Tumor/LL477_Tim3_10X_3.tif"
-PX = 0.7519
-OUT = "/tmp/ll477_local_roi.png"
+if len(sys.argv) < 3:
+    sys.exit(__doc__.strip() + "\n\nerror: give the reference and moving image paths.")
+REF = os.path.expanduser(sys.argv[1])
+MOV = os.path.expanduser(sys.argv[2])
+PX = float(sys.argv[3]) if len(sys.argv) > 3 else 0.7519
+OUT = sys.argv[4] if len(sys.argv) > 4 else "/tmp/ll477_local_roi.png"
+for _p in (REF, MOV):
+    if not os.path.exists(_p):
+        sys.exit(f"error: no such image: {_p}")
 RANK = {"CERTIFIED": 0, "LOCALLY_CERTIFIED": 1, "RADIUS_LIMITED": 2}
 
 

@@ -4,6 +4,11 @@ message: "If you use OASIS in work you publish, please cite it. Work that uses t
 type: software
 license: MIT
 repository-code: "https://github.com/smukilan9-ship-it/OASIS"
+# Bump these together with the release tag, and keep them equal to it. A CITATION.cff whose
+# version does not match the tag it ships in sends every citation to the wrong artefact.
+# TODO on the first release: set date-released to the day the tag is pushed.
+version: 0.1.0
+# date-released: YYYY-MM-DD
 abstract: >-
   OASIS quantifies DAB-positive cells in brightfield immunohistochemistry and
   measures population-level spatial association between two markers stained on

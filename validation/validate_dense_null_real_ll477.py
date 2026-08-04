@@ -326,8 +326,8 @@ def write_report(result: dict, out_md: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--results-root", default="/Users/mukilan/Desktop/ihc_spatial_results")
-    parser.add_argument("--asset-roots", nargs="+", default=["/Users/mukilan/Desktop/assets"])
+    parser.add_argument("--results-root", default=os.path.expanduser(os.environ.get("OASIS_SPATIAL_RESULTS", "~/ihc_spatial_results")))
+    parser.add_argument("--asset-roots", nargs="+", default=[os.path.expanduser(os.environ.get("OASIS_ASSET_DIR", "~/oasis_assets"))])
     parser.add_argument("--nperm", type=int, default=999)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--jitter-um", type=float, default=2.0)

@@ -42,17 +42,26 @@ import os
 
 import numpy as np
 
+# Detection tables from real runs. Neither cohort is in the repository — LL477 is
+# unpublished lab data and the Keren TNBC renders are derived from a set with its own terms
+# — so the two roots are named by environment variable. A substrate whose root is unset is
+# skipped by the caller rather than faked.
+_SPATIAL_ROOT = os.path.expanduser(
+    os.environ.get("OASIS_SPATIAL_RESULTS", "~/ihc_spatial_results"))
+_KEREN_ROOT = os.path.expanduser(
+    os.environ.get("OASIS_KEREN_RENDERS", "~/OASIS_keren_tnbc_validation/rendered_ui_inputs"))
+
 REAL_SOURCES = {
-    "ll477_cd8": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_3__roi0/"
-                 "LL477_CD8_x10_3.tif - LL477_CD8_x10_3.tif #1_detections.csv",
-    "ll477_tim3": "/Users/mukilan/Desktop/ihc_spatial_results/LL477_CD8_x10_3__roi0/"
-                  "LL477_Tim3_10X_3.tif - LL477_Tim3_10X_3.tif #1_detections.csv",
-    "keren_p13": "/Users/mukilan/Desktop/OASIS_keren_tnbc_validation/rendered_ui_inputs/"
-                 "external_scaffold/p13_external_keren_scaffold_detections.csv",
-    "keren_p16": "/Users/mukilan/Desktop/OASIS_keren_tnbc_validation/rendered_ui_inputs/"
-                 "external_scaffold/p16_external_keren_scaffold_detections.csv",
-    "keren_p32": "/Users/mukilan/Desktop/OASIS_keren_tnbc_validation/rendered_ui_inputs/"
-                 "external_scaffold/p32_external_keren_scaffold_detections.csv",
+    "ll477_cd8": os.path.join(_SPATIAL_ROOT, "LL477_CD8_x10_3__roi0",
+                              "LL477_CD8_x10_3.tif - LL477_CD8_x10_3.tif #1_detections.csv"),
+    "ll477_tim3": os.path.join(_SPATIAL_ROOT, "LL477_CD8_x10_3__roi0",
+                               "LL477_Tim3_10X_3.tif - LL477_Tim3_10X_3.tif #1_detections.csv"),
+    "keren_p13": os.path.join(_KEREN_ROOT, "external_scaffold",
+                              "p13_external_keren_scaffold_detections.csv"),
+    "keren_p16": os.path.join(_KEREN_ROOT, "external_scaffold",
+                              "p16_external_keren_scaffold_detections.csv"),
+    "keren_p32": os.path.join(_KEREN_ROOT, "external_scaffold",
+                              "p32_external_keren_scaffold_detections.csv"),
 }
 
 # Synthetic substrate — kept so every result can be reported on BOTH, which is the only way

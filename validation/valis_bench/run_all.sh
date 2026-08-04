@@ -2,7 +2,7 @@
 # Sequential ANHIR benchmark chain (RAM-safe on 16GB — never runs two heavy jobs at once).
 # Order: ours (stratified) -> valis (stratified) -> compare (REPORT) -> correspondence (full 222).
 # The comparison REPORT lands first (~3h); the full LoFTR-correspondence answer after (~5h).
-cd "/Users/mukilan/PycharmProjects/ihc-original copy" || exit 1
+cd "$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)" || exit 1
 export PYTHONUNBUFFERED=1
 L=validation/valis_bench
 STRAT=7

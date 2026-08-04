@@ -13,11 +13,20 @@ with `screencapture -l <windowid>`, which asks the window server for that one wi
 image. Both problems go away: the pointer is never touched, and nothing that overlaps the
 window can appear in the shot.
 
-    ./.venv/bin/python tools/capture_help.py            # everything
-    ./.venv/bin/python tools/capture_help.py quant set  # only those groups
+    OASIS_DEMO_DIR=~/oasis_help_demo ./.venv/bin/python tools/capture_help.py
+    ./.venv/bin/python tools/capture_help.py quant settings   # one group at a time
 
 Runs against demo data listed in DEMO below (HyReCo CD8/CD45 brightfield). It is real IHC
 and a real run every time: nothing here fakes a number onto a screen.
+
+Expect it to look hung and not be. Segmentation, certification and the statistic all run in
+`run_pipeline` SUBPROCESSES, so this process sits at 0% CPU polling while the real work
+happens elsewhere. Judging progress by this process's CPU says "nothing is running" for the
+entire length of every slow step. Read the log, or look for a python process under this one.
+
+Run the groups one at a time. Two instances drive two windows fine, but they share
+~/.ihc_analyzer/*.yaml and compete for the same cores, which turns a slow step into a
+much slower one for no gain.
 """
 import json
 import os
@@ -36,10 +45,13 @@ from oasis.webui.api import API
 from oasis.common.paths import resource_dir
 
 HELP = ROOT / "oasis" / "webui" / "help"
-SCRATCH = Path("/private/tmp/claude-501/-Users-mukilan-PycharmProjects-ihc-original-copy"
-               "/8d3ccfb2-fce9-4fea-8daf-9f7309a1100d/scratchpad")
-DEMO = SCRATCH / "oasis_demo"
-OUT = SCRATCH / "help_runs"
+
+# Where the demo tissue lives. Not committed: these are rendered HyReCo fields, and the
+# dataset's terms are the dataset's to set. Point OASIS_DEMO_DIR at a directory holding
+# quant_cd8/, spatial_cd8/ and spatial_cd45/ and this runs anywhere; the default keeps it
+# out of the repo and off any one machine's temp directory.
+DEMO = Path(os.environ.get("OASIS_DEMO_DIR", "~/oasis_help_demo")).expanduser()
+OUT = Path(os.environ.get("OASIS_DEMO_OUT", "~/oasis_help_runs")).expanduser()
 
 QUANT_IN = DEMO / "quant_cd8"
 SPATIAL_A = DEMO / "spatial_cd8"
@@ -92,6 +104,12 @@ def wait_for(expr, timeout=900, poll=1.0, what=""):
                 return True
         except Exception:
             pass
+        # Echo as it happens rather than only at the deadline. A wait that is going to fail
+        # usually knows within seconds, and thirty minutes of silence afterwards helps no one.
+        now = recorded()
+        for line in now[seen:]:
+            print(f"      · {line}", flush=True)
+        seen = len(now)
         time.sleep(poll)
     said = recorded()[seen:]
     _failures.append(f"timed out after {timeout}s waiting for {what or expr}"
@@ -222,7 +240,9 @@ def do_quant():
     click("q-mode-batch-btn")
     set_field("q-input", str(QUANT_IN))
     set_field("q-output", str(OUT / "quant"))
-    time.sleep(2.0)                                   # folder scan populates the count
+    # The folder scan is async. A fixed sleep photographs an empty count on a slow disk.
+    wait_for("document.getElementById('q-image-count').textContent.trim().length > 0",
+             timeout=90, what="the input folder to be scanned")
     js("quantWizardGoTo(1)")
     shot("quant-1-inputs.png")
 
@@ -364,32 +384,60 @@ def do_classifier():
     # Taking a percentage of a 6,000-cell field produced ~6,500 labels, and the fit ran for
     # half an hour without finishing. A real labelling session is tens of cells per slide.
     PER_SLIDE = 80
-    n = js("""(function(){
-      const K = %d;
-      let tp = 0, tn = 0;
-      calib.images.forEach(im => {
-        const cells = (im.data && im.data.cells) || [];
-        const order = cells.map((c,i) => [c.v, i])
-                           .filter(p => p[0] != null && isFinite(p[0]))
-                           .sort((a,b) => b[0] - a[0]);
-        if (order.length < 4 * K) return;      // too few to leave a gap between the classes
-        im.state = new Array(cells.length).fill(0);
-        order.slice(0, K).forEach(p => { im.state[p[1]] = 1; tp++; });
-        order.slice(order.length - K).forEach(p => { im.state[p[1]] = 2; tn++; });
-      });
+    from oasis.quant import reclassify as RC
+    import numpy as np
+
+    # The canvas cell carries only its outline and its index into the GeoJSON — the DAB
+    # value is never sent to the page, because the labeller is meant to judge from the
+    # picture. So read the values here, from the same file the fit will measure, and map
+    # them back through each cell's own feature index. Cells are not 1:1 with features:
+    # `_cells` skips any feature without a usable ring, so the position in `im.state` and
+    # the index in the GeoJSON are different numbers, and using one for the other would
+    # label whichever cell happened to sit at that offset.
+    metas = js("""calib.images.map(im => ({
+        geo: im.data.geojson,
+        idx: im.data.cells.map(c => c.i),
+    }))""")
+    states, tp, tn = [], 0, 0
+    for m in metas or []:
+        idx = list(m["idx"])
+        state = [0] * len(idx)
+        try:
+            values = RC.read_dab_values(m["geo"])
+        except (OSError, ValueError) as e:
+            _failures.append(f"classifier: could not read {m['geo']}: {e}")
+            states.append(state)
+            continue
+        ranked = sorted(
+            ((float(values[f]), pos) for pos, f in enumerate(idx)
+             if f < len(values) and np.isfinite(values[f])),
+            key=lambda t: -t[0])
+        if len(ranked) >= 4 * PER_SLIDE:       # enough to leave a gap between the classes
+            for _, pos in ranked[:PER_SLIDE]:
+                state[pos] = 1; tp += 1
+            for _, pos in ranked[-PER_SLIDE:]:
+                state[pos] = 2; tn += 1
+        states.append(state)
+    js(f"""(function(){{
+      const s = {json.dumps(states)};
+      calib.images.forEach((im, i) => {{ if (s[i]) im.state = s[i]; }});
       calibBuild();          // repaint the canvas from the states just written
-      return [tp, tn];
-    })()""" % PER_SLIDE)
+    }})()""")
+    n = [tp, tn]
     print(f"      labelled {n[0]} positive / {n[1]} negative")
     time.sleep(2.0)
     shot("cls-3-label.png")
 
+    # The held-out report is deliberately NOT captured. Labels seeded from the DAB ranking
+    # are separable by the very features the rule is fitted on, so the screen comes out at
+    # F1 1.00 / AUC 1.00 — true of this labelling and of nothing else. Shipping that inside
+    # the app's own help reads as a claim about the software, so that step is text only.
+    # See tests/test_help_images.py. The fit still runs here, because a fit that has stopped
+    # working should fail this tool rather than be discovered by a user.
     js("clsFit()")
-    if wait_for("cls && cls.fit && cls.fit.ok", timeout=1800, what="the classifier to fit"):
-        time.sleep(2.0)
-        js("showPage('classifier')")
-        scroll_to(selector="#cls-results")
-        shot("cls-4-report.png")
+    if wait_for("cls && cls.fit && cls.fit.ok", timeout=420, what="the classifier to fit"):
+        f1 = js("(cls.fit.holdout && cls.fit.holdout.f1) ?? cls.fit.f1 ?? null")
+        print(f"      fit OK (held-out F1 {f1}); report screen intentionally not captured")
 
 
 GROUPS = {"settings": do_settings, "quant": do_quant,

@@ -207,9 +207,13 @@ and machine-specific files outside Git.
 ./packaging/build.sh
 ```
 
-Produces `dist/OASIS.app` (~900 MB unpacked). The bundle is a release asset and is never
-committed. See `packaging/OASIS.spec` for the freeze recipe and the bundle-only failures it
-works around.
+Produces `dist/OASIS.app` — about 1.0 GB unpacked, 335 MB as the zipped download. The
+bundle is a release asset and is never committed. See `packaging/OASIS.spec` for the freeze
+recipe and the bundle-only failures it works around.
+
+`build.sh` finishes by running the frozen bundle headless against the model's own reference
+image and checking the cell count, because "it built" and "it works" are different claims:
+every bundle-only failure so far produced a green build and a broken app.
 
 ### Opening an unsigned build on macOS
 

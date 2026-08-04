@@ -23,7 +23,20 @@ CHUNK  <- if (length(args) >= 3) as.integer(args[3]) else NA
 NCHUNK <- if (length(args) >= 4) as.integer(args[4]) else NA
 NSPOT  <- if (length(args) >= 5) as.integer(args[5]) else NA
 
-source("/private/tmp/claude-501/-Users-mukilan-PycharmProjects-ihc-original-copy/0a5d1a46-1c9c-4e54-a9a5-d62f6fc9e39e/scratchpad/KAMP/source/get_permutation_distribution.R")
+# KAMP's own source, unmodified and NOT vendored here — it is the authors' code under their
+# terms, and the point of this script is to run theirs rather than a copy that can drift.
+# Clone https://github.com/JuliaWrobel/KAMP and point KAMP_SOURCE at its source/ directory.
+# This used to be an absolute path into the working directory of whoever last ran it, which
+# meant the script was broken for everybody else and said so only as a file-not-found.
+KAMP_SRC <- Sys.getenv("KAMP_SOURCE", unset = "")
+if (!nzchar(KAMP_SRC)) {
+  stop("set KAMP_SOURCE to KAMP's source/ directory (git clone JuliaWrobel/KAMP)")
+}
+kamp_file <- file.path(KAMP_SRC, "get_permutation_distribution.R")
+if (!file.exists(kamp_file)) {
+  stop(sprintf("no get_permutation_distribution.R under KAMP_SOURCE=%s", KAMP_SRC))
+}
+source(kamp_file)
 
 PX        <- 0.3775
 RADII_UM  <- c(10, 20, 50)

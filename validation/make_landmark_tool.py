@@ -15,7 +15,10 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "phase_a_qc")
 IMG = os.path.join(OUT, "img")
 DISP_W = 1280
-DATA = "/Users/mukilan/Desktop/052526"
+from validation._local_data import local_dir   # noqa: E402
+# The serial-section cohort this script was written against. Not in the repository:
+# unpublished lab data, so it is named by variable rather than by path.
+DATA = local_dir("OASIS_SERIAL_DIR", "the folder of serial-section images to register")
 
 PAIRS = [
     ("Tumor_1", "Tumor/LL477_CD8_x10_1.tif", "Tumor/LL477_Tim3_x10_1.tif"),

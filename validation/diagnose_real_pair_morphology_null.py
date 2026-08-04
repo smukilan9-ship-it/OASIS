@@ -396,8 +396,8 @@ def write_report(outputs: dict, out_md: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result-dir", default="/Users/mukilan/Desktop/test1")
-    parser.add_argument("--asset-roots", nargs="+", default=["/Users/mukilan/Desktop/assets"])
+    parser.add_argument("--result-dir", default=os.path.expanduser(os.environ.get("OASIS_RESULT_DIR", "~/oasis_results")))
+    parser.add_argument("--asset-roots", nargs="+", default=[os.path.expanduser(os.environ.get("OASIS_ASSET_DIR", "~/oasis_assets"))])
     parser.add_argument("--ref-image")
     parser.add_argument("--mov-image")
     parser.add_argument("--nperm", type=int, default=999)
