@@ -136,7 +136,13 @@ jobs:
           # a URL whose host is the path — and every job here went green. This resolves the
           # UI file, builds the URL the window is given, and imports the platform's GUI
           # backend. No window is opened, so it runs on a headless runner.
-          "$BIN" --oasis-check-ui
+          # Captured, and the verdict itself required. A windowed executable can be started
+          # without being waited for, and a shell that does not wait reports success for
+          # anything: PowerShell did exactly that in the step below, throwing before the
+          # bundle had even printed its result. Demanding the line means a check that never
+          # ran cannot pass for a check that passed.
+          ui_out="$("$BIN" --oasis-check-ui 2>&1)"; echo "$ui_out"
+          echo "$ui_out" | grep -q "UI CHECK OK" || { echo "no UI verdict"; exit 1; }
 
       - name: Check the UI the way a user gets it — downloaded
         # THE CHECK ABOVE RUNS A BUNDLE THAT WAS NEVER DOWNLOADED, and that is the whole
@@ -161,8 +167,16 @@ jobs:
                      Where-Object { Get-Item -Path $_.FullName -Stream Zone.Identifier -ErrorAction SilentlyContinue }).Count
           if ($marked -eq 0) { throw "could not mark the bundle, so this proves nothing" }
           "marked $marked files as downloaded"
-          dist/OASIS/OASIS.exe --oasis-check-ui
-          if ($LASTEXITCODE -ne 0) { throw "the bundle cannot open its window once downloaded" }
+          # Start-Process -Wait, NOT a bare call. OASIS.exe is a windowed executable, and
+          # PowerShell does not wait for one: it returns immediately, leaves $LASTEXITCODE
+          # unset, and the bundle's own output arrives seconds after the step has moved on.
+          # This step failed on its first run for exactly that reason, while the check it
+          # was running had in fact passed.
+          $run = Start-Process -FilePath dist/OASIS/OASIS.exe -ArgumentList '--oasis-check-ui' `
+                               -Wait -PassThru -NoNewWindow
+          if ($run.ExitCode -ne 0) {
+            throw "the bundle cannot open its window once downloaded (exit $($run.ExitCode))"
+          }
           # Zip files carry no alternate data streams, so the asset could not inherit these
           # marks in any case. Cleared anyway: what gets packaged should be what was built.
           Get-ChildItem dist/OASIS -Recurse -File | ForEach-Object {
