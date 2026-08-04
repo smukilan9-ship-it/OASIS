@@ -7,8 +7,13 @@ tags:
   - image registration
   - spatial statistics
 authors:
-  - name: Mukilan   # TODO: full name as it should appear in the citation
-    orcid: 0000-0000-0000-0000   # TODO: required by JOSS — register at orcid.org
+  # TODO before submission: full name as it should appear in the citation, and an ORCID.
+  # JOSS requires an ORCID for the corresponding author; register at orcid.org and add the
+  # line back. It is deliberately absent rather than a placeholder: 0000-0000-0000-0000 is
+  # a syntactically valid ORCID that resolves to nothing, so a reader or a metadata
+  # harvester takes it for a real identifier and follows it nowhere. An absent field is
+  # visibly incomplete, which is the honest state of this line.
+  - name: Mukilan
     affiliation: 1
 affiliations:
   - name: TODO — institution, country
