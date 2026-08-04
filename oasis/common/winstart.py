@@ -33,7 +33,6 @@ nothing is wrong.
 import importlib.util
 import os
 import sys
-import tempfile
 from pathlib import Path
 
 # The mark lives in an NTFS alternate data stream, addressed as "<file>:<stream>".
@@ -42,10 +41,18 @@ _MOTW_STREAM = "Zone.Identifier"
 # Where the .NET pieces sit, relative to the bundle root or to site-packages.
 _ASSEMBLY_DIRS = (("pythonnet", "runtime"), ("clr_loader", "ffi", "dlls"))
 
-# `loadFromRemoteSources` is the documented opt-in for loading an assembly that .NET
-# considers to have come from somewhere other than this machine, which is what a file
-# carrying the Mark of the Web is judged to be.
-_REMOTE_SOURCES_CONFIG = """<?xml version="1.0" encoding="utf-8"?>
+# `loadFromRemoteSources` is the documented opt-in for loading an assembly that .NET judges
+# to have come from somewhere other than this machine, which is what a file carrying the
+# Mark of the Web is. It is a <runtime> setting, so it is read once per process from the
+# host executable's own config file — OASIS.exe.config, beside OASIS.exe — and NOT from the
+# config of the AppDomain clr_loader creates. Handing it to pythonnet through
+# PYTHONNET_NETFX_CONFIG_FILE looks like it should work and measurably does not; see
+# tests/test_windows_gui_backend.py, which failed on precisely that.
+#
+# The spec writes this text to OASIS.exe.config at build time. That covers the case
+# unblock_assemblies() cannot: an install directory the user has no permission to write to,
+# where the mark can never be removed.
+HOST_CONFIG_XML = """<?xml version="1.0" encoding="utf-8"?>
 <configuration>
   <runtime>
     <loadFromRemoteSources enabled="true"/>
@@ -111,33 +118,15 @@ def unblock_assemblies():
     return cleared
 
 
-def allow_marked_assemblies():
-    """Point the .NET Framework at a config that lets it load a marked assembly.
-
-    pythonnet builds its runtime from `PYTHONNET_NETFX_*` environment variables, so naming
-    a config file here reaches clr_loader without patching either package. Returns the
-    config path, or None if one was already configured or it could not be written.
-    """
-    if sys.platform != "win32" or os.environ.get("PYTHONNET_NETFX_CONFIG_FILE"):
-        return None
-    try:
-        config = Path(tempfile.gettempdir()) / "oasis-netfx.config"
-        config.write_text(_REMOTE_SOURCES_CONFIG, encoding="utf-8")
-    except OSError:
-        return None
-    os.environ["PYTHONNET_NETFX_CONFIG_FILE"] = str(config)
-    return config
-
-
 def prepare_gui():
     """Everything Windows needs doing before the GUI backend is imported.
 
     Call before `webview.start()` or `webview.guilib.initialize()`; both import clr, and
-    the repairs have to be in place before the .NET runtime is asked for the assembly.
+    the repair has to be in place before the .NET runtime is asked for the assembly.
     """
     if sys.platform != "win32":
         return {}
-    return {"unblocked": unblock_assemblies(), "config": allow_marked_assemblies()}
+    return {"unblocked": unblock_assemblies()}
 
 
 def _dotnet_release():

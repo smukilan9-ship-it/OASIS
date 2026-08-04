@@ -32,8 +32,11 @@ MOTW = "[ZoneTransfer]\r\nZoneId=3\r\n"       # 3 = downloaded from the internet
 PLAIN = "import clr; print('CLR OK')"
 REPAIRED = ("from oasis.common.winstart import prepare_gui; prepare_gui();"
             " import clr; print('CLR OK')")
-CONFIG_ONLY = ("from oasis.common.winstart import allow_marked_assemblies;"
-               " allow_marked_assemblies(); import clr; print('CLR OK')")
+
+# The config the build writes beside OASIS.exe. Tested here against the interpreter running
+# the suite, because that is this process's host executable and the setting is read per
+# process from <host>.config.
+HOST_CONFIG = Path(f"{sys.executable}.config")
 
 
 def _load_clr(code):
@@ -91,14 +94,25 @@ def test_prepare_gui_makes_a_downloaded_copy_start(marked_assemblies):
     assert ok, "prepare_gui() did not get the GUI backend loading again:\n" + output
 
 
-def test_the_config_route_works_without_touching_the_install(marked_assemblies):
-    """The fallback for an install directory we cannot write to.
+def test_the_shipped_host_config_covers_an_install_we_cannot_write_to(marked_assemblies):
+    """The fallback, for an install directory whose files we have no permission to change.
 
-    Kept separate from the test above so that if this one ever regresses, the failure names
-    the fallback rather than being hidden by the repair that ran first.
+    Kept separate from the repair above so a regression here names the fallback instead of
+    being hidden by the unblock that would otherwise have run first. An earlier version of
+    this fallback passed the same XML to pythonnet via PYTHONNET_NETFX_CONFIG_FILE and did
+    not work: loadFromRemoteSources is read per process from the host executable's config,
+    not from the AppDomain clr_loader builds.
     """
-    ok, output = _load_clr(CONFIG_ONLY)
-    assert ok, "loadFromRemoteSources did not let .NET load the marked assembly:\n" + output
+    from oasis.common import winstart
+    if HOST_CONFIG.exists():
+        pytest.skip(f"{HOST_CONFIG} already exists; refusing to overwrite it")
+    HOST_CONFIG.write_text(winstart.HOST_CONFIG_XML, encoding="utf-8")
+    try:
+        ok, output = _load_clr(PLAIN)
+    finally:
+        HOST_CONFIG.unlink()
+    assert ok, ("the shipped OASIS.exe.config would not let .NET load a marked assembly:\n"
+                + output)
 
 
 def test_marked_files_reports_what_is_still_blocked(marked_assemblies):
