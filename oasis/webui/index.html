@@ -157,6 +157,10 @@ html, body {
    Spatial never got the cap at all, ran the full 1156 px, and were worse. The column
    is now sized TO the prose instead of the prose being capped inside a wider column,
    which is what made everything look shoved against the left edge. */
+/* Tried and reverted: widening this to the whole working area so every step filled the
+   window the way results does. It was worse — a form on an 1100 px column is a row of
+   controls with nothing near them, and the centred column is what makes the app read as
+   one thing across four tabs. */
 :root { --col: 760px; --col-wide: 1120px; }
 /* Centre with GRID, not auto margins. Auto margins are set by a shorthand-free rule here,
    but any later rule using the `margin` shorthand silently resets margin-left/right to 0 —
@@ -173,6 +177,15 @@ html, body {
    a comment — that is the same mistake a third time. */
 .scroll { display: grid; grid-template-columns: minmax(0, 1fr);
           justify-items: center; align-content: start; }
+/* grid-auto-rows, and it is load-bearing. A grid item whose `overflow` is not `visible` has
+   an automatic minimum size of ZERO, so when the column's content is taller than the view
+   the grid squeezes whichever item is allowed to shrink — and `.table-card` sets
+   `overflow: hidden` for its rounded corners. MEASURED: the Quant results table rendered at
+   2 px tall around a 379 px table, clipping the last image's row in half, while the page
+   did not scroll because the grid had shrunk to fit. Nothing errored; a run of four images
+   simply showed three and a half. max-content sizes every row to its content and lets the
+   scroll container do the scrolling, which is its job. */
+.scroll { grid-auto-rows: max-content; }
 /* The step rail stays put. It scrolled away with the content, so on a long step — batch
    preview, the certification canvas — there was no way to see which step you were on or
    jump to another without scrolling back to the top first. */
@@ -473,6 +486,10 @@ td.muted { color: var(--text3); font-size: 11px; }
    Naming rule for every control: the REAL term, with the plain-language
    sentence underneath. Not a simplified label — a correct one that a reader
    who doesn't know the term can still act on. */
+/* Tried and dropped: a two-column step card, explanation in a rail on the left, controls
+   on the right. It used the width, and it was worse — a dedicated column for prose reads as
+   a lecture beside the thing you came to do. One column, controls first, explanation kept
+   short underneath. */
 .q-step-head { margin-bottom: 18px; }
 .q-step-head h2 {
   font-size: 15px; font-weight: 600; letter-spacing: -.015em;
@@ -514,9 +531,6 @@ td.muted { color: var(--text3); font-size: 11px; }
   display: grid; grid-template-columns: 1fr auto;
   column-gap: 16px; row-gap: 4px; padding: 11px 0;
   border-top: 1px solid var(--border);
-  /* Bounded to the same measure as the text inside it. Left to span the full 1000 px
-     card, the `auto` column parked the switch at the far right — 700 px from the label
-     it belongs to, which is the exact failure this grid replaced .toggle-row to avoid. */
 }
 .q-switch:first-child { border-top: 0; padding-top: 0; }
 .q-switch .q-sw-title { font-size: 12px; font-weight: 600; color: var(--text); }
@@ -597,11 +611,13 @@ td.muted { color: var(--text3); font-size: 11px; }
 .override-name { flex: 1; color: var(--text2); }
 
 /* ── Activity Log ───────────────────────────────────────── */
+/* The log is the whole running view now, so it takes the space rather than being capped
+   at 430 px with white below it. */
 .terminal-wrap {
-  flex: 0 0 auto; background: #ffffff;
+  flex: 1 1 auto; min-height: 180px; background: #ffffff;
   border: 1px solid var(--border); border-radius: var(--r);
   overflow: hidden; display: flex; flex-direction: column;
-  margin: 0 24px 22px; min-height: 180px; max-height: min(46vh, 430px);
+  margin: 0 24px 22px;
   box-shadow: 0 1px 2px rgba(0,0,0,.04);
 }
 .terminal-header {
@@ -840,11 +856,19 @@ td.muted { color: var(--text3); font-size: 11px; }
 /* ── Certify registration ─────────────────────────────────────
    The tissue is the screen. Controls float over it or sit in one panel above it;
    nothing that is not the two sections competes for the vertical space. */
-.cert-strip { display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+/* One row, always. Wrapping put the mode switch on row 1 and the display buttons on row 2,
+   which cost 34 px of tissue and read as an accident rather than a layout. The pair name is
+   the only thing here that can be any length, so it is the only thing that gives way. */
+.cert-strip { display: flex; align-items: center; gap: 12px; flex-wrap: nowrap;
   padding-bottom: 11px; margin-bottom: 13px; border-bottom: 1px solid var(--border); }
+.cert-strip > .card-title { flex: none; }
 .cert-strip .cert-crumb { font-size: 12px; color: var(--text2);
-  font-variant-numeric: tabular-nums; }
-.cert-strip .cert-strip-r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+  font-variant-numeric: tabular-nums;
+  flex: 1 1 auto; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap; }
+.cert-strip .cert-modebar { flex: none; }
+.cert-strip .cert-strip-r { margin-left: auto; display: flex; align-items: center; gap: 8px;
+  flex: none; }
 
 /* One segmented control. The two paths never share a button, so the switch is the only
    thing they have in common. */
@@ -896,13 +920,31 @@ td.muted { color: var(--text3); font-size: 11px; }
 
 /* ── Certify registration: the wide layout ────────────────────
    The step that decides whether anything downstream may be believed does not belong in a
-   760 px column with a 320 px window onto the tissue. Once the pair is loaded the card
+   narrow column with a 320 px window onto the tissue. Once the pair is loaded the card
    takes the whole working area: stage in the middle, the verdict and its arithmetic in an
-   inspector beside it, the wizard as a taskbar underneath. The stage carries the evidence,
-   the inspector states the verdict, and they never compete for the same space. */
-#spatial-cert-card.cert-wide { position: fixed; inset: 0 0 0 var(--sidebar-w); z-index: 60;
-  margin: 0; padding: 0; border: 0; border-radius: 0; background: var(--bg);
-  display: flex; overflow: hidden; }
+   inspector beside it. The stage carries the evidence, the inspector states the verdict,
+   and they never compete for the same space.
+
+   It is a STEP, not a layer. The first build of this made the card `position: fixed` over
+   the whole app, which bought the space by hiding the page header, the step rail and the
+   Back/Next row — so the one screen where an operator most needs to know where they are in
+   the run was the one screen that would not tell them, and it had to grow a second stepper
+   of its own to compensate. It now fills the space the wizard actually has: everything
+   above and below it stays put, no duplicate navigation exists, and ⛶ Fullscreen is there
+   for when the tissue really does want the entire window. */
+#spatial-cert-card.cert-wide { padding: 0; margin-bottom: 0; overflow: hidden;
+  display: flex; }
+/* The step is given a definite height so the stage can fill it — without this the card is
+   sized by its content and the tissue collapses to whatever the images happen to need. */
+#spatial-config.cert-fill .scroll { overflow: hidden; align-content: stretch;
+  grid-template-rows: auto minmax(0, 1fr) auto; }
+/* The rest of the app is a 760 px centred column and stays that way. This one step is two
+   tissue sections side by side with a verdict beside them, so on step 3 — and only step 3 —
+   the column gives way to the working area. The stepper and the Back/Next row widen with it
+   so the screen still reads as one thing. */
+#spatial-config.cert-fill .scroll > * { width: 100%; }
+#spatial-config.cert-fill #sp-step-3 { min-height: 0; display: flex; flex-direction: column; }
+#spatial-config.cert-fill #spatial-cert-card { flex: 1; min-height: 0; }
 .cert-centre { flex: 1; min-width: 0; display: flex; flex-direction: column; }
 #spatial-cert-card.cert-wide .cert-strip { margin: 0; padding: 0 18px; min-height: 56px;
   border-bottom: 1px solid var(--border); flex: none; }
@@ -916,23 +958,9 @@ td.muted { color: var(--text3); font-size: 11px; }
 /* Everything that only made sense in the narrow card. */
 #spatial-cert-card.cert-wide .cert-narrow-only { display: none !important; }
 
-.cert-taskbar { flex: none; min-height: 50px; display: flex; align-items: center; gap: 2px;
-  padding: 0 12px; border-top: 1px solid var(--border); background: var(--card);
-  overflow-x: auto; }
-.cert-taskbar .tstep { display: flex; align-items: center; gap: 7px; padding: 0 11px;
-  min-height: 50px; font-size: 12px; color: var(--text2); position: relative;
-  background: none; border: 0; cursor: pointer; white-space: nowrap; font-family: inherit; }
-.cert-taskbar .tstep .n { width: 18px; height: 18px; border-radius: 50%;
-  border: 1px solid var(--border2); display: grid; place-items: center; font-size: 10px;
-  font-weight: 700; flex: none; }
-.cert-taskbar .tstep.done { color: var(--text); }
-.cert-taskbar .tstep.done .n { background: var(--green); border-color: var(--green); color: #fff; }
-.cert-taskbar .tstep.on { color: var(--text); font-weight: 600; }
-.cert-taskbar .tstep.on .n { background: var(--text); border-color: var(--text); color: #fff; }
-.cert-taskbar .tstep.on::after { content: ''; position: absolute; left: 8px; right: 8px;
-  bottom: 0; height: 2.5px; background: var(--text); }
-.cert-taskbar .tstep.blocked .n { background: var(--red); border-color: var(--red); color: #fff; }
-.cert-taskbar .sp { flex: 1; }
+/* The certify taskbar lived here: a second copy of the wizard, needed only because the
+   fixed-position card had hidden the first one. With the step back inside the wizard there
+   is exactly one step rail and exactly one Back/Next row again. */
 
 .cert-insp { width: 384px; flex: none; border-left: 1px solid var(--border);
   background: var(--card); display: flex; flex-direction: column; }
@@ -974,12 +1002,11 @@ td.muted { color: var(--text3); font-size: 11px; }
 .cert-callout.warn { background: var(--warn-weak); border-color: var(--warn-line); color: var(--warn); }
 .cert-callout.bad { background: var(--bad-weak); border-color: var(--bad-line); color: var(--bad); }
 .cert-callout.plain { background: var(--bg3); border-color: var(--border); color: var(--text2); }
-/* The wide card is fixed-position over the view, so anything the view paints outside it
-   would show through beside the inspector — the run bar's button was doing exactly that,
-   floating over the inspector footer. */
-body.cert-wide-open #spatial-config .run-area,
-body.cert-wide-open #spatial-config .scroll { visibility: hidden; }
-body.cert-wide-open #spatial-cert-card { visibility: visible; }
+/* The run bar has nothing to offer on this step — the gate it depends on is what the step
+   is FOR, and the inspector footer already carries the action that moves the operator on.
+   (This used to be `visibility: hidden` on the whole view, because the card floated over
+   it; now only the one bar that would be noise is folded away.) */
+#spatial-config.cert-fill .run-area { display: none; }
 @media (max-width: 1180px) { .cert-insp { width: 320px; } }
 @media (max-width: 980px) { .cert-insp { display: none; } }
 
@@ -1041,6 +1068,19 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
   margin: 6px 0 4px; padding: 12px 0 4px; border-top: 1px solid var(--border);
 }
 .wizard-nav .wstep-progress { font-size: 11px; color: var(--text3); font-weight: 600; }
+/* space-between reads as left / centre / right, which is exactly right for Back · status ·
+   Next and exactly wrong for anything else: a fourth control turns the row into four items
+   at four unrelated positions. A grouped nav opts out — one exit on the left, the controls
+   that act on this screen together on the right. */
+.wizard-nav-grouped { justify-content: flex-start; }
+.wizard-nav-grouped .wnav-right { margin-left: auto; display: flex; align-items: center;
+  gap: 10px; }
+/* The two review screens pin their nav BELOW the scrolling area, so it is outside .scroll
+   and inherits none of its padding — the buttons sat hard against the window edges with
+   every card above them inset by 24 px. */
+#quant-review > .wizard-nav, #spatial-review > .wizard-nav {
+  margin: 0; padding: 12px 24px; background: var(--card); flex: none;
+}
 .output-details {
   margin-top: 10px; border-top: 1px solid var(--border); color: var(--text2);
 }
@@ -1258,9 +1298,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card">
         <div class="q-step-head">
           <h2>Pixel size <span style="font-weight:400;color:var(--text3);font-size:12px">— µm per pixel</span></h2>
-          <p>How many microns one pixel covers. Every density, area, ring width and
-             distance is computed from it, so an error here scales every result. There is
-             no silent default: the run is blocked until it is set.</p>
+          <p>Every density and area is computed from this, so it has to be right. The run
+             is blocked until it is set.</p>
         </div>
 
         <div class="q-group">
@@ -1271,9 +1310,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
             <input type="radio" name="q-px" value="scale_match" onchange="onQuantPxChange()">
             <span><span class="q-term">Per-image scale bar</span>
               <span class="badge gray" style="margin-left:6px">recommended</span>
-              <span class="q-plain">Each image is matched to its own scale-bar image and calibrated
-                separately. Most accurate — the scale can differ between images taken at the
-                same nominal magnification.</span></span>
+              <span class="q-plain">Each image is calibrated from its own scale-bar image.
+                Most accurate.</span></span>
           </label>
           <div id="q-px-scalematch" style="display:none" class="q-sub">
             <button class="btn sm" onclick="previewQuantScaleMatches()">Re-check matches</button>
@@ -1289,8 +1327,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
                 <span class="q-fbstate" id="q-px-unmatched-state">not set</span>
               </div>
               <div class="q-gplain" style="margin-bottom:8px">They still need a pixel size.
-                Whichever you choose is recorded per image in the results, so a reader can
-                tell a measured bar from a value that was supplied.</div>
+                Whichever you pick is recorded per image in the results.</div>
               <div class="q-radio-row">
                 <label><input type="radio" name="q-px-unmatched" value="one" checked
                               onchange="onQuantUnmatchedChange()"> One value for all of them</label>
@@ -1359,17 +1396,15 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card">
         <div class="q-step-head">
           <h2>Nuclear segmentation</h2>
-          <p>Every nucleus in the image is outlined by <b>InstanSeg</b>, a trained
-             instance-segmentation model that runs in-process. The model is fixed and has
-             nothing to tune. Nothing on this step decides which cells are positive.</p>
+          <p>Every nucleus is outlined by <b>InstanSeg</b>. Nothing here decides which cells
+             are positive.</p>
         </div>
 
         <div class="q-group">
           <div class="q-glabel">Stain normalization <span style="font-weight:400;color:var(--text3)">— per-image white balance</span></div>
-          <div class="q-gplain">Rescales each colour channel so this slide's own background
-            maps to white, correcting tone and uneven illumination before the model sees the
-            image. It does <b>not</b> rescale the DAB signal, so it cannot move positivity by
-            itself. Worth using when slides vary in tone or are unevenly lit.</div>
+          <div class="q-gplain">Corrects tone and uneven lighting before segmenting. It does
+            <b>not</b> touch the DAB signal, so it cannot move positivity on its own. Use it when
+            slides vary in tone.</div>
           <div class="q-switch">
             <div class="q-sw-title">Normalize before segmenting</div>
             <div class="toggle" id="q-normalize-toggle" onclick="toggleEl('q-normalize-toggle'); quantNormalizeToggled()"></div>
@@ -1392,11 +1427,9 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card">
         <div class="q-step-head">
           <h2>Classification</h2>
-          <p>Which segmented cells count as positive for this marker. With a fixed cutoff,
-             segmentation stops and shows you each image's DAB histogram so you can adjust it —
-             per image if needed — before anything is written. <b>A trained classifier or the
-             membrane-ring rule decides positivity itself, so those runs go straight through
-             with no cutoff to review.</b></p>
+          <p>Which cells count as positive. With a fixed cutoff you get to check it against
+             each image's histogram before anything is written; <b>a classifier or the
+             membrane rule decides for itself, with no cutoff to review.</b></p>
         </div>
 
         <div class="q-group">
@@ -1418,10 +1451,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
             <div class="q-sw-title">Membranous <span class="q-sw-sub">— measure the cytoplasmic ring</span></div>
             <div class="toggle" id="q-membrane-toggle" onclick="toggleQuantMembrane()"></div>
             <div class="q-sw-plain">For markers on the cell surface, such as CD8 and TIM-3.
-              A ring is grown outward from each nucleus and clipped against its neighbours,
-              then scored on how much of it is stained rather than on how brown it is on
-              average — a faint but complete rim is a positive cell, and an average cannot
-              tell that from diffuse background.</div>
+              Scores how much of the ring is stained, not how brown it is — a faint but complete
+              rim is a positive cell.</div>
           </div>
           <div class="info-box amber" id="q-membrane-req" style="display:none;margin-top:12px">
             <b>Needs a trained membrane classifier, and well-stained tissue.</b>
@@ -1429,26 +1460,21 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
               <b>Classifier</b> tab. There is no hand-set membranous cutoff: no single ring
               number beats a plain nuclear cutoff, so the choice is a fitted classifier or
               the nuclear cutoff, not a slider.</div>
-            <div style="margin-top:6px">Where the stain is faint nothing separates positive
-              from negative — <b>turn this off and use the nuclear cutoff</b>, which does
-              nearly as well on good tissue and costs no labelling. A classifier also does
-              this per image: a slide outside its training range is handed back to the
-              cutoff and named in the results.
-              <span style="color:var(--text3)">Measured on this cohort against labelled cells.</span></div>
+            <div style="margin-top:6px">Where the stain is faint, nothing separates positive
+              from negative — <b>turn this off and use the nuclear cutoff</b>. A slide outside a
+              classifier's training range is handed back to the cutoff and named in the
+              results.</div>
           </div>
         </div>
 
         <div class="q-group" id="q-classifier-row">
           <div class="q-glabel">Positivity rule</div>
-          <div class="q-gplain" id="q-rule-plain-nuc">A <b>fixed optical-density cutoff</b> is
-            the default and is usually the right answer: one number for the cohort, adjustable
-            per image against that image's own histogram after segmentation. A trained
-            classifier is worth its labelling cost only when staining varies so much across the
-            cohort that no single cutoff fits.</div>
-          <div class="q-gplain" id="q-rule-plain-mem" style="display:none">A membranous
-            marker is scored by a trained classifier — that is the only option here. Only
-            classifiers fitted on the ring are listed; a nuclear one reads measurements a
-            ring does not have.</div>
+          <div class="q-gplain" id="q-rule-plain-nuc">A <b>fixed cutoff</b> is usually the right
+            answer: one number for the cohort, adjustable per image afterwards. A classifier is
+            worth the labelling only when staining varies too much for one cutoff.</div>
+          <div class="q-gplain" id="q-rule-plain-mem" style="display:none">A membranous marker
+            is scored by a trained classifier — the only option here. Only ring-fitted
+            classifiers are listed.</div>
           <select id="q-classifier" onchange="quantClassifierChanged()">
             <option value="">Fixed optical-density (OD) cutoff — recommended</option>
           </select>
@@ -1460,13 +1486,11 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
         <div class="q-group" id="q-od-group">
           <div class="q-glabel">Optical density (OD) cutoff — <b id="q-thresh-display">0.20</b></div>
-          <div class="q-gplain">Optical density is how strongly a pixel absorbs light once the
-            stain has been separated into its haematoxylin and DAB components — higher means
-            more brown. <span id="q-od-nuclear-plain">A cell is positive when the DAB optical
-            density inside its nucleus is above this value.</span><span id="q-od-membrane-plain"
-            style="display:none">In membranous mode this is the <b>fallback</b>: it calls the
-            cells of any slide the classifier refuses, on nuclear DAB. It scores nothing on a
-            slide the classifier accepts.</span></div>
+          <div class="q-gplain">Higher optical density means more brown.
+            <span id="q-od-nuclear-plain">A cell is positive when the DAB inside its nucleus is
+            above this value.</span><span id="q-od-membrane-plain" style="display:none">In
+            membranous mode this is the <b>fallback</b>, used only on slides the classifier
+            refuses.</span></div>
           <input type="range" id="q-thresh" min="5" max="50" value="20"
             oninput="document.getElementById('q-thresh-display').textContent=(this.value/100).toFixed(2)">
           <div class="q-note" style="margin-top:6px" id="q-od-note">A starting value for the
@@ -1546,11 +1570,14 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
     </div>
     <div id="quant-fail" class="info-box" style="display:none;margin:0 22px 12px;
          border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
-    <button class="btn sm" style="margin:0 22px 10px" onclick="toggleTechnicalLog('quant-tech-log',this)">Show activity log</button>
-    <div class="terminal-wrap" id="quant-tech-log" style="display:none">
+    <!-- Always open. It was behind a "Show activity log" button, which meant the only
+         account of what a multi-minute run was actually doing — which image, which stage,
+         every warning it printed — was hidden by default on the one screen that has
+         nothing else to show. -->
+    <div class="terminal-wrap" id="quant-tech-log">
       <div class="terminal-header">
         <div class="terminal-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
-        <span class="terminal-title">SYSTEM LOG</span>
+        <span class="terminal-title">ACTIVITY LOG</span>
         <button class="btn sm" style="margin-left:auto" onclick="copyLog('quant-log')">Copy</button>
       </div>
       <div class="terminal-body" id="quant-log"></div>
@@ -1562,11 +1589,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
     <div class="scroll">
       <div class="science-summary"><div class="science-summary-copy">
         <strong>Cells are measured. Now set where "positive" starts.</strong><br>
-        One cutoff is applied to every image so the cohort is measured on a single scale.
-        Judge it on the histogram as much as the count: with a rare marker only a few
-        percent of cells are positive, and a cutoff sitting on the shoulder of the
-        negative peak behaves very differently from one past it. Nothing is written until
-        you continue.
+        One cutoff for every image, so the cohort is on one scale. Judge it on the histogram
+        as much as the count. Nothing is written until you continue.
       </div></div>
 
       <div class="card">
@@ -1584,15 +1608,22 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
       <div id="qr-override-note"></div>
     </div>
-    <div class="wizard-nav">
+    <!-- Four controls under `justify-content: space-between` were spread evenly across the
+         full bar, so the two that act on this screen sat at arbitrary positions with the
+         status text stranded between them. Grouped: the way out on the left, everything
+         that acts on the cutoffs on the right, reading order matching the order you would
+         use them in. -->
+    <div class="wizard-nav wizard-nav-grouped">
       <!-- The way out. Spatial's equivalent screen has always had one; this one did not,
            and the header's "New analysis" is hidden on every view except results — so the
            only exits from a mid-run review were Continue or quitting the app. Nothing has
            been written at this point, which is exactly why leaving must be allowed. -->
       <button type="button" class="btn" onclick="showView('quant','config')">← Back to setup</button>
-      <button type="button" class="btn" onclick="qrResetOverrides()">Clear overrides</button>
-      <span class="wstep-progress" id="qr-summary-txt"></span>
-      <button type="button" class="btn amber" onclick="qrApply()">Continue — generate results</button>
+      <div class="wnav-right">
+        <span class="wstep-progress" id="qr-summary-txt"></span>
+        <button type="button" class="btn" onclick="qrResetOverrides()">Clear overrides</button>
+        <button type="button" class="btn amber" onclick="qrApply()">Continue — generate results</button>
+      </div>
     </div>
   </div>
 
@@ -1790,8 +1821,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card">
         <div class="q-step-head">
           <h2>Pixel size</h2>
-          <p>How many microns one pixel covers. Every distance in the association statistic
-             is measured in microns, so nothing below this step means anything without it.</p>
+          <p>Every distance in the association statistic is measured in microns, so nothing
+             below this step means anything without it.</p>
         </div>
       </div>
 
@@ -1916,7 +1947,6 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
                       title="You place the anatomical correspondences. OASIS never guesses the matching point.">Manual landmarks</button>
             </span>
             <span class="cert-strip-r">
-              <span class="badge gray" id="spatial-cert-badge">NOT STARTED</span>
               <button class="btn sm cert-loaded-only" id="spatial-cert-colour" style="display:none"
                       onclick="spatialCertToggleColour()"
                       title="Show the original stain colour instead of the grayscale used for matching">Show colour</button>
@@ -1933,8 +1963,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
             <div id="spatial-cert-intro" style="padding:18px 20px;overflow-y:auto">
               <div class="science-summary" style="margin-bottom:12px"><div class="science-summary-copy">
                 <strong>Show the two sections are aligned.</strong> A finding is only trustworthy
-                inside a certified window. Certification uses anatomical structure, never individual
-                cells, and never lowers the bar to force a pass.</div></div>
+                inside a certified window.</div></div>
               <div id="spatial-cert-pair-row" class="field" style="display:none;max-width:520px">
                 <label>Pair to certify</label><select id="spatial-cert-pair" onchange="spatialCertSelectPair()"></select>
               </div>
@@ -1953,7 +1982,9 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
               <div class="cert-stage">
                 <div class="row2 lm-pair">
                   <div class="lm-stage" id="lm-stage-ref">
-                    <span class="pane-tag">Reference — fixed<span class="sub" id="pane-tag-ref-sub"></span></span>
+                    <!-- "Reference — fixed" said one idea twice and, at that length, ran
+                         under the centred zoom bar. Its partner has always been one word. -->
+                    <span class="pane-tag">Fixed<span class="sub" id="pane-tag-ref-sub"></span></span>
                     <div class="lm-world" id="lm-world-ref"><img id="spatial-cert-ref"><svg id="spatial-cert-ref-ov"></svg></div></div>
                   <div class="lm-stage" id="lm-stage-mov">
                     <span class="pane-tag">Moving<span class="sub" id="pane-tag-mov-sub"></span></span>
@@ -1967,8 +1998,12 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
                   <button class="btn sm" onclick="lmZoomBy(1.4)" title="Zoom in">+</button>
                   <button class="btn sm" onclick="spatialCertZoomFit()" title="Fit both images to their panes">Fit</button>
                   <span class="sep"></span>
+                  <!-- "Match magnification" — the bar is centred over the seam, and at that
+                       length it reached across and covered the "Reference — fixed · CD8" tag
+                       in the corner of the pane it names. "zoom" is what the three controls
+                       to its left are called; the full sentence is still on hover. -->
                   <button class="btn sm active" id="spatial-cert-matchzoom-btn" onclick="lmToggleMatchZoom()"
-                          title="Keep both sections at the same magnification. Comparing structures at different magnifications is misleading.">Match magnification</button>
+                          title="Keep both sections at the same magnification. Comparing structures at different magnifications is misleading.">Match zoom</button>
                   <button class="btn sm active" id="spatial-cert-syncpan-btn" onclick="lmToggleSyncPan()"
                           title="Both sections move together, matched through the registration transform so they show the SAME TISSUE rather than the same pixel offset.">Unsync panes</button>
                   <span class="sep"></span>
@@ -2028,7 +2063,6 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
             </div>
           </div>
 
-          <div class="cert-taskbar" id="spatial-cert-taskbar"></div>
         </div>
 
         <!-- THE INSPECTOR. Never empty: before a verdict exists it says what certification
@@ -2037,7 +2071,12 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
         <aside class="cert-insp">
           <div class="cert-insp-head">
             <span class="t" id="spatial-cert-insp-title">What certification tests</span>
-            <span class="badge gray" style="margin-left:auto">Step 3 of 6</span>
+            <!-- The verdict badge lives here, not in the strip above the tissue. It said
+                 "Step 3 of 6" — a third copy of what the step rail and the Back/Next row
+                 both already say — while the badge that carries the actual answer was
+                 competing for width with the mode switch and pushing the strip onto a
+                 second row. The status belongs beside the reasoning that produced it. -->
+            <span class="badge gray" id="spatial-cert-badge" style="margin-left:auto">NOT STARTED</span>
           </div>
           <div class="cert-insp-body" id="spatial-cert-insp"></div>
           <!-- Static, so the inspector's re-renders cannot reset what is typed here.
@@ -2050,12 +2089,12 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
                         font-size:11.5px;color:var(--text2)">
               <label>Match tolerance
                 <input id="spatial-loftr-tol" type="number" value="4" min="1" max="12" step="0.5" style="width:56px"> µm
-                <span style="color:var(--text3)">— how far apart two points may be and still count
-                  as the same structure. Tighter keeps fewer, better correspondences.</span></label>
+                <span style="color:var(--text3)">— how far apart two points may be and still
+                  count as the same structure. Tighter keeps fewer, better matches.</span></label>
               <label style="display:inline-flex;align-items:flex-start;gap:6px">
                 <input id="spatial-loftr-showcorr" type="checkbox" onchange="spatialCertRender()" style="margin-top:2px">
-                <span>Draw the matched points on the tissue — use it to see <em>where</em> the
-                  matcher found structure, and where it found none.</span></label>
+                <span>Draw the matched points on the tissue — shows where the matcher found
+                  structure, and where it found none.</span></label>
             </div>
           </details>
           <div class="cert-insp-foot" id="spatial-cert-insp-foot"></div>
@@ -2068,15 +2107,14 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="card">
         <div class="q-step-head">
           <h2>Nuclear segmentation</h2>
-          <p>Both sections are segmented with <b>InstanSeg</b> — the same model, in-process,
-             that Quant uses. It is fixed and has nothing to tune. Nothing on this step
-             decides which cells are positive.</p>
+          <p>Both sections are segmented with <b>InstanSeg</b>, the same model Quant uses.
+             Nothing here decides which cells are positive.</p>
         </div>
         <div class="q-group">
           <div style="margin-top:8px">
                     <div class="toggle-row"><span>Per-image stain normalization <span style="color:var(--text3);font-size:11px">— white-balance each input</span></span>
                       <div class="toggle" id="spatial-normalize-toggle" onclick="toggleEl('spatial-normalize-toggle')"></div></div>
-                    <div style="font-size:11px;color:var(--text3);margin-top:2px">White-balances each image to its own estimated background before measuring DAB. Reduces slide-to-slide stain variation; does not move cell coordinates.</div>
+                    <div style="font-size:11px;color:var(--text3);margin-top:2px">Reduces slide-to-slide stain variation. Does not move cell coordinates.</div>
                   </div>
           <div id="spatial-norm-preview-wrap" style="margin-top:12px">
             <button class="btn sm" type="button" onclick="spatialPreviewNormalization()">Show me what this does</button>
@@ -2182,7 +2220,7 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
                 <span class="badge gray" id="spatial-bw-badge">NOT CHECKED</span>
               </div>
               <div class="science-summary" style="margin-bottom:12px">
-                <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Measures tissue architecture — from all cells, independent of either marker — only inside the certified window, and names the null OASIS will use: <b>75 µm reweighted</b> (coarse tissue), the <b>dense/all-cell support null</b> (fine tissue, or when one marker is sparse → reported UNDERPOWERED), or an <b>abundance/absence finding</b> when a marker is (near-)absent. Otherwise it fails closed. Registration certification is unaffected by this check.</div>
+                <div class="science-summary-copy"><strong>Which null model fits this tissue?</strong><br>Reads the tissue architecture inside the certified window and picks the comparison OASIS will measure against. If none of them fits, it says so rather than guessing. This does not affect registration certification.</div>
                 <span class="science-chip" title="The 75 µm reweighted null is accepted only when the estimated architecture is sufficiently coarser than its smoothing bandwidth. Architecture is estimated from all cells, so segregation can be reported even when one marker has few positives. This check does not change registration certification.">Window-specific check</span>
               </div>
               <button class="btn" id="spatial-bw-btn" onclick="spatialBandwidthCheck()">Check which model fits</button>
@@ -2219,10 +2257,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
     <div class="scroll">
       <div class="science-summary"><div class="science-summary-copy">
         <strong>Cells are measured. Set the cutoffs, and check the null.</strong><br>
-        Each section carries a different marker, so each gets its own cutoff — judge it on the
-        histogram, not just the count. The null model below is the one this tissue supports;
-        it is decided from the segmented cells, not assumed. Nothing is written until you
-        continue.
+        Each section carries a different marker, so each gets its own cutoff. The null below is
+        decided from the segmented cells, not assumed. Nothing is written until you continue.
       </div></div>
 
       <div id="sp-review-band"></div>
@@ -2245,11 +2281,10 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
     </div>
     <div id="spatial-fail" class="info-box" style="display:none;margin:0 22px 12px;
          border-color:var(--bad-line);background:var(--bad-weak);color:var(--bad)"></div>
-    <button class="btn sm" style="margin:0 22px 10px" onclick="toggleTechnicalLog('spatial-tech-log',this)">Show activity log</button>
-    <div class="terminal-wrap" id="spatial-tech-log" style="display:none">
+    <div class="terminal-wrap" id="spatial-tech-log">
       <div class="terminal-header">
         <div class="terminal-dots"><span class="dot-r"></span><span class="dot-y"></span><span class="dot-g"></span></div>
-        <span class="terminal-title">SPATIAL ASSOCIATION LOG</span>
+        <span class="terminal-title">ACTIVITY LOG</span>
         <button class="btn sm" style="margin-left:auto" onclick="copyLog('spatial-log')">Copy</button>
       </div>
       <div class="terminal-body" id="spatial-log"></div>
@@ -2301,11 +2336,8 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
       <div class="q-step-head">
         <h2>What the burned-in bar represents</h2>
         <p>OASIS measures the drawn bar in an image's <b>_scale</b> sibling and divides this
-           length by it to get µm/px. That makes this the single most load-bearing number in
-           the app: every distance the spatial statistic reports — the 10–20 µm and 20–50 µm
-           bands, the 75 µm architecture bandwidth, the certified cell error — is derived
-           from it. It is a property of the microscope's export preset, so it is set once
-           per cohort here rather than per image.</p>
+           length by it to get µm/px. Every distance in the app scales with it. It belongs to
+           the microscope's export preset, so it is set once per cohort rather than per image.</p>
       </div>
       <div class="q-group">
         <div class="q-glabel">Bar length (µm)</div>
@@ -2411,19 +2443,15 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
       <div class="q-group">
         <div class="q-glabel">When this is worth the labelling</div>
-        <div class="q-gplain">Measured against DeepLIIF's immunofluorescence-derived labels
-          (6,663 cells, 149 images): on clean, consistently stained material a trained
-          classifier does <b>not</b> beat a well-chosen fixed cutoff — held-out F1 0.771
-          against 0.781, and the fixed cutoff is already within 0.012 of the best any single
-          threshold can do. It wins when <b>staining varies across the cohort</b>: under
-          simulated batch-to-batch drift the classifier holds at 0.765 while every fixed
-          cutoff collapses (0.20 OD falls to 0.484). The crossover is about 0.08 OD of
-          per-slide drift.</div>
-        <div class="q-note">If your slides were stained in one run and look consistent, the
-          fixed cutoff plus the review step is the better tool and costs no labelling. Reach
-          for this when slides came from different runs, lots or scanners — and typically
-          once you have <b id="cls-recommend">20</b>+ slides, below which you can still check
-          every slide by eye. <b>A membranous marker is the exception: it requires one.</b></div>
+        <div class="q-gplain">On consistently stained slides a classifier does <b>not</b> beat
+          a well-chosen fixed cutoff. It wins when <b>staining varies across the cohort</b>,
+          where a single cutoff collapses and the classifier holds.
+          <span style="color:var(--text3)">Measured on 6,663 cells from 149 DeepLIIF
+          images.</span></div>
+        <div class="q-note">Stained in one run and consistent? Use the fixed cutoff — it costs
+          no labelling. Reach for this when slides came from different runs, lots or scanners,
+          typically once you have <b id="cls-recommend">20</b>+ of them.
+          <b>A membranous marker always needs one.</b></div>
       </div>
     </div>
 
@@ -2449,19 +2477,16 @@ body.cert-wide-open #spatial-cert-card { visibility: visible; }
 
       <div class="q-group">
         <div class="q-glabel">Pixel size <span style="font-weight:400;color:var(--text3)">— µm per pixel</span></div>
-        <div class="q-gplain">Applied to each slide <b>as it is added</b> — the value is
-          recorded per slide, so changing it here affects the next one you add, not the ones
-          already in the list (each row shows its own). The ring width of a membranous marker
-          is measured in microns, so this changes what gets measured, not just what gets
-          reported. It starts from the cohort pixel size in Settings.</div>
+        <div class="q-gplain">Applied to each slide <b>as it is added</b>, so changing it
+          affects the next slide you add, not the ones already listed (each row shows its own).
+          A membranous ring is measured in microns, so this changes what gets measured.</div>
         <input type="number" id="cls-px" value="0.5" step="0.01" min="0.01" style="width:140px">
       </div>
 
       <div class="q-group">
         <div class="q-glabel">Labelled slides <span style="font-weight:400;color:var(--text3)">— required</span></div>
-        <div class="q-gplain">Held-out scoring works by leaving one slide out at a time, so
-          the slides are the folds: cells within a slide share a staining run, and holding out
-          cells instead would score a model that had already seen the slide.</div>
+        <div class="q-gplain">Scoring leaves one slide out at a time, so every score comes
+          from a slide the rule has never seen.</div>
         <div id="cls-image-list" style="margin-bottom:10px"></div>
         <div class="q-inline">
           <button class="btn sm" onclick="clsAddImage()">+ Add slide</button>
@@ -2726,12 +2751,6 @@ function spatialToggleMembrane() {
   document.getElementById('spatial-membrane-opts').style.display = on ? 'block' : 'none';
   if (on) { loadMembraneClassifiers('spatial-cls-a'); loadMembraneClassifiers('spatial-cls-b'); }
 }
-function toggleTechnicalLog(id, btn) {
-  const el = document.getElementById(id), open = el.style.display === 'none';
-  el.style.display = open ? 'flex' : 'none';
-  btn.textContent = open ? 'Hide activity log' : 'Show activity log';
-}
-
 // ── Utilities ─────────────────────────────────────────────
 function esc(s) {
   return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -3341,15 +3360,12 @@ async function clsLoadRequirements() {
 function clsKindNote() {
   const k = document.getElementById('cls-kind').value;
   document.getElementById('cls-kind-note').innerHTML = k === 'membrane'
-    ? 'Reads nine measurements of the <b>cytoplasmic ring</b>: its mean and brightest arc, '
-    + 'how it compares to the cell\'s own nucleus and to its neighbours, and — the part an '
-    + 'intensity cutoff cannot express — <b>how much of the ring is stained, how much of '
-    + 'that is one continuous arc, and how many separate arcs there are</b>. You will label '
-    + 'on the ring itself, not on the nucleus. Not yet validated against labelled '
-    + 'membranous cells; your own held-out report is the evidence.'
-    : 'Reads six measurements inside the nucleus, including its DAB against the median of '
-    + 'its neighbours — which is what lets one rule survive a staining gradient across a '
-    + 'section. Validated against labels derived from immunofluorescence on the same tissue.';
+    ? 'Scores the <b>cytoplasmic ring</b> — including how much of it is stained and whether '
+    + 'that is one continuous arc, which an intensity cutoff cannot express. You label on the '
+    + 'ring, not the nucleus. Not yet validated on labelled membranous cells; your own '
+    + 'held-out report is the evidence.'
+    : 'Scores each nucleus against its own neighbours, so one rule survives a staining '
+    + 'gradient across a section. Validated against immunofluorescence labels.';
 }
 
 async function clsAddImage() {
@@ -5991,7 +6007,6 @@ function spatialCertResetView() {
   const mb = document.getElementById('spatial-cert-modebar');
   if (mb) mb.style.display = 'none';
   if (typeof spatialCertRenderInspector === 'function') spatialCertRenderInspector();
-  if (typeof spatialCertRenderTaskbar === 'function') spatialCertRenderTaskbar();
   const badge = document.getElementById('spatial-cert-badge');
   if (badge) { badge.textContent = 'NOT STARTED'; badge.className = 'badge gray'; }
   const crumb = document.getElementById('spatial-cert-crumb');
@@ -6041,7 +6056,10 @@ async function spatialCertLoad() {
                       loftrRois:[], loftrDraft:[], loftrMode:false, freehand:false, stains };
   const crumb = document.getElementById('spatial-cert-crumb');
   if (crumb) {
-    const px = spatialCertPixelSize();
+    // The pixel size used to ride along here. It is stated twice more on this screen — in
+    // the note under the stage and in the inspector's Frame section, where it belongs — and
+    // it was the token that pushed the strip onto a second row, costing the tissue height
+    // to repeat a number. The crumb answers only "which pair am I looking at".
     crumb.textContent = [
       (stains.a && stains.b) ? `${stains.a} ↔ ${stains.b}` : '',
       // In single-pair mode sample_id comes from image A's filename, so it carries that
@@ -6051,7 +6069,6 @@ async function spatialCertLoad() {
       (pair.sample_id || '')
         .replace(new RegExp('[_\\-\\s]*' + (match.stain_a || '\\u0000').replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?=[_\\-\\s]|$)', 'i'), '')
         || match.key_a || pair.sample_id || '',
-      px > 0 ? `${px.toFixed(4)} µm/px` : '',
     ].filter(Boolean).join(' · ');
   }
   spatialCertRoiUpdateBadge(); loftrRoiSync(); spatialCertSetMode(spatialCertMode);
@@ -6074,7 +6091,6 @@ async function spatialCertLoad() {
   // observer catches that layout pass and every later one.
   lmObserveStages();
   spatialCertRenderInspector();
-  spatialCertRenderTaskbar();
   document.getElementById('spatial-cert-result').innerHTML =
     spatialCertPixelSizeNote();
   spatialCertRender();
@@ -6571,7 +6587,6 @@ function loftrRoiCommitCertifications() {
     + loftrRoiTable(certs);
   spatialAssocUpdateRunBtn();
   if (typeof spatialCertRenderInspector === 'function') spatialCertRenderInspector();
-  if (typeof spatialCertRenderTaskbar === 'function') spatialCertRenderTaskbar();
 }
 
 // Each certified region, with its own numbers.
@@ -6756,42 +6771,22 @@ function loftrRoiSync() {
 }
 
 // ══ THE WIDE CERTIFY LAYOUT ══════════════════════════════════════════════════
-// Step 3 is the gate the rest of the product rests on, so it gets the working area rather
-// than a 320 px window inside a 760 px column. The card goes fixed-position beside the
-// rail; the wizard is re-rendered as the taskbar underneath so navigation is not lost.
+// Step 3 is the gate the rest of the product rests on, so once a pair is loaded it takes
+// the whole working area rather than a 320 px window inside a card: stage in the middle,
+// verdict and arithmetic in the inspector beside it. It stays INSIDE the wizard — the step
+// rail above and the Back/Next row below are the same ones every other step has.
 function spatialCertSetWide(on) {
   const card = document.getElementById('spatial-cert-card');
+  const view = document.getElementById('spatial-config');
   if (!card) return;
   card.classList.toggle('cert-wide', !!on);
-  document.body.classList.toggle('cert-wide-open', !!on);
+  if (view) view.classList.toggle('cert-fill', !!on);
   if (on) {
-    spatialCertRenderTaskbar();
     spatialCertRenderInspector();
     // The stages only now have their real size, so re-fit rather than leaving the images
-    // at whatever scale the narrow column gave them.
+    // at whatever scale the narrow card gave them.
     requestAnimationFrame(() => { if (spatialCertWork.ref) { lmFit('ref'); lmFit('mov'); } });
   }
-}
-
-function spatialCertRenderTaskbar() {
-  const el = document.getElementById('spatial-cert-taskbar');
-  if (!el) return;
-  const names = ['Inputs', 'Pixel size', 'Certify', 'Segmentation', 'Classification', 'Save & run'];
-  const blocked = !spatialCertGateSatisfied();
-  el.innerHTML = names.map((nm, i) => {
-    const n = i + 1;
-    const cls = n === 3 ? 'on' : (n < 3 ? 'done' : (n === 6 && blocked ? 'blocked' : ''));
-    // Steps 1-2 are inputs the operator filled to get here, so position IS completion for
-    // them; step 6 is the gated one and says so in its own label.
-    // Naming the block on the step it blocks is the point: "Run" greying out with no
-    // reason attached was the single most common confusion on this screen.
-    const label = (n === 6 && blocked) ? 'Run — blocked until certified' : nm;
-    return `<button class="tstep ${cls}" onclick="spatialWizardGoTo(${n})">`
-         + `<span class="n">${n < 3 ? '✓' : n}</span>${esc(label)}</button>`;
-  }).join('')
-    + `<span class="sp"></span>`
-    + `<button class="btn sm" onclick="spatialWizardGoTo(2)">← Pixel size</button>`
-    + `<button class="btn sm" style="margin-left:8px" onclick="spatialWizardGoTo(4)">Segmentation →</button>`;
 }
 
 // The certification gates, as thresholds before a run and as measured values after one.
@@ -6853,27 +6848,19 @@ function spatialCertRenderInspector() {
   const px = spatialCertPixelSize(), pxm = spatialCertMovPixelSize();
 
   const why = manual
-    ? `<p>Click a structure on the <b>fixed</b> section, then the <b>same anatomical
-        structure</b> on the moving one. OASIS never places the matching point for you: an
-        auto-snapped match you never confirmed is an unverified correspondence, and on
-        featureless tissue it lands arbitrarily. The verdict is re-measured after every pair.
-        At least ${(spatialCertGates||{}).min_n ?? 6} well-spread pairs; 12 is better.</p>
+    ? `<p>Click a structure on the <b>fixed</b> section, then the <b>same structure</b> on the
+        moving one. OASIS never places the matching point for you. At least
+        ${(spatialCertGates||{}).min_n ?? 6} well-spread pairs; 12 is better.</p>
        <p><b>You do not need to draw anything.</b> The analysis window is worked out from the
-        landmarks themselves — the whole field if they certify it, otherwise the largest region
-        they support, re-measured against the same gates. Drawing a window is optional and only
-        narrows where OASIS looks.</p>`
-    : `<p><b>LoFTR</b> (Sun et al., CVPR 2021) matches the two sections directly, without first
-        detecting keypoints. It is at its most accurate where the tissue gives it structure to
-        lock onto — <b>vessel walls, gland and duct outlines, tissue-fold and section edges,
-        necrotic borders, the capsule</b> — and on those fields it routinely agrees to within a
-        cell diameter.</p>
-       <p>It has correspondingly little to work with on flat, low-contrast fields: a uniform
-        sheet of lymphocytes, plain stroma, or a section that is mostly background. Where it
-        cannot find structure it returns fewer, weaker correspondences and the gate refuses the
-        pair rather than certifying a guess — that is what <b>Manual landmarks</b> is for.</p>
-       <p>It tries the whole field first, then keeps every local region that certifies on its
-        own. Each certified region becomes its own analysis window; failures are listed below
-        and excluded from the run.</p>`;
+        landmarks. Drawing one is optional, and only narrows where OASIS looks.</p>`
+    : `<p><b>LoFTR</b> (Sun et al., CVPR 2021) matches the two sections itself. It is most
+        accurate where the tissue has structure to lock onto — <b>vessel walls, gland and duct
+        outlines, tissue folds and section edges, the capsule</b>.</p>
+       <p>It has little to work with on flat fields: a uniform sheet of lymphocytes, plain
+        stroma, mostly background. There it refuses the pair rather than certifying a guess —
+        that is what <b>Manual landmarks</b> is for.</p>
+       <p>It tries the whole field first, then keeps any local region that certifies on its own.
+        Each one becomes its own analysis window; failures are excluded from the run.</p>`;
 
   const frame = `<div class="sec"><h4>Frame</h4>
       <div class="kv"><span class="k">Reference pixel size</span>
@@ -6923,9 +6910,9 @@ function spatialCertRenderInspector() {
 
   if (ttl) ttl.textContent = pair ? 'Certification' : 'What certification tests';
   body.innerHTML = `<div class="sec">${why}</div>` + verdict + regionRows + frame
-    + `<div class="sec"><p><b>Why this gate exists.</b> Serial sections are physically different
-        slices. Without a measured registration error you cannot tell a real 10 µm association
-        from a 10 µm misalignment. OASIS fails closed: no certification, no finding.</p></div>`;
+    + `<div class="sec"><p><b>Why this gate exists.</b> Without a measured registration error you
+        cannot tell a real 10 µm association from a 10 µm misalignment. No certification, no
+        finding.</p></div>`;
 
   // The footer carries the one action that moves the operator forward from where they are.
   if (foot) {
@@ -7703,7 +7690,6 @@ function spatialCertApplyCertification(c, source) {
      ${renderParameterDetails(params)}`;
   spatialAssocUpdateRunBtn();
   if (typeof spatialCertRenderInspector === 'function') spatialCertRenderInspector();
-  if (typeof spatialCertRenderTaskbar === 'function') spatialCertRenderTaskbar();
 }
 
 

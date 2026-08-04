@@ -718,7 +718,7 @@ def run_pipeline(config_path="config.yaml"):
     cfg = config_path if isinstance(config_path, dict) else load_config(config_path)
 
     print(f"\n{'='*55}")
-    print(f"  IHC ANALYZER")
+    print(f"  OASIS")
     print(f"{'='*55}")
     print(f"  Mode:        {cfg['mode']}")
     print(f"  Stain:       {cfg.get('stain_type', 'hdab').upper()}")

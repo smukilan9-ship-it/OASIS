@@ -88,7 +88,12 @@ def test_no_selector_reads_like_prose(css):
         sel = " ".join(m.group(2).split())
         if not sel or sel.endswith(":"):        # nested block inside an at-rule
             continue
-        if "`" in sel or re.search(r"[a-z]{2}\. [A-Z]", sel) or sel.count(" ") > 14:
+        # The word count is applied PER comma-separated selector, not to the list. A rule
+        # that applies one declaration to eleven prose elements is a long list of short
+        # selectors, and flagging it here would push the next person into duplicating the
+        # declaration eleven times to satisfy a test aimed at something else entirely.
+        longest = max(part.count(" ") for part in sel.split(","))
+        if "`" in sel or re.search(r"[a-z]{2}\. [A-Z]", sel) or longest > 14:
             offenders.append(sel[:110])
     assert not offenders, f"selectors that are actually prose (rule was discarded): {offenders}"
 
@@ -108,3 +113,19 @@ def test_the_column_stays_centred(css):
     assert centring, ".scroll no longer centres its children — every tab will crowd left"
     sizing = re.search(r"\.scroll\s*>\s*\*\s*\{[^}]*width:\s*min\(var\(--col\)", body, re.S)
     assert sizing, ".scroll > * no longer sets the column width"
+
+
+def test_the_scroll_grid_cannot_squeeze_a_card(css):
+    """A card that clips its own content is a card that reports fewer rows than the run had.
+
+    `.scroll` is a grid, and a grid item whose overflow is not `visible` has an automatic
+    minimum size of zero — so when the column is taller than the view, the grid shrinks
+    whichever item is allowed to shrink rather than letting the container scroll.
+    `.table-card` sets `overflow: hidden` for its rounded corners, and was measured at 2 px
+    tall around a 379 px table: the fourth image of a four-image run rendered as half a row,
+    with no error and no scrollbar. `grid-auto-rows: max-content` is what prevents it.
+    """
+    body = _strip_comments(css)
+    assert re.search(r"\.scroll\s*\{[^}]*grid-auto-rows:\s*max-content", body, re.S), (
+        ".scroll no longer pins its rows to max-content — any card with overflow:hidden "
+        "(the results table, the preview table) can be squeezed and silently clip rows")

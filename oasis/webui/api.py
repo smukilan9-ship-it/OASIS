@@ -724,6 +724,17 @@ class API:
         cfg["stop_after_segmentation"] = review
         self._review_cfg = cfg if review else None
 
+        # The results screen is built from the per-image *_summary.json files, and the
+        # worker's own cleanup used to delete them at the end of the very run that produced
+        # them. Switching "Per-image settings record" off therefore produced a results screen
+        # reading 0 cells across 0 images, an empty table and "above NaN OD" in the methods
+        # paragraph, while results.csv on disk was complete — a true run reported as an empty
+        # one. The worker is told to keep them; _load_results deletes them once it has built
+        # the table, so the operator's choice is still honoured.
+        if not cfg.get("keep_summary_json", True):
+            cfg["keep_summary_json"] = True
+            cfg["_defer_summary_cleanup"] = True
+
         config_path = str(CONFIG_DIR / "pipeline_config.yaml")
         with open(config_path, "w") as f:
             yaml.dump(cfg, f, default_flow_style=False)
@@ -855,6 +866,17 @@ class API:
         # written either since the reporting rework, so the two buttons offering to open
         # them could only ever have been dead. The run's one table is results.csv.
         results_csv = Path(output_dir) / "results.csv"
+
+        # The summaries carry the per-image warnings (unverified pixel size, low membrane
+        # confidence) that results.csv does not, so they are the table's source and this is
+        # the last thing that reads them. Deleting them is deferred to here precisely so it
+        # cannot happen before the table exists — see run_analysis.
+        if cfg.get("_defer_summary_cleanup"):
+            for jp in glob.glob(str(Path(output_dir) / "*_summary.json")):
+                try:
+                    os.remove(jp)
+                except OSError:
+                    pass
 
         overlays_dir = str(Path(output_dir) / "overlays")
         overlays = glob.glob(str(Path(output_dir) / "*_overlay.png"))
