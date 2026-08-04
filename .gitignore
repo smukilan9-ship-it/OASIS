@@ -51,6 +51,13 @@ validation_reports/
 validation_datasets/
 graphify-out/
 
+# Warp fields exported from ANHIR pairs by validation/nonrigid_bench/export_warps.py.
+# Derived from datasets that are not redistributed, regenerable from them, and named after
+# the pair they came from: "COAD_01|training|S3->S1.npz". Both "|" and ">" are illegal in
+# Windows filenames, so committing these would make `git clone` fail outright on a platform
+# OASIS ships a build for. The measurements taken from them live in results/ as JSON.
+validation/nonrigid_bench/warps/
+
 # Packaging artifacts (the shipped bundle is a GitHub Release asset, never a git object)
 build/
 dist/

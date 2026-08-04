@@ -1,0 +1,2229 @@
+[
+ {
+  "pair_id": "COAD_01|training|S3->S1",
+  "set": "COAD_01",
+  "rep": 0,
+  "px_um": 1.872,
+  "n_a": 248,
+  "n_lm": 61,
+  "tre_rigid_um": 442.0269552827225,
+  "tre_nonrigid_um": 341.309598685977,
+  "window_area_mm2": 1.0100230962222843,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.51667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.54667,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.83,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.42,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.62667,
+    "p_assoc": 0.47667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.15,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.07333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 85
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.14667,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.86333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.27,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.02,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.05333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 156
+  }
+ },
+ {
+  "pair_id": "COAD_10|training|S7->S4",
+  "set": "COAD_10",
+  "rep": 0,
+  "px_um": 1.872,
+  "n_a": 245,
+  "n_lm": 77,
+  "tre_rigid_um": 80.04814824618401,
+  "tre_nonrigid_um": 83.6759139475058,
+  "window_area_mm2": 0.982355852566147,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.02333,
+    "p_assoc": 0.02333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.76667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.66333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.51,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.18333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.70667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.59,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.23333,
+    "p_assoc": 0.09667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.9,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.20667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "none",
+   "dense_morphology": {
+    "p_dclf": 0.82333,
+    "p_assoc": 0.55,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.97333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.47667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 250
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.13,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.41,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.51333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.05667,
+    "p_assoc": 0.03,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.74333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.11,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "none",
+   "dense_morphology": {
+    "p_dclf": 0.42,
+    "p_assoc": 0.21667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.83,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.16333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 250
+  }
+ },
+ {
+  "pair_id": "COAD_20|training|S7->S5",
+  "set": "COAD_20",
+  "rep": 0,
+  "px_um": 1.872,
+  "n_a": 243,
+  "n_lm": 83,
+  "tre_rigid_um": 254.26442092752268,
+  "tre_nonrigid_um": 77.10599679406681,
+  "window_area_mm2": 1.3269997359040404,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.05333,
+    "p_assoc": 0.05333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.05,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.51667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.15333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.52,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.42667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.62333,
+    "p_assoc": 0.28333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.87333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.50667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "none",
+   "dense_morphology": {
+    "p_dclf": 0.22333,
+    "p_assoc": 0.1,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.87,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.31333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 231
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.17333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.62667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.47333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 247
+  }
+ },
+ {
+  "pair_id": "breast_1|training|HER2->HE",
+  "set": "breast_1",
+  "rep": 0,
+  "px_um": 1.264,
+  "n_a": 246,
+  "n_lm": 79,
+  "tre_rigid_um": 166.55389990164912,
+  "tre_nonrigid_um": 165.17420059820734,
+  "window_area_mm2": 0.5041825290361946,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.08667,
+    "p_assoc": 0.08667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.14333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.83,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.57,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.12,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.05667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.46,
+    "p_assoc": 0.48,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.22667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.21667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.77667,
+    "p_assoc": 0.42667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.58,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.59667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "none",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 1.0,
+    "significant": true,
+    "direction": "segregation",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "segregation",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "segregation"
+   },
+   "n_b": 128
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.13,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.21,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.4,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.44333,
+    "p_assoc": 0.22667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.5,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.16667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "none",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 1.0,
+    "significant": true,
+    "direction": "segregation",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "segregation",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "segregation"
+   },
+   "n_b": 130
+  }
+ },
+ {
+  "pair_id": "gastric_1|training|CD68->CD4",
+  "set": "gastric_1",
+  "rep": 0,
+  "px_um": 1.6853333333333336,
+  "n_a": 248,
+  "n_lm": 77,
+  "tre_rigid_um": 42.250540278152855,
+  "tre_nonrigid_um": 46.39589318361671,
+  "window_area_mm2": 0.33095831869147807,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.05,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.16667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.62333,
+    "p_assoc": 0.42333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.33,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.93667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.65667,
+    "p_assoc": 0.32333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.28,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 233
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.28333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.8,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.64333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.29667,
+    "p_assoc": 0.59667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.86667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 226
+  }
+ },
+ {
+  "pair_id": "gastric_5|training|EBV->CD68",
+  "set": "gastric_5",
+  "rep": 0,
+  "px_um": 1.6853333333333336,
+  "n_a": 247,
+  "n_lm": 79,
+  "tre_rigid_um": 80.00063702182246,
+  "tre_nonrigid_um": 40.78324970857401,
+  "window_area_mm2": 0.9621362813664028,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.08,
+    "p_assoc": 0.07667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.04667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.31667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.06,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.58667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.34,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.04,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.62,
+    "p_assoc": 0.29333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.21667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 225
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.61333,
+    "p_assoc": 0.40667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.42333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.89333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 241
+  }
+ },
+ {
+  "pair_id": "gastric_9|training|CD68->CD4",
+  "set": "gastric_9",
+  "rep": 0,
+  "px_um": 1.6853333333333336,
+  "n_a": 247,
+  "n_lm": 155,
+  "tre_rigid_um": 72.00997970474286,
+  "tre_nonrigid_um": 20.660844010936074,
+  "window_area_mm2": 0.7695945477573755,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.01,
+    "p_assoc": 0.01,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.58,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.06333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.62667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.25333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.01,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.04333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.86667,
+    "p_assoc": 0.44667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.32,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.13333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 239
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.04667,
+    "p_assoc": 0.04,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.06,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.66,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 249
+  }
+ },
+ {
+  "pair_id": "kidney_3|training|PAS->MAS",
+  "set": "kidney_3",
+  "rep": 0,
+  "px_um": 1.0112,
+  "n_a": 244,
+  "n_lm": 80,
+  "tre_rigid_um": 99.02447511054088,
+  "tre_nonrigid_um": 80.35204483074597,
+  "window_area_mm2": 0.6975370229495643,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.30667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.06333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.10333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.39,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.68333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.01667,
+    "p_assoc": 0.01333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.29,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.05333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.52,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.03333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 215
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.32333,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.56,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.41,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.55,
+    "p_assoc": 0.31333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.04667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.71333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 225
+  }
+ },
+ {
+  "pair_id": "lung-lesion_1|training|29-041-Izd2-w35-Cc10-5-les1->29-041-Izd2-w35-CD31-3-les1",
+  "set": "lung-lesion_1",
+  "rep": 0,
+  "px_um": 0.348,
+  "n_a": 238,
+  "n_lm": 78,
+  "tre_rigid_um": 10.26092989758272,
+  "tre_nonrigid_um": 7.675778818156414,
+  "window_area_mm2": 0.6227227730852385,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.81333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.48,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.37333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 235
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.72333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.27,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.35,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 235
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.26,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.53667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.79,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 235
+  }
+ },
+ {
+  "pair_id": "lung-lesion_2|training|29-041-Izd2-w35-Ki67-7-les2->29-041-Izd2-w35-Cc10-5-les2",
+  "set": "lung-lesion_2",
+  "rep": 0,
+  "px_um": 0.696,
+  "n_a": 247,
+  "n_lm": 96,
+  "tre_rigid_um": 25.026070636832788,
+  "tre_nonrigid_um": 10.969558666440482,
+  "window_area_mm2": 0.5298435795497672,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.56333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.55,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 245
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.01667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.52,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.03333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.03333,
+    "p_assoc": 0.01667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.25667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.01667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 244
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.28333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.34333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  }
+ },
+ {
+  "pair_id": "lung-lesion_3|training|29-041-Izd2-w35-proSPC-4-les3->29-041-Izd2-w35-Ki67-7-les3",
+  "set": "lung-lesion_3",
+  "rep": 0,
+  "px_um": 0.348,
+  "n_a": 169,
+  "n_lm": 80,
+  "tre_rigid_um": 67.960778165394,
+  "tre_nonrigid_um": 33.89738886056706,
+  "window_area_mm2": 0.5014899110538221,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.03667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 170
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.66667,
+    "p_assoc": 0.63667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.89,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.79667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.02667,
+    "p_assoc": 0.01333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.43667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.01667,
+    "p_assoc": 1.0,
+    "significant": true,
+    "direction": "segregation",
+    "contact_p": 0.10667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.14667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 136
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.12333,
+    "p_assoc": 0.07,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.23667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.59667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.22333,
+    "p_assoc": 0.11667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.32333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.01667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 144
+  }
+ },
+ {
+  "pair_id": "lung-lobes_1|training|29-039-U-35W-Izd1-2-cd31->29-039-U-35W-Izd1-1-HE",
+  "set": "lung-lobes_1",
+  "rep": 0,
+  "px_um": 1.274,
+  "n_a": 246,
+  "n_lm": 98,
+  "tre_rigid_um": 59.79988844233659,
+  "tre_nonrigid_um": 11.678385302130954,
+  "window_area_mm2": 1.164976895728748,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.01333,
+    "p_assoc": 0.01333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.87667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.68,
+    "p_assoc": 0.77333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.96,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.82,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.01667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.29667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.02,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.09,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.48333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.58,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 242
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.01333,
+    "p_assoc": 0.01333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.46667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 245
+  }
+ },
+ {
+  "pair_id": "lung-lobes_3|training|29-040-U-35W-Izd1-2-cd31->29-040-U-35W-Izd1-1-HE",
+  "set": "lung-lobes_3",
+  "rep": 0,
+  "px_um": 1.274,
+  "n_a": 245,
+  "n_lm": 80,
+  "tre_rigid_um": 12.799050898496564,
+  "tre_nonrigid_um": 9.416590259739992,
+  "window_area_mm2": 0.7786588281163654,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.48,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.28667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.01,
+    "p_assoc": 0.01,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.49,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.56,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 242
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.80333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "lung-lobes_4|training|29-040-U-35W-Izd2-6-ki67->29-040-U-35W-Izd2-4-cc10",
+  "set": "lung-lobes_4",
+  "rep": 0,
+  "px_um": 1.274,
+  "n_a": 244,
+  "n_lm": 89,
+  "tre_rigid_um": 78.3766030327058,
+  "tre_nonrigid_um": 48.845713160056846,
+  "window_area_mm2": 0.48583328775310153,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.55,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.05,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.55667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.59667,
+    "p_assoc": 0.27,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.63,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.95333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.38333,
+    "p_assoc": 0.22667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.36,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.90667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 235
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.36333,
+    "p_assoc": 0.18,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.65,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.39667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.11,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.15667,
+    "p_assoc": 1.0,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.85,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.16333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 237
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|3_PAS->2_aSMA",
+  "set": "mice-kidney_1",
+  "rep": 0,
+  "px_um": 0.908,
+  "n_a": 247,
+  "n_lm": 132,
+  "tre_rigid_um": 7.660267886646191,
+  "tre_nonrigid_um": 10.278461249390801,
+  "window_area_mm2": 1.0233099167724284,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.03667,
+    "p_assoc": 0.03667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.05667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.64667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.06,
+    "p_assoc": 0.06,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.05667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.4,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.07333,
+    "p_assoc": 0.07,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.09667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.60333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 0,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 17.73080719544164,
+  "tre_nonrigid_um": 11.52654082217477,
+  "window_area_mm2": 0.6494913769927315,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.92,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.24667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.04667,
+    "p_assoc": 0.04667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.89667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.03333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 240
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.04,
+    "p_assoc": 0.04,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 1.0,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 244
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 0,
+  "px_um": 0.908,
+  "n_a": 246,
+  "n_lm": 132,
+  "tre_rigid_um": 14.477528308399963,
+  "tre_nonrigid_um": 7.598941090202434,
+  "window_area_mm2": 0.6896874504796866,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.60667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.41,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.34667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.13667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.13667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 250
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 250
+  }
+ }
+]
