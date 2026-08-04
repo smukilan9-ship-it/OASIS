@@ -60,6 +60,14 @@ _check_dependencies()
 import webview                       # noqa: E402  (after the actionable dep check)
 from oasis.webui.api import API           # noqa: E402
 from oasis.common.paths import resource_dir   # noqa: E402
+from oasis.common.winstart import gui_failure_report, prepare_gui   # noqa: E402
+
+# Before anything can import clr. On Windows the interface is drawn by WebView2, reached
+# through a .NET assembly that Windows blocks when it was extracted from a downloaded zip,
+# which killed v0.1.3 at startup for a user while every release check stayed green. No-op
+# on macOS and Linux. See oasis/common/winstart.py.
+prepare_gui()
+
 
 def main():
     api = API()
@@ -83,7 +91,15 @@ def main():
         background_color="#FFFFFF",
     )
     api.set_window(window)
-    webview.start(debug=False)
+    try:
+        webview.start(debug=False)
+    except Exception:
+        # A windowed build has no console, but PyInstaller shows whatever reached stderr in
+        # the dialog it puts up when startup fails. That dialog is the only thing a user
+        # gets, and until now it held a traceback naming a .NET assembly and no way to act
+        # on it. Say what is wrong with THIS machine first, then let the traceback follow.
+        sys.stderr.write(gui_failure_report())
+        raise
 
 
 def check_ui():
@@ -118,6 +134,7 @@ def check_ui():
         _guilib.initialize()
     except Exception as e:
         sys.stderr.write(f"UI CHECK FAILED: no GUI backend ({type(e).__name__}: {e})\n")
+        sys.stderr.write(gui_failure_report())
         return 1
     sys.stdout.write(f"UI CHECK OK: {url}\n")
     return 0
