@@ -8377,10 +8377,38 @@ function spReviewShow(data, config) {
   const flat = [];
   pairs.forEach((p, pi) => (p.images || []).forEach(im => { im.pairIndex = pi; flat.push(im); }));
   spReviewState = { images: flat.length ? flat : (data.images || []),
-                    pairs: pairs, band: data.band || null, config: config };
+                    pairs: pairs, band: data.band || null, config: config, pairIndex: 0 };
+
+  // BORROW QUANT'S REVIEW STATE, DO NOT REBUILD IT. The slide/calls panel, its zoom, pan
+  // and the red/green repaint on every cutoff change all live in qrDrawViews, qrPaintCalls
+  // and qrBindZoom, keyed by the same flat index this screen already uses. Filling qrState
+  // in the shape those expect means Spatial gets the identical panel rather than a second
+  // implementation of it that drifts. qrThresholdFor reads overrides[name], so each
+  // section's own cutoff goes there.
+  qrState = {
+    cohort: (spReviewState.images[0] || {}).threshold ?? 0.2,
+    images: spReviewState.images,
+    overrides: Object.fromEntries(spReviewState.images.map(im => [im.name, im.threshold])),
+  };
+  for (const k of Object.keys(qrViewCache)) delete qrViewCache[k];
+  for (const k of Object.keys(qrZoomState)) delete qrZoomState[k];
+
   spReviewRenderBand();
   spReviewRenderImages();
   showView('spatial', 'review');
+}
+
+// One pair on screen at a time. Three pairs of two sections each, every one carrying a
+// slide, a calls overlay and a histogram, is a page nobody can hold in view; and the
+// decision being made is per pair, so the screen should show one pair's worth of evidence.
+function spReviewGoToPair(i) {
+  const pairs = spReviewState.pairs || [];
+  if (!pairs.length) return;
+  spReviewState.pairIndex = Math.max(0, Math.min(pairs.length - 1, i));
+  spReviewRenderBand();
+  spReviewRenderImages();
+  const s = document.querySelector('#spatial-review .scroll');
+  if (s) s.scrollTop = 0;
 }
 
 // Named explicitly, because "which null" decides what the result MEANS and the operator
@@ -8388,10 +8416,12 @@ function spReviewShow(data, config) {
 function spReviewRenderBand() {
   const el = document.getElementById('sp-review-band');
   if (!el) return;
-  // One pair keeps the screen it always had: the null card, then the histograms. A batch
-  // groups per pair instead, so the band moves inside each group and this stays empty.
+  // The null card belongs to the pair, and the screen now shows exactly one pair, so the
+  // pair block owns it and this slot stays empty. It used to render here for a single pair
+  // and inside the block for a batch; once single-pair started going through the same
+  // block, the card was drawn twice, one immediately below the other.
+  el.innerHTML = '';
   const many = (spReviewState.pairs || []).length > 1;
-  el.innerHTML = many ? '' : spReviewBandCardHTML(spReviewState.band || {});
   const anyOk = many
     ? (spReviewState.pairs || []).some(p => p.band && p.band.primary_null && !p.band.fail_closed)
     : !!((spReviewState.band || {}).primary_null) && !(spReviewState.band || {}).fail_closed;
@@ -8451,6 +8481,21 @@ function spReviewBandCardHTML(b) {
         positive cells: ${g.n_positive_a} and ${g.n_positive_b} (need
         ${g.min_positive_required}); cells available to build the model: ${g.n_support}
         (need ${g.min_support_required}).</div>` : '';
+  // SAY THE ARCHITECTURE ONCE. plan_reason and architecture_reason are two documents that
+  // happen to open with the same clause on a `caution` pair, so the card read
+  // "Tissue architecture is only marginally coarser than 75 µm …" and then, four lines
+  // below, "architecture is only marginally coarser than 75 µm …" again. Two statements of
+  // one fact look like two findings that agree. Keep the second only when it adds something.
+  // Compare on a short normalised prefix. The two sentences agree on the CLAUSE and then
+  // diverge ("… than 75 µm, where the reweighted" vs "… than 75 µm — the 75 µm reweighted"),
+  // so a long slice never matches and the duplicate survives; 30 characters is past
+  // "is only marginally coarser tha" and still short enough to land inside the other.
+  const norm = s => String(s || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  const planTxt = norm(b.plan_reason);
+  const archTxt = String(b.architecture_reason || '');
+  const archKey = norm(archTxt).replace(/^architecture /, '').slice(0, 30);
+  const archLine = (archTxt && !(archKey && planTxt.includes(archKey)))
+    ? '<br>' + esc(archTxt) : '';
   return `<div class="card">
     <div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
       <b style="font-size:13px">Null model</b>
@@ -8464,7 +8509,7 @@ function spReviewBandCardHTML(b) {
       ${esc(typeof spatialBandwidthStatusLabel === 'function'
             ? spatialBandwidthStatusLabel(worst, nul === 'dense_morphology') : String(worst))}${rejected75 ? ' — the 75 µm reweighted null is'
       + ' rejected for this architecture and the dense morphology-conditioned null is used instead. Not a failure of the pair.' : ''}
-      ${b.architecture_reason ? '<br>' + esc(String(b.architecture_reason)) : ''}</div>` : ''}
+      ${archLine}</div>` : ''}
     ${b.error ? `<div style="font-size:11px;color:#b91c1c;margin-top:4px">${esc(String(b.error))}</div>` : ''}
   </div>`;
 }
@@ -8472,29 +8517,74 @@ function spReviewBandCardHTML(b) {
 function spReviewRenderImages() {
   const host = document.getElementById('sp-review-images');
   if (!host) return;
-  const cards = (spReviewState.images || []).map((img, i) => spReviewImageCardHTML(img, i));
+  const all = spReviewState.images || [];
   const pairs = spReviewState.pairs || [];
-  if (pairs.length > 1) {
-    // A batch: one section per pair, each carrying its own null decision and its own two
-    // histograms. Nothing is pooled — the pairs are separate tissue and separate verdicts.
-    let k = 0;
-    host.innerHTML = pairs.map((p, pi) => {
-      const n = (p.images || []).length;
-      const mine = cards.slice(k, k + n); k += n;
-      return `<div class="card" style="padding:0;margin-bottom:14px;overflow:hidden">
-        <div style="display:flex;align-items:baseline;gap:10px;padding:12px 16px;
-                    border-bottom:1px solid var(--border);background:var(--surface)">
-          <b style="font-size:13px">Pair ${pi + 1}</b>
-          <span style="font-size:11px;color:var(--text3)">${esc(p.sample_id || '')}</span>
-        </div>
-        <div style="padding:14px 16px">${spReviewBandCardHTML(p.band)}${mine.join('')}</div>
-      </div>`;
-    }).join('');
-  } else {
-    host.innerHTML = cards.join('') || '<div class="info-box">No measured images.</div>';
+  if (!all.length) {
+    host.innerHTML = '<div class="info-box">No measured images.</div>';
+    return;
   }
+  const pi = Math.max(0, Math.min(pairs.length - 1, spReviewState.pairIndex || 0));
+  const pair = pairs[pi] || null;
+
+  // ONE PAIR AT A TIME. The two sections of a pair are the evidence for one decision, and
+  // the cutoffs of a pair you cannot see are not being judged. Every pair's cutoff is still
+  // carried into the run — spReviewApply reads them all from state, not from the DOM.
+  const mine = pair ? all.map((im, i) => [im, i]).filter(([im]) => im.pairIndex === pi)
+                    : all.map((im, i) => [im, i]);
+  const nav = pairs.length > 1 ? `
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+      <button class="btn sm" ${pi === 0 ? 'disabled' : ''}
+              onclick="spReviewGoToPair(${pi - 1})">← Previous pair</button>
+      <div style="font-size:12px"><b>Pair ${pi + 1} of ${pairs.length}</b>
+        <span style="color:var(--text3)">${esc((pair && pair.sample_id) || '')}</span></div>
+      <button class="btn sm" style="margin-left:auto" ${pi >= pairs.length - 1 ? 'disabled' : ''}
+              onclick="spReviewGoToPair(${pi + 1})">Next pair →</button>
+    </div>` : '';
+
+  host.innerHTML = nav
+    + (pair ? spReviewBandCardHTML(pair.band) : '')
+    + mine.map(([im, i]) => spReviewImageCardHTML(im, i)).join('');
+
+  // Fetch the slide and its outlines for the cards that now exist, the same way Quant does.
+  spReviewObserveViews(mine.map(([, i]) => i));
+
   const s = document.getElementById('sp-review-summary');
   if (s) s.textContent = spReviewSummaryText();
+}
+
+// Quant's lazy loader, pointed at explicit paths. Spatial knows exactly which slide and
+// which detections belong to a card, so it says so rather than letting the backend search:
+// the searching side-channel is what left this screen blank in the first place.
+let spReviewObserver = null;
+function spReviewObserveViews(indices) {
+  if (spReviewObserver) spReviewObserver.disconnect();
+  spReviewObserver = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      if (!e.isIntersecting) continue;
+      spReviewObserver.unobserve(e.target);
+      spReviewLoadViews(Number(e.target.dataset.i));
+    }
+  }, { rootMargin: '600px 0px' });
+  indices.forEach(i => {
+    const hostEl = document.getElementById('qr-views-' + i);
+    if (hostEl) { hostEl.dataset.i = String(i); spReviewObserver.observe(hostEl); }
+  });
+}
+
+async function spReviewLoadViews(i) {
+  const img = (spReviewState.images || [])[i];
+  if (!img || !img.geojson || qrViewCache[img.name] === 'pending') return;
+  if (!qrViewCache[img.name]) {
+    qrViewCache[img.name] = 'pending';
+    try {
+      const v = await window.pywebview.api.review_image_view(img.name, 1800, img.path, img.geojson);
+      qrViewCache[img.name] = (v && v.ok) ? v : { failed: true, msg: (v && v.msg) || 'unavailable' };
+    } catch (e) {
+      qrViewCache[img.name] = { failed: true, msg: String(e) };
+    }
+  }
+  qrDrawViews(i);
+  qrBindZoom(i);
 }
 
 function spReviewSummaryText() {
@@ -8526,6 +8616,29 @@ function spReviewImageCardHTML(img, i) {
       <div style="font-size:11px;color:var(--text3);margin:2px 0 6px">median ${img.p50} ·
         p90 ${img.p90} · max ${img.max} OD</div>
       <div id="sp-rev-hist-${i}">${qrHistogramSVG(img.hist, img.threshold, 480, 64, `spReviewThr:${i}`)}</div>
+      <!-- THE SAME PANEL QUANT SHOWS, and for the same reason: a histogram says how many
+           cells a cutoff selects, only the tissue says whether they are the right ones.
+           Identical ids to Quant's, because qrDrawViews / qrPaintCalls / qrBindZoom are
+           reused unchanged rather than reimplemented here. -->
+      <div class="qr-views" id="qr-views-${i}">
+        <div class="qr-view">
+          <div class="qr-view-label">Slide
+            <span class="qr-zoomhint">scroll to zoom · drag to pan · double-click to zoom in</span></div>
+          <div class="qr-pan" id="qr-pan-raw-${i}"><canvas id="qr-raw-${i}"></canvas></div>
+        </div>
+        <div class="qr-view">
+          <div class="qr-view-label">Calls at <b id="qr-thr-${i}">${img.threshold.toFixed(2)}</b> OD
+            <span class="qr-key"><i class="pos"></i>positive <i class="neg"></i>negative</span>
+          </div>
+          <div class="qr-pan" id="qr-pan-seg-${i}"><canvas id="qr-seg-${i}"></canvas></div>
+        </div>
+      </div>
+      <div class="qr-zoombar">
+        <button class="btn sm" onclick="qrZoom(${i}, 1/1.4)">−</button>
+        <button class="btn sm" onclick="qrZoom(${i}, 1.4)">+</button>
+        <button class="btn sm" onclick="qrZoomReset(${i})">Fit</button>
+        <span class="qr-zoomlvl" id="qr-zoomlvl-${i}">1.0×</span>
+      </div>
       <div class="field" style="margin-top:8px">
         <label>Cutoff — <b id="sp-rev-thr-${i}">${img.threshold.toFixed(2)}</b> OD</label>
         <input type="range" min="1" max="80" value="${Math.round(img.threshold * 100)}"
@@ -8544,11 +8657,20 @@ function spReviewThr(i, v) {
   document.getElementById('sp-rev-thr-' + i).textContent = img.threshold.toFixed(2);
   document.getElementById('sp-rev-hist-' + i).innerHTML =
     qrHistogramSVG(img.hist, img.threshold, 480, 64, `spReviewThr:${i}`);
+  // Repaint the calls on the tissue, which is the half of this screen that answers whether
+  // the cutoff picked the RIGHT cells. qrThresholdFor reads qrState.overrides[name], so the
+  // move has to land there before the repaint.
+  const thrEl = document.getElementById('qr-thr-' + i);
+  if (thrEl) thrEl.textContent = img.threshold.toFixed(2);
+  if (typeof qrState === 'object' && qrState && qrState.overrides) {
+    qrState.overrides[img.name] = img.threshold;
+    if (typeof qrPaintCalls === 'function') qrPaintCalls(i);
+  }
   clearTimeout(spReviewThrTimer);
   spReviewThrTimer = setTimeout(async () => {
     try {
       const r = await window.pywebview.api.spatial_histogram(
-        { bins: 48, images: [{ geojson: img.geojson, threshold: img.threshold }] });
+        { bins: 60, images: [{ geojson: img.geojson, threshold: img.threshold }] });
       const got = (r && r.images && r.images[0]) || null;
       if (got && got.at_threshold) {
         img.positive_cells = got.at_threshold.positive_cells;
@@ -9177,8 +9299,16 @@ function spatialAssocShowResults(data) {
               <b>${esc(failed.join('; '))}</b> — positive cells: A ${gj.n_positive_a}, B ${gj.n_positive_b}
               (need ${gj.min_positive_required}); support cells ${gj.n_support}
               (need ${gj.min_support_required}).</div>` : '';
-        const why = (a.dense || {}).reason || a.reason
-                    || (sv && (sv.reason || sv.dense_null_status)) || '';
+        // ONE SENTENCE, ONCE. The banner directly above this box already prints
+        // sv.reason, and on a fail-closed pair dense.reason IS sv.reason: the worker
+        // assigns `dense_info["reason"] = bandwidth_precheck["reason"]` when the fallback
+        // was never requested, and spatial_validity.reason is that same string. So the card
+        // stated the identical sentence twice, a few pixels apart, which reads like two
+        // separate findings that happen to agree.
+        const bannerSaid = String((sv && sv.reason) || '').trim();
+        const whyRaw = (a.dense || {}).reason || a.reason
+                       || (sv && (sv.reason || sv.dense_null_status)) || '';
+        const why = String(whyRaw).trim() === bannerSaid ? '' : whyRaw;
         return `
         <div class="card">
           <div class="card-title" style="display:flex;align-items:center;gap:8px">

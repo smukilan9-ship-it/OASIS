@@ -257,6 +257,33 @@ def generate_overlays_for_batch(
 # Spatial association visualizations (cross-type Ripley's K)
 # ──────────────────────────────────────────────────────────────────────────────
 
+def _extreme_radius_um(assoc, direction):
+    """Radius where the effect is strongest IN THE DIRECTION REPORTED, inside the DCLF band.
+
+    `peak_r_um` is argmax(L-r) whichever way the effect goes, so on a segregating pair it
+    names the least segregated radius — the weakest point of the finding, printed as though
+    it were the strongest. Association wants the maximum of L-r, segregation the minimum.
+    Returns None when the curve or the band is unusable, and the caller falls back.
+    """
+    import numpy as np
+
+    g = (assoc or {}).get("global", {}) or {}
+    radii = np.asarray((assoc or {}).get("radii_um") or [], dtype=float)
+    lmr = np.asarray((assoc or {}).get("L_minus_r") or [], dtype=float)
+    if radii.size == 0 or radii.size != lmr.size:
+        return g.get("peak_r_um")
+    rmin = g.get("dclf_rmin_um")
+    rmax = g.get("dclf_rmax_um")
+    band = np.isfinite(lmr)
+    if rmin is not None and rmax is not None:
+        band &= (radii >= float(rmin)) & (radii <= float(rmax))
+    if not np.any(band):
+        return g.get("peak_r_um")
+    idx = np.where(band)[0]
+    pick = np.argmin if direction == "segregation" else np.argmax
+    return float(radii[idx[int(pick(lmr[idx]))]])
+
+
 def _draw_stats_box(canvas, lines, box_w=230):
     """Dark stats box (top-left), OpenCV. Mutates canvas in place."""
     import cv2
@@ -511,18 +538,38 @@ def generate_consolidated_density(
                     cv2.FONT_HERSHEY_SIMPLEX, 0.42, (255, 255, 255), 1, cv2.LINE_AA)
 
     # ── Stats box (top-left): the key Ripley's K result ──────────────────────
+    # READ THE DIRECTION, AND QUOTE THE P THAT DECIDED IT.
+    #
+    # This box said "ASSOCIATED" for any significant result, and printed `peak_p_value`
+    # beside it. On a segregating pair that is wrong twice over. Measured on serial
+    # CD8/CD45, where the run reports significant SEGREGATION at p_dclf = 0.001, the image
+    # burned in read:
+    #
+    #     ASSOCIATED
+    #     peak L-r @ r=10 um
+    #     p = 1.0000
+    #
+    # The word is the opposite of the finding, and the number is the association-tail p at
+    # argmax(L-r) — for a segregating pattern that is the LEAST segregated radius, so it is
+    # ~1 by construction and contradicts the significance claim standing above it. This is
+    # the picture that goes to the lab.
     g   = (assoc or {}).get("global", {}) or {}
     sig = bool(g.get("significant"))
-    pr  = g.get("peak_r_um")
-    pp  = g.get("peak_p_value")
-    lines = [
-        "Cross-type Ripley's K",
-        "ASSOCIATED" if sig else "no sig. association",
-    ]
-    if pr is not None:
-        lines.append(f"peak L-r @ r={pr:.0f} um")
+    direction = str(g.get("direction") or "").lower()
+    verdict = ({"association": "ASSOCIATED", "segregation": "SEGREGATED"}.get(direction)
+               if sig else None) or ("SIGNIFICANT" if sig else "no sig. interaction")
+    # The DCLF p is what `significant` is decided on; the tail ps are diagnostics.
+    pp = g.get("global_p_dclf")
+    if pp is None:
+        pp = g.get("peak_p_value")
+    lines = ["Cross-type Ripley's K", verdict]
+    # The extreme in the direction actually claimed. peak_r_um is argmax(L-r) whichever way
+    # the effect goes, so on a segregation it points at the weakest radius, not the finding.
+    r_um = _extreme_radius_um(assoc, direction) if sig else g.get("peak_r_um")
+    if r_um is not None:
+        lines.append(f"strongest @ r={r_um:.0f} um" if sig else f"peak L-r @ r={r_um:.0f} um")
     if pp is not None:
-        lines.append(f"p = {pp:.4f}")
+        lines.append(f"p(DCLF) = {pp:.4f}")
     _draw_stats_box(out, lines, box_w=210)
 
     try:

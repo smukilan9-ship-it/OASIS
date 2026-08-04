@@ -967,7 +967,7 @@ class API:
             })
         return {"ok": True, "cohort_threshold": round(cohort, 4), "images": images}
 
-    def review_image_view(self, name, max_px=1800):
+    def review_image_view(self, name, max_px=1800, image_path=None, geojson_path=None):
         """Slide image plus cell outlines, for the side-by-side review panel.
 
         The browser recolours the cells itself as the cutoff moves, so this is fetched once
@@ -989,22 +989,34 @@ class API:
         from oasis.webui import calibration
         from oasis.quant import reclassify as RC
 
-        cfg = self._review_cfg or {}
-        output_dir = cfg.get("output_dir")
-        input_dir = cfg.get("input_dir")
-        if not output_dir:
-            return {"ok": False, "msg": "No segmented run to review"}
+        # EXPLICIT PATHS WIN. Quant reviews one folder and can find an image by name from
+        # `_review_cfg`. Spatial reviews two folders of serial sections, and its detections
+        # live under a per-pair sub-directory whose name the caller already knows, so it
+        # passes both paths and this does no searching at all. Without that, the same
+        # side-channel guess that left the Spatial review empty would decide which slide is
+        # drawn beside which histogram, and a wrong guess is worse here than a missing one.
+        if image_path and geojson_path:
+            src = Path(os.path.expanduser(str(image_path)))
+            geo = Path(os.path.expanduser(str(geojson_path)))
+            if not src.is_file() or not geo.is_file():
+                return {"ok": False, "msg": f"Could not read the slide or detections for {name}"}
+        else:
+            cfg = self._review_cfg or {}
+            output_dir = cfg.get("output_dir")
+            input_dir = cfg.get("input_dir")
+            if not output_dir:
+                return {"ok": False, "msg": "No segmented run to review"}
 
-        stem = os.path.splitext(str(name))[0]
-        src = None
-        for cand in Path(input_dir or "").glob(f"{stem}.*"):
-            if cand.suffix.lower() in (".tif", ".tiff", ".png", ".jpg", ".jpeg",
-                                       ".svs", ".ndpi"):
-                src = cand
-                break
-        geo = next(iter(sorted(Path(output_dir).glob(f"{stem}*.geojson"))), None)
-        if src is None or geo is None:
-            return {"ok": False, "msg": f"Could not locate image or detections for {name}"}
+            stem = os.path.splitext(str(name))[0]
+            src = None
+            for cand in Path(input_dir or "").glob(f"{stem}.*"):
+                if cand.suffix.lower() in (".tif", ".tiff", ".png", ".jpg", ".jpeg",
+                                           ".svs", ".ndpi"):
+                    src = cand
+                    break
+            geo = next(iter(sorted(Path(output_dir).glob(f"{stem}*.geojson"))), None)
+            if src is None or geo is None:
+                return {"ok": False, "msg": f"Could not locate image or detections for {name}"}
 
         try:
             with Image.open(src) as im:
@@ -2491,7 +2503,7 @@ class API:
                 out.append({**img, "ok": False, "msg": str(e)})
                 continue
             finite = vals[np.isfinite(vals)]
-            h = RC.histogram(vals, bins=int(payload.get("bins", 48)))
+            h = RC.histogram(vals, bins=int(payload.get("bins", 60)))
             entry = {**img, "ok": True, "n_cells": int(finite.size),
                      "hist": h,
                      "p50": round(float(np.median(finite)), 4) if finite.size else None,
@@ -2570,7 +2582,8 @@ class API:
             which image and where it looked, instead of "no measured cells".
             """
             entry = {"role": role, "name": os.path.basename(path or ""),
-                     "marker": marker or role, "geojson": None, "threshold": float(thr or 0.2)}
+                     "marker": marker or role, "geojson": None, "path": path,
+                     "threshold": float(thr or 0.2)}
             if not path:
                 return entry
             hits = [from_precheck] if from_precheck and os.path.exists(from_precheck) else []
@@ -2588,7 +2601,11 @@ class API:
                 finite = vals[np.isfinite(vals)]
                 entry.update({
                     "n_cells": int(finite.size),
-                    "hist": RC.histogram(vals, bins=48),
+                    # The SAME call Quant's review makes (get_review_data), so both screens
+                    # draw the same histogram for the same cells. Spatial hardcoded 48 bins
+                    # against Quant's default 60: a visibly different shape for identical
+                    # data, on two screens that promise the same job.
+                    "hist": RC.histogram(vals),
                     "p50": round(float(np.median(finite)), 4) if finite.size else None,
                     "p90": round(float(np.percentile(finite, 90)), 4) if finite.size else None,
                     "max": round(float(finite.max()), 4) if finite.size else None,
