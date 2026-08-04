@@ -4697,6 +4697,7 @@ function qrShow(data) {
   // on the screen whose entire purpose is judging the calls against the tissue.
   for (const k of Object.keys(qrViewCache)) delete qrViewCache[k];
   for (const k of Object.keys(qrZoomState)) delete qrZoomState[k];
+  qrRoot = 'quant-review';          // these cards are Quant's; see qrFind
   qrState = { cohort: data.cohort_threshold, images: data.images || [], overrides: {} };
   for (const img of qrState.images) {
     if (img.threshold != null && Math.abs(img.threshold - qrState.cohort) > 1e-9 && !img.membrane)
@@ -4793,7 +4794,7 @@ function qrObserveViews() {
     }
   }, { rootMargin: '600px 0px' });
   qrState.images.forEach((_, i) => {
-    const host = document.getElementById('qr-views-' + i);
+    const host = qrFind('qr-views-' + i);
     if (host) { host.dataset.i = String(i); qrObserver.observe(host); }
   });
 }
@@ -4838,14 +4839,14 @@ function qrApplyZoom(i) {
       cv.style.transform = `translate(${z.tx}px, ${z.ty}px) scale(${z.sc})`;
     }
   }
-  const lvl = document.getElementById('qr-zoomlvl-' + i);
+  const lvl = qrFind('qr-zoomlvl-' + i);
   if (lvl) lvl.textContent = (z.sc >= 10 ? z.sc.toFixed(0) : z.sc.toFixed(1)) + '×';
 }
 function qrZoom(i, f, ox, oy) {
   const z = qrZoomFor(i);
   const next = Math.max(QR_ZOOM_MIN, Math.min(QR_ZOOM_MAX, z.sc * f));
   f = next / z.sc;
-  const pan = document.getElementById('qr-pan-raw-' + i);
+  const pan = qrFind('qr-pan-raw-' + i);
   const r = pan ? pan.getBoundingClientRect() : { width: 300, height: 200 };
   // Hold the point under the cursor still. Without this the field slides away from
   // whatever the user was trying to look at, which is the whole reason they zoomed.
@@ -4965,10 +4966,24 @@ async function qrLoadViews(i) {
   qrBindZoom(i);
 }
 
+// WHICH REVIEW OWNS THE CARDS. Quant's review and Spatial's now render the same card, so
+// both emit `qr-views-0`, `qr-raw-0`, `qr-seg-0`. Two elements share each id the moment both
+// screens have rendered once in a session, and getElementById returns the FIRST in document
+// order — #quant-review, which is declared above #spatial-review. Spatial's slide would be
+// drawn into Quant's hidden canvas and Spatial's own panel would stay blank: the same
+// "nothing is displayed" failure this screen has already had, arriving a third way.
+// The painters are shared, so the scope has to be too. Each screen names its root, and
+// lookups are confined to it.
+let qrRoot = 'quant-review';
+function qrFind(id) {
+  const scope = document.getElementById(qrRoot);
+  return (scope || document).querySelector('[id="' + id + '"]');
+}
+
 function qrDrawViews(i) {
   const img = qrState.images[i];
   const v = qrViewCache[img && img.name];
-  const host = document.getElementById('qr-views-' + i);
+  const host = qrFind('qr-views-' + i);
   if (!v || v === 'pending' || !host) return;
   if (v.failed) {
     host.innerHTML = `<div style="font-size:11px;color:var(--text3)">
@@ -4976,8 +4991,8 @@ function qrDrawViews(i) {
       unaffected.</div>`;
     return;
   }
-  const raw = document.getElementById('qr-raw-' + i);
-  const seg = document.getElementById('qr-seg-' + i);
+  const raw = qrFind('qr-raw-' + i);
+  const seg = qrFind('qr-seg-' + i);
   if (!raw || !seg) return;
 
   for (const cv of [raw, seg]) { cv.width = v.w; cv.height = v.h; }
@@ -4996,7 +5011,7 @@ function qrDrawViews(i) {
 function qrPaintCalls(i) {
   const img = qrState.images[i];
   const v = qrViewCache[img && img.name];
-  const seg = document.getElementById('qr-seg-' + i);
+  const seg = qrFind('qr-seg-' + i);
   // 'pending' is a sentinel, not a view, and a view can legitimately carry no cells
   // (an empty field). Repainting now runs on every cutoff change rather than only after
   // a full re-render, so this has to tolerate being called before the view has landed.
@@ -5056,16 +5071,16 @@ function qrRefreshThreshold(i) {
   const thr = qrThresholdFor(img);
   const n = img.total_cells || 0;
   const frac = qrFracFromHistogram(img.histogram, thr);
-  const cnt = document.getElementById('qr-count-' + i);
+  const cnt = qrFind('qr-count-' + i);
   if (cnt && !img.membrane) {
     const pos = (frac == null) ? null : Math.round(frac * n);
     cnt.textContent = (frac == null)
       ? 'count unavailable above the plotted range — the exact number is applied on Continue'
       : `~${pos.toLocaleString()} / ${n.toLocaleString()} positive (${(frac * 100).toFixed(1)}%)`;
   }
-  const lbl = document.getElementById('qr-thr-' + i);
+  const lbl = qrFind('qr-thr-' + i);
   if (lbl) lbl.textContent = thr.toFixed(2);
-  const hist = document.getElementById('qr-hist-' + i);
+  const hist = qrFind('qr-hist-' + i);
   if (hist) hist.innerHTML = qrHistogramSVG(img.histogram, img.membrane ? -1 : thr, 480, 64,
                                              img.membrane ? null : `qrHistDrag:${i}`);
   qrPaintCalls(i);              // recolours from the cached image — no reload, no flash
@@ -5076,7 +5091,7 @@ function qrRefreshThreshold(i) {
 function qrHistDrag(i, od) {
   const img = qrState.images[i];
   if (!img || img.membrane) return;
-  const box = document.getElementById('qr-ov-' + i);
+  const box = qrFind('qr-ov-' + i);
   if (box) box.value = od.toFixed(2);
   qrOverride(i, od);
 }
@@ -7011,13 +7026,16 @@ const HELP = {
         cap: 'The pair strip with all three certified — a tick marks each one that has passed.' },
       { h: 'Set the cutoffs and check the null',
         p: 'Each section carries a different marker, so each gets its own cutoff, judged '
-         + 'against its own histogram. On the same screen OASIS names the comparison model '
-         + 'this tissue supports, and says so plainly if none of them fits. In a batch every '
-         + 'pair gets its own section here. Nothing is written until you continue.',
+         + 'against its own histogram <b>and against the tissue</b>: the slide beside the '
+         + 'cells the cutoff calls, red for positive and green for negative, repainting as '
+         + 'you drag. On the same screen OASIS names the comparison model this tissue '
+         + 'supports, and says so plainly if none of them fits. A batch shows one pair at a '
+         + 'time, with Previous and Next. Nothing is written until you continue.',
         img: 'spatial-5-review.png',
-        cap: 'Three serial CD8/CD45 pairs, each with its own two histograms and its own null. '
-           + 'This tissue measures just above the 75 µm bandwidth, so the run switches to the '
-           + 'dense null rather than trusting the reweighted one.' },
+        cap: 'A real CD8 section: the distribution on the left of the cutoff, and on the '
+           + 'right the cells it calls, drawn on the slide. This tissue measures just above '
+           + 'the 75 µm bandwidth, so the run switches to the dense null rather than trusting '
+           + 'the reweighted one.' },
       { h: 'Read the association',
         p: 'A cross-type Ripley\'s K curve against the chosen null, with the certified window '
          + 'and its measured error beside it. When the tissue supports no null OASIS reports '
@@ -8392,6 +8410,7 @@ function spReviewShow(data, config) {
   };
   for (const k of Object.keys(qrViewCache)) delete qrViewCache[k];
   for (const k of Object.keys(qrZoomState)) delete qrZoomState[k];
+  qrRoot = 'spatial-review';        // these cards are Spatial's; see qrFind
 
   spReviewRenderBand();
   spReviewRenderImages();
@@ -8404,6 +8423,7 @@ function spReviewShow(data, config) {
 function spReviewGoToPair(i) {
   const pairs = spReviewState.pairs || [];
   if (!pairs.length) return;
+  qrRoot = 'spatial-review';
   spReviewState.pairIndex = Math.max(0, Math.min(pairs.length - 1, i));
   spReviewRenderBand();
   spReviewRenderImages();
@@ -8566,12 +8586,13 @@ function spReviewObserveViews(indices) {
     }
   }, { rootMargin: '600px 0px' });
   indices.forEach(i => {
-    const hostEl = document.getElementById('qr-views-' + i);
+    const hostEl = qrFind('qr-views-' + i);
     if (hostEl) { hostEl.dataset.i = String(i); spReviewObserver.observe(hostEl); }
   });
 }
 
 async function spReviewLoadViews(i) {
+  qrRoot = 'spatial-review';
   const img = (spReviewState.images || [])[i];
   if (!img || !img.geojson || qrViewCache[img.name] === 'pending') return;
   if (!qrViewCache[img.name]) {
@@ -8653,6 +8674,7 @@ let spReviewThrTimer = null;
 function spReviewThr(i, v) {
   const img = spReviewState.images[i];
   if (!img) return;
+  qrRoot = 'spatial-review';
   img.threshold = Number(v);
   document.getElementById('sp-rev-thr-' + i).textContent = img.threshold.toFixed(2);
   document.getElementById('sp-rev-hist-' + i).innerHTML =
@@ -8660,7 +8682,7 @@ function spReviewThr(i, v) {
   // Repaint the calls on the tissue, which is the half of this screen that answers whether
   // the cutoff picked the RIGHT cells. qrThresholdFor reads qrState.overrides[name], so the
   // move has to land there before the repaint.
-  const thrEl = document.getElementById('qr-thr-' + i);
+  const thrEl = qrFind('qr-thr-' + i);
   if (thrEl) thrEl.textContent = img.threshold.toFixed(2);
   if (typeof qrState === 'object' && qrState && qrState.overrides) {
     qrState.overrides[img.name] = img.threshold;
