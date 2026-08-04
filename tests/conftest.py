@@ -139,3 +139,26 @@ def attracted_pair(rng):
     b = a[idx] + rng.normal(0, 6.0, (300, 2))          # ~6 px around an A cell
     b = np.clip(b, 0, w)
     return dict(a=a, b=b, w=w, h=h, area=w * h)
+
+
+@pytest.fixture(scope="session")
+def loftr_weights():
+    """Skip, rather than fail, when LoFTR's weights cannot be fetched.
+
+    `certify_local_roi` runs the matcher, and kornia downloads its weights from the network
+    the first time. On a runner that cannot reach the host, three ROI-geometry tests failed
+    with `URLError: Connection timed out` — a verdict about the network, reported as a
+    verdict about clipping logic. Once Windows and Linux stopped being advisory that took
+    the whole build down with it.
+
+    The geometry those tests pin is real and still runs wherever the weights are present,
+    including the reference platform. What is not acceptable is a gating job whose result
+    depends on a download.
+    """
+    import urllib.error
+
+    try:
+        from oasis.spatial.loftr_matcher import _get
+        return _get("outdoor")
+    except (urllib.error.URLError, TimeoutError, ConnectionError, OSError) as e:
+        pytest.skip(f"LoFTR weights unavailable ({type(e).__name__}: {e})")

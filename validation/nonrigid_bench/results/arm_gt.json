@@ -19468,5 +19468,2625 @@
    },
    "n_b": 246
   }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 0,
+  "px_um": 0.908,
+  "n_a": 247,
+  "n_lm": 132,
+  "tre_rigid_um": 21.517191214867957,
+  "tre_nonrigid_um": 21.994993165563614,
+  "window_area_mm2": 0.8891987936069636,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.01,
+    "p_assoc": 0.01,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.68,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.10667,
+    "p_assoc": 0.08667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.09,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.59,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.17333,
+    "p_assoc": 0.11,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.09,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.64,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 1,
+  "px_um": 0.908,
+  "n_a": 245,
+  "n_lm": 132,
+  "tre_rigid_um": 26.274233760764268,
+  "tre_nonrigid_um": 28.131046987906892,
+  "window_area_mm2": 0.8049962038253802,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.04333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.97,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.07333,
+    "p_assoc": 0.06,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.26333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.63667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 242
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.05667,
+    "p_assoc": 0.05333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.04333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.74,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 244
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 2,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 31.632392751153557,
+  "tre_nonrigid_um": 31.3187301866151,
+  "window_area_mm2": 0.7629750659917697,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.12667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.84333,
+    "p_assoc": 0.41,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.26333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.92333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 243
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.79,
+    "p_assoc": 0.44,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.15667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.80667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 241
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 3,
+  "px_um": 0.908,
+  "n_a": 249,
+  "n_lm": 132,
+  "tre_rigid_um": 17.54579358298841,
+  "tre_nonrigid_um": 15.411273790239452,
+  "window_area_mm2": 0.8542069281527565,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.03333,
+    "p_assoc": 0.03,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.91333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.17,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.26667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.47,
+    "p_assoc": 0.21667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.35667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.63,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.36333,
+    "p_assoc": 0.18667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.30333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.74,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 4,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 32.52740784053002,
+  "tre_nonrigid_um": 32.36867305163217,
+  "window_area_mm2": 0.7515266018127029,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.02333,
+    "p_assoc": 0.02333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.45667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.04667,
+    "p_assoc": 0.04667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.07333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.52,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 235
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.02667,
+    "p_assoc": 0.02333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.33667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 238
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 5,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 35.540074814642864,
+  "tre_nonrigid_um": 31.119480539554,
+  "window_area_mm2": 0.7658762540978776,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.07333,
+    "p_assoc": 0.06667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.02,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.58667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.42667,
+    "p_assoc": 0.15,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.29667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.96667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 245
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.13,
+    "p_assoc": 0.09,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.37667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.20667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 6,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 24.688008309364385,
+  "tre_nonrigid_um": 24.68714122487262,
+  "window_area_mm2": 0.7655347997646669,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.32667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.32333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.45333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.17667,
+    "p_assoc": 0.08333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.24,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.68,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.04667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 243
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.10333,
+    "p_assoc": 0.08,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.14,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.95,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 244
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 7,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 16.650933459935388,
+  "tre_nonrigid_um": 15.084260530247992,
+  "window_area_mm2": 0.7392523325536335,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.68,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.07333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.36667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.07667,
+    "p_assoc": 0.05333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.80667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.66,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 238
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.06667,
+    "p_assoc": 0.04667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.11333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.72333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 238
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 8,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 27.609081920534855,
+  "tre_nonrigid_um": 31.337580658189562,
+  "window_area_mm2": 0.8343391921663481,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.01333,
+    "p_assoc": 0.01333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.36333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.1,
+    "p_assoc": 0.07,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.05667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.89,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 244
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.1,
+    "p_assoc": 0.08,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.44333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.79667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 244
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|8_CD31->3_PAS",
+  "set": "mice-kidney_1",
+  "rep": 9,
+  "px_um": 0.908,
+  "n_a": 242,
+  "n_lm": 132,
+  "tre_rigid_um": 18.449669976279402,
+  "tre_nonrigid_um": 15.057519947315466,
+  "window_area_mm2": 0.518623051249858,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.02667,
+    "p_assoc": 0.02333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.82,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.26,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.18333,
+    "p_assoc": 0.07,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.19,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.87667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.05333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 247
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.18,
+    "p_assoc": 0.09,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.42333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.53333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 250
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 0,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 31.733375191463583,
+  "tre_nonrigid_um": 9.930680699915271,
+  "window_area_mm2": 0.6234421430355451,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.20333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.31333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.49,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.05,
+    "p_assoc": 0.03333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.3,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.15333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.11667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.01333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.2,
+    "p_assoc": 0.09667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.34667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 234
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.09667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 237
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 1,
+  "px_um": 0.908,
+  "n_a": 247,
+  "n_lm": 132,
+  "tre_rigid_um": 29.47205991848872,
+  "tre_nonrigid_um": 24.209943718716687,
+  "window_area_mm2": 0.6884043799433442,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.54667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.46,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.40333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.1,
+    "p_assoc": 0.05333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.90333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.44667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.07667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.10333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.01333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.2,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.09333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 248
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.01667,
+    "p_assoc": 0.01333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.22667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.08333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.06667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 2,
+  "px_um": 0.908,
+  "n_a": 246,
+  "n_lm": 132,
+  "tre_rigid_um": 20.877306388189766,
+  "tre_nonrigid_um": 5.504378237657363,
+  "window_area_mm2": 0.6583130025497765,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.72333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.46,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.01,
+    "p_assoc": 0.01,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.19333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.04,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.48667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.74333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 250
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 3,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 35.251591221167885,
+  "tre_nonrigid_um": 12.62920309319637,
+  "window_area_mm2": 0.6882141650867536,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.01667,
+    "p_assoc": 0.01667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.59667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.98667,
+    "p_assoc": 0.66333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.49333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.97333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.29,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.06333,
+    "p_assoc": 0.03667,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.28,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 237
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.27,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 4,
+  "px_um": 0.908,
+  "n_a": 247,
+  "n_lm": 132,
+  "tre_rigid_um": 44.98084878461458,
+  "tre_nonrigid_um": 33.012857515258304,
+  "window_area_mm2": 0.393033142397331,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.44,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.56333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.21333,
+    "p_assoc": 0.54,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.49,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.62333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.08333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.36,
+    "p_assoc": 0.22,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.86667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 231
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.6,
+    "p_assoc": 0.26333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.79667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.87,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 234
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 5,
+  "px_um": 0.908,
+  "n_a": 246,
+  "n_lm": 132,
+  "tre_rigid_um": 18.796506087565795,
+  "tre_nonrigid_um": 6.519138128699938,
+  "window_area_mm2": 0.6597451110278564,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.09333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.17,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.25667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.02667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.6,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.36667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 244
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.97,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.44667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.85,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 245
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 6,
+  "px_um": 0.908,
+  "n_a": 248,
+  "n_lm": 132,
+  "tre_rigid_um": 19.15260577271396,
+  "tre_nonrigid_um": 12.073499590661969,
+  "window_area_mm2": 0.6803382505108049,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.57333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.81667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.61333,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.14,
+    "p_assoc": 0.06333,
+    "significant": false,
+    "direction": "none",
+    "contact_p": 0.22667,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.25667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "csr_only",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.04333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 247
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.01,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.68,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 7,
+  "px_um": 0.908,
+  "n_a": 245,
+  "n_lm": 132,
+  "tre_rigid_um": 23.448051261191864,
+  "tre_nonrigid_um": 11.21067266625403,
+  "window_area_mm2": 0.6508303694908681,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.03333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.46667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.55,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.07,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 236
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.03333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 239
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 8,
+  "px_um": 0.908,
+  "n_a": 244,
+  "n_lm": 132,
+  "tre_rigid_um": 30.658767736184053,
+  "tre_nonrigid_um": 8.922849097553556,
+  "window_area_mm2": 0.6666803791193672,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.53,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.41,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.29667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.03333,
+    "p_assoc": 0.03,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.45,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.18,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.03,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00667,
+    "p_assoc": 0.00667,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 234
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.01,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 248
+  }
+ },
+ {
+  "pair_id": "mice-kidney_1|training|9_PAS->8_CD31",
+  "set": "mice-kidney_1",
+  "rep": 9,
+  "px_um": 0.908,
+  "n_a": 245,
+  "n_lm": 132,
+  "tre_rigid_um": 20.75052195290381,
+  "tre_nonrigid_um": 6.041224487885534,
+  "window_area_mm2": 0.6660456537709621,
+  "truth": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.68667,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.25,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "n_b": 246
+  },
+  "rigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.27333,
+    "contact_sig": false,
+    "contact_dir": "none",
+    "coinfil_p": 0.02333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.01,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 247
+  },
+  "nonrigid": {
+   "reweighted": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00667,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.05,
+    "coinfil_sig": false,
+    "coinfil_dir": "none"
+   },
+   "homogeneous": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.00333,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "robustness": "robust",
+   "dense_morphology": {
+    "p_dclf": 0.00333,
+    "p_assoc": 0.00333,
+    "significant": true,
+    "direction": "association",
+    "contact_p": 0.00333,
+    "contact_sig": true,
+    "contact_dir": "association",
+    "coinfil_p": 0.03667,
+    "coinfil_sig": true,
+    "coinfil_dir": "association"
+   },
+   "n_b": 247
+  }
  }
 ]

@@ -3253,3 +3253,21 @@ PYTHONUTF8=0 -X utf8=0` as well as normally.
 Windows and Linux no longer carry `continue-on-error`. "Advisory" is only honest when
 someone reads the advice; here it meant a real, silent, cross-platform data bug sat behind
 a green tick for a month.
+
+### 23.4 …and then Linux failed, on the network
+
+Removing `continue-on-error` immediately did its job twice. Windows went green on the
+encoding fix; Linux went red, and it had been quietly passing before only because nobody
+was gating on it either.
+
+Three ROI-geometry tests call `certify_local_roi`, which runs LoFTR, and kornia fetches
+the weights over the network on first use. On that runner:
+`urllib.error.URLError: <urlopen error [Errno 110] Connection timed out>`. A verdict about
+the network, reported as a verdict about clipping logic, now taking the whole build with
+it.
+
+The geometry those tests pin is real and still runs wherever the weights are present. What
+is not defensible is a gating job whose result depends on a download, so they now take a
+session fixture that tries to load the matcher and skips with the reason if it cannot. The
+skip path is itself checked by raising the exact `URLError` the runner produced, because a
+skip that never fires is worth as much as no skip at all.

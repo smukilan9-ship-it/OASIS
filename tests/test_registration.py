@@ -707,7 +707,7 @@ def test_the_drag_estimator_uses_a_scale_free_consistency_test():
     assert sr.transform_drag_um(ref, ref.copy(), None, (1000, 1000), 0.5) is None
 
 
-def test_both_panes_show_the_same_tissue_after_clipping():
+def test_both_panes_show_the_same_tissue_after_clipping(loftr_weights):
     """The reference outline and the moving outline must be counterparts of each other.
 
     certify_local_roi trims the reference ROI to the moving frame's footprint, because the
@@ -753,7 +753,7 @@ def test_both_panes_show_the_same_tissue_after_clipping():
     assert clean.get("roi_clip_note") is None
 
 
-def test_a_region_fit_that_disagrees_with_the_whole_field_is_repaired():
+def test_a_region_fit_that_disagrees_with_the_whole_field_is_repaired(loftr_weights):
     """A per-region residual cannot see an error that lives in the PARAMETERS.
 
     A similarity fitted to correspondences packed into one small region can absorb a large
@@ -887,7 +887,7 @@ def test_a_local_fit_does_not_invent_its_own_rotation_and_scale():
         f"constrained translation {con[:, 2]} did not recover the truth {truth}")
 
 
-def test_the_two_certified_windows_describe_the_same_tissue():
+def test_the_two_certified_windows_describe_the_same_tissue(loftr_weights):
     """The reference and moving outlines must be images of each other, not two shapes.
 
     Reported from the app after an auto-certify: the moving outline sat inset from the left
