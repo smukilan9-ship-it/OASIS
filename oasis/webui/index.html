@@ -6995,14 +6995,16 @@ const HELP = {
       { h: 'Set the cutoffs and check the null',
         p: 'Each section carries a different marker, so each gets its own cutoff, judged '
          + 'against its own histogram. On the same screen OASIS names the comparison model '
-         + 'this tissue supports — and says so plainly if none of them fits.',
-        img: 'spatial-5-review.png',
-        cap: 'Per-pair histograms and the null decision, before the statistic is spent.' },
+         + 'this tissue supports — and says so plainly if none of them fits, which is what '
+         + 'the picture shows: nothing is written until you continue.' },
       { h: 'Read the association',
         p: 'A cross-type Ripley\'s K curve against the chosen null, with the certified window '
-         + 'and its measured error recorded beside it.',
+         + 'and its measured error beside it. When the tissue supports no null OASIS reports '
+         + 'that instead, and says so in as many words — an absent test is not a negative '
+         + 'result, and the two are never shown as the same thing.',
         img: 'spatial-6-results.png',
-        cap: 'The curve, the envelope, and the window it was measured in.' },
+        cap: 'A real run on serial CD8/CD45: certified at 8.32 µm, and all three pairs '
+           + 'withheld because the dense fallback gates did not pass.' },
     ],
     foot: 'No certification, no finding — an uncertified pair is flagged, never reported.'
   },

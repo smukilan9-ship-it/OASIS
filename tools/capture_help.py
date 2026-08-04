@@ -223,21 +223,57 @@ def do_settings():
     set_field("s-px-x", PX)
     if str(js("document.getElementById('s-px-x').value")) != PX:
         _failures.append("settings: pixel size did not take")
-    scroll_to_text("what the burned-in bar represents")
-    shot("set-3-scalebar.png")
-    scroll_to_text("cohort pixel size")
-    shot("set-1-pixelsize.png")
-    scroll_to_text("which pixel size wins")
-    shot("set-2-priority.png")
-    scroll_to_text("analysis engine")
-    shot("set-4-engine.png")
+    # By fraction of the scroll height, not by heading. Settings is barely two viewports
+    # tall, so scrolling the last three headings to the top all clamp at the bottom and
+    # produce three byte-identical pictures — which is how the first set shipped a duplicate.
+    for name, frac in (("set-3-scalebar.png", 0.00),
+                       ("set-1-pixelsize.png", 0.34),
+                       ("set-2-priority.png", 0.62),
+                       ("set-4-engine.png", 1.00)):
+        js(f"""(function(){{
+            const s = document.querySelector('.page.active .scroll');
+            if (s) s.scrollTop = (s.scrollHeight - s.clientHeight) * {frac};
+        }})()""")
+        time.sleep(0.6)
+        shot(name)
+    seen = {}
+    for name in ("set-3-scalebar.png", "set-1-pixelsize.png",
+                 "set-2-priority.png", "set-4-engine.png"):
+        p = HELP / name
+        if not p.exists():
+            continue
+        digest = p.read_bytes()
+        for other, blob in seen.items():
+            if blob == digest:
+                _failures.append(f"settings: {name} is identical to {other} — "
+                                 "two steps would show the same picture")
+        seen[name] = digest
 
 
 def do_quant():
     print("  quant")
     js("showPage('quant')")
-    time.sleep(0.8)
-    click("q-mode-batch-btn")
+    # The tab finishes setting itself up asynchronously (saved settings, folder state) and
+    # that setup calls quantSetMode('single'). Switching to batch before it lands is undone
+    # a moment later with nothing on screen to say so — the fields still read batch while
+    # the run takes the single-image path and fails on an empty filename.
+    time.sleep(3.0)
+    # Marker BEFORE mode. Choosing the marker runs quantStainChanged(), which re-derives the
+    # step's state and puts the mode back to single — so setting it after the mode toggle
+    # silently undoes the toggle, and the run then fails on the single-image path with an
+    # empty filename while every field on screen still says batch.
+    set_field("q-stain", "CD8")        # required; the run refuses without it
+    mode = ""
+    for _ in range(10):                 # set, then confirm it survived the next tick
+        js("quantSetMode('batch')")
+        time.sleep(1.0)
+        mode = js("typeof quantMode !== 'undefined' ? String(quantMode) : 'undefined'")
+        if mode == "batch":
+            break
+    print(f"      mode after switch: {mode!r}", flush=True)
+    if mode != "batch":
+        _failures.append(f"quant: batch mode did not stick (quantMode={mode!r})")
+        return
     set_field("q-input", str(QUANT_IN))
     set_field("q-output", str(OUT / "quant"))
     # The folder scan is async. A fixed sleep photographs an empty count on a slow disk.
@@ -258,6 +294,22 @@ def do_quant():
     js("quantWizardGoTo(5)")
     time.sleep(0.5)
     click("quant-run-btn")
+    # Fail here, not thirty minutes later. runQuantAnalysis() returns early on several
+    # guards, and if none of them toasts, the only symptom is a review screen that never
+    # arrives — which the next wait reports as a timeout on the wrong thing entirely.
+    time.sleep(6)
+    state = js("""({
+        running: typeof pipelineRunning !== 'undefined' ? pipelineRunning : 'undefined',
+        mode: typeof quantMode !== 'undefined' ? quantMode : 'undefined',
+        input: (document.getElementById('q-input')||{}).value || '',
+        step: typeof quantWizardStep !== 'undefined' ? quantWizardStep : -1,
+        label: (document.getElementById('quant-progress-label')||{}).textContent || '',
+    })""")
+    print(f"      after Run: {state}", flush=True)
+    if not state or not state.get("running"):
+        _failures.append(f"quant: the run did not start — page state {state}; "
+                         f"said {recorded()[-3:]}")
+        return
     # The progress bar plus the activity log filling up is the picture for "running".
     wait_for("document.getElementById('quant-progress-label').textContent.trim() "
              "&& !/^Initializing/.test(document.getElementById('quant-progress-label').textContent)",
@@ -278,7 +330,7 @@ def do_quant():
         shot("quant-6-results.png")
 
 
-def do_spatial():
+def do_spatial(stop_after_certify=False):
     print("  spatial")
     js("showPage('spatial')")
     time.sleep(0.8)
@@ -310,19 +362,34 @@ def do_spatial():
             const b = document.getElementById('spatial-cert-load');
             if (b && b.offsetParent !== null) spatialCertLoad();
         })()""")
-        if not wait_for("document.getElementById('spatial-loftr-auto')", timeout=420,
-                        what=f"pair {i + 1} to load"):
+        # Wait on the LOADED PAIR, not on the Certify button. That button is static markup
+        # inside the panel, so getElementById finds it before anything is loaded — the wait
+        # returned at once, Certify fired on an empty canvas, said "Load the pair first" to
+        # nobody, and the next wait then sat out its full timeout three times over.
+        if not wait_for("spatialCertWork && spatialCertWork.pair && spatialCertWork.ref",
+                        timeout=420, what=f"pair {i + 1} to load"):
             break
         js("loftrAutoFind()")
         if not wait_for(f"spatialCertifications && "
                         f"Object.values(spatialCertifications).filter(c=>c&&c.is_certified).length >= {i + 1}",
-                        timeout=1200, what=f"pair {i + 1} to certify"):
+                        timeout=600, what=f"pair {i + 1} to certify"):
             break
         print(f"      certified {i + 1}/3")
     time.sleep(1.5)
     shot("spatial-3-certify.png")
-    scroll_to(selector=".cert-pairnav")
+    # Step 4 is about moving BETWEEN pairs, so it has to show a different pair — the strip
+    # lives in the same non-scrolling panel as step 3, so anchoring on it produced a second
+    # copy of the step-3 picture, byte for byte.
+    js("spatialCertGoToPair(0)")
+    wait_for("spatialCertWork && spatialCertWork.pair && spatialCertWork.ref",
+             timeout=420, what="pair 1 to come back up")
+    time.sleep(2.0)
     shot("spatial-4-pairnav.png")
+    if (HELP / "spatial-3-certify.png").read_bytes() == (HELP / "spatial-4-pairnav.png").read_bytes():
+        _failures.append("spatial: steps 3 and 4 captured the same picture")
+
+    if stop_after_certify:
+        return
 
     js("spatialWizardGoTo(6)")
     time.sleep(0.8)
@@ -440,8 +507,19 @@ def do_classifier():
         print(f"      fit OK (held-out F1 {f1}); report screen intentionally not captured")
 
 
+def do_spatial_certify():
+    """Steps 1-4 only: everything up to the certified pairs, without spending the statistic.
+
+    Re-shooting the certification pictures should not cost another null check and another
+    Monte-Carlo run, which is most of the group's half hour and produces the two pictures
+    this one does not touch.
+    """
+    do_spatial(stop_after_certify=True)
+
+
 GROUPS = {"settings": do_settings, "quant": do_quant,
-          "spatial": do_spatial, "classifier": do_classifier}
+          "spatial": do_spatial, "certify": do_spatial_certify,
+          "classifier": do_classifier}
 
 
 def drive():
