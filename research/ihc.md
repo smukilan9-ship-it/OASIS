@@ -747,7 +747,12 @@ honest compartment-vs-engagement separation.
   `LL480_Junction_10X_2` is an unexplained outlier at 46.7 µm.
 - No cross-marker DAB ground truth for the targets → CD8/TIM-3 biological claim is
   underpowered (3 pairs, one cohort, nothing survives cohort FDR).
-- Certs are single-annotator LOO, n=8 provisional; one annotator-independent number only.
+- Certs are single-annotator LOO, n=8 provisional. **The FW bound's external calibration is
+  now n = 26 (§ 24), and the wider n changed the answer**: calibrated in the median
+  (gold n=6 ratio 0.96–1.10, coverage 89–95 %) but **under-stating realized error on 9 of 20
+  proxy pairs, worst 1.93× on mice-kidney** — a pair certified at 5 µm may carry nearly 10.
+  "Calibrated" is only supportable with a tissue envelope attached, and no envelope has been
+  derived. Still unmeasured on H-DAB.
 - Segmentation recall ~0.75 non-randomly thins dense infiltrate → biases the pattern.
 - Reweighted null anti-conservative — measured at size 0.24 on real tissue (§ 15.1), not
   "mild". The 75 µm architecture-scale is measured per image and now routes both
@@ -3364,12 +3369,11 @@ Three ways to keep both, in increasing order of novelty:
 2. **Empirical held-out TRE.** Not FW: hold out correspondences and measure realized error at
    them. Valid for any transform class, but it needs landmarks independent of the fit, which
    this cohort does not have (§ 3.5a) — so it needs the second annotator.
-3. **Certify the deformation gradient.** § 23.1 *is* an empirical Jacobian bound — the warp
-   preserves contact-band distances to within 1.3 % median / 8.4 % p90. A gate of the form
-   "this displacement field preserves distances in the analysis band to within X %" is
-   computable directly from the field, needs no landmarks, and is a distance-preservation
-   certificate for a **non-rigid** transform. Nothing in the literature does this. It is the
-   constructive answer to § 23.6 and belongs in the paper.
+3. ~~**Certify the deformation gradient.**~~ **TESTED AND DEAD — see § 23.10.** The idea was
+   that § 23.1 is already an empirical Jacobian bound, so "this field preserves distances in
+   the analysis band to within X %" could serve as a landmark-free certificate for a
+   non-rigid transform. It does not work, and the way it fails is worth more than the idea
+   was.
 
 ### 23.8 If non-rigid is adopted, VALIS is not the registrar to adopt it from
 
@@ -3491,3 +3495,220 @@ skip path is itself checked by raising the exact `URLError` the runner produced,
 skip that never fires is worth as much as no skip at all.
 
 ---
+
+### 23.10 MEASURED — a displacement field carries no usable information about its own accuracy
+
+`validation/nonrigid_bench/route3.py`. § 23.7 item 3 proposed a landmark-free certificate for
+a non-rigid warp: bound the deformation gradient, and certify windows where distances survive.
+It was written so it could fail, and it did.
+
+**Design.** 510 windows over the 17 pairs. For each, compute every quantity an operator could
+compute **with no ground truth at all** — distance distortion in the 10–20 µm band
+(`distort_*`), local Jacobian shear and scale variation (`jac_*`), micro-registration
+displacement magnitude (`micro_*`), and departure from the best local similarity
+(`simres_*`) — then score them against the **realized** TRE at ANHIR expert landmarks, which
+no registration sees.
+
+**Every candidate correlates with realized error, and every one of them is the same signal.**
+
+| feature | Spearman r vs realized TRE | AUC (TRE < 20 µm) | partial r given `micro_p90` |
+|---|---|---|---|
+| `micro_p90_um` | **0.507** | **0.781** | — |
+| `distort_p90` | 0.277 | 0.671 | **+0.064 (p = 0.15)** |
+| `jac_aniso_p90` | 0.260 | 0.658 | **+0.057 (p = 0.20)** |
+| `simres_p90_um` | 0.289 | 0.665 | **+0.028 (p = 0.53)** |
+
+Controlling for how far micro-registration moved things, **distance distortion adds nothing**
+— nor does Jacobian shear, nor departure from a local similarity. The distortion signal was
+never about distortion; it was a proxy for displacement magnitude the whole time.
+
+**And displacement magnitude is not a gate either.** Certifying windows below a threshold on
+`micro_p90` against a base rate of 0.496:
+
+| threshold | certified | precision | median TRE of certified |
+|---|---|---|---|
+| 6.6 µm | 11 / 510 | **0.636** | 14.3 µm |
+| 9.8 µm | 26 / 510 | 0.692 | 14.1 µm |
+| 19.9 µm | 102 / 510 | **0.814** | 11.5 µm |
+| 44.6 µm | 255 / 510 | 0.737 | 12.6 µm |
+| 92.4 µm | 382 / 510 | 0.597 | 15.0 µm |
+
+**Precision is not monotone in the threshold.** Tightening the gate from 19.9 µm to 6.6 µm
+*lowers* precision from 0.814 to 0.636. A certificate you cannot dial toward safety is not a
+certificate. The reason is plain once seen: a small micro-registration displacement means
+either the rigid stage was already right **or the warp failed to do anything**, and the second
+case is exactly the dangerous one. The field cannot tell them apart because both look
+identical from inside.
+
+**Gating on distortion is worse than not gating.** At its tightest threshold precision is
+**0.273**, well *below* the 0.496 base rate — the windows whose distances are best preserved
+are the ones **least** likely to be cell-scale accurate. An inverted gate.
+
+**What this establishes, and it is the useful part.** No function of a dense displacement
+field predicts whether that field put cells in the right place. Certification is not
+introspection: § 3.5's budget works because it consumes **correspondences with an
+independently measured localisation error**, not because it examines the transform's geometry.
+This is § 3.5's own lesson — a set selected for agreeing with a model cannot test that model —
+arriving from a third direction, after LOO residuals (§ 3.5) and RANSAC-selected landmarks
+(§ 3.5). **A transform cannot certify itself, by any route yet tried.**
+
+**Consequence.** Routes 1 and 2 in § 23.7 are the only live options for adopting non-rigid.
+One further untested route exists and should be named rather than quietly skipped: FW's
+derivation needs a model **linear in its parameters**, not specifically a similarity — so a
+TPS or B-spline warp fitted to the correspondences *does* have a design matrix and *does*
+admit `TRE_pred`. That is worth trying, with one warning attached in advance: more control
+points mean smaller residuals, so the § 6 fail-open worry ("certify anything by working
+harder") returns in a sharper form and would need the § 3.5 circularity guards extended before
+any such gate is trusted.
+
+---
+
+## 24. Session 2026-08-04c — the FW calibration at n = 26, and what n = 3 was hiding
+
+`validation/validate_fw_calibration_extended.py`, results in `fw_calibration_extended.json`.
+
+§ 3.5's cell-error budget had **one** external check, on **three** pairs of lung and mammary
+(`validate_fw_anhir_calibration.py`). § 23.5 makes that the load-bearing weakness of the whole
+architecture: we now knowingly use the *less accurate* transform in exchange for a bound, so
+the bound has to be worth the trade. This raises n and reports what each added pair is worth.
+
+**The dataset ceiling is real.** Only four CIMA sets carry two annotators, and `lung-lobes_3`
+has JB on one image of the set, so no pair forms from it. Three undirected pairs is all the
+two-annotator data that exists.
+
+### 24.1 Two arms, the second credentialed by the first
+
+* **GOLD** — two annotators, unchanged arithmetic, extended from 3 undirected to **6 directed**
+  pairs. A→B and B→A are different fits, different design matrices and different held-out
+  residuals, so both legitimately evaluate the bound.
+* **PROXY** — one annotator, split-half: fit on a random half of the landmarks, predict and
+  measure realized error at the held-out half, median over 12 random splits. Runs on any pair,
+  so it reaches the whole of ANHIR. It carries two biases pulling **opposite** ways: the
+  held-out points share the fitting annotator's systematic bias (realized error under-stated →
+  ratio biased **low**, unsafe), while FLE must be supplied rather than measured and a
+  too-small FLE shrinks predicted error (ratio biased **high**, safe).
+
+Which dominates is empirical, and answerable: run both arms on the six gold pairs, same
+measured FLE, so **only the source of the held-out points differs**.
+
+### 24.2 GOLD at n = 6 — the original result holds and strengthens
+
+| pair | FLE µm | realized p90 | predicted p90 | ratio | coverage |
+|---|---|---|---|---|---|
+| lung-lesion_3 | 5.8 | 73.1 | 76.0 | 0.96 | 95 % |
+| lung-lesion_3 (rev) | 5.8 | 72.1 | 72.9 | 0.99 | 95 % |
+| mammary-gland_1 | 14.1 | 335.3 | 326.5 | 1.03 | 93 % |
+| mammary-gland_1 (rev) | 14.1 | 337.5 | 330.9 | 1.02 | 93 % |
+| mammary-gland_2 | 23.3 | 712.6 | 646.7 | 1.10 | 89 % |
+| mammary-gland_2 (rev) | 23.3 | 702.2 | 637.8 | 1.10 | 89 % |
+
+Ratio median **1.02** (0.96–1.10), coverage median **93 %**. Every pair inside the ≤ 1.15
+safety line.
+
+### 24.3 The proxy tracks the gold, and errs safe
+
+Paired on the six gold pairs: **proxy − gold median +0.07**, range −0.04 to +0.17. The proxy
+runs slightly *high*, i.e. it makes the bound look marginally worse than it is — the safe
+direction, and the FLE-shrinkage bias evidently dominates the shared-annotator one. It is
+credentialed, with that +0.07 offset to be subtracted when reading it.
+
+### 24.4 PROXY at n = 20 over 8 tissues — the bound is NOT uniformly calibrated
+
+Ratio median **1.11** (IQR 1.00–1.43), coverage median 93 %, 18/20 pairs ≥ 85 % coverage. But
+**9 of 20 exceed the 1.15 line**, and the worst are not marginal:
+
+| under-stating pairs | ratio | | well-calibrated | ratio |
+|---|---|---|---|---|
+| mice-kidney_1 9_PAS→8_CD31 | **1.93** | | COAD_10 | 1.01 |
+| mice-kidney_1 8_CD31→3_PAS | **1.86** | | breast_1 | 0.98 |
+| lung-lesion_2 | **1.83** | | lung-lobes_4 | 0.96 |
+| mice-kidney_1 3_PAS→2_aSMA | 1.60 | | mammary-gland_2 s2_70 | 0.82 |
+| lung-lesion_1 | 1.50 | | gastric_9 | 0.93 |
+
+**n = 3 was optimistic because it sampled two tissues.** On the tissues it never touched the
+bound under-states realized error by up to ~1.9×, i.e. a pair certified at 5 µm can be
+carrying nearly 10.
+
+### 24.5 FLE sensitivity — some of it, but not all of it, is a mis-declared FLE
+
+The proxy's FLE is supplied. Sweeping it:
+
+| FLE µm | ratio median | ratio max | pairs > 1.15 |
+|---|---|---|---|
+| 3.0 | 1.04 | 1.40 | **2 / 20** |
+| 7.0 | 1.08 | 1.40 | 6 / 20 |
+| 14.1 *(gold median, default)* | 1.11 | 1.93 | 9 / 20 |
+| 25.0 | 1.10 | 1.68 | 7 / 20 |
+| 40.0 | 1.06 | 1.80 | 6 / 20 |
+
+Two things follow. **The failure is not purely an artefact** — even at the most favourable FLE
+tested, 2/20 pairs still exceed the line and the worst reaches 1.40. And **the response is
+non-monotone**, with the worst calibration in the middle of the range: FLE enters the
+prediction twice and in opposition — larger FLE inflates `TRE_pred` and the annotator term
+(ratio down) while simultaneously shrinking the inferred deformation through
+`σ_fit² = 2·FLE² + model²` (ratio up). An operator who mis-declares FLE can therefore land in
+the *worst* regime rather than a merely conservative one, which is a stronger argument for the
+§ 3.5 FLE-consistency audit than the one originally given for it.
+
+### 24.6 What this obliges
+
+* **§ 8 must record it**: the FW bound is calibrated in the median at n = 26 but under-states
+  realized error on a substantial minority of pairs, and the tissues where it fails are
+  identifiable. "Calibrated" without an envelope is no longer supportable.
+* The gate needs **either a safety factor or a stated tissue envelope** before it is presented
+  as a per-cell guarantee. Deriving one is not done here.
+* The paper reports **n = 6 gold + 20 credentialed proxy**, with the +0.07 offset stated and
+  §24.4 shown rather than summarised — the failures are the informative part.
+* Still unmeasured on **H-DAB**, which is the modality the tool ships for. The second annotator
+  on the CD8/TIM-3 cohort remains the one experiment that would close this.
+
+### 24.5 A path is not a URL, and the smoke test never opened a window
+
+v0.1.0 shipped and did not start on Windows. `app.py` opened its window with
+`url=f"file://{html_path}"`; on Windows that path is `C:\Users\…\index.html`, so the
+result is `file://C:\Users\…`, where everything after the two slashes parses as the URL's
+**host** and the path is empty. The window had nothing to load and the app exited with
+PyInstaller's "Failed to execute script" dialog. POSIX was never correct either, only
+lucky: a POSIX path already begins with `/`, so two slashes plus that one happen to make
+three. Neither form escaped spaces, and this repository is checked out under a directory
+with one.
+
+**Every platform's CI passed.** The only frozen check ran `--oasis-worker run_pipeline`,
+which segments an image headlessly and shares almost no code with startup. Nothing in the
+pipeline ever constructed a window, so a bundle whose UI could not load was
+indistinguishable from a working one — the exact "green build, broken app" the smoke test
+exists to prevent, with the hole placed where the app is most platform-specific.
+
+`--oasis-check-ui` now resolves the interface file, builds the URL the window is given, and
+imports the platform's GUI backend, opening nothing. build.sh and release.yml run it on
+every bundle. **It found a second shipped bug on its first run**: the Linux bundle failed
+with `No module named 'gi'`, so v0.1.0's Linux download could never have opened a window
+either. `python3-gi` from apt installs into the system interpreter while the job builds
+with setup-python, so PyInstaller analysed an import that did not resolve and froze a
+bundle with no backend at all. The spec now names the host's backend explicitly instead of
+trusting PyInstaller to follow guilib's runtime selection.
+
+### 24.6 The overlay said the opposite of the finding
+
+The consolidated density map's stats box chose its word from `significant` alone and
+printed `peak_p_value` beside it. On the serial CD8/CD45 pairs, which report significant
+**segregation** at p_dclf = 0.001, the burned-in image read `ASSOCIATED / peak L-r @
+r=10 um / p = 1.0000`. The label is the opposite of the result, and the number is the
+association-tail p at argmax(L−r) — on a segregating pattern the *least* segregated radius,
+so ~1 by construction, contradicting the significance claim above it. It now reads the
+direction, quotes the DCLF p that `significant` is decided on, and reports the extreme in
+the direction claimed.
+
+### 24.7 The review screen was half a screen
+
+Spatial's runtime review showed a histogram and nothing else. A histogram says how many
+cells a cutoff selects; only the tissue says whether they are the *right* ones, which is
+the whole reason Quant's review carries the slide and the calls side by side. Spatial now
+renders that same panel, reusing `qrDrawViews` / `qrPaintCalls` / `qrBindZoom` unchanged
+and filling `qrState` in the shape they expect, rather than growing a second implementation
+to drift from the first. It also drew a visibly different histogram for identical data: 48
+bins hardcoded against Quant's default 60.
+
+One pair at a time now, with Previous/Next. Three pairs of two sections, each with a slide,
+an overlay and a histogram, is not a page anyone can hold in view, and the decision being
+made is per pair.
