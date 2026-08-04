@@ -56,12 +56,22 @@ jobs:
       - name: Install Linux GUI backend dependencies
         # pywebview has no bundled backend on Linux; it binds to the system GTK/WebKit2
         # stack, which must be present for PyInstaller to analyse the import.
+        #
+        # THE APT PACKAGES ARE NOT ENOUGH. `python3-gi` installs the `gi` module into the
+        # SYSTEM python, and this job builds with the setup-python interpreter, which cannot
+        # see it. PyInstaller therefore analysed a `gi` that was not importable and froze a
+        # bundle with no GUI backend at all: the Linux download of v0.1.0 could not open a
+        # window, and nothing noticed, because the only frozen check ran the analysis path.
+        # PyGObject from pip builds against libgirepository1.0-dev, which is installed here,
+        # and lands in the interpreter that actually does the freezing.
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
             libgirepository1.0-dev libcairo2-dev pkg-config python3-dev \
             gir1.2-gtk-3.0 gir1.2-webkit2-4.1
+          pip install pycairo PyGObject
+          python -c "import gi; gi.require_version('Gtk', '3.0'); print('gi OK', gi.__file__)"
 
       - name: Install CPU-only torch (Linux)
         # On Linux, pip's default torch wheel is the CUDA build (2.13.0+cu130). It drags in

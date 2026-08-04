@@ -34,7 +34,18 @@ SUFFIXES = {".py", ".R", ".r", ".js", ".html", ".sh", ".yaml", ".yml", ".toml",
 
 
 def tracked_text_files():
-    out = subprocess.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True)
+    """Tracked files, PLUS new ones git can already see but that are not committed yet.
+
+    `git ls-files` alone checks only what is already committed, so a brand-new file is
+    invisible to every guard here until the moment it lands — which is the one moment they
+    cannot help. Exactly that happened: tests/test_file_urls.py was written with a
+    /Users/<name> path in it, passed the full suite locally because it was still untracked,
+    and failed CI on all three platforms as soon as it was committed.
+    `--others --exclude-standard` adds untracked files while still honouring .gitignore, so
+    the check now fires while the file is still being written.
+    """
+    out = subprocess.run(["git", "ls-files", "--cached", "--others", "--exclude-standard"],
+                         cwd=ROOT, capture_output=True, text=True)
     for rel in out.stdout.splitlines():
         p = ROOT / rel
         # legacy/ is kept deliberately as a record of removed work and is never run.

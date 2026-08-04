@@ -1,8 +1,8 @@
 """A filesystem path is not a URL, and concatenating "file://" onto one is wrong.
 
 This shipped in v0.1.0 and broke the Windows bundle outright. `app.py` opened its window
-with `url=f"file://{html_path}"`. On Windows that path is `C:\\Users\\...\\index.html`, so
-the result is `file://C:\\Users\\...`, where everything after the two slashes parses as the
+with `url=f"file://{html_path}"`. On Windows that path is `C:\\ProgramData\\...\\index.html`, so
+the result is `file://C:\\ProgramData\\...`, where everything after the two slashes parses as the
 URL's HOST and the path is empty. The window had nothing to load and the app died at
 startup with PyInstaller's "Failed to execute script" dialog.
 
@@ -58,9 +58,9 @@ def test_no_source_concatenates_a_path_onto_the_file_scheme():
 
 def test_as_uri_is_correct_where_concatenation_is_not():
     """The property that makes as_uri() the right answer, stated on a Windows path."""
-    win = PureWindowsPath(r"C:\Users\me\AppData\Local\Temp\_MEI1\oasis\webui\index.html")
+    win = PureWindowsPath(r"C:\ProgramData\OASIS\_MEI1\oasis\webui\index.html")
     assert win.as_uri() == (
-        "file:///C:/Users/me/AppData/Local/Temp/_MEI1/oasis/webui/index.html")
+        "file:///C:/ProgramData/OASIS/_MEI1/oasis/webui/index.html")
     # what the old code produced: the drive and path swallowed into the host
     from urllib.parse import urlparse
     broken = urlparse(f"file://{win}")

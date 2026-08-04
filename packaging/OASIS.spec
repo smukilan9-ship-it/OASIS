@@ -67,6 +67,20 @@ hiddenimports = collect_submodules("torch") + [
     "scipy.spatial", "scipy.ndimage", "shapely", "yaml",
 ]
 
+# The GUI backend for THIS platform. pywebview picks one at runtime in guilib.initialize();
+# naming it here means a bundle that cannot open a window fails the build rather than the
+# user's first double-click. Only the host's own backend is added, so the freeze does not
+# chase imports that cannot exist on it.
+if sys.platform == "darwin":
+    hiddenimports += ["webview.platforms.cocoa"]
+elif sys.platform == "win32":
+    hiddenimports += ["webview.platforms.winforms", "clr"]
+else:
+    hiddenimports += ["webview.platforms.gtk", "gi"]
+    # gi loads GTK and WebKit2 through gobject-introspection typelibs, which are data, not
+    # imports, so nothing pulls them in on their own.
+    datas += collect_data_files("gi", include_py_files=True)
+
 excludes = [
     # pywebview uses the native backend on every platform we ship: WebKit via pyobjc on
     # macOS, WebView2 via pythonnet on Windows, GTK/WebKit2 on Linux. Qt is never used and
