@@ -78,3 +78,34 @@ def test_the_parameter_table_uses_the_same_word(js):
     assert "'switching'" in m.group(1), (
         "the parameter table still reports 'caution' where the chip above it says "
         "'switching'")
+
+
+def test_caution_is_never_labelled_a_valid_bandwidth(js):
+    """"75 µm bandwidth valid · caution" survived the routing change that made it false.
+
+    `caution` counted as valid until §15.3 measured the reweighted null's false engagement
+    rate at 0.17-0.25 in that margin against a nominal 0.05. It has routed to the dense null
+    since. A screen that prints "valid" beside a run which rejected the 75 um null is telling
+    the operator the opposite of what the run did.
+    """
+    src = js
+    assert "75 µm bandwidth valid · caution" not in src
+    i = src.index("function spatialBandwidthStatusLabel")
+    body = src[i:i + 1800]
+    assert "caution: 'Architecture marginally coarser than 75 µm'" in body
+
+
+def test_every_status_label_call_site_knows_whether_the_run_switched(js):
+    """The label reads "switching" only when it can see that the run switched.
+
+    Both call sites — the review card and the results banner — describe the same decision,
+    so a call that omits the flag silently reverts one of them to the old wording.
+    """
+    src = js
+    calls = [ln for ln in src.splitlines()
+             if "spatialBandwidthStatusLabel(" in ln and "function " not in ln
+             and "typeof" not in ln]
+    assert calls, "no call sites found — the label was renamed or removed"
+    for ln in calls:
+        assert "," in ln.split("spatialBandwidthStatusLabel(", 1)[1].split(")")[0], (
+            f"call site passes no dense-selected flag: {ln.strip()}")

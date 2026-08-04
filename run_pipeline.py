@@ -1432,6 +1432,15 @@ def run_spatial_association_pipeline(config_path="config.yaml"):
             print("BANDWIDTH_PRECHECK_JSON:" + _json.dumps({
                 "sample_id": sample_id, "stain_a": stain_a, "stain_b": stain_b,
                 "precheck": _pc,
+                # The files this pass actually produced, so the review screen can read the
+                # cutoff histograms straight off them. It used to re-find them by globbing
+                # the output tree for "<image stem>*_detections.geojson", which only works
+                # while the worker's layout and the review's idea of it agree — and they do
+                # not: a pair with drawn regions is fanned out and writes under
+                # "<sample_id>__roi0/", a name the review never sees. Naming the paths here
+                # removes the guess.
+                "geojson_a": geojson_a, "geojson_b": geojson_b,
+                "detections_csv_a": csv_a,
                 "null_plan": (assoc_result or {}).get("null_plan"),
                 "certification_status": landmark_cert.get("status"),
                 "is_certified": bool(landmark_cert.get("is_certified")),

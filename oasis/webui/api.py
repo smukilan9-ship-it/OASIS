@@ -2537,7 +2537,14 @@ class API:
         # statistic at whatever cutoff the pre-flight happened to use. The pre-check already
         # runs per pair (`precheck_by_pair` is keyed by sample_id), so the work exists; only
         # the reporting collapsed it to `pairs[0]`.
-        if str(config.get("analysis_mode") or "single") == "single":
+        #
+        # READ THE KEY SPATIAL ACTUALLY SENDS. This branched on `analysis_mode`, which is the
+        # QUANT tab's key (set from quantMode); `spatialBuildConfig` sends `mode`, the same
+        # key `run_spatial_association` reads two hundred lines below. So a batch fell to the
+        # single branch, `image_a`/`image_b` were both undefined there, and every card came up
+        # "no measured cells" while the pre-check that had just segmented every pair sat
+        # unread. That is the empty-histogram screen, and the whole batch review with it.
+        if str(config.get("mode") or config.get("analysis_mode") or "single") == "single":
             a, b = config.get("image_a"), config.get("image_b")
             sid = Path(os.path.expanduser(a or "")).stem or "pair"
             run_pairs = [{"sample_id": sid, "path_a": a, "path_b": b,
@@ -2552,45 +2559,62 @@ class API:
             if not run_pairs:
                 return {"ok": False, "msg": "No pairs matched in those folders."}
 
-        def _measure(path, role, marker, thr):
+        def _measure(path, role, marker, thr, from_precheck=None):
+            """One image's cutoff histogram, read from the file the pre-check just wrote.
+
+            `from_precheck` is that pass's own record of where it put the detections. It is
+            authoritative; the glob below is only a fallback for a pre-check that predates
+            the field, and it is the reason this screen could come up empty — the glob keys
+            on the image stem while a fanned-out pair writes under "<sample_id>__roi0/", so
+            the two only line up by luck. When neither finds anything the card now says
+            which image and where it looked, instead of "no measured cells".
+            """
             entry = {"role": role, "name": os.path.basename(path or ""),
                      "marker": marker or role, "geojson": None, "threshold": float(thr or 0.2)}
             if not path:
                 return entry
-            stem = Path(os.path.expanduser(path)).stem
-            hits = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
-                                     recursive=True))
-            entry["geojson"] = hits[0] if hits else None
-            if hits:
-                try:
-                    vals = RC.read_dab_values(hits[0])
-                    finite = vals[np.isfinite(vals)]
-                    entry.update({
-                        "n_cells": int(finite.size),
-                        "hist": RC.histogram(vals, bins=48),
-                        "p50": round(float(np.median(finite)), 4) if finite.size else None,
-                        "p90": round(float(np.percentile(finite, 90)), 4) if finite.size else None,
-                        "max": round(float(finite.max()), 4) if finite.size else None,
-                        "positive_cells": RC.positive_count(vals, entry["threshold"]),
-                    })
-                except (OSError, ValueError) as e:
-                    entry["msg"] = str(e)
+            hits = [from_precheck] if from_precheck and os.path.exists(from_precheck) else []
+            if not hits:
+                stem = Path(os.path.expanduser(path)).stem
+                hits = sorted(_glob.glob(
+                    os.path.join(out_dir, "**", f"{stem}*_detections.geojson"), recursive=True))
+            if not hits:
+                entry["msg"] = (f"no detections were written for {entry['name']}; "
+                                f"nothing under {out_dir} either")
+                return entry
+            entry["geojson"] = hits[0]
+            try:
+                vals = RC.read_dab_values(hits[0])
+                finite = vals[np.isfinite(vals)]
+                entry.update({
+                    "n_cells": int(finite.size),
+                    "hist": RC.histogram(vals, bins=48),
+                    "p50": round(float(np.median(finite)), 4) if finite.size else None,
+                    "p90": round(float(np.percentile(finite, 90)), 4) if finite.size else None,
+                    "max": round(float(finite.max()), 4) if finite.size else None,
+                    "positive_cells": RC.positive_count(vals, entry["threshold"]),
+                })
+            except (OSError, ValueError) as e:
+                entry["msg"] = f"could not read {os.path.basename(hits[0])}: {e}"
             return entry
 
         by_pair = pre.get("precheck_by_pair") or {}
         pairs_out = []
         for rp in run_pairs:
             sid = rp.get("sample_id")
+            # One lookup for both the null verdict and the files, so a pair can never end up
+            # showing one pair's band above another pair's histograms.
+            rec = self._precheck_for(sid, by_pair)
             pairs_out.append({
                 "sample_id": sid,
                 "path_a": rp.get("path_a"), "path_b": rp.get("path_b"),
                 "images": [
                     _measure(rp.get("path_a"), "A", rp.get("stain_a"),
-                             config.get("dab_threshold_a")),
+                             config.get("dab_threshold_a"), rec.get("geojson_a")),
                     _measure(rp.get("path_b"), "B", rp.get("stain_b"),
-                             config.get("dab_threshold_b")),
+                             config.get("dab_threshold_b"), rec.get("geojson_b")),
                 ],
-                "band": self._band_from_precheck(self._precheck_for(sid, by_pair), pre),
+                "band": self._band_from_precheck(rec, pre),
             })
 
         # Kept flat as well: the single-pair screen has always addressed images by one index,
@@ -2698,28 +2722,42 @@ class API:
         # config's single A/B. Rewriting the cells is what carries them into the run either
         # way — the statistic reads the baked classification, not a threshold — so a batch
         # needs no per-image threshold support anywhere downstream.
+        # Each target carries the file the review measured, so the rewrite lands on the same
+        # cells the operator judged. Only the single-pair fallback has to be found by name.
         targets = []
         for rp in (cfg.get("reviewed_pairs") or []):
-            targets.append((rp.get("path_a"), rp.get("threshold_a")))
-            targets.append((rp.get("path_b"), rp.get("threshold_b")))
+            targets.append((rp.get("path_a"), rp.get("threshold_a"), rp.get("geojson_a"), True))
+            targets.append((rp.get("path_b"), rp.get("threshold_b"), rp.get("geojson_b"), True))
         if not targets:
-            targets = [(cfg.get("image_a"), cfg.get("dab_threshold_a")),
-                       (cfg.get("image_b"), cfg.get("dab_threshold_b"))]
+            targets = [(cfg.get("image_a"), cfg.get("dab_threshold_a"), None, False),
+                       (cfg.get("image_b"), cfg.get("dab_threshold_b"), None, False)]
         cfg.pop("reviewed_pairs", None)
 
-        for path, thr in targets:
+        for path, thr, known, per_pair in targets:
             if not path:
                 continue
             if thr is None:
                 continue
             stem = Path(os.path.expanduser(path)).stem
-            gj = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
-                                   recursive=True))
+            gj = ([known] if known and os.path.exists(known)
+                  else sorted(_glob.glob(
+                      os.path.join(out_dir, "**", f"{stem}*_detections.geojson"),
+                      recursive=True)))
             sm = sorted(_glob.glob(os.path.join(out_dir, "**", f"{stem}*_summary.json"),
                                    recursive=True))
+            if not gj and per_pair:
+                # A batch's per-pair cutoffs exist ONLY in these cells. `reuse_existing_geojson`
+                # is forced True above, so skipping the rewrite does not fall back to applying
+                # the cutoff during segmentation — it runs the pair at whatever the pre-flight
+                # used. Silently analysing at a cutoff the operator did not choose is the one
+                # outcome this function exists to prevent.
+                return {"status": "error",
+                        "error": f"The reviewed cutoff for {os.path.basename(path)} could not "
+                                 f"be applied: no detections were found for it. Re-run the "
+                                 f"pre-check rather than analysing at a different cutoff."}
             if not gj:
-                # Nothing to rewrite: the run will segment from scratch and apply the cutoff
-                # the ordinary way, which is correct — just slower.
+                # Single pair: the cutoff still reaches the run through the config's own
+                # dab_threshold_a/b, which segmentation applies. Nothing is lost by skipping.
                 continue
             try:
                 res = RC.apply_threshold(gj[0], (sm[0] if sm else None), float(thr),

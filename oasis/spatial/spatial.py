@@ -179,6 +179,28 @@ _NULL_SEED     = 0       # fixed seed → reproducible significance numbers
 # carries an explicit underpowered flag. See research/ihc.md §15.7 and Q3.
 _SPARSE_MIN_POSITIVE = 5
 
+# Pre-flight verdicts that route to the DENSE morphology-conditioned fallback instead of
+# the 75 µm reweighted primary. Every non-`ok` verdict that still has a testable pattern
+# belongs here: `marker_absent` and `architecture_not_estimable` are the only two that
+# fail closed outright, and they are handled before this set is consulted.
+#
+# ONE LIST, TWO CALLERS, BECAUSE THEY DRIFTED. `_build_precheck_null_plan` (what the wizard
+# shows before the run) and the association loop (what the run actually does) each decided
+# eligibility on their own, and `caution` reached only the first of them. Measured on real
+# HyReCo CD8/CD45 that is not a corner case: all three pairs came back with an architecture
+# scale of 96–109 µm, which is `caution`, so the pre-flight promised the dense null and the
+# run recorded `dense_null_status: not_evaluated` and withheld every pair.
+#
+# `caution` is here on evidence, not symmetry (research/ihc.md §15.3,
+# validate_saturated_marker_null.py): in the two grid cells that route to `caution` the
+# reweighted null's FALSE cell-scale-engagement rate is 0.17 and 0.25 against a nominal
+# 0.05, while dense_morphology is 0.00 in both.
+_DENSE_FALLBACK_STATUSES = (
+    "dense_tissue_bandwidth_invalid",
+    "underpowered_sparse_marker",
+    "caution",
+)
+
 
 def _named_counts(markers, per_image):
     """"CD8: 3 positive, TIM-3: 1 positive" rather than "(CD8, TIM-3)".
@@ -817,6 +839,19 @@ def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, windo
         })
         return plan
 
+    # Everything below plans the DENSE fallback, so only a verdict the run would actually
+    # route there may reach it. This guard is what keeps the promise on screen and the work
+    # the run does in step; without it an unrecognised verdict quietly plans a null the
+    # association loop would never build.
+    if worst not in _DENSE_FALLBACK_STATUSES:
+        plan.update({
+            "primary_null": "none", "fail_closed": True,
+            "primary_null_label": "Fail-closed — no primary null for this verdict",
+            "reason": f"The 75 µm pre-flight returned '{worst}', which no primary null "
+                      f"covers, so OASIS will not guess one.",
+        })
+        return plan
+
     ref_m = layer_order[0]
     mov_m = layer_order[1] if len(layer_order) > 1 else None
     p_a = registered.get(ref_m, np.empty((0, 2), dtype=np.float64))
@@ -872,21 +907,36 @@ def _build_precheck_null_plan(bandwidth_precheck, registered, layer_order, windo
                           "cell counts in view.",
             })
         else:
+            # Two different architectures arrive here and they are not the same finding.
+            # `caution` is tissue marginally COARSER than the bandwidth; `dense_tissue…`
+            # is tissue inside it. Both take the dense null, for different reasons, and an
+            # operator reading "dense/fine architecture" off a 97 µm field would rightly
+            # not believe the screen.
+            marginal = worst == "caution"
             plan.update({
                 "primary_null": "dense_morphology",
                 "primary_null_key": "dense_morphology",
-                "primary_null_label": "Dense-tissue morphological null — dense "
-                                      "morphology-conditioned cross-K (all-cell support "
-                                      "+ 2 µm jitter, 10–30 µm band)",
-                "reason": "The 75 µm bandwidth is not size-controlled here (dense/fine "
-                          "architecture), but the dense-fallback gates pass, so the full "
-                          "run will use the dense morphology-conditioned primary null.",
+                "primary_null_label": ("Marginal architecture — dense morphology-conditioned "
+                                       if marginal else
+                                       "Dense-tissue morphological null — dense "
+                                       "morphology-conditioned ")
+                                      + "cross-K (all-cell support + 2 µm jitter, "
+                                        "10–30 µm band)",
+                "reason": ("Tissue architecture is only marginally coarser than 75 µm, where "
+                           "the reweighted null is measurably anti-conservative"
+                           if marginal else
+                           "The 75 µm bandwidth is not size-controlled here (dense/fine "
+                           "architecture)")
+                          + ", but the dense-fallback gates pass, so the full run will use "
+                            "the dense morphology-conditioned primary null.",
             })
     else:
         plan.update({
             "primary_null": "none", "fail_closed": True,
             "primary_null_label": "Fail-closed — support null unavailable",
-            "reason": ("A sparse marker" if is_sparse else "Dense/fine tissue")
+            "reason": ("A sparse marker" if is_sparse
+                       else "Marginal (75–150 µm) tissue architecture" if worst == "caution"
+                       else "Dense/fine tissue")
                       + " needs the all-cell support null here, but it is unavailable "
                       "(gate(s) failed: " + ", ".join(failed) + ") — fail-closed for this pair.",
         })
@@ -1104,9 +1154,7 @@ def run_spatial_association(
             _is_sparse = _pf_worst == "underpowered_sparse_marker"
             dense_info = {
                 "requested": bool(
-                    dense_auto_null and _pf_worst in (
-                        "dense_tissue_bandwidth_invalid", "underpowered_sparse_marker")
-                ),
+                    dense_auto_null and _pf_worst in _DENSE_FALLBACK_STATUSES),
                 "underpowered": bool(_is_sparse),
                 "selected": False,
                 "status": ("not_needed" if bandwidth_precheck.get("valid")
@@ -1170,6 +1218,19 @@ def run_spatial_association(
                             "10–30 µm band). Result is UNDERPOWERED and flagged as such.")
                         print(f"  {key}: sparse marker → all-cell support null "
                               f"(support={len(dense_support)}, UNDERPOWERED)")
+                    elif _pf_worst == "caution":
+                        # Named for what it is. "Pre-flight failed" would be wrong here:
+                        # the architecture is marginally COARSER than the bandwidth, not
+                        # inside it, and it is the measured false-positive rate in that
+                        # margin (0.17–0.25 vs a nominal 0.05) that moves the pair.
+                        dense_info["reason"] = (
+                            "Tissue architecture is only marginally coarser than 75 µm, "
+                            "where the reweighted null is measurably anti-conservative, so "
+                            "OASIS switched to the dense morphology-conditioned primary "
+                            "null (all-cell support + 2 µm jitter, 10–30 µm DCLF band).")
+                        print(f"  {key}: architecture marginally coarser than 75 µm → "
+                              f"switching primary null to dense morphology-conditioned "
+                              f"(support={len(dense_support)}, band=10–30 µm)")
                     else:
                         dense_info["reason"] = (
                             "75 µm bandwidth pre-flight failed, so OASIS switched to "

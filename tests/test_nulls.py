@@ -236,3 +236,91 @@ def test_absent_and_sparse_markers_are_named_with_their_counts():
     assert _named_counts(["CD8", "TIM-3"], per_image) == "CD8: 3 positive, TIM-3: 1 positive"
     assert _named_counts(["TIM-3"], per_image) == "TIM-3: 1 positive"
     assert _named_counts([], per_image) == "no marker"
+
+
+# ── `caution` must reach the null it was routed to (research/ihc.md §15.3) ──────────────
+def _plan_for(worst, tmp_path, *, n_support=800, dense_auto_null=True, n_pos=200):
+    """Run the pre-flight null plan for one bandwidth verdict, with every gate satisfiable."""
+    import shapely
+    from oasis.spatial.spatial import _build_precheck_null_plan
+
+    rng = np.random.default_rng(0)
+    window = shapely.geometry.box(0, 0, 1000, 1000)
+    pts = lambda n: rng.uniform(50, 950, (n, 2))
+    csv = tmp_path / "support.tsv"          # QuPath's detection export is TAB delimited
+    sup = rng.uniform(50, 950, (n_support, 2))
+    csv.write_text("Centroid X µm\tCentroid Y µm\n"
+                   + "\n".join(f"{x}\t{y}" for x, y in sup))
+    return _build_precheck_null_plan(
+        {"valid": worst == "ok", "worst_status": worst},
+        {"CD8": pts(n_pos), "CD45": pts(n_pos)}, ["CD8", "CD45"], window, 1.0,
+        str(csv), dense_auto_null, True, 30, 500)
+
+
+def test_caution_routes_to_the_dense_null_in_both_the_plan_and_the_run(tmp_path):
+    """Marginal architecture takes the dense null, and the run must agree with the screen.
+
+    Real failure, measured on serial HyReCo CD8/CD45: all three pairs came back with an
+    architecture scale of 96-109 um, which is `caution` (between 75 and 150 um). The
+    pre-flight planned `dense_morphology` and the badge said so; the association loop asked
+    for the dense fallback only on `dense_tissue_bandwidth_invalid` or
+    `underpowered_sparse_marker`, so it recorded `dense_null_status: not_evaluated` and
+    withheld every pair. The gates never failed — they never ran.
+
+    The routing itself is not a new decision (§15.3, validate_saturated_marker_null.py): in
+    the two grid cells that land in `caution` the reweighted null's false engagement rate is
+    0.17 and 0.25 against a nominal 0.05, and dense_morphology's is 0.00 in both.
+    """
+    import inspect
+
+    from oasis.spatial.spatial import _DENSE_FALLBACK_STATUSES, run_spatial_association
+
+    assert "caution" in _DENSE_FALLBACK_STATUSES
+
+    plan = _plan_for("caution", tmp_path)
+    assert plan["primary_null"] == "dense_morphology"
+    assert plan["fail_closed"] is False
+    assert not plan["dense"]["failed_gates"]
+
+    # The run must ask for the fallback on the SAME set the plan promised it on, or the
+    # screen and the worker disagree again. One list, read by both.
+    src = inspect.getsource(run_spatial_association)
+    assert "_pf_worst in _DENSE_FALLBACK_STATUSES" in src, (
+        "the association loop no longer reads the shared eligibility list")
+
+
+def test_caution_is_not_described_as_dense_tissue(tmp_path):
+    """A 97 um field is marginally COARSER than the bandwidth, not inside it.
+
+    Both verdicts take the dense null, for opposite reasons. Telling an operator their
+    97 um tissue is "dense/fine" is a claim they can check against the image and disbelieve.
+    """
+    caution = _plan_for("caution", tmp_path)
+    dense = _plan_for("dense_tissue_bandwidth_invalid", tmp_path)
+
+    assert "marginally coarser" in caution["reason"]
+    assert "dense/fine" not in caution["reason"]
+    assert "dense/fine" in dense["reason"]
+
+
+def test_an_unrecognised_bandwidth_verdict_fails_closed(tmp_path):
+    """Only a verdict the run would route to the dense null may plan it.
+
+    Without this the plan reaches the dense gates for ANY status that is not `ok`,
+    `marker_absent` or `architecture_not_estimable` — including one added later that the
+    association loop knows nothing about, which is how `caution` diverged in the first place.
+    """
+    plan = _plan_for("some_status_added_later", tmp_path)
+    assert plan["primary_null"] == "none"
+    assert plan["fail_closed"] is True
+
+
+def test_caution_still_fails_closed_when_the_support_null_is_unavailable(tmp_path):
+    """Routing `caution` to the dense null must not weaken the gates it now depends on."""
+    plan = _plan_for("caution", tmp_path, n_support=10)
+    assert plan["primary_null"] == "none"
+    assert plan["fail_closed"] is True
+    assert "min_support" in plan["dense"]["failed_gates"]
+
+    off = _plan_for("caution", tmp_path, dense_auto_null=False)
+    assert off["fail_closed"] is True

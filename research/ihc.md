@@ -1686,6 +1686,35 @@ resemble the whole cell population, which *raises* the estimated architecture sc
 weaker null. Under the null production now selects, saturation costs **power** but does not
 manufacture an engagement claim.
 
+#### 15.3.1 …and then only half of it shipped
+
+`valid = worst == "ok"` landed. The other half did not. Eligibility for the dense fallback
+is decided twice — once in `_build_precheck_null_plan`, which is what the wizard shows
+before the run, and once in the association loop, which is what the run does — and only the
+first learned about `caution`. The loop asked for the fallback on
+`dense_tissue_bandwidth_invalid` and `underpowered_sparse_marker` alone, so a `caution` pair
+was declared invalid for the reweighted primary, never offered the dense one, and withheld
+by the fail-closed branch immediately below.
+
+Not a corner case. Serial HyReCo CD8/CD45, three certified pairs, architecture 96.4 / 108.8 /
+96.4 µm — all `caution`, all withheld, all three recording `dense_null_status:
+not_evaluated`. The gates never failed; they never ran. The screen said DENSE NULL and the
+worker produced nothing, which is the worst version of this: the operator is told the tissue
+is supported and then handed an empty result.
+
+Fixed by giving both callers one list (`_DENSE_FALLBACK_STATUSES`) and failing closed in the
+plan on any verdict outside it, so a status added later cannot be planned without also being
+run. Re-run on the same three pairs from the same detections:
+
+| pair | ℓ̂ (µm) | primary null | 10–30 µm verdict |
+|---|---|---|---|
+| 679_lm00 | 97.6 | dense_morphology | segregation, p=0.001, robust |
+| 679_lm01 | 108.8 | dense_morphology | segregation, p=0.001, robust |
+| 679_lm04 | 96.4 | dense_morphology | n.s., p=0.175, csr_only |
+
+The direction is worth noting: the null this tissue calls for reports **segregation** between
+CD8 and CD45 on adjacent sections, not the association the rejected null inflates.
+
 ### 15.4 DEFORMED was unreachable
 
 `band_ok` covers TRE up to `max_radius·(1−band_frac)/floor_factor` = 100·0.5/3 = **16.67 µm**,
@@ -3153,3 +3182,42 @@ code.
 Two audits caught two of my own regressions in this session (§22.2 and this one). Both were
 in changes I had verified by driving the app. The verification round is not optional
 overhead — on this evidence it is the highest-yield audit of the ten.
+
+## 23. Session 2026-08-04b — the null the run never asked for, and the review that never looked
+
+Two defects, both reported by the operator as "why is it doing this", both silent, both
+found by reading the run's own JSON rather than the screen.
+
+### 23.1 `caution` planned a null the run would not build
+
+Recorded above in §15.3.1: the routing decision from §15.3 reached the pre-flight and not
+the association loop, so every pair whose tissue architecture measured between 75 and 150 µm
+was withheld with `dense_null_status: not_evaluated`. Three of three HyReCo pairs. One
+eligibility list now feeds both callers and the plan fails closed outside it.
+
+### 23.2 The batch review read the Quant tab's config key
+
+`spatial_review_data` chose between the single-pair and batch paths on `analysis_mode`.
+That key belongs to Quant (`analysis_mode: quantMode`); `spatialBuildConfig` sends `mode`,
+which is also what `run_spatial_association` reads. So **every** batch took the single
+branch, read `image_a`/`image_b` — absent from a batch config — and measured nothing. The
+screen showed "no measured cells" for each section while the pre-check that had just
+segmented all six sat unread in the same response object.
+
+It did not stop at the histograms. `spReviewApply` builds `reviewed_pairs` from that same
+list, filtered on `path_a || path_b`; with the phantom pair carrying neither, the filter
+emptied it and no per-pair cutoff was ever written. A batch reviewed at one cutoff ran at
+another, quietly.
+
+Two things were wrong and only one of them was the key. The histograms were also being
+re-derived by globbing `<image stem>*_detections.geojson` under the output tree, which is a
+guess about the worker's layout — and the ROI fan-out writes under `<sample_id>__roi0/`, a
+name the review never sees. The pre-check now reports the paths it actually wrote and the
+review reads those; the glob stays only as a fallback, and a card with no histogram now names
+the image and the directory instead of saying "no measured cells".
+
+**What both have in common.** Each is a second copy of a decision — which null is eligible,
+which images are in the run — that drifted from the first. Neither is visible from the
+screen: one shows a green plan and an empty result, the other shows an empty screen over a
+full response. The test that catches them is the one that runs the real seam, not the one
+that checks the branch it already believes in.

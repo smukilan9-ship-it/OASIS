@@ -8389,10 +8389,12 @@ function spReviewBandCardHTML(b) {
   // non-empty string is truthy.
   const nul = b.primary_null, worst = b.worst_status;
   const ok = !!nul && !b.fail_closed;
-  // dense_tissue_* is the EXPECTED outcome on IHC: the 75 µm reweighted null is correctly
-  // rejected because the tissue's architecture sits inside the interaction band, and the
-  // dense morphology-conditioned null takes over. Saying only "invalid" reads as a failure.
-  const rejected75 = String(worst || '').indexOf('dense_tissue') === 0;
+  // Rejecting the 75 µm null is the EXPECTED outcome on IHC, not a failure of the pair, and
+  // that is true of both architectures that reject it: dense_tissue_* sits inside the
+  // interaction band, `caution` sits just outside it where the null is anti-conservative.
+  // The note used to appear only for the first, so the second read as a bare warning.
+  const rejected75 = nul === 'dense_morphology'
+    && (String(worst || '').indexOf('dense_tissue') === 0 || worst === 'caution');
   const pretty = { dense_morphology: 'Dense morphology-conditioned cross-K (all-cell support + 2 µm jitter)',
                    reweighted_75um: '75 µm intensity-reweighted inhomogeneous cross-K',
                    reweighted: '75 µm intensity-reweighted inhomogeneous cross-K',
@@ -8438,8 +8440,8 @@ function spReviewBandCardHTML(b) {
     ${gateLine}
     ${worst ? `<div style="font-size:11px;color:var(--text3);margin-top:6px"><b>Tissue structure:</b>
       ${esc(typeof spatialBandwidthStatusLabel === 'function'
-            ? spatialBandwidthStatusLabel(worst) : String(worst))}${rejected75 ? ' — expected on dense tissue: the 75 µm reweighted null is'
-      + ' rejected and the dense morphology-conditioned null is used instead. Not a failure of the pair.' : ''}
+            ? spatialBandwidthStatusLabel(worst, nul === 'dense_morphology') : String(worst))}${rejected75 ? ' — the 75 µm reweighted null is'
+      + ' rejected for this architecture and the dense morphology-conditioned null is used instead. Not a failure of the pair.' : ''}
       ${b.architecture_reason ? '<br>' + esc(String(b.architecture_reason)) : ''}</div>` : ''}
     ${b.error ? `<div style="font-size:11px;color:#b91c1c;margin-top:4px">${esc(String(b.error))}</div>` : ''}
   </div>`;
@@ -8547,8 +8549,11 @@ async function spReviewApply() {
   const reviewed = pairs.map(p => {
     const ims = p.images || [];
     const a = ims.find(x => x.role === 'A'), b = ims.find(x => x.role === 'B');
+    // The cells the histogram above was drawn from, so the cutoff is written into those and
+    // not into whatever a filename search turns up.
     return { sample_id: p.sample_id, path_a: p.path_a, path_b: p.path_b,
-             threshold_a: a ? a.threshold : null, threshold_b: b ? b.threshold : null };
+             threshold_a: a ? a.threshold : null, threshold_b: b ? b.threshold : null,
+             geojson_a: a ? a.geojson : null, geojson_b: b ? b.geojson : null };
   }).filter(r => r.path_a || r.path_b);
   if (reviewed.length) cfg.reviewed_pairs = reviewed;
   // The config's own A/B stay set for the single-pair case and for the run record.
@@ -8628,10 +8633,19 @@ function spatialNullTag(plan) {
   return `<span class="${cls}" style="margin-top:4px" title="This is the primary null model that will control the strong spatial-association claim for this certified analysis window.">${esc(lbl)}</span>`;
 }
 
-function spatialBandwidthStatusLabel(status) {
+function spatialBandwidthStatusLabel(status, denseSelected) {
+  // Once the run has switched, name the decision rather than the doubt — the same wording
+  // the per-marker chips use, so the two do not describe one run differently.
+  if (denseSelected && ['caution', 'dense_tissue', 'unreliable',
+                        'dense_tissue_bandwidth_invalid'].includes(status))
+    return 'Switching to the dense null';
   return ({
     ok: '75 µm bandwidth valid',
-    caution: '75 µm bandwidth valid · caution',
+    // NOT "valid · caution". That was written when `caution` counted as valid, and it has
+    // not since §15.3: in this margin the reweighted null's false engagement rate is
+    // 0.17–0.25 against a nominal 0.05, so the run rejects it and takes the dense null.
+    // "Valid" printed beside a run that rejected it is the line an operator would quote back.
+    caution: 'Architecture marginally coarser than 75 µm',
     dense_tissue_bandwidth_invalid: 'Dense/fine tissue detected',
     underpowered_sparse_marker: 'Sparse marker · underpowered (support null)',
     marker_absent: 'Marker (near-)absent · abundance finding',
@@ -9108,7 +9122,7 @@ function spatialAssocShowResults(data) {
         const icon = (ok || denseSel) ? '✓' : (absent || sparse ? 'ⓘ' : '⚠');
         return `<div style="margin:4px 0 12px;padding:11px 13px;border-radius:8px;font-size:12px;line-height:1.5;
              border:1px solid ${col};background:${bg};color:${col}">
-          <strong>${icon} ${esc(spatialBandwidthStatusLabel(st))} — inside the certified window</strong>
+          <strong>${icon} ${esc(spatialBandwidthStatusLabel(st, denseSel))} — inside the certified window</strong>
           ${ok ? '' : invalidMsg}
           <div style="margin-top:6px">${chips}</div>
           <div style="margin-top:4px">${esc(sv.reason || '')}</div>
