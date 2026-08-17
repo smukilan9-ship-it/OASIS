@@ -1,0 +1,7 @@
+# Where the Space keeps its files when it is run from a checkout rather than on the
+# platform (hf_space/session.py:data_root, used when no bucket is mounted and
+# OASIS_SPACE_DATA is unset). Uploads, results and config land here.
+#
+# Scoped to this directory rather than added to the repo-root .gitignore so that adding the
+# Space does not modify a tracked file.
+.local-data/

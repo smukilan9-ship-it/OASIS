@@ -1,0 +1,66 @@
+# Dependencies for the Hugging Face Space ONLY.
+#
+# The desktop app's contract is the repo-root requirements.txt and is NOT changed by
+# anything here. This file exists because a headless Linux container on ZeroGPU cannot run
+# the same set: four lines differ, and each difference is a decision with a consequence.
+#
+# Everything not listed as a delta below is pinned to exactly the root file's version, for
+# the reason stated there: numpy/scipy/opencv drift moves KDE binning, percentiles and Otsu
+# output, which moves the null envelopes and can change a significance verdict.
+
+# ── DELTA 1: pywebview is absent ─────────────────────────────────────────────
+# The desktop app's window. There is no display server in the container, and the Space's
+# window is the visitor's browser (hf_space/shim.js supplies the `window.pywebview.api`
+# the frontend expects). Installing it would pull a GUI toolkit that can never initialise.
+
+# ── DELTA 2: opencv is the headless build ────────────────────────────────────
+# Same version, same algorithms — opencv-python's only extra is the GUI module (highgui),
+# which needs libGL and is never imported by this codebase. Using the headless build is
+# what removes the need for an apt `packages.txt`.
+opencv-python-headless==4.13.0.92
+
+# ── DELTA 3: torch is 2.11.0, not 2.13.0 ─────────────────────────────────────
+# ZeroGPU supports torch 2.8.0 through 2.11.0. 2.13.0 — the version the desktop app is
+# pinned to and the version every validated number in this project was produced under —
+# is not on that list, so it cannot be used here.
+#
+# READ THIS BEFORE QUOTING A NUMBER THE SPACE PRODUCED. The root requirements.txt pins
+# torch deliberately: the segmenter's output feeds every downstream count. Running a
+# different torch is a real difference, not a formality, and results from this Space are
+# therefore NOT guaranteed to match the desktop build digit for digit. The Space is a
+# demonstration of the tool. The desktop build is the instrument.
+torch==2.11.0
+
+# ── DELTA 4: the Space's own serving stack ───────────────────────────────────
+# gradio: ZeroGPU is available to Spaces on the Gradio SDK and no other. `gradio.Server`
+#   (Gradio 6) is a FastAPI application with Gradio's engine attached, which is what lets
+#   this Space be a Gradio Space to the platform while serving OASIS's own frontend.
+# spaces: the @spaces.GPU decorator itself.
+# python-multipart: FastAPI needs it to parse the multipart form the Browse-button upload
+#   posts to /__upload. Without it every upload fails at request parsing.
+gradio==6.22.0
+spaces
+python-multipart==0.0.20
+
+# ── unchanged from the repo-root requirements.txt ────────────────────────────
+PyYAML==6.0.3
+pillow==12.2.0
+tifffile==2026.5.15
+numpy==2.4.6
+openpyxl==3.1.5
+scipy==1.17.1
+shapely==2.1.2
+matplotlib==3.11.0
+
+# Registration: SimpleITK is the PRIMARY registration method (Mattes mutual information).
+# Without it the cascade silently falls back to ORB/SIFT.
+SimpleITK==2.5.5
+
+# Whole-slide (SVS/NDPI) reading. openslide-bin ships the prebuilt OpenSlide C library, so
+# no system package is required in the container.
+openslide-python==1.4.6
+openslide-bin==4.0.1.1
+
+# kornia runs the LoFTR matcher. Pinned as at the root; it is the one package here whose
+# interaction with the changed torch is worth watching on first deploy.
+kornia==0.8.3
