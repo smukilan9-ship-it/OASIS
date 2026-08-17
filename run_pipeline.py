@@ -103,6 +103,15 @@ def load_config(config_path="config.yaml"):
     # oasis/common/device.py.
     cfg.setdefault("device", "auto")
     cfg.setdefault("tile_dims", 512)
+    # Enlarge coarse images to the model's trained 0.5 µm/px instead of feeding them native.
+    # Off by default: it raises recall on coarse (10x) slides but changes every count that was
+    # validated with the clamp in place. See segment.preferred_downsample.
+    cfg.setdefault("allow_upsample_to_model", False)
+    # InstanSeg's DETECTION cut (bundle default 0.7). Lower finds more nuclei at falling
+    # precision; on 150 DeepLIIF panels 0.7->0.5 moves recall 0.749->0.780 and precision
+    # 0.886->0.868. 0.7 is what QuPath passes, so the default keeps parity.
+    from oasis.quant.segment import DEFAULT_SEED_THRESHOLD
+    cfg.setdefault("seed_threshold", DEFAULT_SEED_THRESHOLD)
     cfg.setdefault("timeout_seconds", 1800)
     cfg.setdefault("mode", "automated")
     cfg.setdefault("image_extensions", ["*.tif", "*.tiff", "*.svs", "*.ndpi", "*.png"])
@@ -256,7 +265,9 @@ def run_native_segmentation(img_path, cfg, out_basename=None):
         res = sg.segment_image(img_path, cfg["instanseg_model"], px,
                                device=_torch_device(cfg.get("device")),
                                dab_threshold=threshold,
-                               adaptive_threshold=adaptive)
+                               adaptive_threshold=adaptive,
+                               allow_upsample=bool(cfg.get("allow_upsample_to_model", False)),
+                               seed_threshold=cfg.get("seed_threshold"))
     except Exception as e:
         import traceback
         print(f"  Segmentation FAILED: {type(e).__name__}: {e}")
@@ -267,6 +278,8 @@ def run_native_segmentation(img_path, cfg, out_basename=None):
     pos = sum(1 for r in res["records"] if r["classification"] == "Positive")
     print(f"  Segmented {n} cells ({pos} positive) in {time.time() - t0:.1f}s"
           + (" [streamed whole-slide]" if res.get("streamed") else "")
+          + (f" [upsampled to model resolution, ds {res['downsample']:.3f}]"
+             if res.get("upsampled") else "")
           + (f" [DAB threshold {res['threshold']:.4f}, {res['threshold_method']}]"))
     if n == 0 and res.get("low_contrast"):
         print("  WARNING: image has no usable dynamic range (blank / no tissue) — "
@@ -274,8 +287,17 @@ def run_native_segmentation(img_path, cfg, out_basename=None):
 
     sg.write_geojson(res, os.path.join(out_dir, f"{stem}_detections.geojson"), stem)
     sg.write_detections_csv(res, os.path.join(out_dir, f"{stem}_detections.csv"), stem)
+    # Record a per-image cutoff as PROVENANCE, not just as a value. Until now only the UI's
+    # review step wrote threshold_override/cohort_threshold, so a CLI run that honoured
+    # `threshold_overrides` produced a summary indistinguishable from one measured on the
+    # cohort cutoff — the number differed and nothing said why.
+    extra = None
+    override = (cfg.get("threshold_overrides") or {}).get(os.path.basename(img_path))
+    if override is not None:
+        extra = {"threshold_override": float(override),
+                 "cohort_threshold": float(cfg.get("dab_threshold", 0.2))}
     return sg.write_summary(res, os.path.join(out_dir, f"{stem}_summary.json"),
-                            os.path.basename(img_path))
+                            os.path.basename(img_path), extra=extra)
 
 
 def _torch_device(name):

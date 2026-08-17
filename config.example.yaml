@@ -55,5 +55,15 @@ cell_expansion_um: 2.0
 # membrane_pix_thr: 0.06
 # membrane_frac_min: 0.15
 # membrane_p90_thr: 0.12
+# Enlarge coarse images to the InstanSeg model's trained 0.5 µm/px rather than segmenting
+# them at their native size. Only affects images COARSER than 0.5 µm/px (10x and below);
+# finer images already downsample and are unchanged.
+#
+# On 100 DeepLIIF panels resampled to 0.7519 µm/px (a 10x acquisition) and scored against
+# their IF-derived cells, this lifts recall 0.675 -> 0.765 and F1 0.787 -> 0.820, finding 622
+# extra REAL cells. Off by default because it changes counts on every coarse image, and every
+# validated number in research/ihc.md was produced with the clamp in place. Capped at a 2x
+# enlargement (segment.MIN_UPSAMPLE_DOWNSAMPLE) — 4x slides stay clamped, untested there.
+allow_upsample_to_model: false
 tile_dims: 512
 timeout_seconds: 1800

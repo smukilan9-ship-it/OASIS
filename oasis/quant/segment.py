@@ -79,7 +79,16 @@ def model_pixel_size(model_dir):
         return None
 
 
-def preferred_downsample(image_px_um, model_px_um, snap=0.1):
+# Widest upsample the evidence supports, as a downsample factor: 0.5 means the image may be
+# enlarged at most 2x to reach the model's trained resolution. See `preferred_downsample`.
+#
+# Bounded rather than open-ended because only the 10x case (ds ~0.665) was measured. A 4x
+# slide at 1.88 µm/px asks for a 3.8x enlargement, far outside the tested range and much more
+# likely to manufacture detail than to recover a nucleus, so it stays clamped.
+MIN_UPSAMPLE_DOWNSAMPLE = 0.5
+
+
+def preferred_downsample(image_px_um, model_px_um, snap=0.1, allow_upsample=False):
     """QuPath's `getPreferredDownsample`: the factor to reduce the image by so it reaches the
     model's trained resolution, snapped to a whole number when it is already close.
 
@@ -87,18 +96,42 @@ def preferred_downsample(image_px_um, model_px_um, snap=0.1):
     artefacts and needless floating-point vertices in the output. `snap` is the tolerance for
     that rounding.
 
-    CLAMPED AT 1.0 — never upsample. When the image is COARSER than the model's trained
-    resolution the arithmetic asks for a downsample below 1, i.e. interpolating the image up to
-    manufacture detail that was never scanned. Measured on LL477 (0.752 µm/px, so the raw factor
-    is 0.665): upsampling yields 6719 nuclei against QuPath's 4796 (ratio 1.40) because the
-    model, seeing enlarged nuclei, splits them; at downsample 1.0 it yields 5380 (ratio 1.12).
-    QuPath clamps the same way, and it is the conservative choice regardless — inventing
-    resolution to feed a segmenter inflates counts.
+    COARSER-THAN-MODEL IMAGES. When the image is coarser than the model's trained resolution
+    the arithmetic asks for a factor below 1, i.e. enlarging the image. The default is still to
+    clamp at 1.0, because that is what QuPath does and every validated number was produced that
+    way. `allow_upsample=True` instead enlarges to the model's resolution, bounded by
+    MIN_UPSAMPLE_DOWNSAMPLE.
+
+    WHY THE CLAMP IS NOT FREE, contrary to what this docstring used to claim. The old rationale
+    was that upsampling "inflates counts": on LL477 (0.752 µm/px, raw factor 0.665) it yields
+    6719 nuclei against QuPath's 4796, versus 5380 clamped, so the extra objects were taken to
+    be the model splitting enlarged nuclei. That inference does not hold, for two reasons —
+    QuPath applies the same clamp, so agreeing with it cannot validate it; and DeepLIIF at
+    0.25 µm/px is FINER than the model, so the validated corpus always downsamples and never
+    exercises the clamp at all.
+
+    Scored against ground truth it goes the other way. 100 DeepLIIF panels resampled to
+    0.7519 µm/px to simulate a 10x acquisition, segmented both ways, matched to their
+    IF-derived cells within 3.75 µm (validation/validate_upsample_clamp.py):
+
+        clamped   (ds 1.000)   recall 0.675   precision 0.943   F1 0.787   4941 detections
+        upsampled (ds 0.665)   recall 0.765   precision 0.883   F1 0.820   5981 detections
+
+    The 1040 extra detections contain 622 real cells — 60% useful, the same conversion rate as
+    any other recall knob — and recover 28% of everything the clamped run missed. Upsampling
+    the coarse image also beats the native 0.25 µm/px panel on recall (0.765 vs 0.750): feeding
+    nuclei at the size the model was trained on is what matters, and interpolation does not
+    have to add information to do that.
+
+    Left off by default because it moves counts on every coarse image, and because the result
+    above is a simulation of a 10x acquisition rather than a real one.
     """
     if not image_px_um or not model_px_um or image_px_um <= 0 or model_px_um <= 0:
         return 1.0
     ds = float(model_px_um) / float(image_px_um)
     if ds <= 1.0:
+        if allow_upsample and ds >= MIN_UPSAMPLE_DOWNSAMPLE:
+            return ds
         return 1.0
     nearest = round(ds)
     if abs(ds - nearest) <= snap:
@@ -173,14 +206,36 @@ def _apply_norm(rgb, ranges):
     return x
 
 
-def _forward(model, chw, device="cpu"):
-    """Run the model on one already-normalised NCHW tile, returning an integer label mask."""
+# The bundle's own seed-detection cut, from `default_seed_threshold` inside instanseg.pt.
+# Passing None uses it, which is also what QuPath's extension does — so the default keeps
+# the QuPath parity the validation harness pins.
+DEFAULT_SEED_THRESHOLD = 0.7
+
+
+def _forward(model, chw, device="cpu", seed_threshold=None):
+    """Run the model on one already-normalised NCHW tile, returning an integer label mask.
+
+    `seed_threshold` is the DETECTION cut: how confident a local maximum in the model's
+    seed map must be before it becomes a nucleus. Lower finds more, at falling precision.
+    Measured on 150 DeepLIIF panels / 10,344 IF-derived cells:
+
+        0.7 (default)  recall 0.749  precision 0.886      0.5  recall 0.780  precision 0.868
+        0.6            recall 0.771  precision 0.874      0.3  recall 0.789  precision 0.862
+
+    It is a UNIFORM dial, not a faint-tissue fix — the gain is flat across hematoxylin-OD
+    terciles (+0.043 / +0.043 / +0.037) and faintness barely predicts recall (r = +0.127).
+    For coarse images `allow_upsample` is the far bigger lever (+0.090). None = the bundle's
+    baked-in 0.7, which is what QuPath passes and what every validated number was measured at.
+    """
     import torch
     x = torch.from_numpy(np.ascontiguousarray(chw))
     if device != "cpu":
         x = x.to(device)
+    kw = {}
+    if seed_threshold is not None and abs(float(seed_threshold) - DEFAULT_SEED_THRESHOLD) > 1e-9:
+        kw["seed_threshold"] = float(seed_threshold)
     with torch.no_grad():
-        y = model(x)
+        y = model(x, **kw) if kw else model(x)
     y = y[0] if isinstance(y, (tuple, list)) else y
     return np.asarray(y.cpu().numpy().squeeze(), dtype=np.int32)
 
@@ -199,7 +254,7 @@ def _tile_grid(h, w, tile=TILE, pad=PADDING):
 
 
 def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=None,
-                   ranges=None):
+                   ranges=None, seed_threshold=None):
     """Tile, infer, and reconcile into one whole-image label mask.
 
     Reconciliation rule: an object belongs to the tile whose CORE region contains its centroid.
@@ -237,7 +292,7 @@ def segment_labels(rgb, model, device="cpu", tile=TILE, pad=PADDING, progress=No
         if th < MIN_TILE or tw < MIN_TILE:      # model needs >= 32 px per spatial axis
             sub = np.pad(sub, ((0, 0), (0, 0), (0, max(MIN_TILE - th, 0)),
                                (0, max(MIN_TILE - tw, 0))), mode="edge")
-        lab = _forward(model, sub, device)
+        lab = _forward(model, sub, device, seed_threshold)
         lab = lab[:py1 - py0, :px1 - px0]
         window = labels[py0:py1, px0:px1]
         for oid in np.unique(lab):
@@ -466,7 +521,7 @@ def _slide_norm_ranges(slide):
 
 
 def segment_slide_streaming(image_path, model, pixel_size_um, device="cpu",
-                            tile=TILE, pad=PADDING, progress=None):
+                            tile=TILE, pad=PADDING, progress=None, seed_threshold=None):
     """Segment and measure a whole slide without ever holding it in memory.
 
     Processed in STRIPES one tile-row tall and the full image wide. Each stripe is read from
@@ -525,7 +580,7 @@ def segment_slide_streaming(image_path, model, pixel_size_um, device="cpu",
                 if th < MIN_TILE or tw < MIN_TILE:
                     sub = np.pad(sub, ((0, 0), (0, 0), (0, max(MIN_TILE - th, 0)),
                                        (0, max(MIN_TILE - tw, 0))), mode="edge")
-                lab = _forward(model, sub, device)[:ry1 - ry0, :px1 - px0]
+                lab = _forward(model, sub, device, seed_threshold)[:ry1 - ry0, :px1 - px0]
                 for oid in np.unique(lab):
                     if oid == 0:
                         continue
@@ -597,7 +652,7 @@ def otsu_threshold(values, nbins=256):
 
 def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
                   dab_threshold=0.2, adaptive_threshold=False, rgb=None,
-                  progress=None):
+                  progress=None, allow_upsample=False, seed_threshold=None):
     """Segment one image and measure every nucleus.
 
     Returns {records, labels, threshold, threshold_method, pixel_size_um, width, height,
@@ -616,7 +671,8 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
             w0 = h0 = 0
         if w0 * h0 > WSI_STREAM_THRESHOLD_PX and open_slide(image_path) is not None:
             return _segment_image_streamed(image_path, model_dir, pixel_size_um, device,
-                                           dab_threshold, adaptive_threshold, progress)
+                                           dab_threshold, adaptive_threshold, progress,
+                                           allow_upsample, seed_threshold)
 
     if rgb is None:
         from oasis.quant.cell_expansion import _load_rgb_full
@@ -626,7 +682,7 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
 
     # 1. resample to the model's trained resolution (see module docstring, item 1)
     mpx = model_pixel_size(model_dir)
-    ds = preferred_downsample(pixel_size_um, mpx)
+    ds = preferred_downsample(pixel_size_um, mpx, allow_upsample=allow_upsample)
     if abs(ds - 1.0) > 1e-6:
         # ds > 1 means the image is finer than the model wants -> shrink by ds.
         interp = cv2.INTER_AREA if ds > 1 else cv2.INTER_LINEAR
@@ -637,7 +693,8 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
 
     # 2. tile, infer, reconcile
     model = load_model(model_dir, device)
-    labels_work = segment_labels(work, model, device=device, progress=progress)
+    labels_work = segment_labels(work, model, device=device, progress=progress,
+                                 seed_threshold=seed_threshold)
 
     # back to full resolution — nearest keeps label identity
     if labels_work.shape[:2] != (h, w):
@@ -655,7 +712,10 @@ def segment_image(image_path, model_dir, pixel_size_um, device="cpu",
     return {"records": records, "labels": labels, "threshold": thr,
             "threshold_method": method, "pixel_size_um": float(pixel_size_um),
             "width": w, "height": h, "downsample": ds, "streamed": False,
-            "device": device, "low_contrast": bool(low_contrast(norm_range(work)))}
+            "device": device, "low_contrast": bool(low_contrast(norm_range(work))),
+            "upsampled": bool(ds < 1.0),
+            "seed_threshold": (DEFAULT_SEED_THRESHOLD if seed_threshold is None
+                               else float(seed_threshold))}
 
 
 def _classify(records, dab_threshold, adaptive_threshold):
@@ -673,7 +733,8 @@ def _classify(records, dab_threshold, adaptive_threshold):
 
 
 def _segment_image_streamed(image_path, model_dir, pixel_size_um, device,
-                            dab_threshold, adaptive_threshold, progress):
+                            dab_threshold, adaptive_threshold, progress,
+                            allow_upsample=False, seed_threshold=None):
     """Whole-slide branch of `segment_image`.
 
     NOTE ON RESAMPLING: the streaming path reads level 0 and does not resample. In practice
@@ -684,14 +745,18 @@ def _segment_image_streamed(image_path, model_dir, pixel_size_um, device,
     """
     model = load_model(model_dir, device)
     w, h = image_dimensions(image_path)
-    ds = preferred_downsample(pixel_size_um, model_pixel_size(model_dir))
+    ds = preferred_downsample(pixel_size_um, model_pixel_size(model_dir),
+                              allow_upsample=allow_upsample)
     records = segment_slide_streaming(image_path, model, pixel_size_um,
-                                      device=device, progress=progress)
+                                      device=device, progress=progress,
+                                      seed_threshold=seed_threshold)
     thr, method = _classify(records, dab_threshold, adaptive_threshold)
     return {"records": records, "labels": None, "threshold": thr,
             "threshold_method": method, "pixel_size_um": float(pixel_size_um),
             "width": w, "height": h, "downsample": 1.0, "streamed": True,
-            "device": device, "downsample_requested": ds}
+            "device": device, "downsample_requested": ds,
+            "seed_threshold": (DEFAULT_SEED_THRESHOLD if seed_threshold is None
+                               else float(seed_threshold))}
 
 
 # ── exports, in the shapes the rest of the pipeline already reads ────────────────────────
@@ -766,6 +831,13 @@ def write_summary(result, path, image_name="", extra=None):
         "dab_threshold_method": result["threshold_method"],
         "segmenter": "instanseg_native",
         "segmenter_downsample": result["downsample"],
+        # A downsample below 1 means the image was ENLARGED to the model's trained resolution
+        # (allow_upsample). It changes counts on coarse images, so a finished run has to say
+        # whether it was on — see `preferred_downsample`.
+        "segmenter_upsampled": bool(result.get("upsampled", False)),
+        # The detection cut this run used. 0.7 is the bundle's own (and QuPath's); anything
+        # else changes which nuclei exist, so a finished run has to record it.
+        "segmenter_seed_threshold": result.get("seed_threshold", DEFAULT_SEED_THRESHOLD),
         # Provenance: CPU and MPS agree to ~1.5e-5 OD with identical cell counts and
         # classifications (597/598 DeepLIIF panels byte-identical), but they are not
         # bit-identical in every case. Recording the device makes a run reproducible.
