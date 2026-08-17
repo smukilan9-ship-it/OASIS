@@ -1,0 +1,378 @@
+{
+ "gold": [
+  {
+   "ratio": 0.9615725614096149,
+   "cov": 0.9473684210526315,
+   "real_p90": 73.06070830985041,
+   "pred_p90": 75.98044208202785,
+   "n_fit": 57,
+   "n_eval": 57,
+   "arm": "gold",
+   "pair": "lung-lesion_3",
+   "tissue": "lung-lesion_3",
+   "fle_um": 5.77102562158582,
+   "px_um": 0.348,
+   "proxy_ratio": 1.0698592613985904,
+   "proxy_cov": 0.9310344827586207
+  },
+  {
+   "ratio": 0.9895062823276934,
+   "cov": 0.9473684210526315,
+   "real_p90": 72.10417182005358,
+   "pred_p90": 72.86883682076001,
+   "n_fit": 57,
+   "n_eval": 57,
+   "arm": "gold",
+   "pair": "lung-lesion_3 (rev)",
+   "tissue": "lung-lesion_3",
+   "fle_um": 5.77102562158582,
+   "px_um": 0.348,
+   "proxy_ratio": 1.0148224375627846,
+   "proxy_cov": 0.9310344827586207
+  },
+  {
+   "ratio": 1.0268329224765995,
+   "cov": 0.9318181818181818,
+   "real_p90": 335.2846069467251,
+   "pred_p90": 326.52303953992663,
+   "n_fit": 44,
+   "n_eval": 44,
+   "arm": "gold",
+   "pair": "mammary-gland_1",
+   "tissue": "mammary-gland_1",
+   "fle_um": 14.141090807466021,
+   "px_um": 2.294,
+   "proxy_ratio": 1.1850201038898125,
+   "proxy_cov": 0.9772727272727273
+  },
+  {
+   "ratio": 1.0199919642205821,
+   "cov": 0.9318181818181818,
+   "real_p90": 337.49583600826094,
+   "pred_p90": 330.88087734706363,
+   "n_fit": 44,
+   "n_eval": 44,
+   "arm": "gold",
+   "pair": "mammary-gland_1 (rev)",
+   "tissue": "mammary-gland_1",
+   "fle_um": 14.141090807466021,
+   "px_um": 2.294,
+   "proxy_ratio": 1.1855832045997632,
+   "proxy_cov": 0.9772727272727273
+  },
+  {
+   "ratio": 1.1019275734801468,
+   "cov": 0.8888888888888888,
+   "real_p90": 712.6462389396073,
+   "pred_p90": 646.7269320513531,
+   "n_fit": 45,
+   "n_eval": 45,
+   "arm": "gold",
+   "pair": "mammary-gland_2",
+   "tissue": "mammary-gland_2",
+   "fle_um": 23.258024649569876,
+   "px_um": 2.294,
+   "proxy_ratio": 1.0655178099574432,
+   "proxy_cov": 0.9565217391304348
+  },
+  {
+   "ratio": 1.1010356032274395,
+   "cov": 0.8888888888888888,
+   "real_p90": 702.2234422286834,
+   "pred_p90": 637.7845004923297,
+   "n_fit": 45,
+   "n_eval": 45,
+   "arm": "gold",
+   "pair": "mammary-gland_2 (rev)",
+   "tissue": "mammary-gland_2",
+   "fle_um": 23.258024649569876,
+   "px_um": 2.294,
+   "proxy_ratio": 1.0644081803512941,
+   "proxy_cov": 0.9565217391304348
+  }
+ ],
+ "proxy": [
+  {
+   "ratio": 1.1237574894260804,
+   "cov": 0.9032258064516129,
+   "ratio_iqr": [
+    1.0420048237159467,
+    1.2562616759307972
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "COAD_01|training|S3->S1",
+   "tissue": "COAD",
+   "px_um": 1.872,
+   "n_lm": 61
+  },
+  {
+   "ratio": 1.0120967891290873,
+   "cov": 0.9487179487179487,
+   "ratio_iqr": [
+    0.9455410546710953,
+    1.106465616137595
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "COAD_10|training|S7->S4",
+   "tissue": "COAD",
+   "px_um": 1.872,
+   "n_lm": 77
+  },
+  {
+   "ratio": 1.0657459393985045,
+   "cov": 0.9404761904761905,
+   "ratio_iqr": [
+    0.9304161897029839,
+    1.2218499746254412
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "COAD_20|training|S7->S5",
+   "tissue": "COAD",
+   "px_um": 1.872,
+   "n_lm": 83
+  },
+  {
+   "ratio": 0.982206130815511,
+   "cov": 0.925,
+   "ratio_iqr": [
+    0.9540535925111604,
+    1.1219093790178667
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "breast_1|training|HER2->HE",
+   "tissue": "breast",
+   "px_um": 1.264,
+   "n_lm": 79
+  },
+  {
+   "ratio": 1.0595727127717325,
+   "cov": 0.9487179487179487,
+   "ratio_iqr": [
+    0.9656739663872421,
+    1.1732759483532504
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "gastric_1|training|CD68->CD4",
+   "tissue": "gastric",
+   "px_um": 1.6853333333333336,
+   "n_lm": 77
+  },
+  {
+   "ratio": 1.1011227017424714,
+   "cov": 0.9375,
+   "ratio_iqr": [
+    0.7644196627965345,
+    1.2431920688762665
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "gastric_5|training|EBV->CD68",
+   "tissue": "gastric",
+   "px_um": 1.6853333333333336,
+   "n_lm": 79
+  },
+  {
+   "ratio": 0.9261563362887688,
+   "cov": 0.9487179487179487,
+   "ratio_iqr": [
+    0.8531045147403616,
+    1.1145841727530301
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "gastric_9|training|CD68->CD4",
+   "tissue": "gastric",
+   "px_um": 1.6853333333333336,
+   "n_lm": 155
+  },
+  {
+   "ratio": 1.1961629787649906,
+   "cov": 0.925,
+   "ratio_iqr": [
+    0.8116781818093881,
+    2.754030673428317
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "kidney_3|training|PAS->MAS",
+   "tissue": "kidney",
+   "px_um": 1.0112,
+   "n_lm": 80
+  },
+  {
+   "ratio": 1.4961492880275615,
+   "cov": 0.9230769230769231,
+   "ratio_iqr": [
+    1.3998158562136127,
+    1.6518796091420893
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "lung-lesion_1|training|29-041-Izd2-w35-Cc10-5-les1->29-041-Izd2-w35-CD31-3-les1",
+   "tissue": "lung-lesion",
+   "px_um": 0.348,
+   "n_lm": 78
+  },
+  {
+   "ratio": 1.8285561133467196,
+   "cov": 0.78125,
+   "ratio_iqr": [
+    1.6310629819107771,
+    2.1333785232357085
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "lung-lesion_2|training|29-041-Izd2-w35-Ki67-7-les2->29-041-Izd2-w35-Cc10-5-les2",
+   "tissue": "lung-lesion",
+   "px_um": 0.696,
+   "n_lm": 96
+  },
+  {
+   "ratio": 1.212010429129311,
+   "cov": 0.925,
+   "ratio_iqr": [
+    1.0502740335821856,
+    1.4337629690811542
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "lung-lesion_3|training|29-041-Izd2-w35-proSPC-4-les3->29-041-Izd2-w35-Ki67-7-les3",
+   "tissue": "lung-lesion",
+   "px_um": 0.348,
+   "n_lm": 80
+  },
+  {
+   "ratio": 1.0167508370898566,
+   "cov": 0.9591836734693877,
+   "ratio_iqr": [
+    0.9490479239635026,
+    1.1960972053472398
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "lung-lobes_1|training|29-039-U-35W-Izd1-2-cd31->29-039-U-35W-Izd1-1-HE",
+   "tissue": "lung-lobes",
+   "px_um": 1.274,
+   "n_lm": 98
+  },
+  {
+   "ratio": 1.3675010600385038,
+   "cov": 0.9,
+   "ratio_iqr": [
+    1.195537260328169,
+    1.5704875797614972
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "lung-lobes_3|training|29-040-U-35W-Izd1-2-cd31->29-040-U-35W-Izd1-1-HE",
+   "tissue": "lung-lobes",
+   "px_um": 1.274,
+   "n_lm": 80
+  },
+  {
+   "ratio": 0.9600876991657588,
+   "cov": 0.9555555555555556,
+   "ratio_iqr": [
+    0.8390809170231962,
+    1.2012544561542728
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "lung-lobes_4|training|29-040-U-35W-Izd2-6-ki67->29-040-U-35W-Izd2-4-cc10",
+   "tissue": "lung-lobes",
+   "px_um": 1.274,
+   "n_lm": 89
+  },
+  {
+   "ratio": 1.4035966519686165,
+   "cov": 0.9358974358974359,
+   "ratio_iqr": [
+    0.9512510406051111,
+    1.6329000258110151
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "mammary-gland_1|training|s1_36-CNEU_A4926-4L->s1-39-HE_A4926-4L",
+   "tissue": "mammary-gland",
+   "px_um": 9.176,
+   "n_lm": 77
+  },
+  {
+   "ratio": 0.9727902329226199,
+   "cov": 0.9473684210526315,
+   "ratio_iqr": [
+    0.8680538641485338,
+    1.1228514833973358
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "mammary-gland_2|training|s2_66-CNEU_A4926-4L->s2_63-HE_A4926-4L",
+   "tissue": "mammary-gland",
+   "px_um": 9.176,
+   "n_lm": 76
+  },
+  {
+   "ratio": 0.8185519271570638,
+   "cov": 0.9605263157894737,
+   "ratio_iqr": [
+    0.7059391777559427,
+    0.9047725171797312
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "mammary-gland_2|training|s2_70-PR_A4926-4L->s2_68-ER-A4962-4L",
+   "tissue": "mammary-gland",
+   "px_um": 9.176,
+   "n_lm": 76
+  },
+  {
+   "ratio": 1.600773548822378,
+   "cov": 0.8712121212121212,
+   "ratio_iqr": [
+    1.4830121850755733,
+    1.6932159707127672
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "mice-kidney_1|training|3_PAS->2_aSMA",
+   "tissue": "mice-kidney",
+   "px_um": 0.908,
+   "n_lm": 132
+  },
+  {
+   "ratio": 1.861636323347002,
+   "cov": 0.8712121212121212,
+   "ratio_iqr": [
+    1.8188600532377732,
+    2.071313768252049
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "mice-kidney_1|training|8_CD31->3_PAS",
+   "tissue": "mice-kidney",
+   "px_um": 0.908,
+   "n_lm": 132
+  },
+  {
+   "ratio": 1.9273333120236185,
+   "cov": 0.7727272727272727,
+   "ratio_iqr": [
+    1.8084036281191127,
+    2.1019066570820018
+   ],
+   "n_splits": 12,
+   "arm": "proxy",
+   "pair": "mice-kidney_1|training|9_PAS->8_CD31",
+   "tissue": "mice-kidney",
+   "px_um": 0.908,
+   "n_lm": 132
+  }
+ ],
+ "proxy_credentialed": true,
+ "fle_proxy_um": 14.141090807466021
+}

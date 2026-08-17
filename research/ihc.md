@@ -516,7 +516,10 @@ runner, same reports):
   fails because architecture is fine/dense and dense gates/provenance/ROI handling pass;
   otherwise it remains fail-closed.
 - **Registration** — TRE vs **ANHIR/CIMA expert landmarks**; best certified real pair
-  (lung-lesion Cc10↔proSPC) LOCALLY_CERTIFIED at 3.66 µm ROI. HyReCo blocked (233 GB+login).
+  (lung-lesion Cc10↔proSPC) LOCALLY_CERTIFIED at 3.66 µm ROI. ~~HyReCo blocked (233 GB+login).~~
+  **HyReCo is IN HAND and used — see § 25.** The 233 GB was never the obstacle: the calibration
+  consumes landmarks and never touches a pixel, and all 45 landmark CSVs (9 cases × 5 stains,
+  incl. **CD8 and CD45** on consecutive sections) are present on the Expansion volume.
   No public two-marker same-section DAB set exists.
 - **Radius floor** (`radius_floor`) — registration error costs the cross-K test power,
   never validity; size ≈ α at every ε. Evidence behind `RADIUS_LIMITED`.
@@ -748,11 +751,17 @@ honest compartment-vs-engagement separation.
 - No cross-marker DAB ground truth for the targets → CD8/TIM-3 biological claim is
   underpowered (3 pairs, one cohort, nothing survives cohort FDR).
 - Certs are single-annotator LOO, n=8 provisional. **The FW bound's external calibration is
-  now n = 26 (§ 24), and the wider n changed the answer**: calibrated in the median
-  (gold n=6 ratio 0.96–1.10, coverage 89–95 %) but **under-stating realized error on 9 of 20
-  proxy pairs, worst 1.93× on mice-kidney** — a pair certified at 5 µm may carry nearly 10.
-  "Calibrated" is only supportable with a tissue envelope attached, and no envelope has been
-  derived. Still unmeasured on H-DAB.
+  now n = 74 — 26 on ANHIR/CIMA (§ 24) + 48 on HyReCo, the target modality (§ 25)** — and the
+  wider n changed the answer. Calibrated **in the median** (gold n=6 ratio 0.96–1.10, coverage
+  89–95 %; HyReCo ratio median 1.03 corrected) but **under-stating realized error on ~45 % of
+  pairs on BOTH datasets** — 9/20 on ANHIR worst 1.93×, 22/48 on HyReCo worst 1.83× — so a pair
+  certified at 5 µm may carry nearly 10. "Calibrated" is only supportable with an envelope
+  attached, and **no envelope has been derived**. Only 6 pairs anywhere have two independent
+  annotators; everything else is the credentialed proxy (+0.07, errs safe).
+- **`n ≥ 6` for CERTIFIED is too low (§ 25.2).** That floor was set for fitting a *similarity*;
+  the deformation term the budget also depends on is unstable below ~a dozen landmarks — at 8
+  fitting points it returns 240–405 µm on tissue whose realized error is 50–110 µm. Not yet
+  fixed in code.
 - Segmentation recall ~0.75 non-randomly thins dense infiltrate → biases the pattern.
 - Reweighted null anti-conservative — measured at size 0.24 on real tissue (§ 15.1), not
   "mild". The 75 µm architecture-scale is measured per image and now routes both
@@ -3659,8 +3668,15 @@ the *worst* regime rather than a merely conservative one, which is a stronger ar
   as a per-cell guarantee. Deriving one is not done here.
 * The paper reports **n = 6 gold + 20 credentialed proxy**, with the +0.07 offset stated and
   §24.4 shown rather than summarised — the failures are the informative part.
-* Still unmeasured on **H-DAB**, which is the modality the tool ships for. The second annotator
-  on the CD8/TIM-3 cohort remains the one experiment that would close this.
+* ~~Still unmeasured on **H-DAB**, which is the modality the tool ships for. The second annotator
+  on the CD8/TIM-3 cohort remains the one experiment that would close this.~~
+  **SUPERSEDED THE NEXT DAY — § 25 measures it on HyReCo** (CD8/CD45/Ki67/PHH3, consecutive
+  sections, 48 usable pairs). The answer to this section's open question is that **H-DAB sits on
+  the same side of the envelope as everything else**: ratio median 1.03 corrected, 46 % of pairs
+  under-stating against ANHIR's 45 %. The ANHIR-derived envelope transfers. What HyReCo does
+  *not* supply is a second annotator, so the **gold** design stays at n = 6 and everything in
+  § 25 is the proxy; and it validates the *registration certificate*, not the spatial statistic,
+  on H-DAB.
 
 ### 24.5 A path is not a URL, and the smoke test never opened a window
 
@@ -3712,3 +3728,100 @@ bins hardcoded against Quant's default 60.
 One pair at a time now, with Previous/Next. Three pairs of two sections, each with a slide,
 an overlay and a histogram, is not a page anyone can hold in view, and the decision being
 made is per pair.
+
+---
+
+## 25. Session 2026-08-05 — the FW bound on the target modality: HyReCo
+
+`validation/validate_fw_hyreco.py`, results in `fw_hyreco_results.json`.
+
+§ 7 recorded HyReCo as "blocked (233 GB + login)" and § 24 left the decisive question open:
+the bound is tissue-dependent, so **which side of the envelope does H-DAB fall on?** The
+dataset turns out to be on the Expansion volume — a 28 GB subset holding **all 45 landmark
+CSVs** (9 cases × 5 stains) and a handful of WSIs. That is enough, because the calibration
+consumes landmarks and never touches a pixel.
+
+**Two properties verified before use rather than assumed** — `datasets.yaml` warns
+explicitly not to trust the conversion, and it is right to:
+
+1. **Coordinates are millimetre world coordinates.** Checked against the BigTIFF metadata
+   for the two cases whose slides are present: 0.2430 µm/px over 95601 × 218145 px =
+   **23.2 × 53.0 mm**, and every landmark falls inside that. Because they are already
+   physical, no pixel size enters anywhere — coordinates go mm → µm and the pipeline is
+   handed `pixel_size_um = 1.0`.
+2. **Landmark index corresponds across stains.** The paired CD8-vs-CD45 offset is
+   5.1–9.3 mm with **median ≈ max**, i.e. a near-rigid offset between the two slides' world
+   origins, which the similarity absorbs as translation. Mismatched indices would give an
+   erratic spread, not a rigid one.
+
+**Design.** HyReCo ships **one** landmark set per section, not two independent passes, so
+inter-observer FLE is not measurable and the § 24 *gold* design is unavailable. This is the
+§ 24 **proxy** — fit on a subset, predict and measure realized error at held-out landmarks —
+which § 24 credentialed against the gold at **+0.07 median, erring safe**. That offset is
+subtracted below. FLE is supplied and swept. 4 IHC stains → 6 stain-pairs per case × 9 cases
+= **54 pairs**, all in the IHC↔IHC regime § 7.1 identified as the one OASIS operates in.
+
+### 25.1 The bound behaves on H-DAB exactly as it does on ANHIR
+
+| | n | ratio median | corrected (−0.07) | max | > 1.15 | coverage median |
+|---|---|---|---|---|---|---|
+| all pairs | 54 | 1.08 | 1.01 | 1.83 | 24 / 54 | 100 % |
+| **excluding degenerate small-n fits (§ 25.2)** | **48** | **1.10** | **1.03** | 1.83 | **22 / 48** | 100 % |
+
+**Calibrated in the median on the target modality** — 1.03 after the credentialed offset is
+about as good as this can read. And the spread is the same as ANHIR's: **46 % of pairs
+under-state** realized error against § 24's 45 %, worst 1.83 against 1.93.
+
+So the § 24 question is answered: **H-DAB falls on the same side of the envelope as
+everything else.** The ANHIR-derived envelope transfers; there is no H-DAB-specific
+pathology, and no H-DAB-specific reprieve either.
+
+FLE sensitivity reproduces § 24.5's non-monotone shape — 15/54 pairs over the line at
+FLE 3 µm, 24/54 at 14.1, 27/54 at 25, 18/54 at 40 — which is the same two-sided dependence
+(FLE inflates `TRE_pred` while shrinking the inferred deformation through
+`σ_fit² = 2·FLE² + model²`) arriving on a second, independent dataset.
+
+### 25.2 NEW — § 3.5's `n ≥ 6` floor is too low for the deformation term
+
+HyReCo's landmark counts are 11–18, so the held-out design fits on 8–13 points. Stratifying
+the predicted p90 by how many points the fit used exposes a failure the ANHIR work never
+reached, because ANHIR's counts are 53–163:
+
+| points in the fit | pairs | predicted p90, median | max | ratio median |
+|---|---|---|---|---|
+| **8** | 6 | **239.7 µm** | **405.4 µm** | 0.47 |
+| 9 | 12 | 69.0 µm | 124.9 µm | 1.29 |
+| 10 | 6 | 52.5 µm | 84.2 µm | 1.21 |
+| 11 | 6 | 158.1 µm | 246.1 µm | 1.10 |
+| 12 | 12 | 88.7 µm | **1074.5 µm** | 1.03 |
+| 13 | 12 | 99.0 µm | 256.5 µm | 0.99 |
+
+At 8 fitting points `deformation_from_landmarks` returns 240–405 µm on tissue whose realized
+error is ~50–110 µm: the robust variance decomposition has too little to separate FLE from
+model, and it charges the difference to deformation. The pairs then read as *massively
+over-certified-against* (ratio 0.47) — which flatters the calibration, since an absurdly
+large predicted error is trivially never exceeded. **They must be excluded, not celebrated**,
+which is why § 25.1 reports both rows. The instability is not strictly monotone either: one
+12-point fit reaches 1074 µm.
+
+`landmark_register_and_verify` requires `n ≥ 6` for `CERTIFIED`. That threshold was set for
+*fitting a similarity*, which needs very few points, and it is **too low for the deformation
+term the § 3.5 budget also depends on**. On this evidence the deformation estimate should not
+be trusted below roughly a dozen landmarks, and a pair with 6–8 should either be refused or
+have its deformation term flagged as unestimated. **Not yet changed in the code** — it needs
+its own validation of where the floor belongs, on a set with landmark counts spanning the
+range.
+
+### 25.3 What this does to the paper
+
+* **The H-DAB gap is closed for registration certification.** The bound is now externally
+  calibrated at **n = 74** (26 from § 24 + 48 here), across ANHIR/CIMA *and* the target
+  modality, with a consistent story on both.
+* **Reproducibility survives.** HyReCo is CC BY-SA 4.0 and publicly available from IEEE
+  DataPort, so the whole calibration remains checkable by any reader — the paper does not
+  need the private CD8/TIM-3 cohort for this claim.
+* **Honest residue.** Single annotator, so this is the proxy design throughout and the gold
+  design remains n = 6. Landmark counts are low and § 25.2 is the price. The partners are
+  CD45 / Ki67 / PHH3 rather than TIM-3, so it is the right *modality* and not the exact
+  marker pair. And nothing here validates the spatial statistic on H-DAB — that is still
+  bounded, not closed, by § 10.

@@ -73,7 +73,7 @@ datasets:
       microns-per-pixel and origin from the BigTIFF metadata before they can be compared
       with anything OASIS computes. Verify that conversion against a real file before
       trusting any TRE from it - do not assume it.'
-    used_by: []
+    used_by: [validate_fw_hyreco]
   deepliif:
     title: DeepLIIF — registered IHC + inferred multiplex IF
     dir: DeepLIIF

@@ -1,0 +1,156 @@
+{
+  "config": {
+    "n_rep": 100,
+    "n_perm": 199,
+    "null": "dense_morphology",
+    "statistic": "bands_ring",
+    "band_um": [
+      10.0,
+      20.0
+    ],
+    "count_pairs": [
+      [
+        60,
+        300
+      ],
+      [
+        60,
+        500
+      ],
+      [
+        80,
+        300
+      ],
+      [
+        100,
+        500
+      ]
+    ],
+    "enrichments": [
+      2.0,
+      3.0
+    ]
+  },
+  "results": {
+    "ll477_cd8|60|300|None": {
+      "sparse_in_A": 0.02,
+      "abundant_in_A": 0.03,
+      "n_trials": 100
+    },
+    "ll477_cd8|60|300|2.0": {
+      "sparse_in_A": 0.67,
+      "abundant_in_A": 0.69,
+      "n_trials": 100
+    },
+    "ll477_cd8|60|300|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 0.99,
+      "n_trials": 100
+    },
+    "ll477_cd8|60|500|None": {
+      "sparse_in_A": 0.03,
+      "abundant_in_A": 0.06,
+      "n_trials": 100
+    },
+    "ll477_cd8|60|500|2.0": {
+      "sparse_in_A": 0.88,
+      "abundant_in_A": 0.86,
+      "n_trials": 100
+    },
+    "ll477_cd8|60|500|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "ll477_cd8|80|300|None": {
+      "sparse_in_A": 0.01,
+      "abundant_in_A": 0.02,
+      "n_trials": 100
+    },
+    "ll477_cd8|80|300|2.0": {
+      "sparse_in_A": 0.89,
+      "abundant_in_A": 0.86,
+      "n_trials": 100
+    },
+    "ll477_cd8|80|300|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "ll477_cd8|100|500|None": {
+      "sparse_in_A": 0.04,
+      "abundant_in_A": 0.01,
+      "n_trials": 100
+    },
+    "ll477_cd8|100|500|2.0": {
+      "sparse_in_A": 0.98,
+      "abundant_in_A": 0.98,
+      "n_trials": 100
+    },
+    "ll477_cd8|100|500|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "keren_p13|60|300|None": {
+      "sparse_in_A": 0.01,
+      "abundant_in_A": 0.01,
+      "n_trials": 100
+    },
+    "keren_p13|60|300|2.0": {
+      "sparse_in_A": 0.81,
+      "abundant_in_A": 0.84,
+      "n_trials": 100
+    },
+    "keren_p13|60|300|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "keren_p13|60|500|None": {
+      "sparse_in_A": 0.03,
+      "abundant_in_A": 0.03,
+      "n_trials": 100
+    },
+    "keren_p13|60|500|2.0": {
+      "sparse_in_A": 0.96,
+      "abundant_in_A": 0.95,
+      "n_trials": 100
+    },
+    "keren_p13|60|500|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "keren_p13|80|300|None": {
+      "sparse_in_A": 0.06,
+      "abundant_in_A": 0.04,
+      "n_trials": 100
+    },
+    "keren_p13|80|300|2.0": {
+      "sparse_in_A": 0.92,
+      "abundant_in_A": 0.91,
+      "n_trials": 100
+    },
+    "keren_p13|80|300|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "keren_p13|100|500|None": {
+      "sparse_in_A": 0.05,
+      "abundant_in_A": 0.07,
+      "n_trials": 100
+    },
+    "keren_p13|100|500|2.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    },
+    "keren_p13|100|500|3.0": {
+      "sparse_in_A": 1.0,
+      "abundant_in_A": 1.0,
+      "n_trials": 100
+    }
+  }
+}
