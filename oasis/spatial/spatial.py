@@ -1372,6 +1372,30 @@ def run_spatial_association(
             res["n_b"] = int(len(p_b))
             res["n_a_excluded"] = int(n_a_excl)
             res["n_b_excluded"] = int(n_b_excl)
+
+            # What a reader actually needs: an effect size with the range chance alone
+            # produces at THESE counts, and the smallest enrichment this pair could have
+            # found. Without the second, a null result is unreportable; without the first, a
+            # hit on a handful of cells looks like a finding. Both are attached to the
+            # primary null's curves so they describe the null that drives the verdict.
+            from oasis.spatial.spatial_stats import (contact_effect, detection_limit,
+                                                     _RADIUS_FLOOR_FACTOR)
+            _primary = res.get("nulls", {}).get(res.get("primary_null")) or res
+            res["effect"] = contact_effect(_primary, len(p_a), len(p_b),
+                                           area_px * pixel_size_um * pixel_size_um)
+            # The floor is TRE x _RADIUS_FLOOR_FACTOR; invert it rather than assuming the
+            # factor is 1.0, so changing the factor cannot silently corrupt the sensitivity.
+            _tre = (None if floor is None or not _RADIUS_FLOOR_FACTOR
+                    else float(floor) / float(_RADIUS_FLOOR_FACTOR))
+            radius_floor["tre_um"] = _tre
+            res["detection_limit"] = detection_limit(_tre, len(p_a), len(p_b))
+            if not res["detection_limit"].get("assessable"):
+                # Fail closed, exactly as the registration and bandwidth gates do: the test
+                # stays correctly sized down here (measured, 6,300 trials) but has no power
+                # and no precision, so a p-value would be read as evidence it cannot carry.
+                res["not_assessable"] = True
+                print(f"  {key}: NOT ASSESSABLE — {res['detection_limit']['reason']} "
+                      f"(n_a={len(p_a)}, n_b={len(p_b)})")
             res["tissue_mask_method"] = mask_method
             res["intersection_overlap_iou"] = overlap_iou
             res["intersection_overlap_frac_a"] = overlap_frac_a

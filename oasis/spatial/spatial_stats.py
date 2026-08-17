@@ -185,26 +185,229 @@ _ANALYSABILITY_FACTOR = 2.5
 _MDE_CURVE = ((0.0, 1.50), (5.0, 1.70), (10.0, 2.13), (15.0, 2.60), (20.0, 2.70))
 
 
-def minimum_detectable_enrichment(tre_um):
+# The OTHER axis that decides whether a result can be believed: how many cells there are.
+# Measured by validation/validate_min_cells.py at zero registration error — 150 reps x 199
+# permutations per cell, on OASIS's own cohort tissue AND an independent modality (Keren
+# TNBC), taking the WORSE of the two substrates so the number is not the easy case.
+#
+# Entries are {n_A: {n_B: minimum detectable enrichment at 80 % power}}. Combinations absent
+# from a row were "not reached": no enrichment up to 5x was detectable there, which is why
+# the assessability gate below excludes exactly those.
+#
+# Cross-check worth keeping: the TRE sweep above was run at n_a=300 / n_b=500 and gives 1.50x
+# at zero error; this sweep gives 1.50x at (300, 320). Two independent experiments agreeing
+# at their overlap is the reason both curves can be read on one scale.
+_MDE_COUNT_GRID = {
+    20:  {160: 4.25, 320: 3.18},
+    100: {20: 4.53, 40: 3.28, 80: 2.67, 160: 2.19, 320: 1.84},
+    300: {20: 2.84, 40: 2.55, 80: 1.95, 160: 1.74, 320: 1.50},
+}
+
+# Derived, not chosen. This rule reproduces exactly the set of (n_A, n_B) where BOTH
+# substrates found any detectable enrichment — 0 mismatches over the 21 combinations tested.
+# Below it, the pair cannot detect even a 5x association, so a null there is not evidence of
+# absence and a hit is not interpretable.
+ASSESSABILITY_MIN_MINOR = 20     # the smaller of the two counts
+ASSESSABILITY_MIN_MAJOR = 100    # the larger of the two
+
+
+def minimum_detectable_enrichment(tre_um, n_a=None, n_b=None):
     """Smallest cross-type enrichment this pair could still find at 80 % power.
 
+    Two things limit it and the answer is whichever binds harder: registration error smears a
+    real excess across radii, and low cell counts leave nothing to rank. Passing only
+    `tre_um` reproduces the original registration-only behaviour, so existing callers are
+    unaffected.
+
     Linear between measured points; beyond the measured range it extrapolates on the last
-    segment and is flagged by the caller rather than silently trusted. Returns None when the
-    error is unknown, so callers fail closed instead of quoting a fabricated sensitivity.
+    segment and is flagged by `detection_limit` rather than silently trusted. Returns None
+    when the inputs are unknown, or when the counts are below the assessability gate — there
+    is no detectable effect to quote there — so callers fail closed instead of quoting a
+    fabricated sensitivity.
     """
-    if tre_um is None:
+    from_tre = None
+    if tre_um is not None:
+        t = float(tre_um)
+        if np.isfinite(t) and t >= 0:
+            xs = [p[0] for p in _MDE_CURVE]
+            ys = [p[1] for p in _MDE_CURVE]
+            if t <= xs[0]:
+                from_tre = ys[0]
+            elif t >= xs[-1]:
+                slope = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
+                from_tre = round(ys[-1] + slope * (t - xs[-1]), 2)
+            else:
+                from_tre = round(float(np.interp(t, xs, ys)), 2)
+
+    from_counts = _mde_from_counts(n_a, n_b) if (n_a is not None and n_b is not None) else None
+
+    vals = [v for v in (from_tre, from_counts) if v is not None]
+    if not vals:
         return None
-    t = float(tre_um)
-    if not np.isfinite(t) or t < 0:
+    if n_a is not None and n_b is not None and from_counts is None:
+        return None                       # counts below the gate: nothing is detectable
+    return round(max(vals), 2)
+
+
+def contact_effect(result, n_a, n_b, tissue_area_um2,
+                   rmin_um=_COLOC_RMIN_UM, rmax_um=_COLOC_RMAX_UM):
+    """The reportable effect size for a cross-type result — not a p-value.
+
+    A p-value answers "could chance have produced a pattern at least this extreme", which is
+    not the question a reader has. Two numbers are, and both come out of curves already
+    computed:
+
+      enrichment  — observed cross-type pairs separated by rmin..rmax over the number the
+                    null puts there. 1.0 is chance, 2.4 means 2.4x as many as chance. Unitless
+                    and therefore comparable across images, magnifications and cohorts.
+
+      excess neighbours — the same fact in cells rather than ratio: how many B cells lie
+                    within rmax of a typical A cell, observed and expected. This is the one a
+                    pathologist can check against the overlay by eye, which is exactly why it
+                    is worth carrying alongside the ratio.
+
+    The interval is the SPREAD OF THE NULL expressed on the enrichment scale, i.e. what this
+    many cells in this window would throw up by chance alone. It is deliberately not a
+    bootstrap of the observed pattern: with 5 cells a bootstrap resamples 5 cells and looks
+    falsely tight, whereas the null spread widens exactly when the counts cannot support a
+    claim. An enrichment inside that interval is not a weak finding, it is no finding.
+
+    Returns None when the band is undefined or the null has no mass there.
+    """
+    r = np.asarray(result.get("radii_um") or [], dtype=np.float64)
+    k_obs = np.asarray(result.get("K_observed") or [], dtype=np.float64)
+    k_nul = np.asarray(result.get("null_mean_K") or [], dtype=np.float64)
+    k_lo = np.asarray(result.get("null_lower_K") or [], dtype=np.float64)
+    k_hi = np.asarray(result.get("null_upper_K") or [], dtype=np.float64)
+    if r.size == 0 or k_obs.size != r.size or k_nul.size != r.size:
         return None
-    xs = [p[0] for p in _MDE_CURVE]
-    ys = [p[1] for p in _MDE_CURVE]
-    if t <= xs[0]:
-        return ys[0]
-    if t >= xs[-1]:
-        slope = (ys[-1] - ys[-2]) / (xs[-1] - xs[-2])
-        return round(ys[-1] + slope * (t - xs[-1]), 2)
-    return round(float(np.interp(t, xs, ys)), 2)
+
+    i_lo = int(np.argmin(np.abs(r - rmin_um)))
+    i_hi = int(np.argmin(np.abs(r - rmax_um)))
+    if i_hi <= i_lo:
+        return None
+    den = float(k_nul[i_hi] - k_nul[i_lo])
+    if not np.isfinite(den) or den <= 0:
+        return None
+
+    obs_inc = float(k_obs[i_hi] - k_obs[i_lo])
+    enrichment = obs_inc / den
+
+    # Null envelope mapped onto the same ratio scale. Envelope bounds are per-radius, so the
+    # increment across the band is the honest way to carry them into a band statistic.
+    def _band_ratio(arr):
+        if arr.size != r.size:
+            return None
+        inc = float(arr[i_hi] - arr[i_lo])
+        return inc / den if np.isfinite(inc) else None
+
+    lo_ratio, hi_ratio = _band_ratio(k_lo), _band_ratio(k_hi)
+
+    # Excess neighbours: lambda_B * K_AB(r) is the expected count of B within r of a typical A.
+    out = {"band_um": [float(rmin_um), float(rmax_um)],
+           "enrichment": round(float(enrichment), 2),
+           "chance_range": (None if lo_ratio is None or hi_ratio is None else
+                            [round(float(lo_ratio), 2), round(float(hi_ratio), 2)])}
+    if tissue_area_um2 and n_b and float(tissue_area_um2) > 0:
+        lam_b = float(n_b) / float(tissue_area_um2)
+        out["neighbours_observed"] = round(lam_b * float(k_obs[i_hi]), 2)
+        out["neighbours_expected"] = round(lam_b * float(k_nul[i_hi]), 2)
+        out["neighbours_radius_um"] = float(rmax_um)
+    # Descriptive only, deliberately NOT called "significant" or "informative": the envelope
+    # is a 95 % band, so an independent pair lands outside it one time in twenty by
+    # construction. The properly-sized decision is the DCLF test; this flag exists so a
+    # reader can see at a glance whether the observed ratio even clears what chance produces.
+    out["outside_chance_range"] = bool(
+        out.get("chance_range") and
+        (enrichment > out["chance_range"][1] or enrichment < out["chance_range"][0]))
+    return out
+
+
+def _interp_log(x, xs, ys):
+    """Linear interpolation in log x, clamped at both ends."""
+    lx = np.log(float(x))
+    lxs = np.log(np.asarray(xs, float))
+    return float(np.interp(lx, lxs, np.asarray(ys, float)))
+
+
+def _mde_from_counts(n_a, n_b):
+    """Minimum detectable enrichment implied by the cell counts alone, or None below the gate.
+
+    Interpolates in log-log because the measured grid is geometric in both axes and power
+    tracks the counts multiplicatively, not additively.
+    """
+    if n_a is None or n_b is None:
+        return None
+    try:
+        a, b = float(n_a), float(n_b)
+    except (TypeError, ValueError):
+        return None
+    if not (np.isfinite(a) and np.isfinite(b)) or a <= 0 or b <= 0:
+        return None
+    if not assessable_counts(a, b):
+        return None
+
+    rows = sorted(_MDE_COUNT_GRID)
+    per_row = []
+    for r in rows:
+        cols = sorted(_MDE_COUNT_GRID[r])
+        per_row.append(_interp_log(b, cols, [_MDE_COUNT_GRID[r][c] for c in cols]))
+    return round(_interp_log(a, rows, per_row), 2)
+
+
+def assessable_counts(n_a, n_b):
+    """Can a cross-type association be assessed at these counts at all?
+
+    See ASSESSABILITY_MIN_MINOR / _MAJOR: below this the test remains correctly sized — it
+    does not invent findings, that was measured over 6,300 independent-pair trials at a
+    pooled false-positive rate of 0.036 against a nominal 0.05 — but it has no power and the
+    estimated enrichment is so wide that an observed ratio carries no information.
+    """
+    if n_a is None or n_b is None:
+        return False
+    try:
+        a, b = float(n_a), float(n_b)
+    except (TypeError, ValueError):
+        return False
+    if not (np.isfinite(a) and np.isfinite(b)):
+        return False
+    return min(a, b) >= ASSESSABILITY_MIN_MINOR and max(a, b) >= ASSESSABILITY_MIN_MAJOR
+
+
+def detection_limit(tre_um, n_a, n_b):
+    """Everything a reader needs to interpret a spatial result, including a null one.
+
+    Returns which of the two constraints binds, so "no association found" can be reported as
+    the honest "no association of X or more was detectable here, and the limit came from
+    <registration error / cell counts>".
+    """
+    from_tre = minimum_detectable_enrichment(tre_um) if tre_um is not None else None
+    from_counts = _mde_from_counts(n_a, n_b)
+    ok = assessable_counts(n_a, n_b)
+
+    if not ok:
+        return {"assessable": False, "mde": None, "limited_by": "cell counts",
+                "n_a": None if n_a is None else int(n_a),
+                "n_b": None if n_b is None else int(n_b),
+                "min_minor": ASSESSABILITY_MIN_MINOR, "min_major": ASSESSABILITY_MIN_MAJOR,
+                "reason": (f"needs at least {ASSESSABILITY_MIN_MINOR} of the rarer marker and "
+                           f"{ASSESSABILITY_MIN_MAJOR} of the commoner one")}
+
+    vals = {"registration error": from_tre, "cell counts": from_counts}
+    live = {k: v for k, v in vals.items() if v is not None}
+    if not live:
+        return {"assessable": False, "mde": None, "limited_by": "unknown",
+                "reason": "registration error and cell counts both unknown"}
+    worst = max(live, key=lambda k: live[k])
+
+    # Outside the measured support the number is an extrapolation, and says so.
+    rows = sorted(_MDE_COUNT_GRID)
+    cols_all = sorted({c for r in _MDE_COUNT_GRID.values() for c in r})
+    extrap = bool(n_a < rows[0] or n_a > rows[-1]
+                  or n_b < cols_all[0] or n_b > cols_all[-1])
+    return {"assessable": True, "mde": round(float(live[worst]), 2), "limited_by": worst,
+            "mde_from_registration": from_tre, "mde_from_counts": from_counts,
+            "n_a": int(n_a), "n_b": int(n_b), "extrapolated": extrap}
 
 
 def analysability_radius(tre_um, factor: float = _ANALYSABILITY_FACTOR):
