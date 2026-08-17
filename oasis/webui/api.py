@@ -41,6 +41,17 @@ DEFAULT_SETUP = {
     # Vendored at models/ (Apache-2.0) so a fresh install needs no QuPath download;
     # falls back to the old QuPath location for installs that predate it.
     "instanseg_model": default_model_dir(),
+    # Enlarge images COARSER than the model's trained 0.5 µm/px (10x and below) to that
+    # resolution instead of segmenting them at native size. A no-op at 20x and finer, and
+    # capped at 2x so 4x stays clamped. Default off, matching the CLI, so no existing result
+    # changes until it is turned on deliberately — see segment.preferred_downsample and
+    # validation/validate_upsample_clamp.py (recall 0.675 -> 0.765 on a simulated 10x).
+    "allow_upsample_to_model": False,
+    # InstanSeg's DETECTION cut. 0.7 is the bundle's own default and what QuPath passes, so
+    # it is the value every validated number was measured at. Lower finds more nuclei at
+    # falling precision (150 DeepLIIF panels: 0.7 -> 0.5 moves recall 0.749 -> 0.780,
+    # precision 0.886 -> 0.868). It is a uniform dial, NOT a faint-tissue fix.
+    "seed_threshold": 0.7,
     # Root that holds the consolidated validation datasets (Validation tab).
     # Resolved by validation/datasets/resolve.py; kept out of the repo so the
     # project stays lean and the path survives being bundled as a standalone app.
@@ -208,7 +219,8 @@ class API:
         return not SETUP_FILE.exists()
 
     # ── Calibration (native cutoff fitting) ────────────────────────────────
-    def calibration_prepare(self, image_path, pixel_size, kind="nuclear"):
+    def calibration_prepare(self, image_path, pixel_size, kind="nuclear",
+                            seed_threshold=None):
         """Segment an image and return views + clickable cells for labeling.
 
         `kind` decides what the labeller is shown: a membranous marker gets the
@@ -216,8 +228,13 @@ class API:
         """
         try:
             from oasis.webui import calibration
+            setup = self.get_setup()
+            # A per-run choice on the Classifier form wins over the saved default, so the
+            # cells you label are the cells Quant will later be asked to call.
+            if seed_threshold is not None:
+                setup = {**setup, "seed_threshold": float(seed_threshold)}
             return calibration.prepare(os.path.expanduser(image_path),
-                                       float(pixel_size), self.get_setup(),
+                                       float(pixel_size), setup,
                                        kind=str(kind or "nuclear"))
         except Exception as e:
             return {"ok": False, "msg": str(e)}
@@ -672,6 +689,16 @@ class API:
             "instanseg_model":    setup.get("instanseg_model", DEFAULT_SETUP["instanseg_model"]),
             "device":             setup.get("device", "auto"),
             "instanseg_threads":  setup.get("instanseg_threads", 4),
+            # Carried from the setup store (or overridden per-run by the form) so a UI run
+            # and a CLI run on the same images agree. Without this the UI silently resolved
+            # it to False and segmented clamped while config.yaml said otherwise.
+            "allow_upsample_to_model": settings.get(
+                "allow_upsample_to_model",
+                setup.get("allow_upsample_to_model",
+                          DEFAULT_SETUP["allow_upsample_to_model"])),
+            "seed_threshold": settings.get(
+                "seed_threshold",
+                setup.get("seed_threshold", DEFAULT_SETUP["seed_threshold"])),
             "tile_dims":          512,
             "timeout_seconds":    1800,
             "mode":               "automated",
@@ -1244,6 +1271,87 @@ class API:
                 }
 
             return {"status": "ok", "ref": preview(ref_path), "mov": preview(mov_path)}
+        except Exception as e:
+            return {"status": "error", "error": str(e)}
+
+    def nonrigid_align(self, ref_path: str, mov_path: str, fast: bool = True,
+                       pixel_size_um: float = None) -> dict:
+        """Warp the moving section onto the fixed one and hand back the result to LOOK AT.
+
+        This does NOT certify anything and deliberately returns no verdict. research/ihc.md
+        § 23.10 measured that no property of a displacement field predicts whether that field
+        put cells in the right place, so a warp cannot vouch for itself and neither can this
+        endpoint. What comes back is an image and a displacement summary; whether the tissue
+        actually lines up is a judgement the operator makes by eye, and certification stays
+        with the landmark path on correspondences the warp never saw.
+        """
+        try:
+            import base64
+            import time
+            import numpy as np
+            from io import BytesIO
+            from PIL import Image
+            from oasis.spatial import nonrigid
+
+            if not nonrigid.available():
+                return {"status": "error",
+                        "error": "The non-rigid registrar is not installed in this build."}
+            ref_p, mov_p = os.path.expanduser(ref_path), os.path.expanduser(mov_path)
+            # Check the inputs here: the registrar reports a missing file as a failure to
+            # copy its own output, which reads as a bug in the warp rather than a bad path.
+            for label, p in (("fixed", ref_p), ("moving", mov_p)):
+                if not os.path.exists(p):
+                    return {"status": "error",
+                            "error": f"{label} image not found: {p}"}
+            t0 = time.time()
+            res = nonrigid.warp_image(ref_p, mov_p, fast=bool(fast), case_name="ui_pair")
+            if res.get("error"):
+                nonrigid.cleanup(res)
+                return {"status": "error", "error": res["error"]}
+
+            arr = res.get("warped")
+            if arr is None:
+                nonrigid.cleanup(res)
+                return {"status": "error", "error": "no warped image was produced"}
+            im = Image.fromarray(np.asarray(arr, dtype=np.uint8))
+            full_w, full_h = im.width, im.height
+            im.thumbnail((1200, 900), Image.Resampling.LANCZOS)
+            buf = BytesIO()
+            im.save(buf, "JPEG", quality=86)
+
+            out = {"status": "ok",
+                   "warped": {"data_url": "data:image/jpeg;base64,"
+                                          + base64.b64encode(buf.getvalue()).decode("ascii"),
+                              "width": full_w, "height": full_h},
+                   "seconds": round(time.time() - t0, 1),
+                   "device": res.get("device"),
+                   "warped_path": res.get("warped_path"),
+                   "displacement_field_path": res.get("displacement_field_path")}
+
+            # How far the warp moved things, so an operator can see at a glance whether this
+            # is a nudge or a rebuild. § 23.7: non-rigid helps below ~21 µm of displacement
+            # and destroys above ~55 µm — but note this total INCLUDES the initial rigid
+            # alignment, so it is not the micro-registration figure that threshold refers to.
+            try:
+                import SimpleITK as sitk
+                f = sitk.GetArrayFromImage(sitk.ReadImage(res["displacement_field_path"]))
+                mag = (np.linalg.norm(f, axis=-1) if f.shape[-1] == 2
+                       else np.linalg.norm(f, axis=0))
+                # The PAIR's pixel size, not the global default. Falling back to setup gave
+                # 188 µm where the calibrated 0.7519 µm/px gives 284 — a third of the real
+                # displacement, on the one number an operator would judge the warp by.
+                px = float(pixel_size_um or 0) or None
+                if px is None:
+                    px = float(self.get_setup().get("pixel_size_x") or 0) or None
+                out["displacement_px"] = {"median": round(float(np.median(mag)), 1),
+                                          "p90": round(float(np.percentile(mag, 90)), 1)}
+                if px:
+                    out["displacement_um"] = {
+                        "median": round(float(np.median(mag)) * px, 1),
+                        "p90": round(float(np.percentile(mag, 90)) * px, 1)}
+            except Exception:                                       # noqa: BLE001
+                pass
+            return out
         except Exception as e:
             return {"status": "error", "error": str(e)}
 
@@ -3078,6 +3186,16 @@ class API:
             "instanseg_model":     setup.get("instanseg_model", DEFAULT_SETUP["instanseg_model"]),
             "device":              setup.get("device", "auto"),
             "instanseg_threads":   setup.get("instanseg_threads", 4),
+            # Both segmentation knobs come through explicitly rather than only via **setup,
+            # so a per-run choice on the Spatial form can override the saved default and the
+            # two images of a pair are always segmented identically.
+            "allow_upsample_to_model": config.get(
+                "allow_upsample_to_model",
+                setup.get("allow_upsample_to_model",
+                          DEFAULT_SETUP["allow_upsample_to_model"])),
+            "seed_threshold":      config.get(
+                "seed_threshold",
+                setup.get("seed_threshold", DEFAULT_SETUP["seed_threshold"])),
             "tile_dims":           512,
             "timeout_seconds":     1800,
             "mode":                "spatial",

@@ -225,10 +225,12 @@ modality (brightfield IHC, real serial sections). Landmarks are submission-only 
 grand-challenge, so it validates *registration behaviour*, not TRE directly — useful for
 checking FLE's dependence on tissue texture across a cohort we did not tune on.
 
-**4. HyReCo — the ideal set, still blocked.**
-Serial H-DAB with expert landmarks, which is exactly the missing calibration. 233 GB and login
-(`public-data-certification-062126`). Only worth the effort if Phase A/B leave the H-DAB FLE
-genuinely ambiguous.
+**4. HyReCo — the ideal set. NO LONGER BLOCKED (2026-08-05).**
+Serial H-DAB with expert landmarks, which is exactly the missing calibration. ~~233 GB and login~~
+— the size was never the obstacle: the calibration consumes **landmarks**, not pixels, and all
+45 landmark CSVs (9 cases × 5 stains, incl. CD8 and CD45) are on the Expansion volume. Used by
+`ihc.md` § 25 to calibrate the FW bound on the target modality at n = 48. Note this bullet was
+already stale when written — § 12 below reports HyReCo field-blunder results.
 
 **Not needed here:** CODEX, Keren, DeepLIIF, HNSCC — they validate nulls, dense scaffolds and
 classification, none of which touch FLE.

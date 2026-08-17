@@ -1459,6 +1459,21 @@ td.muted { color: var(--text3); font-size: 11px; }
           </div>
         </div>
 
+
+        <div class="q-group">
+          <div class="q-glabel">Detection sensitivity <span style="font-weight:400;color:var(--text3)">— how faint a nucleus can be and still be found</span></div>
+          <div class="q-gplain">InstanSeg's seed cutoff. <b>Lower finds more nuclei and accepts
+            more false ones.</b> The default 0.7 is the model's own, and the value QuPath uses,
+            so every validated number in this app was measured at it. Changing it re-segments —
+            it is not the DAB cutoff, which only recolours cells you already have.</div>
+          <div class="q-inline">
+            <input type="range" id="q-seed" min="0.30" max="0.90" step="0.05" value="0.70"
+                   style="flex:1;max-width:320px" oninput="seedChanged('q')">
+            <b id="q-seed-val" style="min-width:44px;font-variant-numeric:tabular-nums">0.70</b>
+            <button class="btn sm" type="button" onclick="seedReset('q')">Default</button>
+          </div>
+          <div class="q-note" style="margin-top:8px" id="q-seed-note"></div>
+        </div>
         <div class="q-group">
           <div class="q-note">Segmentation is cached. Re-running the same images at the same
             pixel size reuses the result instead of segmenting again.</div>
@@ -2005,6 +2020,9 @@ td.muted { color: var(--text3); font-size: 11px; }
               <button class="btn sm cert-mode-tab" id="cert-mode-landmark-tab"
                       onclick="spatialCertSetMode('landmark')"
                       title="You place the anatomical correspondences. OASIS never guesses the matching point.">Manual landmarks</button>
+              <button class="btn sm cert-mode-tab" id="cert-mode-nonrigid-tab"
+                      onclick="spatialCertSetMode('nonrigid')"
+                      title="Warp the moving section onto the fixed one and look at the result. This aligns; it does not certify.">Non-rigid align</button>
             </span>
             <span class="cert-strip-r">
               <button class="btn sm cert-loaded-only" id="spatial-cert-colour" style="display:none"
@@ -2093,6 +2111,25 @@ td.muted { color: var(--text3); font-size: 11px; }
                   <button class="btn sm" id="spatial-loftr-certify" onclick="loftrRoiCertifyAll()"
                           title="Certify only the regions you drew">Certify drawn</button>
                   <button class="btn sm" onclick="loftrRoiClearAll()" title="Remove all regions">Clear</button>
+                </div>
+
+                <!-- Non-rigid alignment. Deliberately a separate bar with no certify button:
+                     a warp cannot vouch for itself (research/ihc.md § 23.10), so the only
+                     thing this path produces is a picture for the operator to judge. -->
+                <div class="cert-bar cert-bar-bottom cert-only-nonrigid">
+                  <button class="btn sm pri" id="spatial-nonrigid-run" onclick="nonrigidAlign()"
+                          title="Warp the moving section onto the fixed one (about two minutes)">Align the sections</button>
+                  <button class="btn sm" id="spatial-nonrigid-toggle" onclick="nonrigidToggle()"
+                          style="display:none"
+                          title="Flip the moving pane between the original section and the warped one">Show original</button>
+                  <span class="val" id="spatial-nonrigid-status"
+                        style="min-width:120px;color:var(--text2)">not aligned</span>
+                  <span class="sep"></span>
+                  <label style="font-size:11.5px;color:var(--text2);display:inline-flex;align-items:center;gap:4px">
+                    <input type="checkbox" id="spatial-nonrigid-fast" checked>Fast</label>
+                  <span class="sep"></span>
+                  <span style="font-size:11.5px;color:var(--text2)">Aligning only. Certify from the
+                    other two tabs, on correspondences the warp never saw.</span>
                 </div>
 
                 <div class="cert-bar cert-bar-bottom cert-only-landmark">
@@ -2192,6 +2229,23 @@ td.muted { color: var(--text3); font-size: 11px; }
              this flag guards (run_pipeline.py) — so on every run the app can launch, the
              switch changed nothing. It survived only for command-line runs that have no
              certificate, which is where the config key still lives. -->
+
+        <div class="q-group">
+          <div class="q-glabel">Detection sensitivity <span style="font-weight:400;color:var(--text3)">— how faint a nucleus can be and still be found</span></div>
+          <div class="q-gplain">InstanSeg's seed cutoff. <b>Lower finds more nuclei and accepts
+            more false ones.</b> The default 0.7 is the model's own, and the value QuPath uses,
+            so every validated number in this app was measured at it. Changing it re-segments —
+            it is not the DAB cutoff, which only recolours cells you already have.</div>
+          <div class="q-inline">
+            <input type="range" id="spatial-seed" min="0.30" max="0.90" step="0.05" value="0.70"
+                   style="flex:1;max-width:320px" oninput="seedChanged('spatial')">
+            <b id="spatial-seed-val" style="min-width:44px;font-variant-numeric:tabular-nums">0.70</b>
+            <button class="btn sm" type="button" onclick="seedReset('spatial')">Default</button>
+          </div>
+          <div class="q-note" style="margin-top:8px" id="spatial-seed-note"></div>
+          <div class="q-note" style="margin-top:6px">Applied to <b>both</b> images of the pair,
+            so A and B are always found the same way.</div>
+        </div>
         <div class="q-group">
           <div class="q-note">Segmentation is cached and shared: the same cells feed the
             certified analysis window, the null-model check on step 6, and the association
@@ -2560,6 +2614,23 @@ td.muted { color: var(--text3); font-size: 11px; }
         <div class="q-note" style="margin-top:8px" id="cls-req"></div>
       </div>
 
+
+      <div class="q-group">
+          <div class="q-glabel">Detection sensitivity <span style="font-weight:400;color:var(--text3)">— how faint a nucleus can be and still be found</span></div>
+          <div class="q-gplain">InstanSeg's seed cutoff. <b>Lower finds more nuclei and accepts
+            more false ones.</b> The default 0.7 is the model's own, and the value QuPath uses,
+            so every validated number in this app was measured at it. Changing it re-segments —
+            it is not the DAB cutoff, which only recolours cells you already have.</div>
+          <div class="q-inline">
+            <input type="range" id="cls-seed" min="0.30" max="0.90" step="0.05" value="0.70"
+                   style="flex:1;max-width:320px" oninput="seedChanged('cls')">
+            <b id="cls-seed-val" style="min-width:44px;font-variant-numeric:tabular-nums">0.70</b>
+            <button class="btn sm" type="button" onclick="seedReset('cls')">Default</button>
+          </div>
+          <div class="q-note" style="margin-top:8px" id="cls-seed-note"></div>
+          <div class="q-note" style="margin-top:6px">Keep this the same as Quant, or the rule is
+            fitted on one set of cells and applied to another.</div>
+        </div>
       <div class="q-group">
         <button class="btn amber" id="cls-seg-btn" onclick="clsSegment()"
                 style="height:38px;padding:0 20px">Segment &amp; label →</button>
@@ -2746,6 +2817,27 @@ function showView(page, view) {
 }
 
 // ── Toggle ────────────────────────────────────────────────
+// ── Detection sensitivity (InstanSeg seed_threshold) ────────────────────────────
+// Shared by Quant, Spatial and Classifier so the three cannot drift. 0.7 is the bundle's
+// own default and QuPath's; the warning fires whenever a run would depart from it, because
+// that invalidates comparison with anything measured before.
+const SEED_DEFAULT = 0.70;
+function seedValue(p){ const e=document.getElementById(p+'-seed');
+  return e ? parseFloat(e.value) : SEED_DEFAULT; }
+function seedChanged(p){ const v=seedValue(p);
+  const val=document.getElementById(p+'-seed-val'); if(val) val.textContent=v.toFixed(2);
+  const n=document.getElementById(p+'-seed-note'); if(!n) return;
+  if(Math.abs(v-SEED_DEFAULT)<1e-9){ n.innerHTML=''; n.style.color=''; return; }
+  const more = v < SEED_DEFAULT;
+  n.style.color = 'var(--warn)';
+  n.innerHTML = '<b>Not the default.</b> ' + (more
+      ? 'More nuclei will be found, and more of them will be wrong — measured on 150 reference panels, 0.7&nbsp;→&nbsp;0.5 moves recall 0.749&nbsp;→&nbsp;0.780 but precision 0.886&nbsp;→&nbsp;0.868.'
+      : 'Fewer nuclei will be found. Above the default only the most confident nuclei survive.')
+    + ' Counts will not be comparable with runs made at 0.70, and it is recorded in every summary as <code>segmenter_seed_threshold</code>.';
+}
+function seedReset(p){ const e=document.getElementById(p+'-seed'); if(!e) return;
+  e.value = SEED_DEFAULT; seedChanged(p); }
+
 function toggleEl(id) { document.getElementById(id).classList.toggle('on'); }
 function isOn(id)     { return document.getElementById(id).classList.contains('on'); }
 // Membranous mode does not retire the optical-density cutoff — it changes what the cutoff
@@ -3520,7 +3612,8 @@ async function clsSegment() {
       + (cls.kind === 'membrane' ? ' + measuring rings' : '');
     // The kind decides what comes back: a membranous marker also gets each cell's
     // cytoplasmic ring, so the labeller sees the region their label will be fitted on.
-    const r = await window.pywebview.api.calibration_prepare(im.path, im.px, cls.kind);
+    const r = await window.pywebview.api.calibration_prepare(
+      im.path, im.px, cls.kind, seedValue('cls'));
     if (!r || !r.ok) {
       btn.disabled = false; btn.textContent = 'Segment & label →';
       showToast(`Segmentation failed on ${im.path.split('/').pop()}: ${(r && r.msg) || ''}`);
@@ -4382,6 +4475,7 @@ async function runQuantAnalysis() {
     default_pixel_size:    px_x,
     pixel_size_mode:       pxMode,
     dab_threshold:         document.getElementById('q-thresh').value / 100,
+    seed_threshold:        seedValue('q'),
     // One fixed cohort-wide OD cutoff; per-image exceptions are applied after
     // segmentation and recorded in the output (research/ihc.md § 11).
     adaptive_threshold:    false,
@@ -6233,6 +6327,9 @@ async function spatialCertLoad() {
   spatialCertWork = { pair, ref:r.ref, mov:r.mov, refPoints:[], movPoints:[], pending:null,
                       certifying:false, roiPoints:[], movRoi:null, movRoiDrag:null, roiMode:false,
                       loftrRois:[], loftrDraft:[], loftrMode:false, freehand:false, stains };
+  // The warp belongs to the pair that produced it. These are module-level, so without this
+  // the toggle would swap the PREVIOUS pair's warped tissue into the new pair's pane.
+  nonrigidReset();
   const crumb = document.getElementById('spatial-cert-crumb');
   if (crumb) {
     // The pixel size used to ride along here. It is stated twice more on this screen — in
@@ -7226,7 +7323,20 @@ function spatialCertRenderInspector() {
                                   && /CERTIFIED|RADIUS_LIMITED/.test(r.cert.verdict || ''));
   const px = spatialCertPixelSize(), pxm = spatialCertMovPixelSize();
 
-  const why = manual
+  // Three modes, three explanations. This was a binary, so the non-rigid tab inherited the
+  // LoFTR text and told the operator the warp was being certified — the opposite of true.
+  const why = spatialCertMode === 'nonrigid'
+    ? `<p><b>This tab aligns. It does not certify.</b> The moving section is warped onto the
+        fixed one so you can see whether the two actually correspond. Nothing here produces a
+        verdict, and nothing here feeds the run.</p>
+       <p>A warp cannot vouch for itself. No property of a displacement field predicts whether
+        it put cells in the right place, so certification stays with <b>Automatic</b> and
+        <b>Manual landmarks</b>, on correspondences the warp never saw.</p>
+       <p>Judge it by eye: do vessel walls, section edges and tissue folds land on their
+        counterparts? Watch the displacement figure too. A nudge of a few microns is a
+        refinement; a shift of hundreds is a different alignment altogether, and that is the
+        regime where warping makes the answer worse rather than better.</p>`
+    : manual
     ? `<p>Click a structure on the <b>fixed</b> section, then the <b>same structure</b> on the
         moving one. OASIS never places the matching point for you. At least
         ${(spatialCertGates||{}).min_n ?? 6} well-spread pairs; 12 is better.</p>
@@ -7339,28 +7449,97 @@ function spatialCertRenderInspector() {
 function certModeIsManual() { return spatialCertMode === 'landmark'; }
 function certModeIsAuto()   { return spatialCertMode === 'loftr'; }
 
+// ── Non-rigid alignment ─────────────────────────────────────────────────────────────────
+// Produces a picture, never a verdict. research/ihc.md § 23.10 measured that no property of
+// a displacement field predicts whether the field put cells in the right place, so the warp
+// is shown for the operator to judge and certification stays with the other two tabs.
+let _nrWarped = null;      // data URL of the warped moving section
+let _nrOriginal = null;    // data URL it replaced, so the swap is reversible
+window._nrShowing = false;
+
+function nonrigidReset() {
+  _nrWarped = null; _nrOriginal = null; window._nrShowing = false;
+  const tog = document.getElementById('spatial-nonrigid-toggle');
+  if (tog) { tog.style.display = 'none'; tog.textContent = 'Show original'; }
+  nonrigidStatus('not aligned', false);
+}
+
+function nonrigidStatus(text, busy) {
+  const s = document.getElementById('spatial-nonrigid-status');
+  if (s) s.textContent = text;
+  const b = document.getElementById('spatial-nonrigid-run');
+  if (b) { b.disabled = !!busy; b.textContent = busy ? 'Aligning…' : 'Align the sections'; }
+}
+
+async function nonrigidAlign() {
+  const w = spatialCertWork;
+  if (!w.pair || !w.ref) { showToast('Load the pair first'); return; }
+  nonrigidStatus('aligning, about two minutes…', true);
+  try {
+    const fast = !!(document.getElementById('spatial-nonrigid-fast') || {}).checked;
+    // Pass THIS pair's pixel size: without it the displacement is reported against the
+    // global default and reads a third of its true size in microns.
+    const r = await window.pywebview.api.nonrigid_align(
+      w.pair.path_a, w.pair.path_b, fast, spatialCertPixelSize());
+    if (!r || r.status !== 'ok') {
+      nonrigidStatus('failed', false);
+      showToast((r && r.error) || 'Alignment failed');
+      return;
+    }
+    const imgM = document.getElementById('spatial-cert-mov');
+    if (_nrOriginal === null) _nrOriginal = imgM.src;
+    _nrWarped = r.warped.data_url;
+    imgM.src = _nrWarped;
+    window._nrShowing = true;
+    const tog = document.getElementById('spatial-nonrigid-toggle');
+    if (tog) { tog.style.display = ''; tog.textContent = 'Show original'; }
+    const d = r.displacement_um || r.displacement_px;
+    const unit = r.displacement_um ? 'µm' : 'px';
+    nonrigidStatus(d ? `warped · moved ${d.median} ${unit} median, ${d.p90} p90 · ${r.seconds}s`
+                     : `warped · ${r.seconds}s`, false);
+  } catch (e) {
+    nonrigidStatus('failed', false);
+    showToast('Alignment failed: ' + e);
+  }
+}
+
+function nonrigidToggle(forceOriginal) {
+  const imgM = document.getElementById('spatial-cert-mov');
+  const tog = document.getElementById('spatial-nonrigid-toggle');
+  if (!imgM || _nrWarped === null || _nrOriginal === null) return;
+  const showOriginal = forceOriginal === true ? true : window._nrShowing;
+  imgM.src = showOriginal ? _nrOriginal : _nrWarped;
+  window._nrShowing = !showOriginal;
+  if (tog) tog.textContent = window._nrShowing ? 'Show original' : 'Show warped';
+}
+
 function spatialCertSetMode(mode) {
-  spatialCertMode = (mode === 'loftr') ? 'loftr' : 'landmark';
+  spatialCertMode = (mode === 'loftr' || mode === 'nonrigid') ? mode : 'landmark';
   const auto = certModeIsAuto();
 
-  // ONE MODE'S PANEL AT A TIME. `.cert-only-loftr` / `.cert-only-landmark` now sit on the
-  // two panel roots rather than being sprinkled across a shared row, so this hides a whole
-  // path — explanation, actions and options together.
-  document.querySelectorAll('.cert-only-landmark').forEach(el =>
-    el.classList.toggle('cert-hidden', auto));
-  document.querySelectorAll('.cert-only-loftr').forEach(el =>
-    el.classList.toggle('cert-hidden', !auto));
-  ['landmark', 'loftr'].forEach(m => {
+  // ONE MODE'S PANEL AT A TIME. `.cert-only-loftr` / `.cert-only-landmark` /
+  // `.cert-only-nonrigid` sit on the panel roots rather than being sprinkled across a shared
+  // row, so this hides a whole path — explanation, actions and options together.
+  ['landmark', 'loftr', 'nonrigid'].forEach(m => {
+    document.querySelectorAll('.cert-only-' + m).forEach(el =>
+      el.classList.toggle('cert-hidden', spatialCertMode !== m));
     const t = document.getElementById('cert-mode-' + m + '-tab');
     if (t) t.classList.toggle('active', spatialCertMode === m);
   });
+
+  // Leaving the warp view puts the original moving section back, so no other mode can be
+  // reading landmarks off a warped image without saying so.
+  if (spatialCertMode !== 'nonrigid' && window._nrShowing) nonrigidToggle(true);
 
   // LEAVING A MODE DISARMS IT. A tool armed in one mode must not still own clicks in the
   // other: previously a region tool left armed in Automatic silently swallowed every
   // landmark click after the operator switched to Manual, with nothing on screen to say so.
   const w = spatialCertWork;
   const d = certDraw();
-  if (d.tool && ((auto && d.tool === 'roi') || (!auto && d.tool === 'region'))) {
+  // Non-rigid mode draws nothing at all, so every tool is disarmed on entry rather than
+  // only the one belonging to the mode being left.
+  const nr = spatialCertMode === 'nonrigid';
+  if (d.tool && (nr || (auto && d.tool === 'roi') || (!auto && d.tool === 'region'))) {
     d.tool = null; d.side = null; d.pts = []; d.drag = false; d.moved = 0;
   }
   w.pending = null;                       // a half-placed landmark pair does not survive
@@ -8264,6 +8443,7 @@ function spatialBuildConfig(forceMode) {
     max_distance_um:       parseFloat(document.getElementById('spatial-max-dist').value) || 10.0,
     dab_threshold_a:       parseFloat(document.getElementById('spatial-thresh-a').value) || 0.20,
     dab_threshold_b:       parseFloat(document.getElementById('spatial-thresh-b').value) || 0.10,
+    seed_threshold:        seedValue('spatial'),
     // Mirrored from the Quant tab: per-image Otsu, per-image white-balance, and
     // per-image pixel-size calibration from "_scale" siblings (batch only).
     // Fixed cohort-wide OD per marker; a membranous marker instead takes the

@@ -80,6 +80,12 @@ def segment(image_path, pixel_size, setup):
         "default_pixel_size": float(pixel_size), "dab_threshold": 0.1,
         "export_geojson": True, "generate_overlays": False,
         "image_extensions": [f"*{ext}"],
+        # MUST match what Quant will run, or the classifier is fitted on one cell population
+        # and applied to another. With upsampling on, a 10x slide yields ~50% more cells --
+        # mostly the small faint nuclei the clamp suppressed -- so a rule fitted without it
+        # never saw the cells it would later be asked to call.
+        "allow_upsample_to_model": bool(setup.get("allow_upsample_to_model", False)),
+        "seed_threshold": setup.get("seed_threshold", 0.7),
     }
     import yaml
     cfg_path = work / "cfg.yaml"
